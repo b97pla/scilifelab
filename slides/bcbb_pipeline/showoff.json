@@ -1,0 +1,12 @@
+{
+    "name": "BCBB pipeline",
+    "description": "Blue Collar Bioinformatics pipeline on NGS processing",
+    "sections": [
+        {"section":"intro"},
+        {"section":"arch"},
+        {"section":"inner_workings"},
+        {"section":"results"},
+        {"section":"help"},
+        {"section":"ending"}
+    ]
+}
