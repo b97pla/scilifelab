@@ -8,9 +8,13 @@ it is possible to provide a directory containing bam
 files. 
 
 Usage:
-    exome_pipeline.py <config file> <fastq dir> [<bam dir>] 
-    [--force]
-    
+    exome_pipeline.py <YAML config file> <fastq dir> 
+                      [<YAML run information>]
+
+The YAML run configuration maps the barcoded files to their sample names:
+
+LANE_DATE_FC[_BCI][_1/2]_fastq.txt -> LANE_DATE_FC[_RUNINFONAME][_1/2].fastq
+
 Requires:
   - bcftools
   - GATK
@@ -20,43 +24,131 @@ Requires:
 
 import os
 import sys
+from optparse import OptionParser
+
+import yaml
+
 import subprocess
 import glob
 import collections
-from optparse import OptionParser
-import yaml
-import logbook
+
+sys.path.insert(0, "/bubo/home/h1/perun/opt/scilifelab.git/scilife/")
+
+from scilife.log import create_log_handler
+from scilife.pipeline import log
+from scilife.pipeline import sample
+from scilife.pipeline.lane import make_lane_items
+from scilife.pipeline.fastq import (map_fastq_barcode, get_samples_from_fastq_dir)
 
 from bcbio.solexa.flowcell import get_flowcell_info
+from bcbio.galaxy.api import GalaxyApiAccess
 from bcbio import utils
+from bcbio.pipeline.demultiplex import add_multiplex_across_lanes
 from bcbio.broad import BroadRunner
-from bcbio.log import create_log_handler
 from bcbio.ngsalign import bwa
+from bcbio.pipeline import lane
 
-LOG_NAME = os.path.splitext(os.path.basename(__file__))[0]
-log = logbook.Logger(LOG_NAME)
-
-def main(config_file, fastq_dir, run_info_yaml=None, bam_dir=None, force=False):
+def main(config_file, fastq_dir, run_info_yaml=None):
     with open(config_file) as in_handle:
         config = yaml.load(in_handle)
-        log_handler = create_log_handler(config, LOG_NAME)
+    log_handler = create_log_handler(config, log.name)
     with log_handler.applicationbound():
-        #log.debug(config)
-        run_main(config, config_file, fastq_dir, run_info_yaml, bam_dir, force)
+        run_main(config, config_file, fastq_dir, run_info_yaml)
 
-def run_main(config, config_file, fastq_dir, run_info_yaml, bam_dir, force):
+def run_main(config, config_file, fastq_dir, run_info_yaml):
     work_dir = os.getcwd()
     (_, fq_name) = os.path.split(fastq_dir)
+
+    align_dir = os.path.join(work_dir, "intermediate",  fq_name, "alignments")
+    (fc_name, fc_date, run_items) = get_samples_from_fastq_dir(fastq_dir)
+
+    run_info = _get_run_info(fc_name, fc_date, config, run_info_yaml)
+    fastq_dir, galaxy_dir, config_dir = _get_full_paths(fastq_dir, config, config_file)
+    config_file = os.path.join(config_dir, os.path.basename(config_file))
+    dirs = {"fastq": fastq_dir, "galaxy": galaxy_dir, "align": align_dir,
+            "work": work_dir, "config": config_dir, "flowcell" : None}
+    #run_items = add_multiplex_across_lanes(run_info["details"], dirs["fastq"], fc_name)
+    # Since demultiplexing is already done, just extract run_items
+    run_items = run_info['details']
+    (dirs, run_items) = map_fastq_barcode(dirs, run_items)
+    
+    # Align samples
+    # lanes = ((info, fc_name, fc_date, dirs, config) for info in run_items)
+    # (
+    #     fastq1: '/bubo/home/h1/perun/opt/bcbb.git/nextgen/tests/test_automated_output/3_110106_FC70BUKAAXX_barcode/3_110106_FC70BUKAAXX_trim_1_fastq.txt', 
+    #     fastq2: None, 
+    #     genome_build: 'hg19', 
+    #     mlane_name: '3_110106_FC70BUKAAXX_trim', 
+    #     msample : 'Test3', 
+    #     dirs: {'fastq': '/bubo/home/h1/perun/opt/bcbb.git/nextgen/tests/test_automated_output/../data/automated/../110106_FC70BUKAAXX', 'work': '/bubo/home/h1/perun/opt/bcbb.git/nextgen/tests/test_automated_output', 'flowcell': '../data/automated/../110106_FC70BUKAAXX', 'config': '/bubo/home/h1/perun/opt/bcbb.git/nextgen/tests/test_automated_output/../data/automated', 'align': '/bubo/home/h1/perun/opt/bcbb.git/nextgen/tests/test_automated_output/alignments', 'galaxy': '/bubo/home/h1/perun/opt/bcbb.git/nextgen/tests/test_automated_output/../data/automated'},
+    #     config : {'galaxy_config': 'universe_wsgi.ini', 'algorithm': {'save_diskspace': True, 'recalibrate': False, 'bc_position': 3, 'num_cores': 1, 'aligner': 'bowtie', 'platform': 'illumina', 'max_errors': 2, 'java_memory': '1g', 'bc_read': 1, 'snpcall': False, 'bc_mismatch': 2}, 'custom_algorithms': {'Minimal': {'aligner': ''}, 'SNP calling': {'recalibrate': True, 'snpcall': True, 'aligner': 'bwa', 'dbsnp': 'snps/dbSNP132.vcf'}}, 'distributed': {'rabbitmq_vhost': 'bionextgen'}, 'analysis': {'towig_script': 'bam_to_wiggle.py'}, 'program': {'samtools': 'samtools', 'bowtie': 'bowtie', 'picard': '/usr/share/java/picard', 'barcode': 'barcode_sort_trim.py', 'pdflatex': 'pdflatex', 'ucsc_bigwig': 'wigToBigWig', 'bwa': 'bwa', 'fastqc': 'fastqc', 'gatk': '/usr/share/java/gatk', 'snpEff': '/usr/share/java/snpeff'}})
+    lane_items = make_lane_items(dirs, config, run_items)
+    for item in lane_items:
+        print str(item)
+    _run_parallel("process_alignment", lane_items, dirs, config)
+
+    # print "Going to align samples"
+    # align_items = ((info, fc_lane, fc_name, fc_date, dirs, config) for info in run_items)
+    # _run_parallel("align_sample", align_items, dirs, config)
+    sys.exit()
+        
+
+    # Process samples
+    print "Going to process samples"
+    #sample_files, sample_fastq, sample_info = sample.organize_samples(dirs, fc_name, fc_date, run_items)
+    # for s in sample_files:
+    #     print str(s)
+        
+        
+    # samples = ((info, fc_name, fc_date, dirs, config) for info in run_items)
+    # for s in samples:
+    #     print "Sample : " + str(s)
+    
+        #_run_parallel("align_sample", samples, dirs, config)
+
+def _get_run_info(fc_name, fc_date, config, run_info_yaml):
+    """Retrieve run information from a passed YAML file or the Galaxy API.
+    """
     if run_info_yaml and os.path.exists(run_info_yaml):
+        log.info("Found YAML samplesheet, using %s instead of Galaxy API" % run_info_yaml)
         with open(run_info_yaml) as in_handle:
             run_details = yaml.load(in_handle)
-        run_info = dict(details=run_details, run_id="")
-    align_dir = os.path.join(work_dir, fq_name, "alignments")
-    # Get fc name and date, and make a dictionary reminiscient of run_items
-    # in automated_initial_analysis.py
-    (fc_name, fc_date, run_items) = get_fastq_samples(fastq_dir)
-    for item in run_items:
-        log.info("Going to process sample " + item['sample']) 
+        return dict(details=run_details, run_id="")
+    else:
+        log.info("Fetching run details from Galaxy instance")
+        galaxy_api = GalaxyApiAccess(config['galaxy_url'], config['galaxy_api_key'])
+        return galaxy_api.run_details(fc_name, fc_date)
+
+
+def _run_parallel(fn_name, items, dirs, config):
+    """Process a supplied function: single, multi-processor or distributed.
+    """
+    parallel = config["algorithm"]["num_cores"]
+    if str(parallel).lower() == "messaging":
+        runner = messaging.runner(dirs, config)
+        return runner(fn_name, items)
+    else:
+        out = []
+        fn = globals()[fn_name]
+        with utils.cpmap(int(parallel)) as cpmap:
+            for data in cpmap(fn, items):
+                if data:
+                    out.extend(data)
+        return out
+
+@utils.map_wrap
+def process_lane(*args):
+    return lane.process_lane(*args)
+
+@utils.map_wrap
+def process_alignment(*args):
+    return lane.process_alignment(*args)
+
+@utils.map_wrap
+def align_sample(*args):
+    return sample.align_sample(*args)
+
+def run_main2(config, config_file, fastq_dir, run_info_yaml, bam_dir, force):
     with utils.cpmap(config["algorithm"]["num_cores"]) as cpmap:
         for _ in cpmap(align_sample, 
                        ((i, fastq_dir, fc_name, fc_date, align_dir, config, config_file)
@@ -174,7 +266,7 @@ def organize_samples(align_dir, fastq_dir, work_dir, fc_name, fc_date, run_items
 
 # This function works on one sample and is mapped to the list of samples in run_items
 @utils.map_wrap
-def align_sample(info, fastq_dir, fc_name, fc_date, align_dir, config, config_file):
+def align_sample2(info, fastq_dir, fc_name, fc_date, align_dir, config, config_file):
     """Do alignment of a sample"""
     sample_name = info.get("sample", "")
     if (config["algorithm"].get("include_short_name", True) and 
@@ -221,42 +313,13 @@ def _get_lane_info_from_fastq(fastq):
     pu = "_".join(fh.split("_")[0:3])
     return lane, pu
     
-def get_fastq_files(directory, sample, fc_name, bc_name=None):
-    """Retrieve fastq files for the given sample, ready to process.
-    """
-    if bc_name:
-        glob_str = "*_*_%s_%s_%s_*.fastq*" % (fc_name, sample, bc_name)
-    else:
-        glob_str = "*_*_%s_%s_*.fastq*" % (fc_name, sample)
-    files = glob.glob(os.path.join(directory, glob_str))
-    files.sort()
-    if len(files) > 2 or len(files) == 0:
-        raise ValueError("Did not find correct files for %s %s %s %s" %
-                (directory, sample, fc_name, files))
-    ready_files = []
-    for fname in files:
-        if fname.endswith(".gz"):
-            cl = ["gunzip", fname]
-            subprocess.check_call(cl)
-            ready_files.append(os.path.splitext(fname)[0])
-        else:
-            ready_files.append(fname)
-    return ready_files[0], (ready_files[1] if len(ready_files) > 1 else None)
-
-def _add_full_path(dirname, basedir=None):
-    if basedir is None:
-        basedir = os.getcwd()
-    if not dirname.startswith("/"):
-        dirname = os.path.join(basedir, dirname)
-    return dirname
-
 def _get_full_paths(fastq_dir, config, config_file):
     """Retrieve full paths for directories in the case of relative locations.
     """
-    fastq_dir = _add_full_path(fastq_dir)
-    config_dir = _add_full_path(os.path.dirname(config_file))
-    galaxy_config_file = _add_full_path(config["galaxy_config"], config_dir)
-    return fastq_dir, os.path.dirname(galaxy_config_file)
+    fastq_dir = utils.add_full_path(fastq_dir)
+    config_dir = utils.add_full_path(os.path.dirname(config_file))
+    galaxy_config_file = utils.add_full_path(config["galaxy_config"], config_dir)
+    return fastq_dir, os.path.dirname(galaxy_config_file), config_dir
 
 def get_genome_ref(genome_build, aligner, galaxy_base):
     """Retrieve the reference genome file location from galaxy configuration.
@@ -313,26 +376,6 @@ def _remap_to_maq(ref_file):
             return test_file
     raise ValueError("Did not find maq file %s" % ref_file)
 
-def get_fastq_samples(fastq_dir, info=None):
-    run_items = list()
-    samples = {}
-    if info:
-        pass
-    else:
-        fastq_files = glob.glob(os.path.join(fastq_dir, "*.fastq*"))
-        if not fastq_files:
-            print "No fastq files found in " + fastq_dir
-            sys.exit()
-        (name, date) = get_flowcell_info(fastq_files[0])
-    for fq in fastq_files:
-        (_, fc) = os.path.split(fq)
-        # files have to be lane_date_flowcell_sample_1/2.fastq
-        sample = fc.split("_")[3]
-        if not samples.has_key(sample):
-            run_items.append({'sample':sample})
-        samples[sample] = True
-    return name, date, run_items
-
 def get_dbsnp_file(config, sam_ref):
     snp_file = config["algorithm"].get("dbsnp", None)
     if snp_file:
@@ -343,12 +386,10 @@ def get_dbsnp_file(config, sam_ref):
 
 if __name__ == "__main__":
     parser = OptionParser()
-    parser.add_option("-f", "--force", dest="force", action="store_true", default=False)
     (options, args) = parser.parse_args()
     if len(args) < 2:
         print "Incorrect arguments"
         print __doc__
         sys.exit()
-    kwargs = dict(
-        force=options.force)
+    kwargs = dict()
     main(*args, **kwargs)

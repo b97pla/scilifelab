@@ -49,21 +49,21 @@ class SampleBasedAnalysisTest(unittest.TestCase):
 
         data_delivery_dirs = {'20000101A_hiseq2000':os.path.join(self.file_dir, "projects", "j_doe_00_01", "data", "20000101A_hiseq2000"),
                               '20000101B_hiseq2000':os.path.join(self.file_dir, "projects", "j_doe_00_01", "data", "20000101B_hiseq2000")}
-        run_samples = {'20000101A_hiseq2000' : {'1_110106_FC70BUKAAXX_2_1_fastq.txt' : '1_110106_FC70BUKAAXX_SAMPLE1_index10_1.fastq',
-                                                '1_110106_FC70BUKAAXX_2_2_fastq.txt' : '1_110106_FC70BUKAAXX_SAMPLE1_index10_2.fastq',
-                                                '1_110106_FC70BUKAAXX_3_1_fastq.txt' : '1_110106_FC70BUKAAXX_SAMPLE1_index2_1.fastq',
-                                                '1_110106_FC70BUKAAXX_3_2_fastq.txt' : '1_110106_FC70BUKAAXX_SAMPLE1_index2_2.fastq',
-                                                '1_110106_FC70BUKAAXX_4_1_fastq.txt' : '1_110106_FC70BUKAAXX_SAMPLE2_index3_1.fastq',
-                                                '1_110106_FC70BUKAAXX_4_2_fastq.txt' : '1_110106_FC70BUKAAXX_SAMPLE2_index3_2.fastq',
-                                                '2_110106_FC70BUKAAXX_6_1_fastq.txt' : '2_110106_FC70BUKAAXX_SAMPLE1_index1_1.fastq',
-                                                '2_110106_FC70BUKAAXX_6_2_fastq.txt' : '2_110106_FC70BUKAAXX_SAMPLE1_index1_2.fastq',
-                                                '2_110106_FC70BUKAAXX_7_1_fastq.txt' : '2_110106_FC70BUKAAXX_SAMPLE2_index4_1.fastq',
-                                                '2_110106_FC70BUKAAXX_7_2_fastq.txt' : '2_110106_FC70BUKAAXX_SAMPLE2_index4_2.fastq'
+        run_samples = {'20000101A_hiseq2000' : {'1_110106_FC70BUKAAXX_2_1_fastq.txt' : '1_110106_FC70BUKAAXX_BAC22_index10_1.fastq',
+                                                '1_110106_FC70BUKAAXX_2_2_fastq.txt' : '1_110106_FC70BUKAAXX_BAC22_index10_2.fastq',
+                                                '1_110106_FC70BUKAAXX_3_1_fastq.txt' : '1_110106_FC70BUKAAXX_BAC22_index2_1.fastq',
+                                                '1_110106_FC70BUKAAXX_3_2_fastq.txt' : '1_110106_FC70BUKAAXX_BAC22_index2_2.fastq',
+                                                '1_110106_FC70BUKAAXX_4_1_fastq.txt' : '1_110106_FC70BUKAAXX_BAC44_index3_1.fastq',
+                                                '1_110106_FC70BUKAAXX_4_2_fastq.txt' : '1_110106_FC70BUKAAXX_BAC44_index3_2.fastq',
+                                                '2_110106_FC70BUKAAXX_6_1_fastq.txt' : '2_110106_FC70BUKAAXX_BAC22_index1_1.fastq',
+                                                '2_110106_FC70BUKAAXX_6_2_fastq.txt' : '2_110106_FC70BUKAAXX_BAC22_index1_2.fastq',
+                                                '2_110106_FC70BUKAAXX_7_1_fastq.txt' : '2_110106_FC70BUKAAXX_BAC44_index4_1.fastq',
+                                                '2_110106_FC70BUKAAXX_7_2_fastq.txt' : '2_110106_FC70BUKAAXX_BAC44_index4_2.fastq'
                                                 },
-                       '20000101B_hiseq2000' : {'2_110106_FC70BUKAAXX_8_1_fastq.txt' : '2_110106_FC70BUKAAXX_SAMPLE1_index3_1.fastq',
-                                                '2_110106_FC70BUKAAXX_8_2_fastq.txt' : '2_110106_FC70BUKAAXX_SAMPLE1_index3_2.fastq',
-                                                '2_110106_FC70BUKAAXX_9_1_fastq.txt' : '2_110106_FC70BUKAAXX_SAMPLE2_index4_1.fastq',
-                                                '2_110106_FC70BUKAAXX_9_2_fastq.txt' : '2_110106_FC70BUKAAXX_SAMPLE2_index4_2.fastq'
+                       '20000101B_hiseq2000' : {'2_110106_FC70BUKAAXX_8_1_fastq.txt' : '2_110106_FC70BUKAAXX_BAC22_index3_1.fastq',
+                                                '2_110106_FC70BUKAAXX_8_2_fastq.txt' : '2_110106_FC70BUKAAXX_BAC22_index3_2.fastq',
+                                                '2_110106_FC70BUKAAXX_9_1_fastq.txt' : '2_110106_FC70BUKAAXX_BAC44_index2_1.fastq',
+                                                '2_110106_FC70BUKAAXX_9_2_fastq.txt' : '2_110106_FC70BUKAAXX_BAC44_index2_2.fastq'
                                                 }
                        }
         for name, dirname in data_delivery_dirs.items():
@@ -118,5 +118,6 @@ class SampleBasedAnalysisTest(unittest.TestCase):
         with make_workdir():
             cl = [os.path.join(script_dir, "exome_pipeline.py"),
                   os.path.join(self.proj_dir, "proj_conf.yaml"),
-                  os.path.join(self.proj_dir, "data", "20000101A_hiseq2000")]
+                  os.path.join(self.proj_dir, "data", "20000101A_hiseq2000"),
+                  os.path.join(self.file_dir, "templates", "run_info.yaml")]
             subprocess.check_call(cl)
