@@ -31,20 +31,17 @@ def make_lane_items(dirs, config, run_items):
                 lane_items.append((fastq1, fastq2, info['genome_build'], mname, msample, dirs, config ))
     return lane_items
 
-def get_flowcell_id(run_info, dirs):
-    bc = False
+def get_flowcell_id(run_info, fc_dir, check_bc=True, glob_ext="_fastq.txt"):
     lane = None
     for info in run_info:
-        if info.get("multiplex",""):
-            bc = True
         lane = info.get("lane", "")
-    if bc:
-        glob_str = "%s_*_barcode/*_fastq.txt" % (lane)
+    if check_bc:
+        glob_str = "%s_*_barcode/*%s" % (lane, glob_ext)
     else:
-        glob_str = "%s_*_fastq.txt" % (lane)
-    files = glob.glob(os.path.join(dirs["fc_dir"], glob_str))
+        glob_str = "%s_*%s" % (lane, glob_ext)
+    files = glob.glob(os.path.join(fc_dir, glob_str))
     try:
         (name, date) = get_flowcell_info(files[0])
     except:
-        raise StandardError("No flowcell information found in " + str(dirs["fc_dir"]))
+        raise StandardError("No flowcell information found in " + str(fc_dir))
     return name, date

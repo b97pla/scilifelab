@@ -8,12 +8,42 @@ it is possible to provide a directory containing bam
 files. 
 
 Usage:
-    exome_pipeline.py <YAML config file> <fastq dir> 
-                      [<YAML run information>]
+    exome_pipeline.py <exome pipeline YAML config file> 
+                      <pruned YAML run information>
+                      <project_name> <fc_dir>
 
-The YAML run configuration maps the barcoded files to their sample names:
+
+The exome pipeline is similar to the post_processing.yaml file in that it holds
+information about programs, algorithms and analyses. The contents are more loosely
+defined than for post_processing.
+
+The pruned YAML run information file contains run_info about the samples in this 
+project only, and also contains the necessary information for conversion between 
+barcode ids and barcode names, should the lanes have been multiplexed.
 
 LANE_DATE_FC[_BCI][_1/2]_fastq.txt -> LANE_DATE_FC[_RUNINFONAME][_1/2].fastq
+
+In general, data is delivered as fastq files to a project. Generally, we adopt 
+the following convention:
+
+j_doe_00_01/data/fastq_dir
+
+where j_doe_00_01 is the project name to be provided at the command line. Data 
+analyses are then performed in 
+
+j_doe_00_01/intermediate/fastq_dir/
+
+which in turn contains subdirectories for flowcells, alignments etc.
+
+The <fc_dir> names a flowcell directory:
+
+j_doe_00_01/intermediate/fastq_dir/fc_dir
+
+in which the delivered fastq files have been renamed to their original names
+and link back to the files in j_doe_00_01/data/fastq_dir directory. Hence,
+the bcbio modules can be directly applied to the file names in fc_dir.
+
+Relinking of files is done in the script setup_project_files.py.
 
 Requires:
   - bcftools
@@ -65,7 +95,7 @@ def run_main(config, config_file, fastq_dir, run_info_yaml):
     config_file = os.path.join(config_dir, os.path.basename(config_file))
     dirs = {"fastq": fastq_dir, "galaxy": galaxy_dir, "align": align_dir,
             "work": work_dir, "config": config_dir, "flowcell" : None}
-    #run_items = add_multiplex_across_lanes(run_info["details"], dirs["fastq"], fc_name)
+
     # Since demultiplexing is already done, just extract run_items
     run_items = run_info['details']
     #(dirs, run_items) = map_fastq_barcode(dirs, run_items)

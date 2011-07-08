@@ -42,7 +42,7 @@ from scilife.log import create_log_handler
 from scilife.pipeline import log
 from scilife.pipeline.run_info import prune_run_info_by_description
 from scilife.pipeline.lane import get_flowcell_id
-from scilife.pipeline.fastq import get_single_fastq_files, get_barcoded_fastq_files, convert_barcode_id
+from scilife.pipeline.fastq import get_single_fastq_files, get_barcoded_fastq_files, convert_barcode_id_to_name
 
 from bcbio import utils
 
@@ -59,7 +59,7 @@ def main(run_info_yaml, yaml_project_desc, fc_dir, project_outdir,
         _save_run_info_and_exit(run_info, project_outdir, config) if only_run_info else ""
 
     dirs = dict(fc_dir=fc_dir, project_dir=project_outdir)
-    fc_name, fc_date = get_flowcell_id(run_info, dirs)
+    fc_name, fc_date = get_flowcell_id(run_info, dirs['fc_dir'])
     config.update( fc_name = fc_name, fc_date = fc_date)
     config.update( fc_alias = "%s_%s" % (fc_date, fc_name) if not fc_alias else fc_alias)
     with log_handler.applicationbound():
@@ -81,11 +81,12 @@ def process_lane(info, dirs, config):
         log.debug("Sample %s is multiplexed as: %s" % (sample_name, multiplex))
         fq = get_barcoded_fastq_files(multiplex, info['lane'], dirs['fc_dir'], config['fc_name'], config['fc_date'])
         for fqpair in fq:
-            fqout = convert_barcode_id(multiplex, config['fc_name'], fqpair)
+            fqout = convert_barcode_id_to_name(multiplex, config['fc_name'], fqpair)
             [_deliver_fastq_file(fq_src, fq_tgt, config['fc_delivery_dir']) for fq_src, fq_tgt in izip(fqpair, fqout)]
     else:
-        fq1, fq2 = get_single_fastq_files(info['lane'], dirs['fc_dir'], config['fc_name'])
         pass
+        #fq1, fq2 = get_single_fastq_files(info['lane'], dirs['fc_dir'], config['fc_name'])
+
         
 # TODO: Check for data in path so one could pass j_doe_00_01 or
 # j_doe_00_01/data/flowcell_alias as project_output_dir?

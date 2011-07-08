@@ -13,7 +13,8 @@ setup(name = "scilife-ngs",
       namespace_packages = ["scilife"],
       packages = find_packages(),
       scripts = ['scripts/exome_pipeline.py',
-                 'scripts/sample_delivery.py'
+                 'scripts/sample_delivery.py',
+                 'scripts/setup_project_files.py'
                  ],
       package_data = {
           'config' : ['*.yaml'],
