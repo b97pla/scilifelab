@@ -42,5 +42,4 @@ class ProjectSetupTest(unittest.TestCase):
               os.path.join(self.proj_dir, "project_run_info.yaml"),
               "20000101A_hiseq2000",
               "--project_dir=%s" %(self.proj_dir)]
-        print cl
         subprocess.check_call(cl)

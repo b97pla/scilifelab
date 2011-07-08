@@ -43,14 +43,26 @@ class SampleBasedAnalysisTest(unittest.TestCase):
         if os.path.exists(os.path.join(self.proj_dir, "intermediate")):
             shutil.rmtree(os.path.join(self.proj_dir, "intermediate"))
         self._deliver_data()
+        self._setup_project()
 
     def _deliver_data(self):
+        print "Delivering data"
         cl = ["sample_delivery.py",
               os.path.join(self.file_dir, "templates", "run_info.yaml"),
               "J.Doe_00_01", self.bcbio_fcdir, self.proj_dir,
               "--flowcell_alias=20000101A_hiseq2000"]
         subprocess.check_call(cl)
+        print "Finished delivering data..."
 
+    def _setup_project(self):
+        print "setting up project"
+        cl = ["setup_project_files.py",
+              os.path.join(self.proj_dir, "data", "20000101A_hiseq2000", "project_run_info.yaml"),
+              "20000101A_hiseq2000",
+              "--project_dir=%s" %(self.proj_dir)]
+        subprocess.check_call(cl)
+
+        
     def _install_config_data(self):
         loc_files = ['bowtie_indices.loc', 'bwa_index.loc', 'sam_fa_indices.loc']
         tooldir = os.path.join(self.file_dir, "config", "tool-data")
@@ -79,9 +91,10 @@ class SampleBasedAnalysisTest(unittest.TestCase):
             out_handle.write(tmpl.safe_substitute(d))
 
     def test_run_samplebased_pipeline(self):
-        with make_workdir():
-            cl = ["exome_pipeline.py",
-                  os.path.join(self.proj_dir, "proj_conf.yaml"),
-                  os.path.join(self.proj_dir, "data", "20000101A_hiseq2000"),
-                  os.path.join(self.file_dir, "templates", "run_info.yaml")]
-            subprocess.check_call(cl)
+        """Test a sample based pipeline"""
+        cl = ["exome_pipeline.py",
+              os.path.join(self.proj_dir, "proj_conf.yaml"),
+              os.path.join(self.proj_dir, "data", "20000101A_hiseq2000"),
+              os.path.join(self.proj_dir, "data", "20000101A_hiseq2000", "project_run_info.yaml"),
+              "--project_dir=%s" %(self.proj_dir)]
+        subprocess.check_call(cl)

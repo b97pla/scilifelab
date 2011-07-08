@@ -16,7 +16,6 @@ import collections
 
 from bcbio.solexa.flowcell import get_flowcell_info
 
-
 def get_fastq_files(directory, sample, fc_name, bc_name=None):
     """Retrieve fastq files for the given sample, ready to process.
     """
@@ -90,6 +89,24 @@ def get_barcoded_fastq_files(multiplex, lane, fc_dir, fc_name, fc_date):
             raise IOError("No barcode directory found: " + str(bc_dir))
         fq.append(_get_fastq_files(bc_dir, lane, fc_name, bc_name=bc['barcode_id']))
     return fq
+
+def get_multiplex_items(multiplex, lane, fc_dir, fc_name, fc_date):
+    mitems = list()
+    bc_dir = "%s_%s_%s_barcode" % (lane, fc_date, fc_name)
+    bc_dir = os.path.join(fc_dir, bc_dir)
+    lane_name = "%s_%s_%s" % (lane, fc_date, fc_name)
+    for bc in multiplex:
+        mname = bc['barcode_id']
+        mlane_name = "%s_%s" % (lane_name, mname) if mname else lane_name
+        msample = bc['name']
+        if msample is None:
+            msample = "%s---%s" % (sample_name, mname)
+        if not os.path.exists(bc_dir):
+            raise IOError("No barcode directory found: " + str(bc_dir))
+        fastq1, fastq2 = _get_fastq_files(bc_dir, lane, fc_name, bc_name=bc['barcode_id'])
+        mitems.append((fastq1, fastq2 , mlane_name, msample))
+    return mitems
+    
 
 def get_single_fastq_files(lane, fc_dir, fc_name):
     return _get_fastq_files(fc_dir, lane, fc_name)

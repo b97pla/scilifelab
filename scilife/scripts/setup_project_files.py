@@ -90,6 +90,6 @@ if __name__ == "__main__":
         print __doc__
         sys.exit()
     kwargs = dict(
-        project_dir = options.project_dir
+        project_dir = options.project_dir if options.project_dir else os.getcwd()
         )
     main(*args, **kwargs)

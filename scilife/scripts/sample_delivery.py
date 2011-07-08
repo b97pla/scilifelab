@@ -56,14 +56,16 @@ def main(run_info_yaml, yaml_project_desc, fc_dir, project_outdir,
     log_handler = create_log_handler(config, log.name)
     with log_handler.applicationbound():
         run_info = prune_run_info_by_description(run_info, yaml_project_desc)
-        _save_run_info_and_exit(run_info, project_outdir, config) if only_run_info else ""
 
     dirs = dict(fc_dir=fc_dir, project_dir=project_outdir)
     fc_name, fc_date = get_flowcell_id(run_info, dirs['fc_dir'])
     config.update( fc_name = fc_name, fc_date = fc_date)
     config.update( fc_alias = "%s_%s" % (fc_date, fc_name) if not fc_alias else fc_alias)
+    dirs.update(fc_delivery_dir = os.path.join(dirs['project_dir'], "data", config['fc_alias'] ))
+
     with log_handler.applicationbound():
         config = _make_delivery_directory(dirs, config)
+        _save_run_info(run_info, dirs['fc_delivery_dir'], run_exit=only_run_info)
         run_main(run_info, config, dirs, report)
 
 def run_main(run_info, config, dirs, report):
@@ -92,7 +94,7 @@ def process_lane(info, dirs, config):
 # j_doe_00_01/data/flowcell_alias as project_output_dir?
 def _make_delivery_directory(dirs, config):
     """Make the output directory"""
-    outdir = os.path.join(dirs['project_dir'], "data", config['fc_alias'])
+    outdir = dirs['fc_delivery_dir']
     if not os.path.exists(outdir):
         os.makedirs(outdir)
         log.info("Creating data delivery directory %s" % (outdir))
@@ -114,15 +116,16 @@ def _deliver_fastq_file(fq_src, fq_tgt, outdir):
     if options.dry_run:
         print "DRY_RUN: Delivering fastq file %s to %s as %s" % (os.path.basename(fq_src), outdir, fq_tgt)
 
-def _save_run_info_and_exit(run_info, project_outdir, config):
-    outfile = os.path.join(project_outdir, "project_run_info.yaml")
+def _save_run_info(run_info, outdir, run_exit=False):
+    outfile = os.path.join(outdir, "project_run_info.yaml")
     if not options.dry_run:
         with open(outfile, "w") as out_handle:
             yaml.dump(run_info, stream=out_handle)
     else:
         print "DRY_RUN:"
         yaml.dump(run_info, stream=sys.stdout)
-    sys.exit()
+    if run_exit:
+        sys.exit()
 
 if __name__ == "__main__":
     parser = OptionParser()

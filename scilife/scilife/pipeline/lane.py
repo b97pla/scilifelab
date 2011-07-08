@@ -3,32 +3,29 @@
 import os
 import glob
 from bcbio.solexa.flowcell import get_flowcell_info
+from scilife.pipeline import log
+from scilife.pipeline.fastq import get_multiplex_items
 
-def make_lane_items(dirs, config, run_items):
-    """Generate lane_items list as in automated_initial_analysis"""
-    lane_items = []
-    (name, date) = get_flowcell_info(dirs['flowcell'])
-    for info in run_items:
-        dirname = os.path.join(dirs['flowcell'], "_".join([str(info['lane']), date, name]))
-        sample_name = info.get("description", "")
-        if (config["algorithm"].get("include_short_name", True) and
+def make_lane_items(info, fc_date, fc_name, dirs, config):
+    sample_name = info.get("description", "")
+    if (config["algorithm"].get("include_short_name", True) and
             info.get("name", "")):
-            sample_name = "%s---%s" % (info.get("name", ""), sample_name)
-        lane_name = "%s_%s_%s" % (info['lane'], date, name)
-        if info.has_key('multiplex'):
-            dirname = dirname + "_barcode"
-            print "looking in " + dirname
-            for bc in info['multiplex']:
-                mname = bc['barcode_id']
-                msample = bc['name']
-                glob_str = "%s_%s_%s_%s*fastq.txt" % (info['lane'], date, name, mname)
-                fq_files = glob.glob(os.path.join(dirname, glob_str))
-                fastq1 = fq_files[0]
-                fastq2 = fq_files[1] if fq_files[1] else None
-                mlane_name = "%s_%s" % (lane_name, mname) if mname else lane_name
-                if msample is None:
-                    msample = "%s---%s" % (sample_name, mname)
-                lane_items.append((fastq1, fastq2, info['genome_build'], mname, msample, dirs, config ))
+        sample_name = "%s---%s" % (info.get("name", ""), sample_name)
+    genome_build = info.get("genome_build", None)
+    multiplex = info.get("multiplex", "")
+    log.info("Processing sample: %s; lane %s; reference genome %s; " \
+             "researcher %s; analysis method %s" %
+             (sample_name, info["lane"], genome_build,
+              info.get("researcher", ""), info.get("analysis", "")))
+    lane_items = []
+    if multiplex:
+        log.debug("Sample %s is multiplexed as: %s" % (sample_name, multiplex))
+        mitems = get_multiplex_items(multiplex, info['lane'], dirs['fc_dir'], fc_name, fc_date)
+        for fastq1, fastq2, mlane_name, msample in mitems:
+            lane_items.append((fastq1, fastq2, genome_build, mlane_name, msample, dirs, config))
+    else:
+        # TODO: Not multiplex: what to do?
+        pass
     return lane_items
 
 def get_flowcell_id(run_info, fc_dir, check_bc=True, glob_ext="_fastq.txt"):
