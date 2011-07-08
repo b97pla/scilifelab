@@ -1,5 +1,4 @@
 """Analysis tools for samples"""
-
 import os
 import glob
 import collections

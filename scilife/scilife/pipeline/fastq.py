@@ -136,4 +136,56 @@ def get_samples_from_fastq_dir(fastq_dir, info=None):
         samples[sample] = True
     return name, date, run_items
 
+def get_barcoded_fastq_files(multiplex, lane, fc_dir, fc_name, fc_date):
+    fq = list()
+    bc_dir = "%s_%s_%s_barcode" % (lane, fc_date, fc_name)
+    bc_dir = os.path.join(fc_dir, bc_dir)
+    for bc in multiplex:
+        if not os.path.exists(bc_dir):
+            raise IOError("No barcode directory found: " + str(bc_dir))
+        fq.append(_get_fastq_files(bc_dir, lane, fc_name, bc['barcode_id']))
+    return fq
+
+def get_single_fastq_files(lane, fc_dir, fc_name):
+    return _get_fastq_files(fc_dir, lane, fc_name)
+
+def convert_barcode_id(multiplex, fc_name, fq):
+    """Convert barcode id to sample description, changing extension from _fastq.txt to .fastq in the process"""
+    fqout = list([None, None])
+    bcid2name = dict([(mp['barcode_id'], mp['name']) for mp in multiplex])
+    for bcid in bcid2name.keys():
+        mstr = "%s_%s_" % (fc_name, bcid) 
+        if fq[0].find(mstr) != -1:
+            from_str = "%s_%s_" %(fc_name, bcid)
+            to_str   = "%s_%s_" %(fc_name, bcid2name[bcid])
+            fqout[0] = fq[0].replace(from_str, to_str)
+            if not fq[1] == None:
+                fqout[1] = fq[1].replace(from_str, to_str)
+    fqout[0] = fqout[0].replace("_fastq.txt", ".fastq")
+    if not fqout[1] == None:
+        fqout[1] = fqout[1].replace("_fastq.txt", ".fastq")
+    return os.path.basename(fqout[0]), (os.path.basename(fqout[1]) if len(fqout) > 1 else None)
+
+# Note: do I even need to use this? The only difference from bcbio.pipeline.fastq is the first glob_str
+# There, it seems as if one always has paired end reads?!?
+def _get_fastq_files(directory, lane, fc_name, bc_name=None):
+    """Retrieve processed fastq files, possibly demultiplexed"""
+    if bc_name:
+        glob_str = "%s_*%s_%s_*fastq.txt" % (lane, fc_name, bc_name)
+    else:
+        glob_str = "%s_*%s*_fastq.txt" % (lane, fc_name)
+    files = glob.glob(os.path.join(directory, glob_str))
+    files.sort()
+    if len(files) > 2 or len(files) == 0:
+        raise ValueError("Did not find correct files for %s %s %s %s" %
+                (directory, lane, fc_name, files))
+    ready_files = []
+    for fname in files:
+        if fname.endswith(".gz"):
+            cl = ["gunzip", fname]
+            subprocess.check_call(cl)
+            ready_files.append(os.path.splitext(fname)[0])
+        else:
+            ready_files.append(fname)
+    return ready_files[0], (ready_files[1] if len(ready_files) > 1 else None)
 

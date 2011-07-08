@@ -32,8 +32,6 @@ import subprocess
 import glob
 import collections
 
-sys.path.insert(0, "/bubo/home/h1/perun/opt/scilifelab.git/scilife/")
-
 from scilife.log import create_log_handler
 from scilife.pipeline import log
 from scilife.pipeline import sample
@@ -70,7 +68,7 @@ def run_main(config, config_file, fastq_dir, run_info_yaml):
     #run_items = add_multiplex_across_lanes(run_info["details"], dirs["fastq"], fc_name)
     # Since demultiplexing is already done, just extract run_items
     run_items = run_info['details']
-    (dirs, run_items) = map_fastq_barcode(dirs, run_items)
+    #(dirs, run_items) = map_fastq_barcode(dirs, run_items)
     
     # Align samples
     # lanes = ((info, fc_name, fc_date, dirs, config) for info in run_items)
@@ -82,10 +80,10 @@ def run_main(config, config_file, fastq_dir, run_info_yaml):
     #     msample : 'Test3', 
     #     dirs: {'fastq': '/bubo/home/h1/perun/opt/bcbb.git/nextgen/tests/test_automated_output/../data/automated/../110106_FC70BUKAAXX', 'work': '/bubo/home/h1/perun/opt/bcbb.git/nextgen/tests/test_automated_output', 'flowcell': '../data/automated/../110106_FC70BUKAAXX', 'config': '/bubo/home/h1/perun/opt/bcbb.git/nextgen/tests/test_automated_output/../data/automated', 'align': '/bubo/home/h1/perun/opt/bcbb.git/nextgen/tests/test_automated_output/alignments', 'galaxy': '/bubo/home/h1/perun/opt/bcbb.git/nextgen/tests/test_automated_output/../data/automated'},
     #     config : {'galaxy_config': 'universe_wsgi.ini', 'algorithm': {'save_diskspace': True, 'recalibrate': False, 'bc_position': 3, 'num_cores': 1, 'aligner': 'bowtie', 'platform': 'illumina', 'max_errors': 2, 'java_memory': '1g', 'bc_read': 1, 'snpcall': False, 'bc_mismatch': 2}, 'custom_algorithms': {'Minimal': {'aligner': ''}, 'SNP calling': {'recalibrate': True, 'snpcall': True, 'aligner': 'bwa', 'dbsnp': 'snps/dbSNP132.vcf'}}, 'distributed': {'rabbitmq_vhost': 'bionextgen'}, 'analysis': {'towig_script': 'bam_to_wiggle.py'}, 'program': {'samtools': 'samtools', 'bowtie': 'bowtie', 'picard': '/usr/share/java/picard', 'barcode': 'barcode_sort_trim.py', 'pdflatex': 'pdflatex', 'ucsc_bigwig': 'wigToBigWig', 'bwa': 'bwa', 'fastqc': 'fastqc', 'gatk': '/usr/share/java/gatk', 'snpEff': '/usr/share/java/snpeff'}})
-    lane_items = make_lane_items(dirs, config, run_items)
-    for item in lane_items:
-        print str(item)
-    _run_parallel("process_alignment", lane_items, dirs, config)
+    # lane_items = make_lane_items(dirs, config, run_items)
+    # for item in lane_items:
+    #     print str(item)
+    # _run_parallel("process_alignment", lane_items, dirs, config)
 
     # print "Going to align samples"
     # align_items = ((info, fc_lane, fc_name, fc_date, dirs, config) for info in run_items)
