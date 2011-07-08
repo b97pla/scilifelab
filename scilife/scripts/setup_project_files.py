@@ -39,12 +39,13 @@ def main(run_info_yaml, fastq_dir, project_dir="./"):
                   )
     dirs.update(fc_dir = os.path.join(project_dir, "intermediate", os.path.basename(fastq_dir), 
                                                 "%s_%s" %(fc_date, fc_name)))
-    if not os.path.exists(dirs['fc_dir']):
-        log.info("Creating flow cell directory %s" % (dirs['fc_dir']))
-        os.makedirs(dirs['fc_dir'])
+
 
     log_handler = create_log_handler(config, log.name)
     with log_handler.applicationbound():
+        if not os.path.exists(dirs['fc_dir']):
+            log.info("Creating flow cell directory %s" % (dirs['fc_dir']))
+            os.makedirs(dirs['fc_dir'])
         run_main(run_info, config, dirs)
 
 def run_main(run_info, config, dirs):

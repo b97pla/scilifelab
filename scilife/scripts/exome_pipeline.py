@@ -66,7 +66,7 @@ from scilife.log import create_log_handler
 from scilife.pipeline import log
 from scilife.pipeline import sample
 from scilife.pipeline.lane import make_lane_items
-from scilife.pipeline.fastq import (map_fastq_barcode, get_samples_from_fastq_dir)
+from scilife.pipeline.fastq import get_samples_from_fastq_dir
 
 from bcbio.solexa.flowcell import get_flowcell_info
 from bcbio.galaxy.api import GalaxyApiAccess

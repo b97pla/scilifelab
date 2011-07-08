@@ -16,68 +16,6 @@ import collections
 
 from bcbio.solexa.flowcell import get_flowcell_info
 
-def map_fastq_barcode(dirs, run_items):
-    """Data has been delivered to fastq dir, in which barcode ids have
-    been substituted with barcode names as defined in YAML run information.
-    Here files in fastq_dir are mapped to their original barcode names"""
-    glob_str = "*.fastq"
-    files = glob.glob(os.path.join(dirs['fastq'], glob_str))
-    fc_dir = {}
-    (name, date) = get_flowcell_info(files[0])
-    fc = "_".join([date, name])
-    if not fc_dir.has_key(fc):
-        fc_dir[fc] = fc
-    if len(fc_dir.keys()) > 1:
-        raise StandardError("Can currently only process one flowcell per directory")
-    dirs['flowcell'] = os.path.join(dirs['align'], os.pardir, fc_dir.keys()[0])
-    if not os.path.exists(dirs['flowcell']):
-        os.makedirs(dirs['flowcell'])
-    d = dict()
-    for item in run_items:
-        d[item['lane']] = item
-    lane = None
-    lanes = dict()
-    barcodeids = dict()
-    sample = None
-    src2tgt = dict()
-    mplexinfo = collections.defaultdict(list)
-    for f in files:
-        src = os.path.basename(f)
-        parts = src.split("_")
-        lane = int(parts[0])
-        
-
-        lanes[lane] = lane
-        if not mplexinfo.has_key(lane):
-            mplexinfo[lane] = list()
-            barcodeids[lane] = dict()
-        lane_info = None
-        if d[lane].has_key('multiplex'):
-            dirname = os.path.join(dirs['flowcell'], "%s_%s_%s_barcode" % (lane, date, name))
-            if not os.path.exists(dirname):
-                os.makedirs(dirname)
-            mplex = d[lane]['multiplex']
-            for mp in mplex:
-                if src.find(mp['name']) != -1:
-                    tgt = src.replace(mp['name'], mp['barcode_id'])
-                    tgt = tgt.replace('.fastq', '_fastq.txt')
-                    os.symlink(os.path.join(dirs['fastq'], src), os.path.join(dirname, tgt))
-                    if not barcodeids[lane].has_key(mp['barcode_id']):
-                        mplexinfo[lane].append(mp)
-                    barcodeids[lane][mp['barcode_id']] = True
-        else:
-            pass
-    new_run_items = list()
-    for l in lanes.keys():
-        if d.has_key(l):
-            d[l]['multiplex'] = mplexinfo[l]
-            new_run_items.append(d[l])
-    return (dirs, new_run_items)
-
-def organize_fastq_samples():
-    """Organize delivered fastq files by sample name, handling multiplexing"""
-    pass
-
 
 def get_fastq_files(directory, sample, fc_name, bc_name=None):
     """Retrieve fastq files for the given sample, ready to process.
@@ -150,7 +88,7 @@ def get_barcoded_fastq_files(multiplex, lane, fc_dir, fc_name, fc_date):
     for bc in multiplex:
         if not os.path.exists(bc_dir):
             raise IOError("No barcode directory found: " + str(bc_dir))
-        fq.append(_get_fastq_files(bc_dir, lane, fc_name, bc['barcode_id']))
+        fq.append(_get_fastq_files(bc_dir, lane, fc_name, bc_name=bc['barcode_id']))
     return fq
 
 def get_single_fastq_files(lane, fc_dir, fc_name):
