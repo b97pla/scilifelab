@@ -22,7 +22,10 @@ The columns in the report file are assumed to be:
 import os
 import sys
 import csv
+import base64
+import yaml
 from optparse import OptionParser
+from bcbio.pipeline import log
 
 import gdata.spreadsheet.service
 import gdata.docs.service
@@ -39,17 +42,60 @@ header = {
           'demultiplexed_reads': 7
           }
 
-def main(result_file, gdocs_spreadsheet_title, gdocs_user, gdocs_pass):
+def decode_credentials(config):
+    
+    credentials = config.get("gdocs_credentials", None)
+    if not credentials:
+        return None
+    
+    # Split the username and password
+    return base64.b64decode(credentials).split(':',1);
+    
+
+def main(config_file):
 
     # Check that the result file exists
     if not os.path.exists(result_file):
         print "Could not find input file " + result_file
         sys.exit()
-        
+    
+    # Check that the config file exists
+    if not os.path.exists(config_file):
+        print "Could not find config file " + config_file
+        sys.exit()
+    
+    # Parse the config file and decode the username and password
+    with open(config_file) as in_handle:
+        config = yaml.load(in_handle)
+    
+    upload_demultiplex_data(config)
+    
+    
+def upload_demultiplex_data(config, workdir):
+       
+    # Split the username and password
+    credentials = decode_credentials(config)
+    if not credentials:
+        log.info("Could not find GDocs credentials in config. No demultiplex counts were written to Google Docs")
+        return
+    
+    # Get the local demultiplex result file
+    result_file_name = config.get("local_dmplx_counts", None)
+    result_file = os.path.join(workdir, result_file_name)
+    if not result_file_name or not os.path.exists(result_file):
+        log.info("Could not find local demultiplex results file %s. No demultiplex counts were written to Google Docs" % result_file_name)
+        return
+    
+    # Get the GDocs demultiplex result file title
+    gdocs_spreadsheet_title = config.get("gdocs_dmplx_counts", None)
+    if not gdocs_spreadsheet_title:
+        log.info("Could not find Google Docs demultiplex results file title in config. No demultiplex counts were written to Google Docs")
+        return
+    
     # Create a client class which will make HTTP requests with Google Docs server.
     client = gdata.spreadsheet.service.SpreadsheetsService()
-    client.email = gdocs_user
-    client.password = gdocs_pass
+    client.email = credentials[0]
+    client.password = credentials[1]
     client.source = 'demultiplex_upload.py'
     client.ProgrammaticLogin()
     
@@ -60,16 +106,18 @@ def main(result_file, gdocs_spreadsheet_title, gdocs_user, gdocs_pass):
     
     # Check that we got a result back
     if len(feed.entry) == 0:
-        raise Exception("No document with specified title '%s' found in GoogleDocs repository" % gdocs_spreadsheet_title)
+        log.info("No document with specified title '%s' found in GoogleDocs repository" % gdocs_spreadsheet_title)
+        return
     
     # If we get more than one feed item back, will have to implement some way of resolving these
     if len(feed.entry) > 1:
-        raise Exception("More than one document match the specified title '%s', will have to implement some way of resolving these!" % gdocs_spreadsheet_title)
+        log.info("More than one document match the specified title '%s', will have to implement some way of resolving these!" % gdocs_spreadsheet_title)
+        return
     
     # Get the matching spreadsheet entry from the feed    
     spreadsheet = feed.entry[0]
     ss_key = spreadsheet.id.text.split('/')[-1]
-    print "Found spreadsheet matching the supplied title: '%s'" % spreadsheet.title.text
+    log.info("Found spreadsheet matching the supplied title: '%s'" % spreadsheet.title.text)
     
     # Parse the result file to get the necessary parameters to determine worksheet names etc.
     with open(result_file,"rb") as f:
@@ -82,8 +130,9 @@ def main(result_file, gdocs_spreadsheet_title, gdocs_user, gdocs_pass):
         
         # Check that we got any rows
         if len(rows) == 0:
-            raise Exception("Did not read any data from input file '%s'" % result_file)
-            
+            log.info("Did not read any data from input file '%s'" % result_file)
+            return
+        
         # Get the date and flowcell id and base the name of the worksheet on these
         date = rows[0][header.get('date',0)]
         fcid = rows[0][header.get('flowcell_id',1)]
@@ -97,13 +146,15 @@ def main(result_file, gdocs_spreadsheet_title, gdocs_user, gdocs_pass):
             ws_title += "(%s)" % (len(feed.entry) + 1)
         
         # Create a new worksheet for this run and add it to the end of the spreadsheet
-        print "Adding a new worksheet, '%s', to the spreadsheet" % ws_title
+        log.info("Adding a new worksheet, '%s', to the spreadsheet" % ws_title)
         ws = client.AddWorksheet(ws_title,len(rows)+1,len(header),ss_key)
         if ws is None:
-            raise Exception("Could not add a worksheet '%s' to spreadsheet with key '%s'" % (ws_title,ss_key))
+            log.info("Could not add a worksheet '%s' to spreadsheet with key '%s'" % (ws_title,ss_key))
+            return
+        
         ws_id = ws.id.text.split('/')[-1]
 
-        print "Adding data to the worksheet"
+        log.info("Adding data to the '%s' worksheet" % ws_title)
         # First, print the header
         for val, j in header.items():
              client.UpdateCell(1,j+1,val,ss_key,ws_id)
@@ -122,7 +173,7 @@ def main(result_file, gdocs_spreadsheet_title, gdocs_user, gdocs_pass):
 if __name__ == "__main__":
     parser = OptionParser()
     (options, args) = parser.parse_args()
-    if len(args) < 4:
+    if len(args) != 3:
         print "Incorrect arguments"
         print __doc__
         sys.exit()
