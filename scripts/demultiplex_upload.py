@@ -120,55 +120,53 @@ def upload_demultiplex_data(config, workdir):
     log.info("Found spreadsheet matching the supplied title: '%s'" % spreadsheet.title.text)
     
     # Parse the result file to get the necessary parameters to determine worksheet names etc.
-    with open(result_file,"rb") as f:
-        csvr = csv.reader(f,dialect='excel-tab')
+    with open(result_file,"rb") as fhandle:
+        dmplx_data = yaml.load(fhandle)
+    
+    # Check that we got any rows
+    if len(dmplx_data) == 0:
+        log.info("Did not read any data from input file '%s'" % result_file_name)
+        return
+    
+    # Get the header fields as the keys from the dictionary
+    header = dmplx_data[0].keys()
+    # Get the date and flowcell id and base the name of the worksheet on these
+    date = dmplx_data[0]['date']
+    fcid = dmplx_data[0]['flowcell_id']
+    
+    # Check if there already is a worksheet present matching the data
+    ws_title = "%s_%s" % (date,fcid)
+    q = gdata.spreadsheet.service.DocumentQuery(params={'title':ws_title})
+    feed = client.GetWorksheetsFeed(key=ss_key,query=q)
+    # If there already exists one or more matching worksheet(s), add an enumerating suffix to the ws title
+    if len(feed.entry) > 0:
+        ws_title += "(%s)" % (len(feed.entry) + 1)
         
-        # Read the entire file
-        rows = []
-        for row in csvr:
-            rows.append(row)
+    # Create a new worksheet for this run and add it to the end of the spreadsheet
+    log.info("Adding a new worksheet, '%s', to the spreadsheet" % ws_title)
+    ws = client.AddWorksheet(ws_title,len(dmplx_data)+1,len(header),ss_key)
+    if ws is None:
+        log.info("Could not add a worksheet '%s' to spreadsheet with key '%s'" % (ws_title,ss_key))
+        return
         
-        # Check that we got any rows
-        if len(rows) == 0:
-            log.info("Did not read any data from input file '%s'" % result_file)
-            return
+    ws_id = ws.id.text.split('/')[-1]
+    log.info("Adding data to the '%s' worksheet" % ws_title)
+    
+    # First, print the header as the keys in the dictionary
+    j = 1
+    for val in header:
+        client.UpdateCell(1,j,val,ss_key,ws_id)
+        j += 1
         
-        # Get the date and flowcell id and base the name of the worksheet on these
-        date = rows[0][header.get('date',0)]
-        fcid = rows[0][header.get('flowcell_id',1)]
+    # Iterate over the rows and add the data to the worksheet
+    for entry in dmplx_data:
         
-        # Check if there already is a worksheet present matching the data
-        ws_title = "%s_%s" % (date,fcid)
-        q = gdata.spreadsheet.service.DocumentQuery(params={'title':ws_title})
-        feed = client.GetWorksheetsFeed(key=ss_key,query=q)
-        # If there already exists one or more matching worksheet(s), add an enumerating suffix to the ws title
-        if len(feed.entry) > 0:
-            ws_title += "(%s)" % (len(feed.entry) + 1)
-        
-        # Create a new worksheet for this run and add it to the end of the spreadsheet
-        log.info("Adding a new worksheet, '%s', to the spreadsheet" % ws_title)
-        ws = client.AddWorksheet(ws_title,len(rows)+1,len(header),ss_key)
-        if ws is None:
-            log.info("Could not add a worksheet '%s' to spreadsheet with key '%s'" % (ws_title,ss_key))
-            return
-        
-        ws_id = ws.id.text.split('/')[-1]
-
-        log.info("Adding data to the '%s' worksheet" % ws_title)
-        # First, print the header
-        for val, j in header.items():
-             client.UpdateCell(1,j+1,val,ss_key,ws_id)
-        
-        # Iterate over the rows and add the data to the worksheet
-        i=2
-        for row in rows:
-            j=1
-            for val in row:
-                client.UpdateCell(i,j,val,ss_key,ws_id)
-                j += 1
-            i += 1
- 
-
+        i = 2
+        j = 1
+        for val in header:
+            client.UpdateCell(i,j,entry.get(val,'.'),ss_key,ws_id)
+            j += 1
+        i += 1
 
 if __name__ == "__main__":
     parser = OptionParser()
