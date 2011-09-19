@@ -41,7 +41,13 @@ for entry in projdata:
     else:
         skipped.append(entry['lane'])
 
-if dry:
+if len(matching)==0:
+    print "No matching project found. Possibilities:"
+    for entry in projdata:
+        print entry['description'].split(',')[-1].strip()
+    sys.exit(0)
+
+elif dry:
     print "I will copy files from lanes " + ",".join(matching) 
 
 if not dry: logfile.flush()
