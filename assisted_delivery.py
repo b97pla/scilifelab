@@ -95,6 +95,7 @@ for d in dirs_to_process:
         if entry['lane'] == lane:
             lane_info = entry
     
+    lane_sample = ''
     if lane_info.has_key('multiplex'):
         for bc in lane_info['multiplex']:
             sample_id_and_idx[bc['barcode_id']] = bc['name']
@@ -121,6 +122,8 @@ for d in dirs_to_process:
 
     else:
         print "Non-multiplexed lane"
+        print "Please type a sample name for this lane"
+        lane_sample = raw_input()
         if not dry: logfile.write("Non-multiplexed lane\n")
 
     # print os.listdir(".")
@@ -135,7 +138,7 @@ for d in dirs_to_process:
             new_file_name = lane + "_" + date + "_" + run_id + "_" + customer_sample_id.replace("/", "_") + "_" + pe_read + ".fastq"   
         else:
             [lane, date, run_id, name, pe_read,dummy] = fastq_file.split("_")
-            new_file_name = lane + "_" + date + "_" + run_id + "_" + name + "_" + pe_read + ".fastq"   
+            new_file_name = lane + "_" + date + "_" + run_id + "_" + lane_sample + "_" + pe_read + ".fastq"   
        #  print "Preparing to copy file", fastq_file, "as ", new_file_name
         files_to_copy.append([fastq_file, new_file_name])
 
@@ -155,4 +158,4 @@ for d in dirs_to_process:
 
 if not dry: 
     logfile.close()
-    os.chmod(del_path, 0660)
+    os.system("chmod -R g+rw " + del_path)

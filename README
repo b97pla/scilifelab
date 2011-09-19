@@ -5,6 +5,9 @@ count_barcodes.py is a very simple script for counting the number of occurrences
 assisted_delivery.py is for delivering files to customer project directories. It uses some assumptions about directory structure.
 
 TODO:
-	- change the 'interactive mode' into a 'dry run' which would be more useful
-	- change directory permissions at the end of the script (chmod g+w *.*)
-	- allow user to specify sample names for non-multiplexed runs
+	- pretty-print barcode statistics
+	- remove index from file names altogether
+	(done) - change the 'interactive mode' into a 'dry run' which would be more useful
+	(done) - change directory permissions at the end of the script (chmod g+w *.*)
+	(done) - allow user to specify sample names for non-multiplexed runs
+	
