@@ -32,20 +32,24 @@ if not dry:
 print "Project to copy files for:", projid
 if not dry: logfile.write("Project to copy files for:" + "\n" + projid + "\n")
 
-matching = []
-skipped = []
+matching = set()
+available = set()
 
 for entry in projdata:
-
+    available.add(entry['description'].split(',')[-1].strip())
     if entry['description'].split(',')[-1].strip().lower()==projid: 
-        matching.append(entry['lane'])
-    else:
-        skipped.append(entry['lane'])
-
+        matching.add(entry['lane'])
+    elif entry.has_key('multiplex'):
+            for sample in entry['multiplex']:
+                if sample.has_key('description'):
+                    available.add(sample['description'])
+                    if sample['description'].split(',')[-1].strip().lower()==projid: 
+                        matching.add(entry['lane'])
+                    
 if len(matching)==0:
     print "No matching project found. Possibilities:"
-    for entry in projdata:
-        print entry['description'].split(',')[-1].strip()
+    for prid in sorted(available):
+        print prid
     sys.exit(0)
 
 elif dry:
@@ -78,7 +82,7 @@ if not dry:
 
 temp = runname.split('_')
 dirs_to_process = []
-for m in matching:
+for m in sorted(matching):
     d = m + "_" + temp[0] + "_" + temp[3] 
     dirs_to_process.append(d)
 
@@ -98,14 +102,27 @@ for d in dirs_to_process:
 # Print table of Illumina vs. bcbb barcodes
     sample_id_and_idx = {}
     lane_info = "none"
+    # 
+    main_proj_for_lane = ''
     for entry in projdata:
         if entry['lane'] == lane:
             lane_info = entry
-    
+            is_main_proj = True
+            main_proj_for_lane = entry['description'].split(',')[-1].strip().lower() 
+            if main_proj_for_lane == projid:
+                print projid, "is the main project for lane", lane
+            else:
+                print "This project is not the main project for lane ", lane, ". The main project is ", main_proj_for_lane
+                is_main_proj = False
+
     lane_sample = ''
     if lane_info.has_key('multiplex'):
         for bc in lane_info['multiplex']:
-            sample_id_and_idx[bc['barcode_id']] = bc['name']
+            if bc.has_key('description'):
+                if bc['description'].split(',')[-1].strip().lower() == projid:
+                    sample_id_and_idx[bc['barcode_id']] = bc['name']
+            elif is_main_proj:
+                sample_id_and_idx[bc['barcode_id']] = bc['name']
 
         print "Pipeline index\tSampleName\t# matching sequences"
         if not dry: logfile.write("Pipeline index\tIllumina index/sample ID\tMatches\n")
@@ -113,7 +130,7 @@ for d in dirs_to_process:
             for line in open(bcname):
                 [bcbb_bc, hits] = line.strip().split()
                 try:
-                    print bcbb_bc + "\t" + sample_id_and_idx[int(bcbb_bc)] + "\t" + hits
+                    if sample_id_and_idx.has_key(int(bcbb_bc)): print bcbb_bc + "\t" + sample_id_and_idx[int(bcbb_bc)] + "\t" + hits
                     if not dry: logfile.write(bcbb_bc + "\t" + sample_id_and_idx[int(bcbb_bc)] + "\t" + hits + "\n")
                 except:
                     if bcbb_bc == "unmatched": 
@@ -138,16 +155,18 @@ for d in dirs_to_process:
 
     for fastq_file in glob.glob("*fastq.txt"):
         if lane_info.has_key('multiplex'):
+            new_file_name = ''
             if 'unmatched' in fastq_file: continue
             # Extract barcode
             [lane, date, run_id, bcbb_bc, pe_read, dummy] = fastq_file.split("_")
-            customer_sample_id = sample_id_and_idx[int(bcbb_bc)]
-            new_file_name = lane + "_" + date + "_" + run_id + "_" + customer_sample_id.replace("/", "_") + "_" + pe_read + ".fastq"   
+            if sample_id_and_idx.has_key(int(bcbb_bc)):
+                customer_sample_id = sample_id_and_idx[int(bcbb_bc)]
+                new_file_name = lane + "_" + date + "_" + run_id + "_" + customer_sample_id.replace("/", "_") + "_" + pe_read + ".fastq"   
         else:
             [lane, date, run_id, name, pe_read,dummy] = fastq_file.split("_")
             new_file_name = lane + "_" + date + "_" + run_id + "_" + lane_sample + "_" + pe_read + ".fastq"   
        #  print "Preparing to copy file", fastq_file, "as ", new_file_name
-        files_to_copy.append([fastq_file, new_file_name])
+        if new_file_name != '': files_to_copy.append([fastq_file, new_file_name])
 
     for pair in files_to_copy:
         source = os.getcwd() + "/" + pair[0]
