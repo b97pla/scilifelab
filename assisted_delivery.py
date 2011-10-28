@@ -37,7 +37,7 @@ available = set()
 
 for entry in projdata:
     available.add(entry['description'].split(',')[-1].strip())
-    if entry['description'].split(',')[-1].strip().lower()==projid: 
+    if unicode(entry['description'].split(',')[-1].strip().lower(),'utf-8')==unicode(projid,'utf-8'): 
         matching.add(entry['lane'])
     elif entry.has_key('multiplex'):
             for sample in entry['multiplex']:
@@ -123,6 +123,8 @@ for d in dirs_to_process:
                     sample_id_and_idx[bc['barcode_id']] = bc['name']
             elif is_main_proj:
                 sample_id_and_idx[bc['barcode_id']] = bc['name']
+            else:
+                sys.exit("ERROR: Sample has no description and main project for lane is not the same as given project ID!")
 
         print "Pipeline index\tSampleName\t# matching sequences"
         if not dry: logfile.write("Pipeline index\tIllumina index/sample ID\tMatches\n")
@@ -130,8 +132,9 @@ for d in dirs_to_process:
             for line in open(bcname):
                 [bcbb_bc, hits] = line.strip().split()
                 try:
-                    if sample_id_and_idx.has_key(int(bcbb_bc)): print bcbb_bc + "\t" + sample_id_and_idx[int(bcbb_bc)] + "\t" + hits
-                    if not dry: logfile.write(bcbb_bc + "\t" + sample_id_and_idx[int(bcbb_bc)] + "\t" + hits + "\n")
+                    if sample_id_and_idx.has_key(int(bcbb_bc)): 
+                        print bcbb_bc + "\t" + sample_id_and_idx[int(bcbb_bc)] + "\t" + hits
+                        if not dry: logfile.write(bcbb_bc + "\t" + sample_id_and_idx[int(bcbb_bc)] + "\t" + hits + "\n")
                 except:
                     if bcbb_bc == "unmatched": 
                         print bcbb_bc + "\t" + "N.A." + "\t" + hits 
