@@ -6,8 +6,8 @@ assisted_delivery.py is for delivering files to customer project directories. It
 
 TODO:
 	- pretty-print barcode statistics
-	- when prg cannot find your given project ID, present a list of available ones
 	- remove index from file names altogether
+	(done) - when prg cannot find your given project ID, present a list of available ones
 	(done) - change the 'interactive mode' into a 'dry run' which would be more useful
 	(done) - change directory permissions at the end of the script (chmod g+w *.*)
 	(done) - allow user to specify sample names for non-multiplexed runs
