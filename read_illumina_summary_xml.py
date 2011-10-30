@@ -9,6 +9,8 @@ def getQCstats(path):
     qc_stats['error_rate_sd'] = getErrorSD(r)
     qc_stats['raw_cluster_dens'] = getClustersRaw(r)
     qc_stats['raw_cluster_dens_sd'] = getClustersRawSD(r)
+    qc_stats['prc_pf'] = getPrcPF(r)
+    qc_stats['prc_pf_sd'] = getPrcPFSD(r)
     qc_stats['pf_cluster_dens'] = getClustersPF(r)
     qc_stats['pf_cluster_dens_sd'] = getClustersPFSD(r)
     qc_stats['phasing'] = getPhasing(r)
@@ -99,7 +101,7 @@ def getLaneClustersRaw(roots, lane):
     for l in lanes2:
         if l.get("key")==str(lane):
             clr2 = str ( int ( density_2 * float(l.get("ClustersRaw")) / 1000) ) + "K"
-    return {'read1':clr_1, 'read2':clr_2}
+    return {'read1':clr1, 'read2':clr2}
 
 def getClustersRaw(summary):
     [r1_root, r2_root] = summary
@@ -130,7 +132,7 @@ def getLaneClustersRawSD(roots, lane):
     for l in lanes2:
         if l.get("key")==str(lane):
             clr2 = str ( int ( density_2 * float(l.get("ClustersRawSD")) / 1000) ) + "K"
-    return {'read1':clr_1, 'read2':clr_2}
+    return {'read1':clr1, 'read2':clr2}
 
 def getClustersRawSD(summary):
     [r1_root, r2_root] = summary
@@ -161,7 +163,7 @@ def getLaneClustersPF(roots, lane):
     for l in lanes2:
         if l.get("key")==str(lane):
             clr2 = str ( int ( density_2 * float(l.get("ClustersPF")) / 1000) ) + "K"
-    return {'read1':clr_1, 'read2':clr_2}
+    return {'read1':clr1, 'read2':clr2}
 
 def getClustersPF(summary):
     [r1_root, r2_root] = summary
@@ -192,7 +194,7 @@ def getLaneClustersPFSD(roots, lane):
     for l in lanes2:
         if l.get("key")==str(lane):
             clr2 = str ( int ( density_2 * float(l.get("ClustersPF")) / 1000) ) + "K"
-    return {'read1':clr_1, 'read2':clr_2}
+    return {'read1':clr1, 'read2':clr2}
 
 def getClustersPFSD(summary):
     [r1_root, r2_root] = summary
@@ -216,10 +218,10 @@ def getLanePrcPF(roots, lane):
     lanes2 = r2_root.findall("Lane")
     for l in lanes1:
         if l.get("key")==str(lane):
-            p1 = float(l.get("PrcPFClusters"))
+            p_1 = float(l.get("PrcPFClusters"))
     for l in lanes2:
         if l.get("key")==str(lane):
-            p2 = float(l.get("PrcPFClusters"))
+            p_2 = float(l.get("PrcPFClusters"))
     return {'read1':p_1, 'read2':p_2}
 
 def getPrcPF(summary):
@@ -240,10 +242,10 @@ def getLanePrcPFSD(roots, lane):
     lanes2 = r2_root.findall("Lane")
     for l in lanes1:
         if l.get("key")==str(lane):
-            p1 = float(l.get("PrcPFClustersSD"))
+            p_1 = float(l.get("PrcPFClustersSD"))
     for l in lanes2:
         if l.get("key")==str(lane):
-            p2 = float(l.get("PrcPFClustersSD"))
+            p_2 = float(l.get("PrcPFClustersSD"))
     return {'read1':p_1, 'read2':p_2}
 
 def getPrcPFSD(summary):
@@ -264,10 +266,10 @@ def getLanePhasing(roots, lane):
     lanes2 = r2_root.findall("Lane")
     for l in lanes1:
         if l.get("key")==str(lane):
-            p1 = float(l.get("Phasing"))
+            p_1 = float(l.get("Phasing"))
     for l in lanes2:
         if l.get("key")==str(lane):
-            p2 = float(l.get("Phasing"))
+            p_2 = float(l.get("Phasing"))
     return {'read1':p_1, 'read2':p_2}
 
 def getPhasing(summary):
@@ -288,10 +290,10 @@ def getLanePrephasing(roots, lane):
     lanes2 = r2_root.findall("Lane")
     for l in lanes1:
         if l.get("key")==str(lane):
-            p1 = float(l.get("Prephasing"))
+            p_1 = float(l.get("Prephasing"))
     for l in lanes2:
         if l.get("key")==str(lane):
-            p2 = float(l.get("Prephasing"))
+            p_2 = float(l.get("Prephasing"))
     return {'read1':p_1, 'read2':p_2}
 
 def getPrephasing(summary):
@@ -312,10 +314,10 @@ def getLanePrcAlign(roots, lane):
     lanes2 = r2_root.findall("Lane")
     for l in lanes1:
         if l.get("key")==str(lane):
-            p1 = float(l.get("PrcAlign"))
+            p_1 = float(l.get("PrcAlign"))
     for l in lanes2:
         if l.get("key")==str(lane):
-            p2 = float(l.get("PrcAlign"))
+            p_2 = float(l.get("PrcAlign"))
     return {'read1':p_1, 'read2':p_2}
 
 def getPrcAlign(summary):
@@ -336,10 +338,10 @@ def getLanePrcAlignSD(roots, lane):
     lanes2 = r2_root.findall("Lane")
     for l in lanes1:
         if l.get("key")==str(lane):
-            p1 = float(l.get("PrcAlignSD"))
+            p_1 = float(l.get("PrcAlignSD"))
     for l in lanes2:
         if l.get("key")==str(lane):
-            p2 = float(l.get("PrcAlignSD"))
+            p_2 = float(l.get("PrcAlignSD"))
     return {'read1':p_1, 'read2':p_2}
 
 def getPrcAlignSD(summary):

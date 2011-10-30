@@ -240,43 +240,55 @@ def generate_report(proj_conf):
     max_mean_err = 2
 
     statspath = os.path.join(proj_conf['archive_dir'], proj_conf['flowcell'], "Data", "reports", "Summary")
-    root = summ.readSummaries(statspath)
+    stats = summ.getQCstats(statspath)
 
     for l in proj_conf['lanes']:
 
         # Cluster densities
-        [clu_dens_r1, clu_dens_r2] =  summ.getLaneClustersRaw(root, l['lane'])
-        [clu_dens_sd_r1, clu_dens_sd_r2] =  summ.getLaneClustersRawSD(root, l['lane'])
+        clu_dens_r1 =  stats['raw_cluster_dens']['read1'][l['lane']]
+        clu_dens_r2 =  stats['raw_cluster_dens']['read2'][l['lane']]
+        clu_dens_sd_r1 =  stats['raw_cluster_dens_sd']['read1'][l['lane']]
+        clu_dens_sd_r2 =  stats['raw_cluster_dens_sd']['read2'][l['lane']]
         clu_dens_string_r1 = str(clu_dens_r1) + '+/-' + str(clu_dens_sd_r1) 
         clu_dens_string_r2 = str(clu_dens_r2) + '+/-' + str(clu_dens_sd_r2) 
 
         # Cluster PF densities
-        [clu_dens_pf_r1, clu_dens_pf_r2] = summ.getLaneClustersPF(root, l['lane'])
-        [clu_dens_pf_sd_r1, clu_dens_pf_sd_r2] =  summ.getLaneClustersPFSD(root, l['lane'])        
+        clu_dens_pf_r1 =  stats['pf_cluster_dens']['read1'][l['lane']]
+        clu_dens_pf_r2 =  stats['pf_cluster_dens']['read2'][l['lane']]
+        clu_dens_pf_sd_r1 =  stats['pf_cluster_dens_sd']['read1'][l['lane']]
+        clu_dens_pf_sd_r2 =  stats['pf_cluster_dens_sd']['read2'][l['lane']]
         clu_dens_pf_string_r1 = str(clu_dens_pf_r1) + '+/-' + str(clu_dens_pf_sd_r1)
         clu_dens_pf_string_r2 = str(clu_dens_pf_r2) + '+/-' + str(clu_dens_pf_sd_r2)
-        
+
         # % PF clusters
-        [prc_pf_r1, prc_pf_r2] = summ.getLanePrcPF(root, l['lane'])
-        [prc_pf_sd_r1, prc_pf_sd_r2] = summ.getLanePrcPFSD(root, l['lane'])
+        prc_pf_r1 =  stats['prc_pf']['read1'][l['lane']]
+        prc_pf_r2 =  stats['prc_pf']['read2'][l['lane']]
+        prc_pf_sd_r1 =  stats['prc_pf_sd']['read1'][l['lane']]
+        prc_pf_sd_r2 =  stats['prc_pf_sd']['read2'][l['lane']]
         prc_pf_string_r1 = str(prc_pf_r1) + '+/-' + str(prc_pf_sd_r1)
         prc_pf_string_r2 = str(prc_pf_r2) + '+/-' + str(prc_pf_sd_r2)
 
         # % phasing and prephasing
-        [phas_r1, phas_r2] = summ.getLanePhasing(root, l['lane']) 
-        [prephas_r1, prephas_r2] = summ.getLanePrephasing(root, l['lane']) 
+        phas_r1 = stats['phasing']['read1'][l['lane']]
+        phas_r2 = stats['phasing']['read2'][l['lane']]
+        prephas_r1 = stats['prephasing']['read1'][l['lane']]
+        prephas_r2 = stats['prephasing']['read2'][l['lane']]
         phas_string_r1 = str(phas_r1) + '/' + str(prephas_r1)
         phas_string_r2 = str(phas_r2) + '/' + str(prephas_r2)
 
         # % aligned
-        [aln_r1, aln_r2] = summ.getLanePrcAlign(root, l['lane'])
-        [aln_sd_r1, aln_sd_r2] = summ.getLanePrcAlignSD(root, l['lane'])
+        aln_r1 = stats['prc_aligned']['read1'][l['lane']]
+        aln_r2 = stats['prc_aligned']['read2'][l['lane']]
+        aln_sd_r1 = stats['prc_aligned_sd']['read1'][l['lane']]
+        aln_sd_r2 = stats['prc_aligned_sd']['read2'][l['lane']]
         aln_string_r1 = str(aln_r1) + '+/-' + str(aln_sd_r1)
         aln_string_r2 = str(aln_r2) + '+/-' + str(aln_sd_r2)
 
         # error rate
-        [err_r1, err_r2] = summ.getLaneErrorRates(root, l['lane'])
-        [err_sd_r1, err_sd_r2] = summ.getLaneErrorSD(root, l['lane'])
+        err_r1 = stats['error_rate']['read1'][l['lane']]
+        err_r2 = stats['error_rate']['read2'][l['lane']]
+        err_sd_r1 = stats['error_rate_sd']['read1'][l['lane']]
+        err_sd_r2 = stats['error_rate_sd']['read2'][l['lane']]
         err_str_r1 = str(err_r1) + '+/-' + str(err_sd_r1)
         err_str_r2 = str(err_r2) + '+/-' + str(err_sd_r2)
         
@@ -285,10 +297,10 @@ def generate_report(proj_conf):
         comm_r2 = ''
         ok_r1 = True
         ok_r2 = True
-        if clu_dens_pf_r1 < min_clupf: 
+        if float(clu_dens_pf_r1[:-1]) < min_clupf: 
             ok_r1 = False
             comm_r1 += "Low cluster density. "
-        if clu_dens_pf_r2 < min_clupf: 
+        if float(clu_dens_pf_r2[:-1]) < min_clupf: 
             ok_r2 = False
             comm_r2 += "Low cluster density. "
         if float(phas_r1) > max_phas: 
@@ -352,9 +364,9 @@ def generate_report(proj_conf):
 
 
     ## Sequence yield table
-    target_yield_per_lane = 143000000
+    target_yield_per_lane = 143000000.0
     tab = Texttable()
-    tab.add_row(['Lane','Sample','Number of sequences'])
+    tab.add_row(['Lane','Sample','Number of sequences','Comment'])
     
     run_info_yaml = os.path.join(proj_conf['archive_dir'],proj_conf['flowcell'],"run_info.yaml")
 
@@ -386,17 +398,22 @@ def generate_report(proj_conf):
     #    d.update(comment = comm)
     
     fc_name, fc_date = get_flowcell_info(proj_conf['flowcell'])
+    low_yield = False
+    
+    bc_multiplier = 0.75 # Should move to cfg file
 
     for l in proj_conf['lanes']:
         bc_file_name = os.path.join(proj_conf['analysis_dir'], proj_conf['flowcell'], '_'.join([l['lane'], fc_date, fc_name, "barcode"]), '_'.join([l['lane'], fc_date, fc_name, "bc.metrics"]))
         try:
             bc_file = open(bc_file_name)
         except:
-            sys.exit("Could not find bc metrics file", bc_file_name)
+            sys.exit("Could not find bc metrics file " + bc_file_name)
         bc_count = {}
         for line in bc_file:
             c = line.strip().split()
             bc_count[c[0]]=c[1] + ' (~' + str (int ( round (float(c[1])/1000000) ) ) + " million)"
+        no_samples = len(bc_count)
+        target_yield_per_sample = bc_multiplier * target_yield_per_lane / no_samples
         sample_name = {}
         is_multiplexed = True
         # Check here for each sample if it belongs to the project
@@ -412,16 +429,22 @@ def generate_report(proj_conf):
             if not k.isdigit(): pass
             else: samp_count[sample_name[int(k)]] =  bc_count[k]
         for k in sorted(samp_count.keys()):
-            tab.add_row([l['lane'], k, samp_count[k]])
+            comment = ''
+            if int(samp_count[k].split('(')[0]) < target_yield_per_sample: comment = 'Low'
+            tab.add_row([l['lane'], k, samp_count[k], comment])
         
         if is_multiplexed:
             try:
-                tab.add_row([l['lane'], 'unmatched', bc_count['unmatched']])
+                comment = ''
+                if int (bc_count['unmatched'].split('(')[0]) > target_yield_per_sample: comment = 'High'
+                tab.add_row([l['lane'], 'unmatched', bc_count['unmatched'], comment])
             except:
                 log.warning('Unsufficient or no barcode metrics for lane')
         else:
             for k in bc_count.keys():
-                tab.add_row([l['lane'], "Non-multiplexed lane", bc_count[k]])
+                comment = ''
+                if int (bc_count[k].split('(')[0]) < bc_multiplier * target_yield_per_lane: comment = 'Low' 
+                tab.add_row([l['lane'], "Non-multiplexed lane", bc_count[k], comment])
 
     d.update(yieldtable=tab.draw())
     return d
