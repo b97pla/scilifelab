@@ -4,7 +4,7 @@ This is a repo for some helper scripts that I use for NGS data delivery.
 
 * read_illumina_summary_xml.py is a simple interface module for reading the XML files that contain QC metrics about a HiSeq run.
 
-* assisted_delivery.py is for delivering files to customer project directories. It uses some assumptions about directory structure.
+* assisted_delivery.py is for delivering files to customer project directories. It uses some assumptions about directory structure. This script should now be able to handle the case with multiple projects per lane.
 
 TODO:
 	- add command-line option for specifying an analysis directory instead of the hard-coded one
