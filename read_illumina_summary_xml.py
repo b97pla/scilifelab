@@ -1,6 +1,22 @@
 import xml.etree.ElementTree as xml
 import sys, os
 
+# getQCstats() is probably the method you usually want to call
+def getQCstats(path):
+    r = readSummaries(path)
+    qc_stats = {}
+    qc_stats['error_rate'] = getErrorRates(r)
+    qc_stats['error_rate_sd'] = getErrorSD(r)
+    qc_stats['raw_cluster_dens'] = getClustersRaw(r)
+    qc_stats['raw_cluster_dens_sd'] = getClustersRawSD(r)
+    qc_stats['pf_cluster_dens'] = getClustersPF(r)
+    qc_stats['pf_cluster_dens_sd'] = getClustersPFSD(r)
+    qc_stats['phasing'] = getPhasing(r)
+    qc_stats['prephasing'] = getPrephasing(r)
+    qc_stats['prc_aligned'] = getPrcAlign(r)
+    qc_stats['prc_aligned_sd'] = getPrcAlignSD(r)
+    return qc_stats
+
 def readSummaries(path):
     try:
         r1_tree = xml.parse(os.path.join(path, "read1.xml"))
@@ -337,21 +353,6 @@ def getPrcAlignSD(summary):
     for l in lanes2:
         p_2[l.get("key")] = float(l.get("PrcAlignSD"))
     return {'read1':p_1, 'read2':p_2}
-
-def getQCstats(path):
-    r = readSummaries(path)
-    qc_stats = {}
-    qc_stats['error_rate'] = getErrorRates(r)
-    qc_stats['error_rate_sd'] = getErrorSD(r)
-    qc_stats['raw_cluster_dens'] = getClustersRaw(r)
-    qc_stats['raw_cluster_dens_sd'] = getClustersRawSD(r)
-    qc_stats['pf_cluster_dens'] = getClustersPF(r)
-    qc_stats['pf_cluster_dens_sd'] = getClustersPFSD(r)
-    qc_stats['phasing'] = getPhasing(r)
-    qc_stats['prephasing'] = getPrephasing(r)
-    qc_stats['prc_aligned'] = getPrcAlign(r)
-    qc_stats['prc_aligned_sd'] = getPrcAlignSD(r)
-    return qc_stats
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
