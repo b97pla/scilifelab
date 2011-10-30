@@ -9,10 +9,13 @@ This is a repo for some helper scripts that I use for NGS data delivery.
 TODO:
 	- add command-line option for specifying an analysis directory instead of the hard-coded one
 
-* fc_delivery_reports.py is for automatically generating delivery reports upon delivery.
+* fc_delivery_reports.py is for automatically generating delivery reports upon delivery. It should now be able to handle multiple projects per lane.
 
 TODO:
-	- check if yield is sufficient for each sample
-	- add support for multiple projects per lane
+	
 	- fetch Uppnex ID from Google Docs
-	- use existing method for fetching bar code stats instead of re-implementing 
+	- move constants into a config file
+	- (aesthetics) use existing method for fetching bar code stats instead of re-implementing 
+	- (aesthetics) change to HowTo instead of manual (somehow Latex fails when I try to do this now)
+	- (aesthetics) write a proper function for classifying run as fail or success
+	- (aesthetics) write a proper function for filling in QC table
