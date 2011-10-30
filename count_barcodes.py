@@ -1,6 +1,18 @@
 import sys
 from operator import itemgetter
 
+illumina_idx = {'ATCACG':'index1', 
+                'CGATGT':'index2',
+                 'TTAGGC':'index3',
+                 'TGACCA':'index4',
+                 'ACAGTG':'index5',
+                 'GCCAAT':'index6',
+                 'CAGATC':'index7',
+                 'ACTTGA':'index8',
+                 'GATCAG':'index9',
+                 'TAGCTT':'index10',
+                 'GGCTAC':'index11',
+                 'CTTGTA':'index12'}
 
 if len(sys.argv)<4:
     print "python", sys.argv[0], "<fastq file containing barcode sequence> <position where bar code starts> <length of bar code>"
@@ -22,9 +34,7 @@ for line in open(sys.argv[1]):
     else: bcodes[bcode] = 1
     if last_was_header: last_was_header = False
 
-#for k in bcodes.keys():
-#    print k, bcodes[k]
-
 for e in sorted(bcodes.items(), key=itemgetter(1)):
-    print e[0] + "\t" + str(e[1])
-
+    illum = '(no exact match to Illumina)'
+    if illumina_idx.has_key(e[0]): illum = illumina_idx[e[0]]
+    print e[0] + "\t" + str(e[1]) + "\t" + illum

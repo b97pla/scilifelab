@@ -40,7 +40,6 @@ from bcbio.google import bc_metrics
 from bcbio.solexa.flowcell import get_flowcell_info 
 import read_illumina_summary_xml as summ
 
-
 TEMPLATE="""\
 Delivery report for ${project_id}
 =================================
@@ -139,6 +138,7 @@ def main(flowcell_id, archive_dir, analysis_dir):
         run_info = yaml.load(in_handle)
     project_ids = dict()
     for lane in run_info:
+        # Check here if project is a "sub project" of the lane
         (l, id) = [x.strip() for x in lane['description'].split(",")]
         if project_ids.has_key(id):
             project_ids[id].append(lane)
