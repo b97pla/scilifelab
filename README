@@ -1,18 +1,15 @@
 This is a repo for some helper scripts that I use for NGS data delivery.
 
-count_barcodes.py is a very simple script for counting the number of occurrences of each DNA sequence barcode used to tag different samples. It's mostly meant to be used when the results of FASTQ de-multiplexing are unexpected and need to be checked in more detail. 
+* count_barcodes.py is a very simple script for counting the number of occurrences of each DNA sequence barcode used to tag different samples. It's mostly meant to be used when the results of FASTQ de-multiplexing are unexpected and need to be checked in more detail. 
 
-TODO:
-	- compare the identified bar codes to the official Illumina ones	
+* read_illumina_summary_xml.py is a simple interface module for reading the XML files that contain QC metrics about a HiSeq run.
 
-read_illumina_summary_xml.py
-
-assisted_delivery.py is for delivering files to customer project directories. It uses some assumptions about directory structure.
+* assisted_delivery.py is for delivering files to customer project directories. It uses some assumptions about directory structure.
 
 TODO:
 	- add command-line option for specifying an analysis directory instead of the hard-coded one
 
-fc_delivery_reports.py is for automatically generating delivery reports upon delivery.
+* fc_delivery_reports.py is for automatically generating delivery reports upon delivery.
 
 TODO:
 	- check if yield is sufficient for each sample
