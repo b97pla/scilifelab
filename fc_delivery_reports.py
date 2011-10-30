@@ -138,13 +138,19 @@ def main(flowcell_id, archive_dir, analysis_dir):
         run_info = yaml.load(in_handle)
     project_ids = dict()
     for lane in run_info:
-        # Check here if project is a "sub project" of the lane
         (l, id) = [x.strip() for x in lane['description'].split(",")]
         if project_ids.has_key(id):
             project_ids[id].append(lane)
         else:
             project_ids[id] = [lane]
-
+        # Check here if project is a "sub project" of the lane
+        for s in lane['multiplex']:
+            if s.has_key('description'):
+                if project_ids.has_key(s['description']):
+                    project_ids[s['description']].append(lane)
+                else:
+                    project_ids[s['description']] = [lane]
+                                                                                             
     sphinx_defs = []
     for k in project_ids.keys():
         lanes = [x['lane'] for x in project_ids[k]]
@@ -380,23 +386,9 @@ def generate_report(proj_conf):
     with open(run_info_yaml) as in_handle:
         run_info = yaml.load(in_handle)
 
-    # Foer att anropa get_bc_stats
     # fc_name, fc_date = get_flowcell_info(proj_conf['flowcell'])
     # bc_yield = bc_metrics.get_bc_stats(fc_date,fc_name,proj_conf['analysis_dir'], run_info)
    
-    # for l in proj_conf['lanes']:
-    #    seq_yield = {} 
-    #    for entry in bc_yield:
-    #        if entry['lane'] == l['lane']:
-    #            for m in entry['multiplex']:
-    #                seq_yield[m['sample_name']]=m['barcode_read_count']
-    #    for sample in sorted(seq_yield.keys()):
-    #        tab.add_row([l['lane'], sample, seq_yield[sample]])
-    #d.update(yieldtable=tab.draw())
-    #if low_yield:
-    #    comm = d['comment'] +  " Some samples had low yields."
-    #    d.update(comment = comm)
-    
     fc_name, fc_date = get_flowcell_info(proj_conf['flowcell'])
     low_yield = False
     
@@ -419,18 +411,32 @@ def generate_report(proj_conf):
         # Check here for each sample if it belongs to the project
         for entry in run_info:
             if entry['lane'] == l['lane']:
+                is_main_proj = False       
+                if entry['description'].split(',')[1].strip() == proj_conf['id']:
+                    is_main_proj = True
                 if entry.has_key('multiplex'):
                     for sample in entry['multiplex']:
-                        sample_name[sample['barcode_id']]=sample['name']
+                        if sample.has_key('description'):
+                            if is_main_proj: log.info('Skipping sample ' + sample['name'] + ' in lane ' + l['lane'])
+                            elif sample['description'].strip() == proj_conf['id']:
+                                sample_name[sample['barcode_id']]=sample['name']
+                            else:
+                                if is_main_proj: 
+                                    sample_name[sample['barcode_id']]=sample['name']
+                                else:
+                                    log.error("Description missing for sample")
                 else: is_multiplexed = False
         samp_count = {}
 
         for k in bc_count.keys():
             if not k.isdigit(): pass
-            else: samp_count[sample_name[int(k)]] =  bc_count[k]
+            else: 
+                if sample_name.has_key(int(k)): samp_count[sample_name[int(k)]] =  bc_count[k]
         for k in sorted(samp_count.keys()):
             comment = ''
-            if int(samp_count[k].split('(')[0]) < target_yield_per_sample: comment = 'Low'
+            if int(samp_count[k].split('(')[0]) < target_yield_per_sample: 
+                comment = 'Low'
+                low_yield = True
             tab.add_row([l['lane'], k, samp_count[k], comment])
         
         if is_multiplexed:
@@ -446,6 +452,10 @@ def generate_report(proj_conf):
                 if int (bc_count[k].split('(')[0]) < bc_multiplier * target_yield_per_lane: comment = 'Low' 
                 tab.add_row([l['lane'], "Non-multiplexed lane", bc_count[k], comment])
 
+    if low_yield:
+        comm = d['comment'] +  " Some samples had low yields."
+        d.update(comment = comm)
+    
     d.update(yieldtable=tab.draw())
     return d
 
