@@ -5,18 +5,18 @@ import sys, os
 def getQCstats(path):
     r = readSummaries(path)
     qc_stats = {}
-    qc_stats['error_rate'] = getErrorRates(r)
-    qc_stats['error_rate_sd'] = getErrorSD(r)
-    qc_stats['raw_cluster_dens'] = getClustersRaw(r)
-    qc_stats['raw_cluster_dens_sd'] = getClustersRawSD(r)
-    qc_stats['prc_pf'] = getPrcPF(r)
-    qc_stats['prc_pf_sd'] = getPrcPFSD(r)
-    qc_stats['pf_cluster_dens'] = getClustersPF(r)
-    qc_stats['pf_cluster_dens_sd'] = getClustersPFSD(r)
-    qc_stats['phasing'] = getPhasing(r)
-    qc_stats['prephasing'] = getPrephasing(r)
-    qc_stats['prc_aligned'] = getPrcAlign(r)
-    qc_stats['prc_aligned_sd'] = getPrcAlignSD(r)
+    qc_stats['error_rate'] = getAllLaneMetrics(r, 'ErrRatePhiX', False)
+    qc_stats['error_rate_sd'] = getAllLaneMetrics(r, 'ErrRatePhiXSD', False)
+    qc_stats['raw_cluster_dens'] = getAllLaneMetrics(r, 'ClustersRaw', True)
+    qc_stats['raw_cluster_dens_sd'] = getAllLaneMetrics(r, 'ClustersRawSD', True)
+    qc_stats['prc_pf'] = getAllLaneMetrics(r, 'PrcPFClusters', False)
+    qc_stats['prc_pf_sd'] = getAllLaneMetrics(r, 'PrcPFClustersSD', False)
+    qc_stats['pf_cluster_dens'] = getAllLaneMetrics(r, 'ClustersPF', True)
+    qc_stats['pf_cluster_dens_sd'] = getAllLaneMetrics(r, 'ClustersPFSD', True)
+    qc_stats['phasing'] = getAllLaneMetrics(r, 'Phasing', False)
+    qc_stats['prephasing'] = getAllLaneMetrics(r, 'Prephasing', False)
+    qc_stats['prc_aligned'] = getAllLaneMetrics(r, 'PrcAlign', False)
+    qc_stats['prc_aligned_sd'] = getAllLaneMetrics(r, 'PrcAlign', False)
     return qc_stats
 
 def readSummaries(path):
@@ -30,331 +30,34 @@ def readSummaries(path):
     r2_root = r2_tree.getroot()
     return([r1_root, r2_root])
 
-def getLaneErrorRates(roots, lane):
+def getSingleLaneMetrics(roots, metric, lane, clu_dens = False):
     [r1_root, r2_root] = roots
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
+    if clu_dens: densRatio = float(r1_root.get("densityRatio"))
+    lanes = r1_root.findall("Lane")    
     for l in lanes1:
         if l.get("key")==str(lane):
-            err1 = float(l.get("ErrRatePhiX"))
+            m1 = float(l.get(metric))
+            if clu_dens: m1 = str(int(round((densRatio * float(l.get(metric)))/1000))) + 'K'
     for l in lanes2:
         if l.get("key")==str(lane):
-            err2 = float(l.get("ErrRatePhiX"))
-    #return (err1+err2)/2.0
-    return [err1, err2]
+            m2 = float(l.get(metric))
+            if clu_dens: m2 = str(int(round((densRatio * float(l.get(metric)))/1000))) + 'K'
+    return {'read1':m1, 'read2':m2}
 
-def getErrorRates(summary):
-    [r1_root, r2_root] = summary
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    err_rates_1 = {}
-    err_rates_2 = {}
-    for l in lanes1:
-        err_rates_1[l.get("key")] = float(l.get("ErrRatePhiX"))
-    for l in lanes2:
-        err_rates_2[l.get("key")] = float(l.get("ErrRatePhiX"))
-    #err_rates = {}
-    #for k in err_rates_1.keys():
-    #    err_rates[k] = ( err_rates_1[k] + err_rates_2[k] ) / 2.0
-    #return err_rates
-    return {'read1':err_rates_1, 'read2':err_rates_2}
-
-def getLaneErrorSD(roots, lane):
+def getAllLaneMetrics(roots, metric, clu_dens):
     [r1_root, r2_root] = roots
+    if clu_dens: densRatio = float(r1_root.get("densityRatio"))
     lanes1 = r1_root.findall("Lane")    
     lanes2 = r2_root.findall("Lane")
+    m1 = {}
+    m2 = {}
     for l in lanes1:
-        if l.get("key")==str(lane):
-            err1 = float(l.get("ErrRatePhiXSD"))
+        m1[l.get("key")] = float(l.get(metric))
+        if clu_dens: m1[l.get("key")] = str(int(round((densRatio * float(l.get(metric)))/1000))) + 'K'
     for l in lanes2:
-        if l.get("key")==str(lane):
-            err2 = float(l.get("ErrRatePhiXSD"))
-    #return (err1+err2)/2.0
-    return {'read1':err1, 'read2':err2}
-
-def getErrorSD(summary):
-    [r1_root, r2_root] = summary
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    err_rates_1 = {}
-    err_rates_2 = {}
-    for l in lanes1:
-        err_rates_1[l.get("key")] = float(l.get("ErrRatePhiXSD"))
-    for l in lanes2:
-        err_rates_2[l.get("key")] = float(l.get("ErrRatePhiXSD"))
-    #err_rates = {}
-    #for k in err_rates_1.keys():
-    #    err_rates[k] = ( err_rates_1[k] + err_rates_2[k] ) / 2.0
-    #return err_rates
-    return {'read1':err_rates_1, 'read2':err_rates_2}
-
-def getLaneClustersRaw(roots, lane):
-    [r1_root, r2_root] = roots
-    density_1 = float(r1_root.get("densityRatio"))
-    density_2 = float(r1_root.get("densityRatio"))
-    assert ( density_1 == density_2 )
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    for l in lanes1:
-        if l.get("key")==str(lane):
-            clr1 = str ( int ( density_1 * float(l.get("ClustersRaw")) / 1000) ) + "K"
-    for l in lanes2:
-        if l.get("key")==str(lane):
-            clr2 = str ( int ( density_2 * float(l.get("ClustersRaw")) / 1000) ) + "K"
-    return {'read1':clr1, 'read2':clr2}
-
-def getClustersRaw(summary):
-    [r1_root, r2_root] = summary
-    density_1 = float(r1_root.get("densityRatio"))
-    density_2 = float(r1_root.get("densityRatio"))
-    assert ( density_1 == density_2 )
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    clr_1 = {}
-    clr_2 = {}
-    for l in lanes1:
-        clr_1[l.get("key")] = str ( int ( density_1 * float(l.get("ClustersRaw")) / 1000) ) + "K"
-    for l in lanes2:
-        clr_2[l.get("key")] = str ( int ( density_2 * float(l.get("ClustersRaw")) / 1000) ) + "K"
-    assert(clr_1 == clr_2)
-    return {'read1':clr_1, 'read2':clr_2}
-
-def getLaneClustersRawSD(roots, lane):
-    [r1_root, r2_root] = roots
-    density_1 = float(r1_root.get("densityRatio"))
-    density_2 = float(r1_root.get("densityRatio"))
-    assert ( density_1 == density_2 )
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    for l in lanes1:
-        if l.get("key")==str(lane):
-            clr1 = str ( int ( density_1 * float(l.get("ClustersRawSD")) / 1000) ) + "K"
-    for l in lanes2:
-        if l.get("key")==str(lane):
-            clr2 = str ( int ( density_2 * float(l.get("ClustersRawSD")) / 1000) ) + "K"
-    return {'read1':clr1, 'read2':clr2}
-
-def getClustersRawSD(summary):
-    [r1_root, r2_root] = summary
-    density_1 = float(r1_root.get("densityRatio"))
-    density_2 = float(r1_root.get("densityRatio"))
-    assert ( density_1 == density_2 )
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    clr_1 = {}
-    clr_2 = {}
-    for l in lanes1:
-        clr_1[l.get("key")] = str ( int ( density_1 * float(l.get("ClustersRawSD")) / 1000) ) + "K"
-    for l in lanes2:
-        clr_2[l.get("key")] = str ( int ( density_2 * float(l.get("ClustersRawSD")) / 1000) ) + "K"
-    assert(clr_1 == clr_2)
-    return {'read1':clr_1, 'read2':clr_2}
-
-def getLaneClustersPF(roots, lane):
-    [r1_root, r2_root] = roots
-    density_1 = float(r1_root.get("densityRatio"))
-    density_2 = float(r1_root.get("densityRatio"))
-    assert ( density_1 == density_2 )
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    for l in lanes1:
-        if l.get("key")==str(lane):
-            clr1 = str ( int ( density_1 * float(l.get("ClustersPF")) / 1000) ) + "K"
-    for l in lanes2:
-        if l.get("key")==str(lane):
-            clr2 = str ( int ( density_2 * float(l.get("ClustersPF")) / 1000) ) + "K"
-    return {'read1':clr1, 'read2':clr2}
-
-def getClustersPF(summary):
-    [r1_root, r2_root] = summary
-    density_1 = float(r1_root.get("densityRatio"))
-    density_2 = float(r1_root.get("densityRatio"))
-    assert ( density_1 == density_2 )
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    clr_1 = {}
-    clr_2 = {}
-    for l in lanes1:
-        clr_1[l.get("key")] = str ( int ( density_1 * float(l.get("ClustersPF")) / 1000) ) + "K"
-    for l in lanes2:
-        clr_2[l.get("key")] = str ( int ( density_2 * float(l.get("ClustersPF")) / 1000) ) + "K"
-    assert(clr_1 == clr_2)
-    return {'read1':clr_1, 'read2':clr_2}
-
-def getLaneClustersPFSD(roots, lane):
-    [r1_root, r2_root] = roots
-    density_1 = float(r1_root.get("densityRatio"))
-    density_2 = float(r1_root.get("densityRatio"))
-    assert ( density_1 == density_2 )
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    for l in lanes1:
-        if l.get("key")==str(lane):
-            clr1 = str ( int ( density_1 * float(l.get("ClustersPF")) / 1000) ) + "K"
-    for l in lanes2:
-        if l.get("key")==str(lane):
-            clr2 = str ( int ( density_2 * float(l.get("ClustersPF")) / 1000) ) + "K"
-    return {'read1':clr1, 'read2':clr2}
-
-def getClustersPFSD(summary):
-    [r1_root, r2_root] = summary
-    density_1 = float(r1_root.get("densityRatio"))
-    density_2 = float(r1_root.get("densityRatio"))
-    assert ( density_1 == density_2 )
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    clr_1 = {}
-    clr_2 = {}
-    for l in lanes1:
-        clr_1[l.get("key")] = str ( int ( density_1 * float(l.get("ClustersPFSD")) / 1000) ) + "K"
-    for l in lanes2:
-        clr_2[l.get("key")] = str ( int ( density_2 * float(l.get("ClustersPFSD")) / 1000) ) + "K"
-    assert(clr_1 == clr_2)
-    return {'read1':clr_1, 'read2':clr_2}
-
-def getLanePrcPF(roots, lane):
-    [r1_root, r2_root] = roots
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    for l in lanes1:
-        if l.get("key")==str(lane):
-            p_1 = float(l.get("PrcPFClusters"))
-    for l in lanes2:
-        if l.get("key")==str(lane):
-            p_2 = float(l.get("PrcPFClusters"))
-    return {'read1':p_1, 'read2':p_2}
-
-def getPrcPF(summary):
-    [r1_root, r2_root] = summary
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    p_1 = {}
-    p_2 = {}
-    for l in lanes1:
-        p_1[l.get("key")] = float(l.get("PrcPFClusters"))
-    for l in lanes2:
-        p_2[l.get("key")] = float(l.get("PrcPFClusters"))
-    return {'read1':p_1, 'read2':p_2}
-
-def getLanePrcPFSD(roots, lane):
-    [r1_root, r2_root] = roots
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    for l in lanes1:
-        if l.get("key")==str(lane):
-            p_1 = float(l.get("PrcPFClustersSD"))
-    for l in lanes2:
-        if l.get("key")==str(lane):
-            p_2 = float(l.get("PrcPFClustersSD"))
-    return {'read1':p_1, 'read2':p_2}
-
-def getPrcPFSD(summary):
-    [r1_root, r2_root] = summary
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    p_1 = {}
-    p_2 = {}
-    for l in lanes1:
-        p_1[l.get("key")] = float(l.get("PrcPFClustersSD"))
-    for l in lanes2:
-        p_2[l.get("key")] = float(l.get("PrcPFClustersSD"))
-    return {'read1':p_1, 'read2':p_2}
-
-def getLanePhasing(roots, lane):
-    [r1_root, r2_root] = roots
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    for l in lanes1:
-        if l.get("key")==str(lane):
-            p_1 = float(l.get("Phasing"))
-    for l in lanes2:
-        if l.get("key")==str(lane):
-            p_2 = float(l.get("Phasing"))
-    return {'read1':p_1, 'read2':p_2}
-
-def getPhasing(summary):
-    [r1_root, r2_root] = summary
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    p_1 = {}
-    p_2 = {}
-    for l in lanes1:
-        p_1[l.get("key")] = float(l.get("Phasing"))
-    for l in lanes2:
-        p_2[l.get("key")] = float(l.get("Phasing"))
-    return {'read1':p_1, 'read2':p_2}
-
-def getLanePrephasing(roots, lane):
-    [r1_root, r2_root] = roots
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    for l in lanes1:
-        if l.get("key")==str(lane):
-            p_1 = float(l.get("Prephasing"))
-    for l in lanes2:
-        if l.get("key")==str(lane):
-            p_2 = float(l.get("Prephasing"))
-    return {'read1':p_1, 'read2':p_2}
-
-def getPrephasing(summary):
-    [r1_root, r2_root] = summary
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    p_1 = {}
-    p_2 = {}
-    for l in lanes1:
-        p_1[l.get("key")] = float(l.get("Prephasing"))
-    for l in lanes2:
-        p_2[l.get("key")] = float(l.get("Prephasing"))
-    return {'read1':p_1, 'read2':p_2}
-
-def getLanePrcAlign(roots, lane):
-    [r1_root, r2_root] = roots
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    for l in lanes1:
-        if l.get("key")==str(lane):
-            p_1 = float(l.get("PrcAlign"))
-    for l in lanes2:
-        if l.get("key")==str(lane):
-            p_2 = float(l.get("PrcAlign"))
-    return {'read1':p_1, 'read2':p_2}
-
-def getPrcAlign(summary):
-    [r1_root, r2_root] = summary
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    p_1 = {}
-    p_2 = {}
-    for l in lanes1:
-        p_1[l.get("key")] = float(l.get("PrcAlign"))
-    for l in lanes2:
-        p_2[l.get("key")] = float(l.get("PrcAlign"))
-    return {'read1':p_1, 'read2':p_2}
-
-def getLanePrcAlignSD(roots, lane):
-    [r1_root, r2_root] = roots
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    for l in lanes1:
-        if l.get("key")==str(lane):
-            p_1 = float(l.get("PrcAlignSD"))
-    for l in lanes2:
-        if l.get("key")==str(lane):
-            p_2 = float(l.get("PrcAlignSD"))
-    return {'read1':p_1, 'read2':p_2}
-
-def getPrcAlignSD(summary):
-    [r1_root, r2_root] = summary
-    lanes1 = r1_root.findall("Lane")    
-    lanes2 = r2_root.findall("Lane")
-    p_1 = {}
-    p_2 = {}
-    for l in lanes1:
-        p_1[l.get("key")] = float(l.get("PrcAlignSD"))
-    for l in lanes2:
-        p_2[l.get("key")] = float(l.get("PrcAlignSD"))
-    return {'read1':p_1, 'read2':p_2}
+        m2[l.get("key")] = float(l.get(metric))
+        if clu_dens: m2[l.get("key")] = str(int(round((densRatio * float(l.get(metric)))/1000))) + 'K'
+    return {'read1':m1, 'read2':m2}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
