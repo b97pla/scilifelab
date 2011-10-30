@@ -24,7 +24,7 @@ Options:
 import os
 import sys
 from optparse import OptionParser
-
+from operator import itemgetter
 import yaml
 import glob
 import re
@@ -40,7 +40,6 @@ from bcbio.google import bc_metrics
 from bcbio.solexa.flowcell import get_flowcell_info 
 import read_illumina_summary_xml as summ
 
-from BeautifulSoup import BeautifulStoneSoup
 
 TEMPLATE="""\
 Delivery report for ${project_id}
@@ -229,80 +228,55 @@ def generate_report(proj_conf):
             tab.add_row([l['lane'], "Non-multiplexed lane"])
     d.update(lanetable=tab.draw())
     
-    ## Read 1/2 tables. These need to be done together because the error rate criterion uses both reads.
-    
     tab_r1 = Texttable()
     tab_r2 = Texttable()
-
     tab_r1.add_row(["Lane", "Clu. dens. #/mm2","% PF clusters","Clu. PF #/mm2", "% phas/prephas", "% aln PhiX", "% error rate", "Comment"])
     tab_r2.add_row(["Lane", "Clu. dens. #/mm2","% PF clusters","Clu. PF #/mm2", "% phas/prephas", "% aln PhiX", "% error rate", "Comment"])
 
+    # These should be moved to a cfg file. ( + perhaps provide an alternative for v1.5 FC )
     min_clupf = 475
     max_phas = 0.4
     max_prephas = 0.5
     max_mean_err = 2
 
-    read1statspath = os.path.join(proj_conf['archive_dir'], proj_conf['flowcell'], "Data", "reports", "Summary", "read1.xml")
-    read2statspath = os.path.join(proj_conf['archive_dir'], proj_conf['flowcell'], "Data", "reports", "Summary", "read3.xml")
-    
     statspath = os.path.join(proj_conf['archive_dir'], proj_conf['flowcell'], "Data", "reports", "Summary")
     root = summ.readSummaries(statspath)
 
-    r1 = BeautifulStoneSoup(open(read1statspath))
-    read1ratio = float(r1.find('summary')['densityratio'])
-    
-    r2 = BeautifulStoneSoup(open(read2statspath))
-    read2ratio = float(r2.find('summary')['densityratio'])
-
     for l in proj_conf['lanes']:
-        linfo_r1 = r1.find(key=l['lane'])
-        linfo_r2 = r2.find(key=l['lane'])
 
         # Cluster densities
-        clu_dens_r1 = int(round(read1ratio * float(linfo_r1['clustersraw']) / 1000))
-        clu_dens_r2 = int(round(read2ratio * float(linfo_r2['clustersraw']) / 1000))
-        clu_dens_sd_r1 = int(round(read1ratio * float(linfo_r1['clustersrawsd']) / 1000))
-        clu_dens_sd_r2 = int(round(read2ratio * float(linfo_r2['clustersrawsd']) / 1000))
-        clu_dens_string_r1 = str(clu_dens_r1) + 'K +/-' + str(clu_dens_sd_r1) + 'K'
-        clu_dens_string_r2 = str(clu_dens_r2) + 'K +/-' + str(clu_dens_sd_r2) + 'K'
+        [clu_dens_r1, clu_dens_r2] =  summ.getLaneClustersRaw(root, l['lane'])
+        [clu_dens_sd_r1, clu_dens_sd_r2] =  summ.getLaneClustersRawSD(root, l['lane'])
+        clu_dens_string_r1 = str(clu_dens_r1) + '+/-' + str(clu_dens_sd_r1) 
+        clu_dens_string_r2 = str(clu_dens_r2) + '+/-' + str(clu_dens_sd_r2) 
 
         # Cluster PF densities
-        clu_dens_pf_r1 = int(round(read1ratio * float(linfo_r1['clusterspf']) / 1000))
-        clu_dens_pf_r2 = int(round(read2ratio * float(linfo_r2['clusterspf']) / 1000))
-        clu_dens_pf_sd_r1 = int(round(read1ratio * float(linfo_r1['clusterspfsd']) / 1000))
-        clu_dens_pf_sd_r2 = int(round(read2ratio * float(linfo_r2['clusterspfsd']) / 1000))
-        clu_dens_pf_string_r1 = str(clu_dens_pf_r1) + 'K +/-' + str(clu_dens_pf_sd_r1) + 'K'
-        clu_dens_pf_string_r2 = str(clu_dens_pf_r2) + 'K +/-' + str(clu_dens_pf_sd_r2) + 'K'
+        [clu_dens_pf_r1, clu_dens_pf_r2] = summ.getLaneClustersPF(root, l['lane'])
+        [clu_dens_pf_sd_r1, clu_dens_pf_sd_r2] =  summ.getLaneClustersPFSD(root, l['lane'])        
+        clu_dens_pf_string_r1 = str(clu_dens_pf_r1) + '+/-' + str(clu_dens_pf_sd_r1)
+        clu_dens_pf_string_r2 = str(clu_dens_pf_r2) + '+/-' + str(clu_dens_pf_sd_r2)
         
         # % PF clusters
-        prc_pf_r1 = linfo_r1['prcpfclusters']
-        prc_pf_r2 = linfo_r2['prcpfclusters']
-        prc_pf_sd_r1 = linfo_r1['prcpfclusterssd']
-        prc_pf_sd_r2 = linfo_r2['prcpfclusterssd']
-        prc_pf_string_r1 = prc_pf_r1 + '+/-' + prc_pf_sd_r1
-        prc_pf_string_r2 = prc_pf_r2 + '+/-' + prc_pf_sd_r2
+        [prc_pf_r1, prc_pf_r2] = summ.getLanePrcPF(root, l['lane'])
+        [prc_pf_sd_r1, prc_pf_sd_r2] = summ.getLanePrcPFSD(root, l['lane'])
+        prc_pf_string_r1 = str(prc_pf_r1) + '+/-' + str(prc_pf_sd_r1)
+        prc_pf_string_r2 = str(prc_pf_r2) + '+/-' + str(prc_pf_sd_r2)
 
         # % phasing and prephasing
-        phas_r1 = linfo_r1['phasing']
-        prephas_r1 = linfo_r1['prephasing']
-        phas_r2 = linfo_r2['phasing']
-        prephas_r2 = linfo_r2['prephasing']
-        phas_string_r1 = phas_r1 + '/' + prephas_r1
-        phas_string_r2 = phas_r2 + '/' + prephas_r2
+        [phas_r1, phas_r2] = summ.getLanePhasing(root, l['lane']) 
+        [prephas_r1, prephas_r2] = summ.getLanePrephasing(root, l['lane']) 
+        phas_string_r1 = str(phas_r1) + '/' + str(prephas_r1)
+        phas_string_r2 = str(phas_r2) + '/' + str(prephas_r2)
 
         # % aligned
-        aln = summ.getLanePrcAlign(root, l['lane'])
-        aln_r1 = linfo_r1['prcalign']
-        aln_r2 = linfo_r2['prcalign']
-        aln_sd_r1 = linfo_r1['prcalignsd']
-        aln_sd_r2 = linfo_r2['prcalignsd']
-        aln_string_r1 = aln_r1 + '+/-' + aln_sd_r1
-        aln_string_r2 = aln_r2 + '+/-' + aln_sd_r2
+        [aln_r1, aln_r2] = summ.getLanePrcAlign(root, l['lane'])
+        [aln_sd_r1, aln_sd_r2] = summ.getLanePrcAlignSD(root, l['lane'])
+        aln_string_r1 = str(aln_r1) + '+/-' + str(aln_sd_r1)
+        aln_string_r2 = str(aln_r2) + '+/-' + str(aln_sd_r2)
 
         # error rate
         [err_r1, err_r2] = summ.getLaneErrorRates(root, l['lane'])
         [err_sd_r1, err_sd_r2] = summ.getLaneErrorSD(root, l['lane'])
-    
         err_str_r1 = str(err_r1) + '+/-' + str(err_sd_r1)
         err_str_r2 = str(err_r2) + '+/-' + str(err_sd_r2)
         
@@ -388,25 +362,69 @@ def generate_report(proj_conf):
         log.warn("Could not find required run_info.yaml configuration file at '%s'" % run_info_yaml)
         return
 
-    with open(run_info_yaml) as in_handle:
-        run_info = {'details': yaml.load(in_handle)}
+    #with open(run_info_yaml) as in_handle:
+    #    run_info = {'details': yaml.load(in_handle)}
 
-    fc_name, fc_date = get_flowcell_info(proj_conf['flowcell'])
-    bc_yield = bc_metrics.get_bc_stats(fc_date,fc_name,proj_conf['analysis_dir'], run_info)
+    with open(run_info_yaml) as in_handle:
+        run_info = yaml.load(in_handle)
+
+    # Foer att anropa get_bc_stats
+    # fc_name, fc_date = get_flowcell_info(proj_conf['flowcell'])
+    # bc_yield = bc_metrics.get_bc_stats(fc_date,fc_name,proj_conf['analysis_dir'], run_info)
    
-    for l in proj_conf['lanes']:
-        seq_yield = {} 
-        for entry in bc_yield:
-            if entry['lane'] == l['lane']:
-                for m in entry['multiplex']:
-                    seq_yield[m['sample_name']]=m['barcode_read_count']
-        for sample in sorted(seq_yield.keys()):
-            tab.add_row([l['lane'], sample, seq_yield[sample]])
-    d.update(yieldtable=tab.draw())
+    # for l in proj_conf['lanes']:
+    #    seq_yield = {} 
+    #    for entry in bc_yield:
+    #        if entry['lane'] == l['lane']:
+    #            for m in entry['multiplex']:
+    #                seq_yield[m['sample_name']]=m['barcode_read_count']
+    #    for sample in sorted(seq_yield.keys()):
+    #        tab.add_row([l['lane'], sample, seq_yield[sample]])
+    #d.update(yieldtable=tab.draw())
     #if low_yield:
     #    comm = d['comment'] +  " Some samples had low yields."
     #    d.update(comment = comm)
-      
+    
+    # Testa att gaa in i bc_metrics-filerna direkt
+  
+    fc_name, fc_date = get_flowcell_info(proj_conf['flowcell'])
+
+    for l in proj_conf['lanes']:
+        bc_file_name = os.path.join(proj_conf['analysis_dir'], proj_conf['flowcell'], '_'.join([l['lane'], fc_date, fc_name, "barcode"]), '_'.join([l['lane'], fc_date, fc_name, "bc.metrics"]))
+        try:
+            bc_file = open(bc_file_name)
+        except:
+            sys.exit("Could not find bc metrics file", bc_file_name)
+        bc_count = {}
+        for line in bc_file:
+            c = line.strip().split()
+            bc_count[c[0]]=c[1] + ' (~' + str (int ( round (float(c[1])/1000000) ) ) + " million)"
+        sample_name = {}
+        is_multiplexed = True
+        for entry in run_info:
+            if entry['lane'] == l['lane']:
+                if entry.has_key('multiplex'):
+                    for sample in entry['multiplex']:
+                        sample_name[sample['barcode_id']]=sample['name']
+                else: is_multiplexed = False
+        samp_count = {}
+
+        for k in bc_count.keys():
+            if not k.isdigit(): pass
+            else: samp_count[sample_name[int(k)]] =  bc_count[k]
+        for k in sorted(samp_count.keys()):
+            tab.add_row([l['lane'], k, samp_count[k]])
+        
+        if is_multiplexed:
+            try:
+                tab.add_row([l['lane'], 'unmatched', bc_count['unmatched']])
+            except:
+                log.warning('Unsufficient or no barcode metrics for lane')
+        else:
+            for k in bc_count.keys():
+                tab.add_row([l['lane'], "Non-multiplexed lane", bc_count[k]])
+
+    d.update(yieldtable=tab.draw())
     return d
 
 if __name__ == "__main__":
