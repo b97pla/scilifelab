@@ -418,13 +418,11 @@ def generate_report(proj_conf):
                     for sample in entry['multiplex']:
                         if sample.has_key('description'):
                             if is_main_proj: log.info('Skipping sample ' + sample['name'] + ' in lane ' + l['lane'])
-                            elif sample['description'].strip() == proj_conf['id']:
-                                sample_name[sample['barcode_id']]=sample['name']
                             else:
-                                if is_main_proj: 
+                                if sample['description'].strip() == proj_conf['id']:
                                     sample_name[sample['barcode_id']]=sample['name']
-                                else:
-                                    log.error("Description missing for sample")
+                        elif is_main_proj: 
+                            sample_name[sample['barcode_id']]=sample['name']
                 else: is_multiplexed = False
         samp_count = {}
 
