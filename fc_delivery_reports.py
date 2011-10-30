@@ -385,8 +385,6 @@ def generate_report(proj_conf):
     #    comm = d['comment'] +  " Some samples had low yields."
     #    d.update(comment = comm)
     
-    # Testa att gaa in i bc_metrics-filerna direkt
-  
     fc_name, fc_date = get_flowcell_info(proj_conf['flowcell'])
 
     for l in proj_conf['lanes']:
@@ -401,6 +399,7 @@ def generate_report(proj_conf):
             bc_count[c[0]]=c[1] + ' (~' + str (int ( round (float(c[1])/1000000) ) ) + " million)"
         sample_name = {}
         is_multiplexed = True
+        # Check here for each sample if it belongs to the project
         for entry in run_info:
             if entry['lane'] == l['lane']:
                 if entry.has_key('multiplex'):
