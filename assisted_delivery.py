@@ -123,9 +123,7 @@ for d in dirs_to_process:
                     sample_id_and_idx[bc['barcode_id']] = bc['name']
             elif is_main_proj:
                 sample_id_and_idx[bc['barcode_id']] = bc['name']
-            else:
-                sys.exit("ERROR: Sample has no description and main project for lane is not the same as given project ID!")
-
+            
         print "Pipeline index\tSampleName\t# matching sequences"
         if not dry: logfile.write("Pipeline index\tIllumina index/sample ID\tMatches\n")
         if os.path.exists(bcname):

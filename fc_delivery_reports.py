@@ -39,6 +39,7 @@ from texttable import Texttable
 from bcbio.google import bc_metrics 
 from bcbio.solexa.flowcell import get_flowcell_info 
 import read_illumina_summary_xml as summ
+from bcbio.pipeline.config_loader import load_config
 
 TEMPLATE="""\
 Delivery report for ${project_id}
