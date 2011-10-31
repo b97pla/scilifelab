@@ -16,7 +16,7 @@ def getQCstats(path):
     qc_stats['phasing'] = getAllLaneMetrics(r, 'Phasing', False)
     qc_stats['prephasing'] = getAllLaneMetrics(r, 'Prephasing', False)
     qc_stats['prc_aligned'] = getAllLaneMetrics(r, 'PrcAlign', False)
-    qc_stats['prc_aligned_sd'] = getAllLaneMetrics(r, 'PrcAlign', False)
+    qc_stats['prc_aligned_sd'] = getAllLaneMetrics(r, 'PrcAlignSD', False)
     return qc_stats
 
 def readSummaries(path):
