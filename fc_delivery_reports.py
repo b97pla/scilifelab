@@ -56,8 +56,6 @@ with 1% phiX control library, except for lane 8, which has 2% phiX.
 The sequencing runs were performed according to the
 manufacturer's instructions. Base conversion was done using Illumina's OLB v1.9.
 
-Mate-pair libraries have been prepared using Roche's protocol for 454.
-
 Note that the delivered sequences will contain sequences derived
 from the PhiX control library, unless you have specifically requested
 that they be removed. In some cases, the sequences may contain adapter 
@@ -141,14 +139,14 @@ def main(flowcell_id, archive_dir, analysis_dir):
     for lane in run_info:
         (l, id) = [x.strip() for x in lane['description'].split(",")]
         if project_ids.has_key(id):
-            project_ids[id].append(lane)
+            if not lane in project_ids[id]: project_ids[id].append(lane)
         else:
             project_ids[id] = [lane]
         # Check here if project is a "sub project" of the lane
         for s in lane['multiplex']:
             if s.has_key('description'):
                 if project_ids.has_key(s['description']):
-                    project_ids[s['description']].append(lane)
+                    if lane not in project_ids[s['description']]: project_ids[s['description']].append(lane)
                 else:
                     project_ids[s['description']] = [lane]
                                                                                              
@@ -226,10 +224,17 @@ def generate_report(proj_conf):
     tab = Texttable()
     tab.add_row(["Lane", "Sample(s)"])
     for l in proj_conf['lanes']:
+        main_proj = l['description'].split(',')[1].strip()
+        if main_proj == proj_conf['id']: is_main_proj = True
+        else: is_main_proj = False
         samples = []
         if l.has_key('multiplex'):
             for mp in l['multiplex']:
-                samples.append(mp['name'])
+                if mp.has_key('description'):
+                    if mp['description'] == proj_conf['id']:
+                        samples.append(mp['name'])
+                elif is_main_proj:
+                    samples.append(mp['name'])
             tab.add_row([l['lane'], ", ".join(samples)])
         else:
             tab.add_row([l['lane'], "Non-multiplexed lane"])
@@ -469,7 +474,7 @@ if __name__ == "__main__":
 
     parser = OptionParser(usage=usage)
     parser.add_option("-a", "--archive_dir", dest="archive_dir", default="/bubo/proj/a2010002/archive")
-    parser.add_option("-b", "--analysis_dir", dest="analysis_dir", default="/bubo/proj/a2010002/nobackup/romanvg")
+    parser.add_option("-b", "--analysis_dir", dest="analysis_dir", default="/bubo/proj/a2010002/nobackup/illumina")
     parser.add_option("-n", "--dry_run", dest="dry_run", action="store_true",
                       default=False)
     (options, args) = parser.parse_args()
