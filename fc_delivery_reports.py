@@ -88,7 +88,7 @@ Run information
 
 Required for successful run:
 
-- Clu. PF (#/mm2) > 475K
+- Clu. PF (#/mm2) > 475K for v3 flow cells or > 300K for v1.5 flow cells
 
 - Phasing < 0.4%
 
@@ -246,7 +246,8 @@ def generate_report(proj_conf):
     tab_r2.add_row(["Lane", "Clu. dens. #/mm2","% PF clusters","Clu. PF #/mm2", "% phas/prephas", "% aln PhiX", "% error rate", "Comment"])
 
     # These should be moved to a cfg file. ( + perhaps provide an alternative for v1.5 FC )
-    min_clupf = 475
+    if (options.v1_5_fc): min_clupf = 300 
+    else: min_clupf = 475
     max_phas = 0.4
     max_prephas = 0.5
     max_mean_err = 2
@@ -377,6 +378,7 @@ def generate_report(proj_conf):
 
     ## Sequence yield table
     target_yield_per_lane = 143000000.0
+    if (options.v1_5_fc):  target_yield_per_lane = 60000000.0
     tab = Texttable()
     tab.add_row(['Lane','Sample','Number of sequences','Comment'])
     
@@ -477,6 +479,7 @@ if __name__ == "__main__":
     parser.add_option("-b", "--analysis_dir", dest="analysis_dir", default="/bubo/proj/a2010002/nobackup/illumina")
     parser.add_option("-n", "--dry_run", dest="dry_run", action="store_true",
                       default=False)
+    parser.add_option("--v1.5", dest="v1_5_fc", action="store_true", default=False)
     (options, args) = parser.parse_args()
     if len(args) < 1:
         print __doc__
