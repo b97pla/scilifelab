@@ -26,8 +26,8 @@ def main():
 	jt.remoteCommand = 'sleep.sh'
 	jt.args = ['Hello', 'Sweden']
 	jt.deadlineTime = "00:01:00"
-	jt.hardWallclockTimeLimit = "01:00"
-    jt.nativeSpecification = "-A a2010002"
+	jt.hardWallclockTimeLimit = "00:01:00"
+	jt.nativeSpecification = "-A a2010002 -p devel -t 01:00:00 -J GalaxyJob"
 
 	jobid = s.runJob(jt)
 	print 'Your job has been submitted with id ' + jobid
