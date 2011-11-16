@@ -10,12 +10,14 @@ if len(sys.argv) < 5:
     sys.exit(0)
 
 #base_path = '/bubo/proj/a2010002/nobackup/romanvg/'
-base_path = '/proj/a2010002/nobackup/pontus/'
+#base_path = '/proj/a2010002/nobackup/pontus/'
+base_path = '/proj/a2010002/nobackup/illumina/'
+base_yaml_path = '/proj/a2010002/archive/'
 dry = True
 
 projid = sys.argv[1].lower()
 runname = sys.argv[2].strip("/")
-yamlfile = base_path + 'store/' + runname + "/run_info.yaml"
+yamlfile = base_yaml_path + runname + "/run_info.yaml"
 uppmaxproj = sys.argv[3]
 
 if sys.argv[4].lower() == "n": dry = False

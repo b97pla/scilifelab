@@ -19,6 +19,8 @@ Options:
   -b, --analysis_dir=<analysis directory>  The directory where bcbb analyses are found
                                            in FLOWCELL_ID directories
   -n, --dry_run                            Don't do anything, just list what will happen
+
+  --v1.5                                   Use success criteria for v1.5 flow cells
 """
 
 import os
@@ -143,6 +145,7 @@ def main(flowcell_id, archive_dir, analysis_dir):
         else:
             project_ids[id] = [lane]
         # Check here if project is a "sub project" of the lane
+        if not lane.has_key('multiplex'): continue
         for s in lane['multiplex']:
             if s.has_key('description'):
                 if project_ids.has_key(s['description']):
