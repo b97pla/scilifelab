@@ -17,7 +17,7 @@ python/2.6.6
 CASAVA
 picard
 GATK
-cufflinks
+cufflinks/1.1.0
 tophat
 Fastx
 FastQC
@@ -26,10 +26,11 @@ emboss
 gnuplot
 BEDTools"
 
-module purge
+#module purge
 
 for mod in $MODS
 do
+        module unload $mod >& /dev/null
 	module load $mod >& /dev/null
 done
 

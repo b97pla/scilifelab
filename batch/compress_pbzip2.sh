@@ -2,9 +2,9 @@
 #SBATCH -p node
 #SBATCH -N 1
 #SBATCH -t 5:00:00
-#SBATCH -J pbzip2
-#SBATCH -A project_id 
-#SBATCH --mail-user=YOURMAIL@example.com
+#SBATCH -J pigz
+#SBATCH -A a2010002
+#SBATCH --mail-user=pontus.larsson@scilifelab.se
 #SBATCH --mail-type=ALL
 
 # Compress everything:
@@ -17,7 +17,7 @@ function usage {
 }
 
 if [ $1 == "-d" ]; then
-	pbzip2 -d $2
+	pigz -d $2
 	exit
 fi
 
@@ -28,12 +28,12 @@ fi
 
 if [ -d $1 ]
 then
-    tar cf $1.tar.bz2 --use-compress-prog=pbzip2 $1
+    tar cf $1.tar.bz2 --use-compress-prog=pigz $1
 elif [ -f $1 ]
 then
 # In this case, it bypasses core autodetection and sets 16 cores
 # (16 "virtual cores" by HyperThreading):
-    pbzip2 -p16 $1
+    pigz -p16 $1
 else
     usage
 fi

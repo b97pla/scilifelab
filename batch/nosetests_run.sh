@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH -p devel
-#SBATCH -N 1
-#SBATCH -t 00:30:00
+#SBATCH -p core
+#SBATCH -n 1
+#SBATCH -t 24:00:00
 #SBATCH -J bcbb_testsuite
 #SBATCH -A a2010002
 #SBATCH -D /bubo/home/h27/pontusla/bcbb/nextgen/tests
