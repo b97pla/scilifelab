@@ -61,8 +61,15 @@ manufacturer's instructions. Base conversion was done using Illumina's OLB v1.9.
 Note that the delivered sequences will contain sequences derived
 from the PhiX control library, unless you have specifically requested
 that they be removed. In some cases, the sequences may contain adapter 
-sequences from the library preparation. For mate-pair runs, the sequences 
-will contain mate-pair linkers. Please contact us for more information about
+sequences from the library preparation. This can be due to short fragment lengths
+(in small-RNA-seq experiments) when it is expected, or due to "adapter contamination"
+due to adapter or primer dimerization, which is usually not expected. We have 
+an unofficial policy not to try to remove adapters by default, because this 
+procedure is error-prone and better left to the customer who wants to use the data.
+For mate-pair runs, the sequences will contain mate-pair linkers, and here too we
+do not remove them by default because there is no reliable standard way to do so and
+is therefore better left up to the end user. 
+Please contact us for more information about
 how to remove PhiX, adapter contamination and mate pair linkers. 
 
 We'd like to hear from you! Please acknowledge Science for Life Laboratory (SciLifeLab Stockholm) in your articles when using data from us. Please also notify us when you publish using data produced at SciLifeLab.
@@ -258,6 +265,21 @@ def generate_report(proj_conf):
     statspath = os.path.join(proj_conf['archive_dir'], proj_conf['flowcell'], "Data", "reports", "Summary")
     stats = summ.getQCstats(statspath)
 
+    # Check quality criteria and add comments
+    comm_r1 = ''
+    comm_r2 = ''
+    ok_r1 = True
+    ok_r2 = True
+    ok_cludens_r1 = True
+    ok_cludens_r2 = True
+    ok_phasing_r1 = True
+    ok_phasing_r2 = True
+    ok_prephasing_r1 = True
+    ok_prephasing_r2 = True
+    ok_err_rate = True 
+    ok_err_r1 = True
+    ok_err_r2 = True
+
     for l in proj_conf['lanes']:
 
         # Cluster densities
@@ -308,53 +330,77 @@ def generate_report(proj_conf):
         err_str_r1 = str(err_r1) + '+/-' + str(err_sd_r1)
         err_str_r2 = str(err_r2) + '+/-' + str(err_sd_r2)
         
+        comm_r1 = ""
+        comm_r2 = ""
+
         # check criteria
-        comm_r1 = ''
-        comm_r2 = ''
-        ok_r1 = True
-        ok_r2 = True
         if float(clu_dens_pf_r1[:-1]) < min_clupf: 
             ok_r1 = False
+            ok_cludens_r1 = False
             comm_r1 += "Low cluster density. "
         if float(clu_dens_pf_r2[:-1]) < min_clupf: 
             ok_r2 = False
+            ok_cludens_r2 = False
             comm_r2 += "Low cluster density. "
         if float(phas_r1) > max_phas: 
             ok_r1 = False
+            ok_phasing_r1 = False
             comm_r1 += "High phasing. "
         if float(phas_r2) > max_phas: 
             ok_r2 = False
+            ok_phasing_r2 = False
             comm_r2 += "High phasing. "
         if float(prephas_r1) > max_prephas: 
             ok_r1 = False
+            ok_prephasing_r1 = False
             comm_r1 += "High prephasing. "
         if float(prephas_r2) > max_prephas: 
             ok_r2 = False
+            ok_prephasing_r2 = False
             comm_r2 += "High prephasing. "
-
         avg_error_rate = (float(err_r1) + float(err_r2))/2
-        
         if avg_error_rate > max_mean_err:
-            ok_r1 = False
-            ok_r2 = False
+            ok_err_rate = False
             comm_r1 += "High error rate. "
             comm_r2 += "High error rate. "
+        if float(err_r1) > max_mean_err:
+            ok_r1 = False
+            ok_err_r1 = False
+        if float(err_r2) > max_mean_err:
+            ok_r2 = False
+            ok_err_r2 = False
 
-        if (ok_r1 and ok_r2): 
-            comm_r1 = comm_r2 = "OK"
-            d.update(comment = "Successful run according to QC criteria.")
-        else:  
-            if (ok_r1): 
-                comm_r1 = "OK"
-                d.update (comment = "Read 2 did not pass quality criteria: " + comm_r2)
-            elif (ok_r2):
-                comm_r2 = "OK"
-                d.update (comment = "Read 1 did not pass quality criteria: " + comm_r1)
-            else:
-                d.update (comment = "Did not pass quality criteria. Read 1: " + comm_r1 + " Read 2: " + comm_r2)
+        if comm_r1 == "": comm_r1 = "OK"        
+        if comm_r2 == "": comm_r2 = "OK"
 
         tab_r1.add_row([l['lane'], clu_dens_string_r1, prc_pf_string_r1, clu_dens_pf_string_r1, phas_string_r1, aln_string_r1, err_str_r1, comm_r1])
         tab_r2.add_row([l['lane'], clu_dens_string_r2, prc_pf_string_r2, clu_dens_pf_string_r2, phas_string_r2, aln_string_r2, err_str_r2, comm_r2])
+
+    # Reinitialize comments for the overall comment. (Which will be for several lanes, potentially)
+    comm_r1 = ""
+    comm_r2 = ""
+ 
+    if not ok_cludens_r1: comm_r1 += "Low cluster density. " 
+    if not ok_cludens_r2: comm_r2 += "Low cluster density. " 
+    if not ok_phasing_r1: comm_r1 += "High phasing. " 
+    if not ok_phasing_r2: comm_r2 += "High phasing. " 
+    if not ok_prephasing_r1: comm_r1 += "High prephasing. " 
+    if not ok_prephasing_r2: comm_r2 += "High prephasing. " 
+    if not ok_err_r1: comm_r1 += "High error rate. "
+    if not ok_err_r2: comm_r2 += "High error rate. "
+
+    if (ok_r1 and ok_r2): 
+        comm_r1 = comm_r2 = "OK"
+        d.update(comment = "Successful run according to QC criteria.")
+    else:  
+        if (ok_r1): 
+            comm_r1 = "OK"
+            d.update (comment = "Read 2 did not pass quality criteria: " + comm_r2)
+        elif (ok_r2):
+            comm_r2 = "OK"
+            d.update (comment = "Read 1 did not pass quality criteria: " + comm_r1)
+        else:
+            d.update (comment = "Did not pass quality criteria. Read 1: " + comm_r1 + " Read 2: " + comm_r2)
 
     d.update(read1table=tab_r1.draw())
     d.update(read2table=tab_r2.draw())
