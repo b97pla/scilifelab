@@ -2,17 +2,29 @@ import sys
 from operator import itemgetter
 
 illumina_idx = {'ATCACG':'index1', 
+                'ATCACGA':'index1', 
                 'CGATGT':'index2',
-                 'TTAGGC':'index3',
-                 'TGACCA':'index4',
-                 'ACAGTG':'index5',
-                 'GCCAAT':'index6',
-                 'CAGATC':'index7',
-                 'ACTTGA':'index8',
-                 'GATCAG':'index9',
-                 'TAGCTT':'index10',
-                 'GGCTAC':'index11',
-                 'CTTGTA':'index12'}
+                'CGATGTA':'index2',
+                'TTAGGC':'index3',
+                'TTAGGCA':'index3',
+                'TGACCA':'index4',
+                'TGACCAA':'index4',
+                'ACAGTG':'index5',
+                'ACAGTGA':'index5',
+                'GCCAAT':'index6',
+                'GCCAATA':'index6',
+                'CAGATC':'index7',
+                'CAGATCA':'index7',
+                'ACTTGA':'index8',
+                'ACTTGAA':'index8',
+                'GATCAG':'index9',
+                'GATCAGA':'index9',
+                'TAGCTT':'index10',
+                'TAGCTTA':'index10',
+                'GGCTAC':'index11',
+                'GGCTACA':'index11',
+                'CTTGTA':'index12',
+                'CTTGTAA':'index12'}
 
 if len(sys.argv)<4:
     print "python", sys.argv[0], "<fastq file containing barcode sequence> <position where bar code starts> <length of bar code>"
