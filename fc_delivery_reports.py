@@ -228,7 +228,8 @@ def generate_report(proj_conf):
     ## General info table
     tab = Texttable()
     uppnex_proj = get_project_uppnex_id(proj_conf['id'], proj_conf['config'])
-    # uppnex_proj = "b2011XXX"
+    if uppnex_proj[0:4] != 'b201':
+        uppnex_proj = "b201YXXX"
     
     run_name_comp = proj_conf['flowcell'].split('_')
     simple_run_name = run_name_comp[0] + run_name_comp[3][0]
