@@ -72,7 +72,7 @@ is therefore better left up to the end user.
 Please contact us for more information about
 how to remove PhiX, adapter contamination and mate pair linkers. 
 
-We'd like to hear from you! Please notify us when you publish using data produced at Science For Life Laboratory (SciLifeLab) Stockholm. You are required to acknowledge SciLifeLab Stockholm in your articles when using data from us.
+We'd like to hear from you! Please notify us when you publish using data produced at Science For Life Laboratory (SciLifeLab) Stockholm. To acknowledge SciLifeLab Stockholm in your article, you can use a sentence like "The authors would like to acknowledge support from Science for Life Laboratory, the national infrastructure SNISS, and Uppmax for providing assistance in massively parallel sequencing and computational infrastructure."
 
 Comment
 --------
