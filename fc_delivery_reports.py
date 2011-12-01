@@ -42,6 +42,7 @@ from bcbio.google import bc_metrics
 from bcbio.solexa.flowcell import get_flowcell_info 
 import read_illumina_summary_xml as summ
 from bcbio.pipeline.config_loader import load_config
+from bcbio.scilifelab.google.uppnex_id import get_project_uppnex_id
 
 TEMPLATE="""\
 Delivery report for ${project_id}
@@ -138,11 +139,16 @@ ${yieldtable}
 
 """
 
-def main(flowcell_id, archive_dir, analysis_dir):
+def main(flowcell_id, archive_dir, analysis_dir, config_file):
     print " ".join([flowcell_id, archive_dir, analysis_dir])
     fp = os.path.join(archive_dir, flowcell_id, "run_info.yaml")
     with open(fp) as in_handle:
         run_info = yaml.load(in_handle)
+    if config_file:
+        with open(config_file) as in_handle:
+            config = yaml.load(in_handle)
+    else:
+        config = {}
     project_ids = dict()
     for lane in run_info:
         (l, id) = [x.strip() for x in lane['description'].split(",")]
@@ -176,6 +182,7 @@ def main(flowcell_id, archive_dir, analysis_dir):
             'archive_dir' : archive_dir, 
             'analysis_dir' : analysis_dir,
             'flowcell' : flowcell_id,
+            'config' : config,
             }
         d = generate_report(proj_conf)
         rstfile = "%s.rst" % (k)
@@ -220,7 +227,9 @@ def generate_report(proj_conf):
 
     ## General info table
     tab = Texttable()
-    uppnex_proj = "b2011XXX"
+    uppnex_proj = get_project_uppnex_id(proj_conf['id'], proj_conf['config'])
+    # uppnex_proj = "b2011XXX"
+    
     run_name_comp = proj_conf['flowcell'].split('_')
     simple_run_name = run_name_comp[0] + run_name_comp[3][0]
     tab.add_row(["Project id", proj_conf['id']])
@@ -528,12 +537,14 @@ if __name__ == "__main__":
     parser.add_option("-n", "--dry_run", dest="dry_run", action="store_true",
                       default=False)
     parser.add_option("--v1.5", dest="v1_5_fc", action="store_true", default=False)
+    parser.add_option("-c", "--config-file", dest="config_file", default=None)
     (options, args) = parser.parse_args()
     if len(args) < 1:
         print __doc__
         sys.exit()
     kwargs = dict(
         archive_dir = os.path.normpath(options.archive_dir),
-        analysis_dir = os.path.normpath(options.analysis_dir)
+        analysis_dir = os.path.normpath(options.analysis_dir),
+        config_file = options.config_file
         )
     main(*args, **kwargs)
