@@ -89,8 +89,9 @@ ${lanetable}
 The sequence files are named after the following scheme:
 lane_date_flowcell-ID_sample_barcode-index_1(2).fastq, where the 1 or 2 represents the first
 (forward) and the second (reverse) read in a paired-end run. Single
-end runs will have one the first read. The files only contain
-sequences that have passed Illumina's chastity filter.
+end runs will have only the first read. The files only contain
+sequences that have passed Illumina's chastity filter. The quality scores in the fastq files
+are in the (ASCII-64) format, sometimes known as "Illumina 1.3+ format."
 
 Run information
 ---------------
@@ -170,7 +171,7 @@ def main(flowcell_id, archive_dir, analysis_dir, config_file):
         lanes = [x['lane'] for x in project_ids[k]]
         log.info("saw project %s in lanes %s" %( k, ", ".join(lanes)))
         sphinx_defs.append("('%s', '%s_delivery.tex', 'Delivery note', u'SciLifeLab Stockholm', 'howto'),\n"  % (k, k))
-        projectfile = "%s.mako" % (k)
+        projectfile = "%s_%s.mako" % (k, get_flowcell_info(flowcell_id)[1] + get_flowcell_info(flowcell_id)[0][0])
         fp = open(projectfile, "w")
         fp.write(TEMPLATE)
         fp.close()
