@@ -472,6 +472,9 @@ def generate_report(proj_conf):
             c = line.strip().split()
             bc_count[c[0]]=c[1] + ' (~' + str (int ( round (float(c[1])/1000000) ) ) + " million)"
         no_samples = len(bc_count)
+        if no_samples == 0:
+            log.warn("Did not find a BC metrics file... Skipping lane %s for %s" %(l['lane'], proj_conf['id']))
+            continue
         target_yield_per_sample = bc_multiplier * target_yield_per_lane / no_samples
         sample_name = {}
         is_multiplexed = True
