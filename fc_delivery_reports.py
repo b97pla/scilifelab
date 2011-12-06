@@ -91,7 +91,7 @@ lane_date_flowcell-ID_sample_barcode-index_1(2).fastq, where the 1 or 2 represen
 (forward) and the second (reverse) read in a paired-end run. Single
 end runs will have only the first read. The files only contain
 sequences that have passed Illumina's chastity filter. The quality scores in the fastq files
-are in the (ASCII-64) format, sometimes known as "Illumina 1.3+ format."
+are in the "Phred64" format, sometimes known as "Illumina 1.3+" format.
 
 Run information
 ---------------
