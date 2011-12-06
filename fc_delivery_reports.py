@@ -51,6 +51,9 @@ Delivery report for ${project_id}
 Delivery
 --------
 
+NOTE: This delivery note only concerns raw data delivery, that is, raw FASTQ sequence files (de-multiplexed if applicable.)
+If you have ordered analysis, you will be notified of the analysis results later.
+
 The clustering was performed on a cBot cluster generation system using
 a HiSeq paired-end read cluster generation kit according to the
 manufacturer's instructions. The samples were sequenced on an Illumina
@@ -169,9 +172,10 @@ def main(flowcell_id, archive_dir, analysis_dir, config_file):
     sphinx_defs = []
     for k in project_ids.keys():
         lanes = [x['lane'] for x in project_ids[k]]
+        proj_file_tag = k + "_" + get_flowcell_info(flowcell_id)[1] + get_flowcell_info(flowcell_id)[0][0]
         log.info("saw project %s in lanes %s" %( k, ", ".join(lanes)))
-        sphinx_defs.append("('%s', '%s_delivery.tex', 'Delivery note', u'SciLifeLab Stockholm', 'howto'),\n"  % (k, k))
-        projectfile = "%s_%s.mako" % (k, get_flowcell_info(flowcell_id)[1] + get_flowcell_info(flowcell_id)[0][0])
+        sphinx_defs.append("('%s', '%s_delivery.tex', 'Raw data delivery note', u'SciLifeLab Stockholm', 'howto'),\n"  % (proj_file_tag, proj_file_tag))
+        projectfile = "%s.mako" % (proj_file_tag) 
         fp = open(projectfile, "w")
         fp.write(TEMPLATE)
         fp.close()
@@ -186,7 +190,7 @@ def main(flowcell_id, archive_dir, analysis_dir, config_file):
             'config' : config,
             }
         d = generate_report(proj_conf)
-        rstfile = "%s_%s.rst" % (k, get_flowcell_info(flowcell_id)[1] + get_flowcell_info(flowcell_id)[0][0])
+        rstfile = "%s.rst" % (proj_file_tag)
         fp = open(rstfile, "w")
         fp.write(tmpl.render(**d))
         fp.close()
