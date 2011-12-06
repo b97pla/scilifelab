@@ -186,7 +186,7 @@ def main(flowcell_id, archive_dir, analysis_dir, config_file):
             'config' : config,
             }
         d = generate_report(proj_conf)
-        rstfile = "%s.rst" % (k)
+        rstfile = "%s_%s.rst" % (k, get_flowcell_info(flowcell_id)[1] + get_flowcell_info(flowcell_id)[0][0])
         fp = open(rstfile, "w")
         fp.write(tmpl.render(**d))
         fp.close()
