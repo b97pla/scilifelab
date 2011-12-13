@@ -48,6 +48,8 @@ TEMPLATE="""\
 Delivery report for ${project_id}
 =================================
 
+${latex_opt}
+
 Delivery
 --------
 
@@ -105,7 +107,7 @@ Required for successful run:
 
 - Phasing < 0.4%
 
-- Prephasing < 0.5%
+- Prephasing < 1%
 
 - Average error rate for read1 and read2 < 2%
 
@@ -135,6 +137,10 @@ Error rate
 ^^^^^^^^^^
 
 ${errorrate}
+
+.. raw:: latex
+   
+   \clearpage
 
 Sequence yield per sample
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -219,6 +225,7 @@ def main(flowcell_id, archive_dir, analysis_dir, config_file):
 def generate_report(proj_conf):
     d = { 
         'project_id' : proj_conf['id'],
+        'latex_opt' : "",
         'comment' : "",
         'infotable' : "",
         'lanetable' : "",
@@ -229,6 +236,10 @@ def generate_report(proj_conf):
         'errorrate': "",
         'yieldtable': "",
         }
+
+    ## Latex option (no of floats per page)
+    floats_per_page = '.. raw:: latex\n\n   \setcounter{totalnumber}{8}'
+    d.update(latex_opt = floats_per_page)
 
     ## General info table
     tab = Texttable()
@@ -266,6 +277,8 @@ def generate_report(proj_conf):
     
     tab_r1 = Texttable()
     tab_r2 = Texttable()
+    tab_r1.set_cols_width([2,12,12,12,12,12,12,30])
+    tab_r2.set_cols_width([2,12,12,12,12,12,12,30])
     tab_r1.add_row(["Lane", "Clu. dens. #/mm2","% PF clusters","Clu. PF #/mm2", "% phas/prephas", "% aln PhiX", "% error rate", "Comment"])
     tab_r2.add_row(["Lane", "Clu. dens. #/mm2","% PF clusters","Clu. PF #/mm2", "% phas/prephas", "% aln PhiX", "% error rate", "Comment"])
 
@@ -273,7 +286,7 @@ def generate_report(proj_conf):
     if (options.v1_5_fc): min_clupf = 300 
     else: min_clupf = 475
     max_phas = 0.4
-    max_prephas = 0.5
+    max_prephas = 1.0 # 0.5
     max_mean_err = 2
 
     statspath = os.path.join(proj_conf['archive_dir'], proj_conf['flowcell'], "Data", "reports", "Summary")
@@ -416,6 +429,7 @@ def generate_report(proj_conf):
         else:
             d.update (comment = "Did not pass quality criteria. Read 1: " + comm_r1 + " Read 2: " + comm_r2)
 
+
     d.update(read1table=tab_r1.draw())
     d.update(read2table=tab_r2.draw())
         
@@ -437,7 +451,6 @@ def generate_report(proj_conf):
     for l in proj_conf['lanes']:
         res.append(m2r.image(os.path.relpath(os.path.join(byCycleDir, "ErrRate_L%s.png" % (l['lane']))), width="100%"))
     d.update(errorrate= "\n".join(res))
-
 
     ## Sequence yield table
     target_yield_per_lane = 143000000.0

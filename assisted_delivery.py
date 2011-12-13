@@ -179,7 +179,7 @@ for d in dirs_to_process:
             print "Copying from " + source + " to " + dest
             logfile.write("Copying " + source + " to " + dest + "\n")
             logfile.flush()
-            shutil.copyfile(source, dest)
+            shutil.move(source, dest)
         else:
             print "Will copy from ", source, "to", dest
 
