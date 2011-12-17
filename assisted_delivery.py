@@ -31,8 +31,8 @@ if not dry:
     logfilename = "/bubo/home/h9/mikaelh/delivery_logs/" + time_str + ".log" 
     logfile = open(logfilename, "w")
 
-print "Project to copy files for:", projid
-if not dry: logfile.write("Project to copy files for:" + "\n" + projid + "\n")
+print "Project to move files for:", projid
+if not dry: logfile.write("Project to move files for:" + "\n" + projid + "\n")
 
 matching = set()
 available = set()
@@ -55,7 +55,7 @@ if len(matching)==0:
     sys.exit(0)
 
 elif dry:
-    print "I will copy files from lanes " + ",".join(matching) 
+    print "I will move files from lanes " + ",".join(matching) 
 
 if not dry: logfile.flush()
 
@@ -66,6 +66,7 @@ start_date = temp[0]
 flow_cell = temp[3][0] # A or B
 created_dir_name = "20" + start_date + flow_cell + "_hiseq2000"
 
+#del_path = '/bubo/proj/' +  uppmaxproj + "/INBOX/" + created_dir_name + "/2_mm_demultiplexed"
 del_path = '/bubo/proj/' +  uppmaxproj + "/INBOX/" + created_dir_name
 
 print "Will create a delivery directory", del_path       
@@ -88,9 +89,10 @@ for m in sorted(matching):
     d = m + "_" + temp[0] + "_" + temp[3] 
     dirs_to_process.append(d)
 
-os.chdir(base_path + runname)
+os.chdir(base_path + runname )
 
 for d in dirs_to_process:
+    #dirpath = d + "_barcode/mm2"
     dirpath = d + "_barcode"
     
     if not os.path.exists(dirpath):
@@ -98,6 +100,7 @@ for d in dirs_to_process:
         sys.exit(0)
     os.chdir(dirpath)
     bcname = d + "_bc.metrics"
+    #bcname = "bc.metrics"
     lane = dirpath[0]
     print "LANE ", lane
     if not dry: logfile.write("LANE " + lane + "\n")
@@ -176,12 +179,12 @@ for d in dirs_to_process:
         dest = del_path + "/" + pair[1]
         
         if not dry: 
-            print "Copying from " + source + " to " + dest
-            logfile.write("Copying " + source + " to " + dest + "\n")
+            print "Moving from " + source + " to " + dest
+            logfile.write("Moving " + source + " to " + dest + "\n")
             logfile.flush()
             shutil.move(source, dest)
         else:
-            print "Will copy from ", source, "to", dest
+            print "Will move from ", source, "to", dest
 
     os.chdir('..')
 
