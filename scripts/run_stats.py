@@ -9,18 +9,20 @@ from rpy2.robjects.packages import importr
 base = importr('base')
 stats = importr('stats')
 grdevices = importr('grDevices')
-grdevices.png(file="runs.png", width=512, height=512)
+
+grdevices.png(file="runs.png", width=1024, height=768)
 
 runs = DataFrame.from_csvfile("tar_stats.csv")
-#print runs
 
-# Set axis labels perpendicular
-#ro.r.par(las=1)
-gp = ggplot2.ggplot(runs)
+#gp = ggplot2.ggplot(runs)
 
-pp = gp + \
-     ggplot2.aes_string(x='run', y='size') + \
-     ggplot2.geom_histogram(colour = "darkgreen", fill = "blue", binwidth = 0.5)
+#pp = gp + \
+#     ggplot2.aes_string(x='runs', y='sizes') + \
+#     ggplot2.geom_histogram(colour = "darkgreen", fill = "blue", binwidth = 0.5)
+
+qplot = ggplot2.qplot
+
+pp = qplot(factor(cyl), data=runs, geom="bar", fill=factor(vs))
 
 pp.plot()
 grdevices.dev_off()
