@@ -1,42 +1,48 @@
 #!/usr/bin/env python
 
-import csv
-import numpy as np
 import matplotlib.pyplot as plt
 
-dsets_lsh = csv.reader(open('datasets.csv', 'rU'))
-dsets = csv.writer(open('datasets_toplot.csv', 'w'))
 
-for row in dsets_lsh:
-    dpref = row[0][-1]  #i.e 104...
-    dsize = row[0][:-1] # ...G(igabytes)
+def convert_human_readable_to_numbers(file_size):
+    """In data, convert letters which indicate file sizes to actual numbers.
+    """
+    dpref = file_size[-1]
+    if dpref not in ["K", "M", "G", "T"]:
+        return 0
+    file_size = file_size[:-1]
     if dpref == 'T':
-        dsize = int(float(dsize)*1024*1024*1024*1024)
-    if dpref == 'G':
-        dsize = int(float(dsize)*1024*1024*1024)
+        file_size = int(float(file_size) * 1024 * 1024 * 1024 * 1024)
+    elif dpref == 'G':
+        file_size = int(float(file_size) * 1024 * 1024 * 1024)
     elif dpref == 'M':
-        dsize = int(float(dsize)*1024*1024)
+        file_size = int(float(file_size) * 1024 * 1024)
     elif dpref == 'K':
-        dsize = int(float(dsize)*1024)
+        file_size = int(float(file_size) * 1024)
 
-    dsets.writerow([dsize, row[1]])
+    return file_size
 
-dsets = csv.reader(open('datasets_toplot.csv', 'rU'))
+with open("../sizegraphing/datasets_sizes.log") as data_f:
+    all_data = data_f.read()
 
-sizes = [int(row[0]) for row in dsets]
+data_lines = all_data.splitlines()
+data = [line.split("\t") for line in data_lines]
+for line in data:
+    line[-1] = line[-1].split("/")[-1]
+
+data = [line for line in data if "." not in line[-1]]
+sizes = [int(convert_human_readable_to_numbers(line[0])) for line in data]
+data = [line[-1].split("_") for line in data]
+for i in range(len(sizes)):
+    data[i].insert(0, sizes[i])
 
 N = len(sizes)
-ind = np.arange(N)      # the x locations for the groups
-width = 0.35            # the width of the bars: can also be len(x) sequence
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
-num_values = 30
-p1 = plt.bar(range(0, num_values), sizes[:num_values])
+num_values = 75
+ax.bar(range(num_values), sizes[:num_values])
 
 plt.ylabel('Sizes')
-plt.title('Dataset sizes')
-# all row[1]'s
-# plt.xticks(ind+width/2., ('G1', 'G2'))
+ax.set_title('Dataset sizes')
 
 plt.show()
