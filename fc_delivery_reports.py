@@ -388,13 +388,13 @@ def generate_report(proj_conf):
         avg_error_rate = (float(err_r1) + float(err_r2))/2
         if avg_error_rate > max_mean_err:
             ok_err_rate = False
-            comm_r1 += "High error rate. "
-            comm_r2 += "High error rate. "
         if float(err_r1) > max_mean_err:
-            ok_r1 = False
+            #ok_r1 = False
+            comm_r1 += "High error rate. "
             ok_err_r1 = False
         if float(err_r2) > max_mean_err:
-            ok_r2 = False
+            #ok_r2 = False
+            comm_r2 += "High error rate. "
             ok_err_r2 = False
 
         if comm_r1 == "": comm_r1 = "OK"        
@@ -413,8 +413,13 @@ def generate_report(proj_conf):
     if not ok_phasing_r2: comm_r2 += "High phasing. " 
     if not ok_prephasing_r1: comm_r1 += "High prephasing. " 
     if not ok_prephasing_r2: comm_r2 += "High prephasing. " 
-    if not ok_err_r1: comm_r1 += "High error rate. "
-    if not ok_err_r2: comm_r2 += "High error rate. "
+    if not ok_err_rate:
+        if not ok_err_r1: 
+            ok_r1 = False
+            comm_r1 += "High error rate. "
+        if not ok_err_r2: 
+            ok_r2 = False
+            comm_r2 += "High error rate. "
 
     if (ok_r1 and ok_r2): 
         comm_r1 = comm_r2 = "OK"
