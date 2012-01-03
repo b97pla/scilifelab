@@ -50,10 +50,26 @@ Delivery report for ${project_id}
 
 ${latex_opt}
 
+Summary
+--------
+
+${summary}
+
+Sequence yield per sample
+-------------------------
+
+${yieldtable}
+
+"Unmatched" gives the number of sequences that could not be reliably assigned to a specific barcode sequence (and thus to a specific sample) in a multiplexed run. There is always a certain amount of unmatched reads. 
+
+"High" means that the number of unmatched sequences (see above) was higher than expected. 
+
+"Low" means that the number of sequences for the sample was lower than expected for the run. Note that if this was a re-run, the total number of sequences for the sample (including previous runs) could still be sufficient for the sample to be finished. In such cases, the Summary should contain information about whether this is the case.
+
 Delivery
 --------
 
-NOTE: This delivery note only concerns raw data delivery, that is, raw FASTQ sequence files (de-multiplexed if applicable.)
+NOTE: This delivery note only concerns raw sequence data delivery, that is, raw FASTQ sequence files (de-multiplexed if applicable.)
 If you have ordered analysis, you will be notified of the analysis results later.
 
 The clustering was performed on a cBot cluster generation system using
@@ -79,17 +95,10 @@ how to remove PhiX, adapter contamination and mate pair linkers.
 
 We'd like to hear from you! Please notify us when you publish using data produced at Science For Life Laboratory (SciLifeLab) Stockholm. To acknowledge SciLifeLab Stockholm in your article, you can use a sentence like "The authors would like to acknowledge support from Science for Life Laboratory, the national infrastructure SNISS, and Uppmax for providing assistance in massively parallel sequencing and computational infrastructure."
 
-Comment
---------
-
-${comment}
-
 General information
 -------------------
 
 ${infotable}
-
-${lanetable}
 
 The sequence files are named after the following scheme:
 lane_date_flowcell-ID_sample_barcode-index_1(2).fastq, where the 1 or 2 represents the first
@@ -103,7 +112,7 @@ Run information
 
 Required for successful run:
 
-- Clu. PF (#/mm2) > 475K for v3 flow cells or > 300K for v1.5 flow cells
+- Clu. PF (#/mm2) > 475K 
 
 - Phasing < 0.4%
 
@@ -124,28 +133,35 @@ ${read2table}
 QC plots
 ~~~~~~~~
 
+Note: The plots below are zoomable without loss of resolution. For example, in Adobe Reader, you could select View > Zoom > Zoom To > Magnification 400% to see the plots more clearly. 
+
+.. raw:: latex
+   
+   \clearpage
+
 Quality score
 ^^^^^^^^^^^^^
 ${qcplots}
+
+
+.. raw:: latex
+   
+   \clearpage
 
 Percentage QV>30
 ^^^^^^^^^^^^^^^^
 
 ${qc30plots}
 
-Error rate
-^^^^^^^^^^
-
-${errorrate}
 
 .. raw:: latex
    
    \clearpage
 
-Sequence yield per sample
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Error rate
+^^^^^^^^^^
 
-${yieldtable}
+${errorrate}
 
 """
 
@@ -226,7 +242,7 @@ def generate_report(proj_conf):
     d = { 
         'project_id' : proj_conf['id'],
         'latex_opt' : "",
-        'comment' : "",
+        'summary' : "",
         'infotable' : "",
         'lanetable' : "",
         'read1table': "",
@@ -249,8 +265,13 @@ def generate_report(proj_conf):
     
     run_name_comp = proj_conf['flowcell'].split('_')
     simple_run_name = run_name_comp[0] + run_name_comp[3][0]
-    tab.add_row(["Project id", proj_conf['id']])
-    tab.add_rows([["Run name:", proj_conf['flowcell']],
+    instr_id = run_name_comp[1]
+    fc_name, fc_date = get_flowcell_info(proj_conf['flowcell'])
+    tab.add_row(["Run name:", proj_conf['flowcell']])
+    tab.add_rows([["Project id:", proj_conf['id']], 
+                  ["Date:", fc_date],
+                  ["Instrument ID:", instr_id],
+                  ["Flow cell ID:", fc_name],
                   ["Uppnex project:", uppnex_proj],
                   ["Delivery directory:", "/bubo/proj/" + uppnex_proj + "/INBOX/20" + simple_run_name + "_hiseq2000"]])
     d.update(infotable=tab.draw())
@@ -403,7 +424,7 @@ def generate_report(proj_conf):
         tab_r1.add_row([l['lane'], clu_dens_string_r1, prc_pf_string_r1, clu_dens_pf_string_r1, phas_string_r1, aln_string_r1, err_str_r1, comm_r1])
         tab_r2.add_row([l['lane'], clu_dens_string_r2, prc_pf_string_r2, clu_dens_pf_string_r2, phas_string_r2, aln_string_r2, err_str_r2, comm_r2])
 
-    # Reinitialize comments for the overall comment. (Which will be for several lanes, potentially)
+    # Reinitialize comments for the summary. (Which will be for several lanes, potentially)
     comm_r1 = ""
     comm_r2 = ""
  
@@ -423,16 +444,16 @@ def generate_report(proj_conf):
 
     if (ok_r1 and ok_r2): 
         comm_r1 = comm_r2 = "OK"
-        d.update(comment = "Successful run according to QC criteria.")
+        d.update(summary = "Successful run according to QC criteria.")
     else:  
         if (ok_r1): 
             comm_r1 = "OK"
-            d.update (comment = "Read 2 did not pass quality criteria: " + comm_r2)
+            d.update (summary = "Read 2 did not pass quality criteria: " + comm_r2)
         elif (ok_r2):
             comm_r2 = "OK"
-            d.update (comment = "Read 1 did not pass quality criteria: " + comm_r1)
+            d.update (summary = "Read 1 did not pass quality criteria: " + comm_r1)
         else:
-            d.update (comment = "Did not pass quality criteria. Read 1: " + comm_r1 + " Read 2: " + comm_r2)
+            d.update (summary = "Did not pass quality criteria. Read 1: " + comm_r1 + " Read 2: " + comm_r2)
 
 
     d.update(read1table=tab_r1.draw())
@@ -543,8 +564,8 @@ def generate_report(proj_conf):
                 tab.add_row([l['lane'], "Non-multiplexed lane", bc_count[k], comment])
 
     if low_yield:
-        comm = d['comment'] +  " Some samples had low yields."
-        d.update(comment = comm)
+        comm = d['summary'] +  " Some samples had low yields."
+        d.update(summary = comm)
     
     d.update(yieldtable=tab.draw())
     return d
