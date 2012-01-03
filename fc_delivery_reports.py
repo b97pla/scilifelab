@@ -444,7 +444,7 @@ def generate_report(proj_conf):
 
     if (ok_r1 and ok_r2): 
         comm_r1 = comm_r2 = "OK"
-        d.update(summary = "Successful run according to QC criteria.")
+        d.update(summary = "Successful run according to QC criteria. ")
     else:  
         if (ok_r1): 
             comm_r1 = "OK"
@@ -577,8 +577,10 @@ def generate_report(proj_conf):
         delivery_type = "Partial delivery. "
         fail_comm = "Samples " + ", ".join(low_samples) + " yielded fewer sequences than expected. These will be re-run unless this was already a re-run and the total yield is now sufficient. "
     else: fail_comm = ""
-    ok_comm = "Samples " + ", ".join(ok_samples) + " yielded the expected number of sequences or more. "
-    
+
+    if low_yield: ok_comm = "Samples " + ", ".join(ok_samples) + " yielded the expected number of sequences or more. "
+    else: ok_comm = "All samples yielded the expected number of sequences or more. "
+
     #comm = delivery_type + d['summary'] + fail_comm + ok_comm
     comm = d['summary'] + fail_comm + ok_comm
     d.update(summary = comm)

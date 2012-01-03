@@ -65,7 +65,7 @@ for n in sorted(sample_names):
 
     oF.write("cd tophat_out_" + n + "\n")
     # oF.write("samtools view -bT concat.fa.fa -o accepted_hits_" + n + ".bam " + "accepted_hits.sam\n")
-    oF.write("mv accepted_hits.bam accepted_hits_" + n + ".bam")
+    oF.write("mv accepted_hits.bam accepted_hits_" + n + ".bam\n")
     oF.write("java -Xmx2g -jar /home/lilia/glob/src/picard-tools-1.29/SortSam.jar INPUT=accepted_hits_" + n + ".bam OUTPUT=accepted_hits_sorted_" + n + ".bam SORT\
 _ORDER=coordinate VALIDATION_STRINGENCY=LENIENT\n")
     oF.write("java -Xmx2g -jar /home/lilia/glob/src/picard-tools-1.29/MarkDuplicates.jar INPUT=accepted_hits_sorted_" + n + ".bam OUTPUT=accepted_hits_sorted_dup\
@@ -81,8 +81,8 @@ Removed_" + n + ".bam ASSUME_SORTED=true REMOVE_DUPLICATES=true METRICS_FILE=" +
     oF.write("cufflinks -p 8 -G " + annopath + " -o cufflinks_out_" + n + " accepted_hits_sorted_dupRemoved_col34Sorted_" + n + ".sam\n")
 
     # Clean up
-    oF.write("rm accepted_hits_sorted_" + n + ".bam")
-    oF.write("rm accepted_hits_sorted_dupRemoved_prehtseq_" + n + ".sam")
-    oF.write("rm accepted_hits_sorted_dupRemoved_col34Sorted_" + n + ".sam")
+    oF.write("rm accepted_hits_sorted_" + n + ".bam\n")
+    oF.write("rm accepted_hits_sorted_dupRemoved_prehtseq_" + n + ".sam\n")
+    oF.write("rm accepted_hits_sorted_dupRemoved_col34Sorted_" + n + ".sam\n")
 
     oF.close()
