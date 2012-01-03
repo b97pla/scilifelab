@@ -504,6 +504,9 @@ def generate_report(proj_conf):
     
     bc_multiplier = 0.75 # Should move to cfg file
 
+    ok_samples = []
+    low_samples = []
+
     for l in proj_conf['lanes']:
         bc_file_name = os.path.join(proj_conf['analysis_dir'], proj_conf['flowcell'], '_'.join([l['lane'], fc_date, fc_name, "barcode"]), '_'.join([l['lane'], fc_date, fc_name, "bc.metrics"]))
         try:
@@ -543,11 +546,14 @@ def generate_report(proj_conf):
             if not k.isdigit(): pass
             else: 
                 if sample_name.has_key(int(k)): samp_count[sample_name[int(k)]] =  bc_count[k]
+
         for k in sorted(samp_count.keys()):
             comment = ''
             if int(samp_count[k].split('(')[0]) < target_yield_per_sample: 
                 comment = 'Low'
                 low_yield = True
+                low_samples.append(k)
+            else: ok_samples.append(k)
             tab.add_row([l['lane'], k, samp_count[k], comment])
         
         if is_multiplexed:
@@ -563,10 +569,20 @@ def generate_report(proj_conf):
                 if int (bc_count[k].split('(')[0]) < bc_multiplier * target_yield_per_lane: comment = 'Low' 
                 tab.add_row([l['lane'], "Non-multiplexed lane", bc_count[k], comment])
 
+    # if low_yield:
+    #    comm = d['summary'] +  " Some samples had low yields."
+    #    d.update(summary = comm)
+    delivery_type = "Final delivery. "
     if low_yield:
-        comm = d['summary'] +  " Some samples had low yields."
-        d.update(summary = comm)
+        delivery_type = "Partial delivery. "
+        fail_comm = "Samples " + ", ".join(low_samples) + " yielded fewer sequences than expected. These will be re-run unless this was already a re-run and the total yield is now sufficient. "
+    else: fail_comm = ""
+    ok_comm = "Samples " + ", ".join(ok_samples) + " yielded the expected number of sequences or more. "
     
+    #comm = delivery_type + d['summary'] + fail_comm + ok_comm
+    comm = d['summary'] + fail_comm + ok_comm
+    d.update(summary = comm)
+
     d.update(yieldtable=tab.draw())
     return d
 
