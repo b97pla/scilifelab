@@ -39,7 +39,7 @@ available = set()
 
 for entry in projdata:
     available.add(entry['description'].split(',')[-1].strip())
-    if unicode(entry['description'].split(',')[-1].strip().lower(),'utf-8')==unicode(projid,'utf-8'): 
+    if entry['description'].split(',')[-1].strip().lower()==projid: 
         matching.add(entry['lane'])
     elif entry.has_key('multiplex'):
             for sample in entry['multiplex']:

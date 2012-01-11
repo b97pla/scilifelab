@@ -60,7 +60,9 @@ Sequence yield per sample
 
 ${yieldtable}
 
-"Unmatched" gives the number of sequences that could not be reliably assigned to a specific barcode sequence (and thus to a specific sample) in a multiplexed run. There is always a certain amount of unmatched reads. 
+"Rerun lane" means that the samples were in a 'mixed' rerun lane containing samples from different projects. In these cases the expected number of sequences will be less than the expected number for a whole lane. 
+
+"Unmatched" gives the number of sequences that could not be reliably assigned to a specific barcode sequence (and thus to a specific sample) in a multiplexed run. There is always a certain amount of unmatched reads. In a rerun lane, the unmatched number will not be in proportion to the number of sequences for your specific samples, so the number will seem higher than it actually is.
 
 "High" means that the number of unmatched sequences (see above) was higher than expected. 
 
@@ -524,6 +526,7 @@ def generate_report(proj_conf):
         target_yield_per_sample = bc_multiplier * target_yield_per_lane / no_samples
         sample_name = {}
         is_multiplexed = True
+        is_rerun = False
         # Check here for each sample if it belongs to the project
         for entry in run_info:
             if entry['lane'] == l['lane']:
@@ -533,10 +536,13 @@ def generate_report(proj_conf):
                 if entry.has_key('multiplex'):
                     for sample in entry['multiplex']:
                         if sample.has_key('description'):
-                            if is_main_proj: log.info('Skipping sample ' + sample['name'] + ' in lane ' + l['lane'])
+                            if is_main_proj: 
+                                log.info('Rerun lane: skipping sample ' + sample['name'] + ' in lane ' + l['lane'] + ' which does not belong to the current project')
+                                is_rerun=True
                             else:
                                 if sample['description'].strip() == proj_conf['id']:
                                     sample_name[sample['barcode_id']]=sample['name']
+                                is_rerun = True
                         elif is_main_proj: 
                             sample_name[sample['barcode_id']]=sample['name']
                 else: is_multiplexed = False
@@ -550,23 +556,25 @@ def generate_report(proj_conf):
         for k in sorted(samp_count.keys()):
             comment = ''
             if int(samp_count[k].split('(')[0]) < target_yield_per_sample: 
-                comment = 'Low'
+                comment = 'Low. '
                 low_yield = True
                 low_samples.append(k)
             else: ok_samples.append(k)
+            if is_rerun: comment += '(rerun lane)'
             tab.add_row([l['lane'], k, samp_count[k], comment])
         
         if is_multiplexed:
+            comment = ''
             try:
-                comment = ''
-                if int (bc_count['unmatched'].split('(')[0]) > target_yield_per_sample: comment = 'High'
+                if int (bc_count['unmatched'].split('(')[0]) > target_yield_per_sample: comment = 'High.'
+                if is_rerun: comment += '(rerun lane)'
                 tab.add_row([l['lane'], 'unmatched', bc_count['unmatched'], comment])
             except:
                 log.warning('Unsufficient or no barcode metrics for lane')
         else:
+            comment = ''
             for k in bc_count.keys():
-                comment = ''
-                if int (bc_count[k].split('(')[0]) < bc_multiplier * target_yield_per_lane: comment = 'Low' 
+                if int (bc_count[k].split('(')[0]) < bc_multiplier * target_yield_per_lane: comment = 'Low.' 
                 tab.add_row([l['lane'], "Non-multiplexed lane", bc_count[k], comment])
 
     # if low_yield:
@@ -578,7 +586,9 @@ def generate_report(proj_conf):
         fail_comm = "Samples " + ", ".join(low_samples) + " yielded fewer sequences than expected. These will be re-run unless this was already a re-run and the total yield is now sufficient. "
     else: fail_comm = ""
 
-    if low_yield: ok_comm = "Samples " + ", ".join(ok_samples) + " yielded the expected number of sequences or more. "
+    if low_yield: 
+        if len(ok_samples)>0: ok_comm = "Samples " + ", ".join(ok_samples) + " yielded the expected number of sequences or more. "
+        else: ok_comm = ""
     else: ok_comm = "All samples yielded the expected number of sequences or more. "
 
     #comm = delivery_type + d['summary'] + fail_comm + ok_comm

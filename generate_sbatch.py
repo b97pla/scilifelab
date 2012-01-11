@@ -2,12 +2,17 @@ import sys
 import os
 
 if len(sys.argv) < 4:
-    print "USAGE: python " + sys.argv[0] + " <path to folder with FASTQ files> <path to reference genome> <path to annotation GTF>"
+    print "USAGE: python " + sys.argv[0] + " <path to folder with FASTQ files> <path to Bowtie index> <path to annotation GTF>"
     sys.exit(0)
+
+old = False
 
 fpath = sys.argv[1]
 refpath = sys.argv[2]
 annopath = sys.argv[3]
+if len(sys.argv) == 5: 
+    if sys.argv[4] == "-o"
+    old = True
 flist = os.listdir(fpath)
 
 sample_names = []
@@ -17,7 +22,8 @@ for fname in flist:
     if 'fastq' not in fname: continue 
     read = fname.split("_")[-1]
     # print read
-    tag = fname.split("_")[3]
+    tag = "_".join(fname.split("_")[3:-2])
+    # 2_date_fcid_sample_1.fastq
     if not tag in sample_names: sample_names.append(tag)
     if read == "1.fastq": read1forsample[tag]=fname
     if read == "2.fastq": read2forsample[tag]=fname
@@ -50,7 +56,8 @@ for n in sorted(sample_names):
 
     oF.write("module load bioinfo-tools\n")
     oF.write("module load samtools/0.1.9\n")
-    oF.write("module load tophat/1.3.3\n")
+    if old: oF.write("module load tophat/1.0.14\n")
+    else: oF.write("module load tophat/1.3.3\n")
     oF.write("module load cufflinks/1.2.1\n")
     oF.write("module load htseq/0.5.1\n")
 
@@ -64,8 +71,8 @@ for n in sorted(sample_names):
     # Samtools -> Picard
 
     oF.write("cd tophat_out_" + n + "\n")
-    # oF.write("samtools view -bT concat.fa.fa -o accepted_hits_" + n + ".bam " + "accepted_hits.sam\n")
-    oF.write("mv accepted_hits.bam accepted_hits_" + n + ".bam\n")
+    if old: oF.write("samtools view -bT concat.fa.fa -o accepted_hits_" + n + ".bam " + "accepted_hits.sam\n")
+    else: oF.write("mv accepted_hits.bam accepted_hits_" + n + ".bam\n")
     oF.write("java -Xmx2g -jar /home/lilia/glob/src/picard-tools-1.29/SortSam.jar INPUT=accepted_hits_" + n + ".bam OUTPUT=accepted_hits_sorted_" + n + ".bam SORT\
 _ORDER=coordinate VALIDATION_STRINGENCY=LENIENT\n")
     oF.write("java -Xmx2g -jar /home/lilia/glob/src/picard-tools-1.29/MarkDuplicates.jar INPUT=accepted_hits_sorted_" + n + ".bam OUTPUT=accepted_hits_sorted_dup\
