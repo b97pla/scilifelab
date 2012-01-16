@@ -2,7 +2,7 @@ import sys
 import os
 
 if len(sys.argv) < 4:
-    print "USAGE: python " + sys.argv[0] + " <path to folder with FASTQ files> <path to Bowtie index> <path to annotation GTF>"
+    print "USAGE: python " + sys.argv[0] + " <path to folder with FASTQ files> <path to Bowtie index> <path to annotation GTF> [-o] (for using TopHat 1.0.14)"
     sys.exit(0)
 
 old = False
@@ -11,8 +11,7 @@ fpath = sys.argv[1]
 refpath = sys.argv[2]
 annopath = sys.argv[3]
 if len(sys.argv) == 5: 
-    if sys.argv[4] == "-o"
-    old = True
+    if sys.argv[4] == "-o": old = True
 flist = os.listdir(fpath)
 
 sample_names = []

@@ -91,13 +91,16 @@ for m in sorted(matching):
 
 os.chdir(base_path + runname )
 
+
 for d in dirs_to_process:
-    #dirpath = d + "_barcode/mm2"
+    #dirpath = d + "_barcode/2_mismatch"
     dirpath = d + "_barcode"
-    
+   
     if not os.path.exists(dirpath):
         print "Could not find directory", dirpath 
+        print "Standing in ", os.getcwd()
         sys.exit(0)
+
     os.chdir(dirpath)
     bcname = d + "_bc.metrics"
     #bcname = "bc.metrics"
@@ -188,6 +191,7 @@ for d in dirs_to_process:
             print "Will move from ", source, "to", dest
 
     os.chdir('..')
+    #os.chdir('../..')
 
 if not dry: 
     logfile.close()

@@ -34,7 +34,7 @@ from mako.template import Template
 from mako.lookup import TemplateLookup
 
 from bcbio.log import create_log_handler
-from bcbio.pipeline import log
+# from bcbio.pipeline import log
 import bcbio.templates.mako2rst as m2r
 from texttable import Texttable
 
@@ -42,7 +42,7 @@ from bcbio.google import bc_metrics
 from bcbio.solexa.flowcell import get_flowcell_info 
 import read_illumina_summary_xml as summ
 from bcbio.pipeline.config_loader import load_config
-from bcbio.scilifelab.google.uppnex_id import get_project_uppnex_id
+from bcbio.scilifelab.google.project_metadata import ProjectMetaData
 
 TEMPLATE="""\
 Delivery report for ${project_id}
@@ -173,8 +173,7 @@ def main(flowcell_id, archive_dir, analysis_dir, config_file):
     with open(fp) as in_handle:
         run_info = yaml.load(in_handle)
     if config_file:
-        with open(config_file) as in_handle:
-            config = yaml.load(in_handle)
+        config = load_config(config_file)
     else:
         config = {}
     project_ids = dict()
@@ -197,7 +196,7 @@ def main(flowcell_id, archive_dir, analysis_dir, config_file):
     for k in project_ids.keys():
         lanes = [x['lane'] for x in project_ids[k]]
         proj_file_tag = k + "_" + get_flowcell_info(flowcell_id)[1] + get_flowcell_info(flowcell_id)[0][0]
-        log.info("saw project %s in lanes %s" %( k, ", ".join(lanes)))
+        print("INFO: saw project %s in lanes %s" %( k, ", ".join(lanes)))
         sphinx_defs.append("('%s', '%s_delivery.tex', 'Raw data delivery note', u'SciLifeLab Stockholm', 'howto'),\n"  % (proj_file_tag, proj_file_tag))
         projectfile = "%s.mako" % (proj_file_tag) 
         fp = open(projectfile, "w")
@@ -221,7 +220,7 @@ def main(flowcell_id, archive_dir, analysis_dir, config_file):
 
     sphinxconf = os.path.join(os.getcwd(), "conf.py")
     if not os.path.exists(sphinxconf):
-        log.warn("no sphinx configuration file conf.py found: you have to edit conf.py yourself!")
+        print("WARNING: no sphinx configuration file conf.py found: you have to edit conf.py yourself!")
     else:
         fp = open(sphinxconf)
         lines = fp.readlines()
@@ -241,6 +240,25 @@ def main(flowcell_id, archive_dir, analysis_dir, config_file):
 
 
 def generate_report(proj_conf):
+    
+    #######
+    ### Metadata fetched from the 'Genomics project list' on Google Docs
+    ###
+    uppnex_proj = ''
+    try:
+        proj_data = ProjectMetaData(proj_conf['id'], proj_conf['config'])
+        uppnex_proj = proj_data.uppnex_id
+        project_id = proj_data.project_id
+        queue_date = proj_data.queue_date
+        no_samples = proj_data.no_samples
+        lanes_plates = proj_data.lanes_plates
+        min_reads_per_sample = proj_data.min_reads_per_sample
+        customer_reference = proj_data.customer_reference
+        application = proj_data.application
+        no_finished_samples = proj_data.no_finished_samples
+    except:
+        print("WARNING: Could not find entry in Google Docs")
+ 
     d = { 
         'project_id' : proj_conf['id'],
         'latex_opt' : "",
@@ -261,8 +279,7 @@ def generate_report(proj_conf):
 
     ## General info table
     tab = Texttable()
-    uppnex_proj = get_project_uppnex_id(proj_conf['id'], proj_conf['config'])
-    if uppnex_proj[0:4] != 'b201':
+    if not uppnex_proj or len(uppnex_proj) < 4 or uppnex_proj[0:4] != 'b201':
         uppnex_proj = "b201YXXX"
     
     run_name_comp = proj_conf['flowcell'].split('_')
@@ -489,7 +506,7 @@ def generate_report(proj_conf):
     run_info_yaml = os.path.join(proj_conf['archive_dir'],proj_conf['flowcell'],"run_info.yaml")
 
     if not os.path.exists(run_info_yaml):
-        log.warn("Could not find required run_info.yaml configuration file at '%s'" % run_info_yaml)
+        print("WARNING: could not find required run_info.yaml configuration file at '%s'" % run_info_yaml)
         return
 
     #with open(run_info_yaml) as in_handle:
@@ -521,7 +538,7 @@ def generate_report(proj_conf):
             bc_count[c[0]]=c[1] + ' (~' + str (int ( round (float(c[1])/1000000) ) ) + " million)"
         no_samples = len(bc_count)
         if no_samples == 0:
-            log.warn("Did not find a BC metrics file... Skipping lane %s for %s" %(l['lane'], proj_conf['id']))
+            print("WARNING: did not find a BC metrics file... Skipping lane %s for %s" %(l['lane'], proj_conf['id']))
             continue
         target_yield_per_sample = bc_multiplier * target_yield_per_lane / no_samples
         sample_name = {}
@@ -537,7 +554,7 @@ def generate_report(proj_conf):
                     for sample in entry['multiplex']:
                         if sample.has_key('description'):
                             if is_main_proj: 
-                                log.info('Rerun lane: skipping sample ' + sample['name'] + ' in lane ' + l['lane'] + ' which does not belong to the current project')
+                                print('INFO: rerun lane: skipping sample ' + sample['name'] + ' in lane ' + l['lane'] + ' which does not belong to the current project')
                                 is_rerun=True
                             else:
                                 if sample['description'].strip() == proj_conf['id']:
@@ -570,7 +587,7 @@ def generate_report(proj_conf):
                 if is_rerun: comment += '(rerun lane)'
                 tab.add_row([l['lane'], 'unmatched', bc_count['unmatched'], comment])
             except:
-                log.warning('Unsufficient or no barcode metrics for lane')
+                print('WARNING: insufficient or no barcode metrics for lane')
         else:
             comment = ''
             for k in bc_count.keys():
