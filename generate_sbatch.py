@@ -6,7 +6,7 @@ if len(sys.argv) < 4:
     sys.exit(0)
 
 old = False
-
+#
 fpath = sys.argv[1]
 refpath = sys.argv[2]
 annopath = sys.argv[3]
