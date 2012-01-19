@@ -287,12 +287,14 @@ def generate_report(proj_conf):
     instr_id = run_name_comp[1]
     fc_name, fc_date = get_flowcell_info(proj_conf['flowcell'])
     tab.add_row(["Run name:", proj_conf['flowcell']])
+    del_base = "/bubo/proj/"
+    if uppnex_proj[0:5]=='b2012': del_base = "/lynx/cvol/v1/"
     tab.add_rows([["Project id:", proj_conf['id']], 
                   ["Date:", fc_date],
                   ["Instrument ID:", instr_id],
                   ["Flow cell ID:", fc_name],
                   ["Uppnex project:", uppnex_proj],
-                  ["Delivery directory:", "/bubo/proj/" + uppnex_proj + "/INBOX/20" + simple_run_name + "_hiseq2000"]])
+                  ["Delivery directory:", "" + uppnex_proj + "/INBOX/20" + simple_run_name + "_hiseq2000"]])
     d.update(infotable=tab.draw())
     
     ## Lane table
