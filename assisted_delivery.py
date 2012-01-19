@@ -9,10 +9,9 @@ if len(sys.argv) < 5:
     print "USAGE: python " + sys.argv[0] + " <project ID> <run name> <UPPMAX project> <Dry run, y/n>"
     sys.exit(0)
 
-#base_path = '/bubo/proj/a2010002/nobackup/romanvg/'
-#base_path = '/proj/a2010002/nobackup/pontus/'
 base_path = '/proj/a2010002/nobackup/illumina/'
 base_yaml_path = '/proj/a2010002/archive/'
+
 dry = True
 
 projid = sys.argv[1].lower()
@@ -67,7 +66,8 @@ flow_cell = temp[3][0] # A or B
 created_dir_name = "20" + start_date + flow_cell + "_hiseq2000"
 
 #del_path = '/bubo/proj/' +  uppmaxproj + "/INBOX/" + created_dir_name + "/2_mm_demultiplexed"
-del_path = '/bubo/proj/' +  uppmaxproj + "/INBOX/" + created_dir_name
+if uppmaxproj[0:5] == 'b2012': del_path = '/lynx/cvol/v1/' + uppmaxproj + "/INBOX/" + created_dir_name
+else: del_path = '/bubo/proj/' +  uppmaxproj + "/INBOX/" + created_dir_name
 
 print "Will create a delivery directory", del_path       
 if not dry: 
