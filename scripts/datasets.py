@@ -7,6 +7,7 @@ from operator import itemgetter
 import datetime
 from collections import defaultdict
 import numpy as np
+import StringIO
 
 
 def convert_human_readable_to_numbers(file_size):
@@ -32,7 +33,7 @@ def get_formatted_data():
     """Returns the data, processed a bit to be more regular.
     """
     # This of course need to be pointed to wherever the log file is available.
-    with open("../../sizegraphing/datasets_sizes.log") as data_f:
+    with open("/Users/valentinesvensson/Documents/sizegraphing/datasets_sizes.log") as data_f:
         all_data = data_f.read()
 
     data_lines = all_data.splitlines()
@@ -134,7 +135,20 @@ def trim_data(grouped_data, trim=True):
     return sorted_data
 
 
-def file_size_over_time_plot(plot_type="bar", given_machine=None, trim=True):
+def get_list_of_machines():
+    """Returns a list of machine serial numbers found in the logs.
+    """
+    data = get_formatted_data()
+    data = [list(g) for k, g in itertools.groupby(data, itemgetter(3))]
+    data = trim_data(data)
+    machines = set([])
+    for proj in data:
+        machines.add(proj[2])
+    return list(machines)
+
+
+def file_size_over_time_plot(plot_type="bar", given_machine=None, trim=True, \
+start_date=None, return_svg_data=False):
     """Makes a plot of the amount of space the project files took up at
     specific times.
     """
@@ -146,6 +160,8 @@ def file_size_over_time_plot(plot_type="bar", given_machine=None, trim=True):
     grouped_data = [list(g) for k, g in itertools.groupby(data, itemgetter(3))]
 
     sorted_data = trim_data(grouped_data, trim)
+    if start_date is not None:
+        sorted_data = [p for p in sorted_data if p[1][0] > start_date]
 
     # Add the additional days to the project tp use when plotting
     for project in sorted_data:
@@ -200,37 +216,86 @@ def file_size_over_time_plot(plot_type="bar", given_machine=None, trim=True):
         plt.plot(daylist, stacklist)
 
     # fig.savefig("../sizegraphing/stacked_sizes.pdf")
-    plt.show()
+    if return_svg_data:
+        fig.set_size_inches(10, 2)
+        svg_data = get_svg_data(fig)
+        return svg_data
+    else:
+        plt.show()
 
 
-def get_average_size_per_project(plot=False):
+def get_svg_data(fig):
+    imgdata = StringIO.StringIO()
+    fig.savefig(imgdata, format='svg')
+    imgdata.seek(0)
+
+    svg_dta = imgdata.buf
+
+    return svg_dta
+
+
+def get_average_size_per_project(plot=False, return_data=False, start_date=None):
     """Returs the average size of a project when it is finished. In Gigabytes.
     """
     data = get_formatted_data()
     data = sorted(data, key=itemgetter(-1))
     grouped_data = [list(g) for k, g in itertools.groupby(data, itemgetter(-1))]
     sorted_data = trim_data(grouped_data)
-    final_sizes = []
-    for project in sorted_data:
-        final_sizes.append(project[0][-1])
-    final_sizes = np.array([float(s) for s in final_sizes if s > 0. * 1024 ** 3])
+    special_cases = ["0201_BB06GNABXX", "0207_BC00J3ABXX", \
+    "0226_AC019MACXX", "0236_AC043HACXX", "0227_BD030GACXX"]
+    sorted_data = [p for p in sorted_data if p[-1] not in special_cases]
+    if start_date is not None:
+        sorted_data = [p for p in sorted_data if p[1][0] > start_date]
+    B_data = [p for p in sorted_data if p[-1][-3] == "B"]
+    C_data = [p for p in sorted_data if p[-1][-3] == "C"]
+    B_final_sizes = []
+    C_final_sizes = []
+    for project in B_data:
+        B_final_sizes.append(project[0][-1])
+    for project in C_data:
+        C_final_sizes.append(project[0][-1])
 
-    average = np.mean(final_sizes / (1024 ** 3))
+    B_final_sizes = np.array([float(s) for s in B_final_sizes if 10000. * 1024 ** 3 > s > 100. * 1024 ** 3])
+    C_final_sizes = np.array([float(s) for s in C_final_sizes if s > 100. * 1024 ** 3])
+
+    average = [np.mean(B_final_sizes / (1024 ** 3)), np.mean(C_final_sizes / (1024 ** 3))]
 
     if plot:
-        plt.scatter(final_sizes / (1024 ** 3), [0] * len(final_sizes), marker='+')
-        plt.plot(average, 0, 'ro')
+        plt.plot(B_final_sizes / (1024 ** 3), [0] * len(B_final_sizes), 'b+')
+        plt.plot(C_final_sizes / (1024 ** 3), [1] * len(C_final_sizes), 'g+')
+        plt.plot(average, [0, 1], 'ro')
+        x1, x2, y1, y2 = plt.axis()
+        plt.axis((x1, x2, -1, 2))
+        plt.yticks([0, 1], ('v1/v1.5', 'v3'))
         plt.show()
 
+    if return_data:
+        return (B_data, C_data)
+
     return average
+
     # Gives odd results, might need to consider the following cases:
     # * Single end
     # * Paired end
     # * Failed run
     # * Version 3 flowcell
 
+    # According to Anna, in the beginning of using version 3 flowcell there
+    # were some troubles getting as much DNA in a run as specified.
+    # Looking only at Q4 2011 should give results according to spec and might
+    # be a good sanity check to see if the data analysis is good.
 
-def numer_of_projects_growth_plot():
+    ## Update: the final sizes are equally distributed when looking at only
+    ## later dates, there are less outliers though.
+
+    # (Also, during the v1/v1.5 times, it was possible to put twice
+    # as much as specified on the flowcell, and this was something one
+    # generally tried to do; this could be one reason there is twice as much
+    # data than expected at the end of a v1(.5) run. (But not 3-7 times as
+    # much data, as some outliers are.))
+
+
+def number_of_projects_growth_plot():
     """Plots the growth of the number of projects over time.
     """
     data = get_formatted_data()
@@ -246,9 +311,65 @@ def numer_of_projects_growth_plot():
     plt.show()
 
 
+def get_total_number_of_gigabasepairs(plot=False):
+    data = get_formatted_data()
+    data = sorted(data, key=itemgetter(-1))
+    grouped_data = [list(g) for k, g in itertools.groupby(data, itemgetter(-1))]
+    sorted_data = trim_data(grouped_data)
+    sorted_data = sorted(sorted_data, key=lambda flowcell: flowcell[1][0] + datetime.timedelta(days=len(flowcell[0])))
+
+    # The data points in sorted_data are in terms of flowcells.
+    # (Each run consists of two flowcells)
+    # Each flowcell consists of 8 lanes
+    # A lane yields either 12 or 28.8 Gbp depending on flowcell version.
+
+    days = []
+    total_number_of_Gbps = []
+    for flowcell in sorted_data:
+        days.append(flowcell[1][0] + datetime.timedelta(days=len(flowcell[0])))
+        flowcell_Gbps = 8 * 28.8 if flowcell[-1][-3] == "C" else 8 * 12.0
+        if len(total_number_of_Gbps) == 0:
+            total_number_of_Gbps.append(flowcell_Gbps)
+        else:
+            total_number_of_Gbps.append(flowcell_Gbps + total_number_of_Gbps[-1])
+
+    if plot:
+        plt.fill_between(days, total_number_of_Gbps, linewidth=2)
+        plt.ylabel("Total number of Gigabasepairs")
+        plt.show()
+
+    return total_number_of_Gbps[-1]
+
+
+def get_total_number_of_gigabytes(plot=False):
+    """In this case 'gigabytes' refers to 10^9 bytes
+    """
+    data = get_formatted_data()
+    data = sorted(data, key=lambda l: l[-1])
+    grouped_data = [list(g) for k, g in itertools.groupby(data, itemgetter(-1))]
+    sorted_data = trim_data(grouped_data)
+    sorted_data = sorted(sorted_data, key=lambda flowcell: flowcell[1][0] + datetime.timedelta(days=len(flowcell[0])))
+
+    days = []
+    total_number_of_gbs = []
+    for flowcell in sorted_data:
+        days.append(flowcell[1][0] + datetime.timedelta(days=len(flowcell[0])))
+        flowcell_gbs = float(flowcell[0][-1]) / 1000000000.0
+        if len(total_number_of_gbs) == 0:
+            total_number_of_gbs.append(flowcell_gbs)
+        else:
+            total_number_of_gbs.append(flowcell_gbs + total_number_of_gbs[-1])
+
+    if plot:
+        plt.fill_between(days, total_number_of_gbs, linewidth=2)
+        plt.ylabel("Total number of 10^9 bytes")
+        plt.show()
+
+    return total_number_of_gbs[-1]
+
 ## TODO: Make a plot which is easy to grasp at a glance.
 ## TODO: Get average size per project.
-#! TODO: Get total number of basepairs generated since start.
-#! TODO: Get total number of indexes. (Requires access to samplesheet files!)
-#^ (TODO: Also make a graph of 'number of basepairs over time.')
+## TODO: Get total number of basepairs generated since start.
+## (TODO: Also make a graph of 'number of basepairs over time.')
 ## (TODO: Graph total number of projects over time.)
+#! TODO: Get total number of indexes. (Requires access to samplesheet files!)
