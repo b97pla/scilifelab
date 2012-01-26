@@ -246,8 +246,8 @@ def generate_report(proj_conf):
     ###
     uppnex_proj = ''
     try:
-        proj_data = ProjectMetaData(proj_conf['id'], proj_conf['config'])
-        uppnex_proj = proj_data.uppnex_id
+    	proj_data = ProjectMetaData(proj_conf['id'], proj_conf['config'])
+    	uppnex_proj = proj_data.uppnex_id
         project_id = proj_data.project_id
         queue_date = proj_data.queue_date
         no_samples = proj_data.no_samples
@@ -258,7 +258,7 @@ def generate_report(proj_conf):
         no_finished_samples = proj_data.no_finished_samples
     except:
         print("WARNING: Could not find entry in Google Docs")
- 
+
     d = { 
         'project_id' : proj_conf['id'],
         'latex_opt' : "",
@@ -294,7 +294,7 @@ def generate_report(proj_conf):
                   ["Instrument ID:", instr_id],
                   ["Flow cell ID:", fc_name],
                   ["Uppnex project:", uppnex_proj],
-                  ["Delivery directory:", "" + uppnex_proj + "/INBOX/20" + simple_run_name + "_hiseq2000"]])
+                  ["Delivery directory:", del_base + uppnex_proj + "/INBOX/20" + simple_run_name + "_hiseq2000"]])
     d.update(infotable=tab.draw())
     
     ## Lane table
