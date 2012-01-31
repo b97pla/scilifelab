@@ -97,6 +97,6 @@ Removed_" + n + ".bam ASSUME_SORTED=true REMOVE_DUPLICATES=true METRICS_FILE=" +
     # Clean up
     oF.write("rm accepted_hits_sorted_" + n + ".bam\n")
     oF.write("rm accepted_hits_sorted_dupRemoved_prehtseq_" + n + ".sam\n")
-    oF.write("rm accepted_hits_sorted_dupRemoved_col34Sorted_" + n + ".sam\n")
+    # oF.write("rm accepted_hits_sorted_dupRemoved_col34Sorted_" + n + ".sam\n")
 
     oF.close()
