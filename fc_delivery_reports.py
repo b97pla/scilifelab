@@ -287,8 +287,8 @@ def generate_report(proj_conf):
     instr_id = run_name_comp[1]
     fc_name, fc_date = get_flowcell_info(proj_conf['flowcell'])
     tab.add_row(["Run name:", proj_conf['flowcell']])
-    del_base = "/bubo/proj/"
-    if uppnex_proj[0:5]=='b2012': del_base = "/lynx/cvol/v1/"
+    del_base = "/proj/"
+    
     tab.add_rows([["Project id:", proj_conf['id']], 
                   ["Date:", fc_date],
                   ["Instrument ID:", instr_id],
