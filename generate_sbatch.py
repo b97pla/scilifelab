@@ -86,7 +86,7 @@ Removed_" + n + ".bam ASSUME_SORTED=true REMOVE_DUPLICATES=true METRICS_FILE=" +
     # To use indexed BAM file in Cufflinks
 
     oF.write("samtools index accepted_hits_sorted_dupRemoved_" + n + ".bam\n")
-    oF.write("cufflinks -p -8 -G " + annopath + " -o cufflinks_out_" + n + " accepted_hits_sorted_dupRemoved_" + n + ".bam\n")
+    oF.write("cufflinks -p 8 -G " + annopath + " -o cufflinks_out_" + n + " accepted_hits_sorted_dupRemoved_" + n + ".bam\n")
     
     # To use col 3-4 sorted SAM file in Cufflinks
 
