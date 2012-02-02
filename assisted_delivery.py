@@ -65,9 +65,9 @@ start_date = temp[0]
 flow_cell = temp[3][0] # A or B
 created_dir_name = "20" + start_date + flow_cell + "_hiseq2000"
 
-#del_path = '/bubo/proj/' +  uppmaxproj + "/INBOX/" + created_dir_name + "/2_mm_demultiplexed"
-if uppmaxproj[0:5] == 'b2012': del_path = '/lynx/cvol/v1/' + uppmaxproj + "/INBOX/" + created_dir_name
-else: del_path = '/bubo/proj/' +  uppmaxproj + "/INBOX/" + created_dir_name
+del_path = '/proj/' +  uppmaxproj + "/INBOX/" + created_dir_name 
+#if uppmaxproj[0:5] == 'b2012': del_path = '/lynx/cvol/v1/' + uppmaxproj + "/INBOX/" + created_dir_name
+#else: del_path = '/bubo/proj/' +  uppmaxproj + "/INBOX/" + created_dir_name
 
 print "Will create a delivery directory", del_path       
 if not dry: 
