@@ -245,6 +245,7 @@ def generate_report(proj_conf):
     ### Metadata fetched from the 'Genomics project list' on Google Docs
     ###
     uppnex_proj = ''
+    min_reads_per_sample = ''
     try:
     	proj_data = ProjectMetaData(proj_conf['id'], proj_conf['config'])
     	uppnex_proj = proj_data.uppnex_id
@@ -257,7 +258,7 @@ def generate_report(proj_conf):
         application = proj_data.application
         no_finished_samples = proj_data.no_finished_samples
     except:
-        print("WARNING: Could not find entry in Google Docs")
+        print("WARNING: Could not fetch meta data from Google Docs")
 
     d = { 
         'project_id' : proj_conf['id'],
@@ -503,7 +504,7 @@ def generate_report(proj_conf):
     target_yield_per_lane = 143000000.0
     if (options.v1_5_fc):  target_yield_per_lane = 60000000.0
     tab = Texttable()
-    tab.add_row(['Lane','Sample','Number of sequences','Comment'])
+    tab.add_row(['Lane','Sample','Number of sequences','Million sequences ordered','Comment'])
     
     run_info_yaml = os.path.join(proj_conf['archive_dir'],proj_conf['flowcell'],"run_info.yaml")
 
@@ -542,7 +543,15 @@ def generate_report(proj_conf):
         if no_samples == 0:
             print("WARNING: did not find a BC metrics file... Skipping lane %s for %s" %(l['lane'], proj_conf['id']))
             continue
-        target_yield_per_sample = bc_multiplier * target_yield_per_lane / no_samples
+        
+        target_yield_per_sample = ''
+        try:
+            min_reads_per_sample = round(float(str(min_reads_per_sample)))
+            target_yield_per_sample = min_reads_per_sample * 1000000
+        except ValueError:
+            min_reads_per_sample = ''
+            target_yield_per_sample = bc_multiplier * target_yield_per_lane / no_samples
+            
         sample_name = {}
         is_multiplexed = True
         is_rerun = False
@@ -580,21 +589,21 @@ def generate_report(proj_conf):
                 low_samples.append(k)
             else: ok_samples.append(k)
             if is_rerun: comment += '(rerun lane)'
-            tab.add_row([l['lane'], k, samp_count[k], comment])
+            tab.add_row([l['lane'], k, samp_count[k], min_reads_per_sample, comment])
         
         if is_multiplexed:
             comment = ''
             try:
                 if int (bc_count['unmatched'].split('(')[0]) > target_yield_per_sample: comment = 'High.'
                 if is_rerun: comment += '(rerun lane)'
-                tab.add_row([l['lane'], 'unmatched', bc_count['unmatched'], comment])
+                tab.add_row([l['lane'], 'unmatched', bc_count['unmatched'], min_reads_per_sample, comment])
             except:
                 print('WARNING: insufficient or no barcode metrics for lane')
         else:
             comment = ''
             for k in bc_count.keys():
                 if int (bc_count[k].split('(')[0]) < bc_multiplier * target_yield_per_lane: comment = 'Low.' 
-                tab.add_row([l['lane'], "Non-multiplexed lane", bc_count[k], comment])
+                tab.add_row([l['lane'], "Non-multiplexed lane", bc_count[k], min_reads_per_sample, comment])
 
     # if low_yield:
     #    comm = d['summary'] +  " Some samples had low yields."

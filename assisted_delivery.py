@@ -11,6 +11,7 @@ if len(sys.argv) < 5:
 
 base_path = '/proj/a2010002/nobackup/illumina/'
 base_yaml_path = '/proj/a2010002/archive/'
+# base_yaml_path = '/bubo/home/h9/mikaelh/'
 
 dry = True
 
@@ -90,7 +91,6 @@ for m in sorted(matching):
     dirs_to_process.append(d)
 
 os.chdir(base_path + runname )
-
 
 for d in dirs_to_process:
     #dirpath = d + "_barcode/2_mismatch"
@@ -187,12 +187,14 @@ for d in dirs_to_process:
             logfile.flush()
             shutil.copyfile(source, dest)
             #shutil.move(source, dest)
-        else:
             print "Will move from ", source, "to", dest
 
     os.chdir('..')
     #os.chdir('../..')
 
 if not dry: 
+    os.chdir(del_path)
+    logfile.write("Filtering out PhiX ...")
+    os.system('python /bubo/home/h9/mikaelh/scilife-utilities/remove_phix.py')
     logfile.close()
     os.system("chmod -R g+rw " + del_path)
