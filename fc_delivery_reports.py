@@ -44,6 +44,21 @@ import read_illumina_summary_xml as summ
 from bcbio.pipeline.config_loader import load_config
 from bcbio.scilifelab.google.project_metadata import ProjectMetaData
 
+def fixProjName(pname):
+    newname = pname[0].upper()
+    postperiod = False
+    for i in range(1, len(pname)):
+        if pname[i] == ".": 
+            newname += pname[i]
+            postperiod = True
+        elif postperiod: 
+            newname += pname[i].upper()
+            postperiod = False
+        else:
+            newname += pname[i]
+            postperiod = False
+    return newname
+
 TEMPLATE="""\
 Delivery report for ${project_id}
 =================================
@@ -244,6 +259,7 @@ def generate_report(proj_conf):
     ###
     uppnex_proj = ''
     min_reads_per_sample = ''
+    have_metadata = False
     try:
     	proj_data = ProjectMetaData(proj_conf['id'], proj_conf['config'])
     	uppnex_proj = proj_data.uppnex_id
@@ -255,6 +271,7 @@ def generate_report(proj_conf):
         customer_reference = proj_data.customer_reference
         application = proj_data.application
         no_finished_samples = proj_data.no_finished_samples
+        have_metadata = True
     except:
         print("WARNING: Could not fetch meta data from Google Docs")
 
@@ -283,17 +300,20 @@ def generate_report(proj_conf):
     
     run_name_comp = proj_conf['flowcell'].split('_')
     simple_run_name = run_name_comp[0] + run_name_comp[3][0]
+    proj_level_dir = fixProjName(proj_conf['id'])
     instr_id = run_name_comp[1]
     fc_name, fc_date = get_flowcell_info(proj_conf['flowcell'])
     tab.add_row(["Run name:", proj_conf['flowcell']])
     del_base = "/proj/"
+    proj_id = proj_conf['id']
+    if (have_metadata): proj_id += ' (' + customer_reference + ')'
     
-    tab.add_rows([["Project id:", proj_conf['id']], 
+    tab.add_rows([["Project id:", proj_id], 
                   ["Date:", fc_date],
                   ["Instrument ID:", instr_id],
                   ["Flow cell ID:", fc_name],
                   ["Uppnex project:", uppnex_proj],
-                  ["Delivery directory:", del_base + uppnex_proj + "/INBOX/20" + simple_run_name + "_hiseq2000"]])
+                  ["Delivery directory:", del_base + uppnex_proj + "/INBOX/" + proj_level_dir + "/20" + simple_run_name + "_hiseq2000"]])
     d.update(infotable=tab.draw())
     
     ## Lane table
