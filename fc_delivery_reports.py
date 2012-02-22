@@ -82,9 +82,7 @@ with 1% phiX control library, except for lane 8, which has 2% phiX.
 The sequencing runs were performed according to the
 manufacturer's instructions. Base conversion was done using Illumina's OLB v1.9.
 
-Note that the delivered sequences will contain sequences derived
-from the PhiX control library, unless you have specifically requested
-that they be removed. In some cases, the sequences may contain adapter 
+Note that sequences derived from the phiX control library sequences may be present in the delivered files. In the near future, however, phiX sequences will be automatically filtered out from all samples. In some cases, the sequences may contain adapter 
 sequences from the library preparation. This can be due to short fragment lengths
 (in small-RNA-seq experiments) when it is expected, or due to "adapter contamination"
 due to adapter or primer dimerization, which is usually not expected. We do not remove adapters by default, because this 

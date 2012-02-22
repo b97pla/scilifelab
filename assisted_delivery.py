@@ -5,6 +5,21 @@
 import sys, os, yaml, glob, shutil
 from datetime import datetime
 
+def fixProjName(pname):
+    newname = pname[0].upper()
+    postperiod = False
+    for i in range(1, len(pname)):
+        if pname[i] == ".": 
+            newname += pname[i]
+            postperiod = True
+        elif postperiod: 
+            newname += pname[i].upper()
+            postperiod = False
+        else:
+            newname += pname[i]
+            postperiod = False
+    return newname
+
 if len(sys.argv) < 5:
     print "USAGE: python " + sys.argv[0] + " <project ID> <run name> <UPPMAX project> <Dry run, y/n>"
     sys.exit(0)
@@ -20,6 +35,8 @@ runname = sys.argv[2].strip("/")
 yamlfile = base_yaml_path + runname + "/run_info.yaml"
 uppmaxproj = sys.argv[3]
 
+# print "Project name: ", fixProjName(projid)
+
 if sys.argv[4].lower() == "n": dry = False
 
 projdata = yaml.load(open(yamlfile))
@@ -32,7 +49,7 @@ if not dry:
     logfile = open(logfilename, "w")
 
 print "Project to move files for:", projid
-if not dry: logfile.write("Project to move files for:" + "\n" + projid + "\n")
+if not dry: logfile.write("Project to move files for:" + "\n" + fixProjName(projid) + "\n")
 
 matching = set()
 available = set()
@@ -64,15 +81,29 @@ if not dry: logfile.flush()
 temp = runname.split('_')
 start_date = temp[0]
 flow_cell = temp[3][0] # A or B
-created_dir_name = "20" + start_date + flow_cell + "_hiseq2000"
+created_proj_dir_name = fixProjName(projid)
+created_run_dir_name = "20" + start_date + flow_cell + "_hiseq2000"
 
-del_path = '/proj/' +  uppmaxproj + "/INBOX/" + created_dir_name 
+del_path = '/proj/' +  uppmaxproj + "/INBOX/" + created_proj_dir_name 
 #if uppmaxproj[0:5] == 'b2012': del_path = '/lynx/cvol/v1/' + uppmaxproj + "/INBOX/" + created_dir_name
 #else: del_path = '/bubo/proj/' +  uppmaxproj + "/INBOX/" + created_dir_name
 
-print "Will create a delivery directory", del_path       
+print "Will create a top-level project directory", del_path       
 if not dry: 
-    logfile.write("Creating delivery directory:" + del_path + " (or leaving it in place if already present)\n")
+    logfile.write("Creating top-level delivery directory:" + del_path + " (or leaving it in place if already present)\n")
+    if os.path.exists(del_path):
+        print "Directory", del_path, " already exists!"
+    else:
+        try:
+            os.mkdir(del_path)
+        except:
+            print "Could not create delivery directory!"
+            sys.exit(0)
+
+del_path = '/proj/' +  uppmaxproj + "/INBOX/" + created_proj_dir_name + "/" + created_run_dir_name
+print "Will create a run directory", del_path
+if not dry: 
+    logfile.write("Creating run-level delivery directory:" + del_path + " (or leaving it in place if already present)\n")
     if os.path.exists(del_path):
         print "Directory", del_path, " already exists!"
     else:
@@ -194,7 +225,9 @@ for d in dirs_to_process:
 
 if not dry: 
     os.chdir(del_path)
-    logfile.write("Filtering out PhiX ...")
-    os.system('python /bubo/home/h9/mikaelh/scilife-utilities/remove_phix.py')
+    # logfile.write("Filtering out PhiX ...")
+    # os.system('python /bubo/home/h9/mikaelh/scilife-utilities/remove_phix.py')
+    # logfile.write("Filtering finished.")
+    logfile.write("Not removing PhiX.")
     logfile.close()
     os.system("chmod -R g+rw " + del_path)
