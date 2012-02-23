@@ -110,6 +110,8 @@ how to remove PhiX, adapter contamination and mate pair linkers.
 
 We'd like to hear from you! Please notify us when you publish using data produced at Science For Life Laboratory (SciLifeLab) Stockholm. To acknowledge SciLifeLab Stockholm in your article, you can use a sentence like "The authors would like to acknowledge support from Science for Life Laboratory, the national infrastructure SNISS, and Uppmax for providing assistance in massively parallel sequencing and computational infrastructure."
 
+If you have any questions about this delivery, or other issues, you are welcome to email us at genomics_support@scilifelab.se.
+
 General information
 -------------------
 
