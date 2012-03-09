@@ -38,7 +38,8 @@ def main():
         run_info_backup = "%s.orig" % run_info_file
         os.rename(run_info_file,run_info_backup)
         #cl = ["python","%s" % PROCESS_YAML_SCRIPT,run_info_backup,"--barcode_type","illumina","--trim","1","--analysis","Minimal","--out_file",run_info_file]
-        cl = ["python","%s" % PROCESS_YAML_SCRIPT,run_info_backup,"--barcode_type","illumina","--analysis","Minimal","--out_file",run_info_file,"--ascii"]
+        #cl = ["python","%s" % PROCESS_YAML_SCRIPT,run_info_backup,"--barcode_type","illumina","--analysis","Minimal","--out_file",run_info_file,"--ascii"]
+        cl = ["python","%s" % PROCESS_YAML_SCRIPT,run_info_backup,"--analysis","Standard","--out_file",run_info_file,"--ascii"]
         print subprocess.check_output(cl)
         print "\n---------\n"
     

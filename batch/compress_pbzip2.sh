@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH -p node
-#SBATCH -N 1
+#SBATCH -p core
+#SBATCH -n 1
 #SBATCH --mail-user=pontus.larsson@scilifelab.se
-#SBATCH -t 10:00:00
+#SBATCH -t 12:00:00
 #SBATCH -J pbzip2
 #SBATCH -A a2010002
 #SBATCH --mail-type=ALL
@@ -35,7 +35,7 @@ elif [ -f $1 ]
 then
 # In this case, it bypasses core autodetection and sets 16 cores
 # (16 "virtual cores" by HyperThreading):
-    pbzip2 -p16 $1
+    pbzip2 -p2 $1
 else
     usage
 fi

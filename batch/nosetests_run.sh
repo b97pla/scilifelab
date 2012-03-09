@@ -1,7 +1,6 @@
 #!/bin/bash
-#SBATCH -p core
-#SBATCH -n 1
-#SBATCH -t 24:00:00
+#SBATCH -p devel
+#SBATCH -t 59:00
 #SBATCH -J bcbb_testsuite
 #SBATCH -A a2010002
 #SBATCH -D /bubo/home/h27/pontusla/bcbb/nextgen/tests
@@ -10,4 +9,5 @@
 #SBATCH -o nosetest_job.out
 #SBATCH -e nosetest_job.err
 
-nosetests -v -s
+nosetests -v -s $1
+
