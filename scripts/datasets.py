@@ -8,6 +8,7 @@ import datetime
 from collections import defaultdict
 import numpy as np
 import StringIO
+import json
 
 
 def convert_human_readable_to_numbers(file_size):
@@ -16,11 +17,12 @@ def convert_human_readable_to_numbers(file_size):
     dpref = file_size[-1]
     if dpref not in ["K", "M", "G", "T"]:
         return 0
+
     file_size = file_size[:-1]
-    if dpref == 'T':
-        file_size = int(float(file_size) * 1024 * 1024 * 1024 * 1024)
-    elif dpref == 'G':
+    if dpref == 'G':
         file_size = int(float(file_size) * 1024 * 1024 * 1024)
+    elif dpref == 'T':
+        file_size = int(float(file_size) * 1024 * 1024 * 1024 * 1024)
     elif dpref == 'M':
         file_size = int(float(file_size) * 1024 * 1024)
     elif dpref == 'K':
@@ -147,6 +149,34 @@ def get_list_of_machines():
     return list(machines)
 
 
+def dictify(data):
+    ddata = []
+    for data_list in data:
+        ddata.append(list_to_dict(data_list))
+
+    return ddata
+
+
+def convert_to_json():
+    data = get_formatted_data()
+    ddata = dictify(data)
+    get_project = lambda d: d["project"]
+    ddata = sorted(ddata, key=get_project)
+    grouped_data = [list(g) for k, g in itertools.groupby(ddata, get_project)]
+    data_with_fixed_dates = []
+    for group in grouped_data:
+        group = sorted(group, key=lambda d: d["size"])
+        init_date = group[0]["date"]
+        for i, log in enumerate(group):
+            new_date = init_date + datetime.timedelta(i)
+            log["date"] = new_date
+            data_with_fixed_dates.append(log)
+
+    dthandler = lambda obj: obj.isoformat() if isinstance(obj, datetime.datetime) else None
+    with open("sizelog.json", "w") as handle:
+        handle.write(json.dumps(data_with_fixed_dates, default=dthandler))
+
+
 def file_size_over_time_plot(plot_type="bar", given_machine=None, trim=True, \
 start_date=None, return_svg_data=False):
     """Makes a plot of the amount of space the project files took up at
@@ -234,6 +264,19 @@ def get_svg_data(fig):
     return svg_dta
 
 
+def list_to_dict(data_list):
+    """Convert to a dict.
+    """
+    data_dict = {
+    "size": data_list[0],
+    "date": data_list[1],
+    "machine": data_list[2],
+    "project": data_list[3]
+    }
+
+    return data_dict
+
+
 def get_average_size_per_project(plot=False, return_data=False, start_date=None):
     """Returs the average size of a project when it is finished. In Gigabytes.
     """
@@ -307,8 +350,9 @@ def number_of_projects_growth_plot():
     fig = plt.figure()
     ax = fig.add_subplot("111")
     ax.plot(days, range(len(days)))
-    ax.set_title("Total number of projects over time")
-    plt.show()
+    ax.set_title("Total number of projects over time: %i" % (len(days),))
+    # plt.show()
+    plt.savefig("/Users/valentinesvensson/Desktop/projects_over_time.pdf")
 
 
 def get_total_number_of_gigabasepairs(plot=False):
@@ -348,28 +392,36 @@ def get_total_number_of_gigabytes(plot=False):
     data = sorted(data, key=lambda l: l[-1])
     grouped_data = [list(g) for k, g in itertools.groupby(data, itemgetter(-1))]
     sorted_data = trim_data(grouped_data)
-    sorted_data = sorted(sorted_data, key=lambda flowcell: flowcell[1][0] + datetime.timedelta(days=len(flowcell[0])))
+    sorted_data = sorted(sorted_data, \
+        key=lambda flowcell: flowcell[1][0] + \
+        datetime.timedelta(days=len(flowcell[0])))
 
     days = []
     total_number_of_gbs = []
     for flowcell in sorted_data:
         days.append(flowcell[1][0] + datetime.timedelta(days=len(flowcell[0])))
-        flowcell_gbs = float(flowcell[0][-1]) / 1000000000.0
+        flowcell_gbs = float(flowcell[0][-1]) / 1000000000000.0
         if len(total_number_of_gbs) == 0:
             total_number_of_gbs.append(flowcell_gbs)
         else:
             total_number_of_gbs.append(flowcell_gbs + total_number_of_gbs[-1])
 
     if plot:
-        plt.fill_between(days, total_number_of_gbs, linewidth=2)
-        plt.ylabel("Total number of 10^9 bytes")
-        plt.show()
+        textstr = "Total amount at %s: %.2f Tbp" % \
+        (days[-1].strftime("%Y-%m-%d"), total_number_of_gbs[-1])
+        fig = plt.figure()
+        ax = fig.add_subplot("111")
+        ax.fill_between(days, total_number_of_gbs, linewidth=2, alpha=0.6)
+        ax.grid(True)
+        props = dict(boxstyle='round, pad=1', facecolor='white', alpha=0.8)
+        ax.text(0.965, 0.2, textstr, transform=ax.transAxes, fontsize=10, \
+            horizontalalignment="right", bbox=props)
+        plt.title("Cumulative amount of basepairs")
+        plt.ylabel("Terabasepairs")
+        # plt.show()
+        fig.set_size_inches(10, 2.4)
+        plt.subplots_adjust(top=0.80, bottom=0.15)
+        fig.savefig("/Users/valentinesvensson/Desktop/gb_over_time.pdf", \
+        ppi=500, transparent=True)
 
     return total_number_of_gbs[-1]
-
-## TODO: Make a plot which is easy to grasp at a glance.
-## TODO: Get average size per project.
-## TODO: Get total number of basepairs generated since start.
-## (TODO: Also make a graph of 'number of basepairs over time.')
-## (TODO: Graph total number of projects over time.)
-#! TODO: Get total number of indexes. (Requires access to samplesheet files!)
