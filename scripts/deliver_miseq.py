@@ -12,6 +12,7 @@ from optparse import OptionParser
 from hashlib import md5
 
 from bcbio.utils import safe_makedir
+from bcbio.pipeline.config_loader import load_config
 
 DEFAULT_DB = os.path.join("~","log","miseq_transferred.db")
 DEFAULT_LOGFILE = os.path.join("~","log","miseq_deliveries.log")
@@ -19,15 +20,21 @@ DEFAULT_SS_NAME = "SampleSheet.csv"
 DEFAULT_FQ_LOCATION = os.path.join("Data","Intensities","BaseCalls")
 DEFAULT_PROJECT_ROOT = os.path.join("/proj")
 DEFAULT_UPPNEXID_FIELD = "Description"
-DEFAULT_SMTP_HOST = ["smtp.uu.se",25]
+DEFAULT_SMTP_HOST = "smtp.uu.se"
+DEFAULT_SMTP_PORT = 25
+DEFAULT_RECIPIENT = "seqmaster@scilifelab.se"
 
 LOG_NAME = "Miseq Delivery"
 logger2 = logbook.Logger(LOG_NAME)
 
-def main(input_path, transferred_db, run_folder, uppnexid, samplesheet, logfile, email_notification, dryrun):
+def main(input_path, transferred_db, run_folder, uppnexid, samplesheet, logfile, email_notification, config_file, dryrun):
+    
+    config = {}
+    if config_file is not None:
+        config = load_config(config_file)
     
     if logfile is None:
-        logfile = os.path.normpath(os.path.expanduser(DEFAULT_LOGFILE))
+        logfile = config.get("logfile",os.path.normpath(os.path.expanduser(DEFAULT_LOGFILE)))
     
     email_handler = None
     # Don't write dry runs to log
@@ -39,11 +46,13 @@ def main(input_path, transferred_db, run_folder, uppnexid, samplesheet, logfile,
             open(logfile,"w").close()
         handler = logbook.FileHandler(logfile)
         
-        if email_notification is not None:
-            recipients = email_notification.split(",")
-            if len(recipients) > 0:
-                email_handler = logbook.MailHandler("seqmaster@scilifelab.se", recipients, server_addr=DEFAULT_SMTP_HOST,
-                                      format_string=u'''Subject: [MiSeq delivery] {record.extra[run]}\n\n {record.message}''')
+        if email_notification is None:
+            email_notification = config.get("email_recipient",DEFAULT_RECIPIENT)
+        recipients = email_notification.split(",")
+        if len(recipients) > 0:
+            email_handler = logbook.MailHandler("seqmaster@scilifelab.se", recipients, 
+                                                server_addr=[config.get("smtp_host",DEFAULT_SMTP_HOST),config.get("smtp_port",DEFAULT_SMTP_PORT)],
+                                                format_string=u'''Subject: [MiSeq delivery] {record.extra[run]}\n\n {record.message}''')
                 
     with handler.applicationbound():
         
@@ -63,7 +72,7 @@ def main(input_path, transferred_db, run_folder, uppnexid, samplesheet, logfile,
         
         # Parse the supplied db of transferred flowcells, or a db in the default location if present
         if transferred_db is None:
-            transferred_db = os.path.normpath(os.path.expanduser(DEFAULT_DB)) 
+            transferred_db = os.path.normpath(config.get("transfer_db",os.path.expanduser(DEFAULT_DB))) 
             assert os.path.exists(transferred_db), "Could not locate transferred_db (expected %s)" % transferred_db
         
         logger2.info("Transferred db is %s" % transferred_db)
@@ -82,9 +91,9 @@ def main(input_path, transferred_db, run_folder, uppnexid, samplesheet, logfile,
                 # Locate the samplesheet and pasre the uppnex id if necessary
                 if uppnexid is None:
                     local_samplesheet = samplesheet
-                    if local_samplesheet is None: local_samplesheet = os.path.join(input_path,folder,DEFAULT_SS_NAME)
+                    if local_samplesheet is None: local_samplesheet = os.path.join(input_path,folder,config.get("samplesheet_name",DEFAULT_SS_NAME))
                     assert os.path.exists(local_samplesheet), "Could not find expected sample sheet %s" % local_samplesheet
-                    local_uppnexid = _fetch_uppnexid(local_samplesheet)
+                    local_uppnexid = _fetch_uppnexid(local_samplesheet, config.get("uppnexid_field",DEFAULT_UPPNEXID_FIELD))
                     assert local_uppnexid is not None and len(local_uppnexid) > 0, "Could not parse Uppnex ID for project from samplesheet %s" % local_samplesheet
                 else:
                     local_uppnexid = uppnexid
@@ -92,7 +101,7 @@ def main(input_path, transferred_db, run_folder, uppnexid, samplesheet, logfile,
                 logger2.info("Will deliver to inbox of project %s" % local_uppnexid)
                 
                 # Locate the fastq-files to be delivered
-                pat = os.path.join(input_path,folder,DEFAULT_FQ_LOCATION,"*.fastq*")
+                pat = os.path.join(input_path,folder,config.get("fastq_path",DEFAULT_FQ_LOCATION),"*.fastq*")
                 fq_files = glob.glob(pat)
                 assert len(fq_files) > 0, "Could not locate fastq files for folder %s using pattern %s" % (folder,pat)
                 
@@ -101,7 +110,7 @@ def main(input_path, transferred_db, run_folder, uppnexid, samplesheet, logfile,
                     logger2.info("Remember that this is a dry-run. Nothing will be delivered and no directories will be created/changed")
                     
                 # Create the destination directory if required
-                dest_dir = os.path.normpath(os.path.join(DEFAULT_PROJECT_ROOT,local_uppnexid,"INBOX",folder,"fastq"))
+                dest_dir = os.path.normpath(os.path.join(config.get("project_root",DEFAULT_PROJECT_ROOT),local_uppnexid,"INBOX",folder,"fastq"))
                 
                 _update_processed(folder,transferred_db,dryrun)
                 assert _create_destination(dest_dir, dryrun), "Could not create destination %s" % dest_dir
@@ -157,14 +166,14 @@ def _is_processed(folder,transferred_db):
     rows = _get_processed(transferred_db,folder)
     return len(rows) > 0
 
-def _fetch_uppnexid(samplesheet):
+def _fetch_uppnexid(samplesheet, uppnexid_field):
     uppnexid = None
     logger2.info("Parsing UppnexId from %s" % samplesheet)
     with open(samplesheet,"r") as fh:
         for line in fh:
             if not line.startswith("[Data]"): continue
             header = fh.next().split(',')
-            index = header.index(DEFAULT_UPPNEXID_FIELD)
+            index = header.index(uppnexid_field)
             for line in fh:
                 values = line.split(',')
                 if len(values) != len(header):
@@ -255,6 +264,7 @@ if __name__ == "__main__":
     parser.add_option("-s", "--samplesheet", dest="samplesheet", default=None)
     parser.add_option("-l", "--log-file", dest="logfile", default=None)
     parser.add_option("-e", "--email-notification", dest="email_notification", default=None)
+    parser.add_option("-c", "--config-file", dest="config_file", default=None)
     parser.add_option("-n", "--dry-run", dest="dryrun", action="store_true", default=False)
     options, args = parser.parse_args()
     
@@ -268,5 +278,5 @@ if __name__ == "__main__":
          options.transferred_db, options.run_folder, 
          options.uppnexid, options.samplesheet,
          options.logfile, options.email_notification,
-         options.dryrun)
+         options.config_file, options.dryrun)
 
