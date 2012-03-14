@@ -157,7 +157,62 @@ def dictify(data):
     return ddata
 
 
-def convert_to_json():
+def convert_to_json(trim=True):
+
+    # Dictionary with project names and the corresponding number of data
+    # points which should be removed from the end.
+    trimmings = {
+        "0044_AD035EACXX": 1,
+        "0050_AD037LACXX": 3,
+        "0054_AC00H7ABXX": 1,
+        "0055_BB06RCABXX": 2,
+        "0157_B80NNMABXX": 1,
+        "0158_A80NNNABXX": 1,
+        "0175_B814PKABXX": 1,
+        "0177_AB02VJABXX": 1,
+        "0178_BB02UMABXX": 2,
+        "0192_BB051UABXX": 2,
+        "0201_BB06GNABXX": 1,
+        "0202_AB0AA5ABXX": 1,
+        "0203_BB039NABXX": 1,
+        "0204_AB028LABXX": 2,
+        "0205_BB047AABXX": 2,
+        "0208_AB0B0KABXX": 1,
+        "0209_BB0ADVABXX": 1,
+        "0212_AB0B10ABXX": 1,
+        "0214_B80LRFABXX": 2,
+        "0215_B80J7PABXX": 1,
+        "0219_BB0B29ABXX": 1,
+        "0241_AC00RAABXX": 1,
+        "0242_BB08CAABXX": 1,
+        "0249_A816HRABXX": 1,
+        "0250_B816J0ABXX": 2,
+        "0251_A8158LABXX": 3,
+        "0254_AB03BEABXX": 3,
+        "0255_A81BF6ABXX": 2,
+        "0255_BB04BAABXX": 2,
+        "0256_B81CL7ABXX": 2,
+        "0257_A81BHDABXX": 3,
+        "0258_B819KCABXX": 3,
+        "0261_A81BFKABXX": 2,
+        "0262_B819K6ABXX": 2,
+        "0264_B81BELABXX": 1,
+        "0268_BB02J7ABXX": 2,
+        "0269_AB02EVABXX": 1,
+        "0270_BD035NACXX": 2,
+        "0271_AB03T6ABXX": 1,
+        "0273_AC00HFABXX": 2,
+        "0274_BB028HABXX": 1,
+        "0277_AB02J6ABXX": 1,
+        "0278_BB0B0HABXX": 2,
+        "0279_AC03E3ABXX": 1,
+        "0280_BB0AC9ABXX": 1,
+        "0281_AD0DYGABXX": 1,
+        "0282_BC04B5ABXX": 2,
+        "0283_AB06PBABXX": 2,
+        "0284_BB06CNABXX": 2
+    }
+
     data = get_formatted_data()
     ddata = dictify(data)
     get_project = lambda d: d["project"]
@@ -167,6 +222,9 @@ def convert_to_json():
     for group in grouped_data:
         group = sorted(group, key=lambda d: d["size"])
         init_date = group[0]["date"]
+        remove = trimmings.get(group[0]["project"], None)
+        if trim and remove is not None:
+            group = group[:-remove]
         for i, log in enumerate(group):
             new_date = init_date + datetime.timedelta(i)
             log["date"] = new_date
