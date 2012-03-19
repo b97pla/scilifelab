@@ -60,9 +60,9 @@ for entry in projdata:
         matching.add(entry['lane'])
     elif entry.has_key('multiplex'):
             for sample in entry['multiplex']:
-                if sample.has_key('description'):
-                    available.add(sample['description'])
-                    if sample['description'].split(',')[-1].strip().lower()==projid: 
+                if sample.has_key('sample_prj'):
+                    available.add(sample['sample_prj'])
+                    if sample['sample_prj'].split(',')[-1].strip().lower()==projid: 
                         matching.add(entry['lane'])
                     
 if len(matching)==0:
@@ -118,7 +118,7 @@ if not dry:
 temp = runname.split('_')
 dirs_to_process = []
 for m in sorted(matching):
-    d = m + "_" + temp[0] + "_" + temp[3] 
+    d = m + "_" + temp[0] + "_" + temp[3] + "_nophix" 
     dirs_to_process.append(d)
 
 os.chdir(base_path + runname )
@@ -157,8 +157,8 @@ for d in dirs_to_process:
     lane_sample = ''
     if lane_info.has_key('multiplex'):
         for bc in lane_info['multiplex']:
-            if bc.has_key('description'):
-                if bc['description'].split(',')[-1].strip().lower() == projid:
+            if bc.has_key('sample_prj'):
+                if bc['sample_prj'].split(',')[-1].strip().lower() == projid:
                     sample_id_and_idx[bc['barcode_id']] = bc['name']
             elif is_main_proj:
                 sample_id_and_idx[bc['barcode_id']] = bc['name']
@@ -198,12 +198,12 @@ for d in dirs_to_process:
             new_file_name = ''
             if 'unmatched' in fastq_file: continue
             # Extract barcode
-            [lane, date, run_id, bcbb_bc, pe_read, dummy] = fastq_file.split("_")
+            [lane, date, run_id, nophix, bcbb_bc, pe_read, dummy] = fastq_file.split("_")
             if sample_id_and_idx.has_key(int(bcbb_bc)):
                 customer_sample_id = sample_id_and_idx[int(bcbb_bc)]
                 new_file_name = lane + "_" + date + "_" + run_id + "_" + customer_sample_id.replace("/", "_") + "_" + pe_read + ".fastq"   
         else:
-            [lane, date, run_id, name, pe_read,dummy] = fastq_file.split("_")
+            [lane, date, run_id, nophix, name, pe_read,dummy] = fastq_file.split("_")
             new_file_name = lane + "_" + date + "_" + run_id + "_" + lane_sample + "_" + pe_read + ".fastq"   
        #  print "Preparing to copy file", fastq_file, "as ", new_file_name
         if new_file_name != '': files_to_copy.append([fastq_file, new_file_name])
