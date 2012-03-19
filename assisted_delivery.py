@@ -225,9 +225,5 @@ for d in dirs_to_process:
 
 if not dry: 
     os.chdir(del_path)
-    # logfile.write("Filtering out PhiX ...")
-    # os.system('python /bubo/home/h9/mikaelh/scilife-utilities/remove_phix.py')
-    # logfile.write("Filtering finished.")
-    logfile.write("Not removing PhiX.")
     logfile.close()
     os.system("chmod -R g+rw " + del_path)
