@@ -141,18 +141,18 @@ for d in dirs_to_process:
 # Print table of Illumina vs. bcbb barcodes
     sample_id_and_idx = {}
     lane_info = "none"
-    # 
-    main_proj_for_lane = ''
+    # The 'main_proj_for_lane' stuff is outdated since March 2012
+    # main_proj_for_lane = ''
     for entry in projdata:
         if entry['lane'] == lane:
             lane_info = entry
-            is_main_proj = True
-            main_proj_for_lane = entry['description'].split(',')[-1].strip().lower() 
-            if main_proj_for_lane == projid:
-                print projid, "is the main project for lane", lane
-            else:
-                print "This project is not the main project for lane ", lane, ". The main project is ", main_proj_for_lane
-                is_main_proj = False
+            # is_main_proj = True
+            # main_proj_for_lane = entry['description'].split(',')[-1].strip().lower() 
+            # if main_proj_for_lane == projid:
+            #    print projid, "is the main project for lane", lane
+            # else:
+            #    print "This project is not the main project for lane ", lane, ". The main project is ", main_proj_for_lane
+            #    is_main_proj = False
 
     lane_sample = ''
     if lane_info.has_key('multiplex'):
@@ -160,8 +160,8 @@ for d in dirs_to_process:
             if bc.has_key('sample_prj'):
                 if bc['sample_prj'].split(',')[-1].strip().lower() == projid:
                     sample_id_and_idx[bc['barcode_id']] = bc['name']
-            elif is_main_proj:
-                sample_id_and_idx[bc['barcode_id']] = bc['name']
+            # elif is_main_proj:
+            #    sample_id_and_idx[bc['barcode_id']] = bc['name']
             
         print "Pipeline index\tSampleName\t# matching sequences"
         if not dry: logfile.write("Pipeline index\tIllumina index/sample ID\tMatches\n")

@@ -201,12 +201,12 @@ def main(flowcell_id, archive_dir, analysis_dir, config_file):
         # Check here if project is a "sub project" of the lane
         if not lane.has_key('multiplex'): continue
         for s in lane['multiplex']:
-            if s.has_key('description'):
-                if project_ids.has_key(s['description']):
-                    if lane not in project_ids[s['description']]: project_ids[s['description']].append(lane)
+            if s.has_key('sample_prj'):
+                if project_ids.has_key(s['sample_prj']):
+                    if lane not in project_ids[s['sample_prj']]: project_ids[s['sample_prj']].append(lane)
                 else:
-                    project_ids[s['description']] = [lane]
-                                                                                             
+                    project_ids[s['sample_prj']] = [lane]
+        
     sphinx_defs = []
     for k in project_ids.keys():
         lanes = [x['lane'] for x in project_ids[k]]
@@ -323,16 +323,16 @@ def generate_report(proj_conf):
     tab.add_row(["Lane", "Sample(s)"])
     for l in proj_conf['lanes']:
         main_proj = l['description'].split(',')[1].strip()
-        if main_proj == proj_conf['id']: is_main_proj = True
-        else: is_main_proj = False
+        # if main_proj == proj_conf['id']: is_main_proj = True
+        # else: is_main_proj = False
         samples = []
         if l.has_key('multiplex'):
             for mp in l['multiplex']:
-                if mp.has_key('description'):
-                    if mp['description'] == proj_conf['id']:
+                if mp.has_key('sample_prj'):
+                    if mp['sample_prj'] == proj_conf['id']:
                         samples.append(mp['name'])
-                elif is_main_proj:
-                    samples.append(mp['name'])
+                # elif is_main_proj:
+                #    samples.append(mp['name'])
             tab.add_row([l['lane'], ", ".join(samples)])
         else:
             tab.add_row([l['lane'], "Non-multiplexed lane"])
@@ -550,7 +550,7 @@ def generate_report(proj_conf):
     low_samples = []
 
     for l in proj_conf['lanes']:
-        bc_file_name = os.path.join(proj_conf['analysis_dir'], proj_conf['flowcell'], '_'.join([l['lane'], fc_date, fc_name, "barcode"]), '_'.join([l['lane'], fc_date, fc_name, "bc.metrics"]))
+        bc_file_name = os.path.join(proj_conf['analysis_dir'], proj_conf['flowcell'], '_'.join([l['lane'], fc_date, fc_name, "nophix_barcode"]), '_'.join([l['lane'], fc_date, fc_name, "nophix_bc.metrics"]))
         try:
             bc_file = open(bc_file_name)
         except:
@@ -578,21 +578,20 @@ def generate_report(proj_conf):
         # Check here for each sample if it belongs to the project
         for entry in run_info:
             if entry['lane'] == l['lane']:
-                is_main_proj = False       
-                if entry['description'].split(',')[1].strip() == proj_conf['id']:
-                    is_main_proj = True
+                # is_main_proj = False       
+                # if entry['description'].split(',')[1].strip() == proj_conf['id']:
+                #    is_main_proj = True
                 if entry.has_key('multiplex'):
                     for sample in entry['multiplex']:
-                        if sample.has_key('description'):
-                            if is_main_proj: 
-                                print('INFO: rerun lane: skipping sample ' + sample['name'] + ' in lane ' + l['lane'] + ' which does not belong to the current project')
-                                is_rerun=True
-                            else:
-                                if sample['description'].strip() == proj_conf['id']:
-                                    sample_name[sample['barcode_id']]=sample['name']
+                        if sample.has_key('sample_prj'):
+                            # if is_main_proj: 
+                            #    print('INFO: rerun lane: skipping sample ' + sample['name'] + ' in lane ' + l['lane'] + ' which does not belong to the current project')
+                            #    is_rerun=True
+                            if sample['sample_prj'].strip() == proj_conf['id']:
+                                sample_name[sample['barcode_id']]=sample['name']
                                 is_rerun = True
-                        elif is_main_proj: 
-                            sample_name[sample['barcode_id']]=sample['name']
+                            #elif is_main_proj: 
+                            #sample_name[sample['barcode_id']]=sample['name']
                 else: is_multiplexed = False
         samp_count = {}
 
