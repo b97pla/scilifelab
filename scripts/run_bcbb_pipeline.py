@@ -12,10 +12,10 @@ ANALYSIS_DIR="/proj/a2010002/nobackup/illumina/"
 EMAIL="seqmaster@scilifelab.se"
 SLURM_ARGS="-A a2010002 -p node"
 #SLURM_ARGS="-A a2010002 -p core"
-#RUN_TIME="168:00:00"
-RUN_TIME="72:00:00"
+RUN_TIME="168:00:00"
+#RUN_TIME="120:00:00"
 PROCESS_YAML_SCRIPT = "/bubo/home/h27/pontusla/scilifelab/scripts/process_run_info.py"
-PROCESS_YAML = True
+PROCESS_YAML = False
 
 def main():
  
@@ -39,7 +39,7 @@ def main():
         os.rename(run_info_file,run_info_backup)
         #cl = ["python","%s" % PROCESS_YAML_SCRIPT,run_info_backup,"--barcode_type","illumina","--trim","1","--analysis","Minimal","--out_file",run_info_file]
         #cl = ["python","%s" % PROCESS_YAML_SCRIPT,run_info_backup,"--barcode_type","illumina","--analysis","Minimal","--out_file",run_info_file,"--ascii"]
-        cl = ["python","%s" % PROCESS_YAML_SCRIPT,run_info_backup,"--analysis","Standard","--out_file",run_info_file,"--ascii"]
+        cl = ["python","%s" % PROCESS_YAML_SCRIPT,run_info_backup,"--analysis","Align_illumina","--out_file",run_info_file,"--genome_build","hg19","--ascii"]
         print subprocess.check_output(cl)
         print "\n---------\n"
     
