@@ -97,10 +97,10 @@ with 1% phiX control library, except for lane 8, which has 2% phiX.
 The sequencing runs were performed according to the
 manufacturer's instructions. Base conversion was done using Illumina's OLB v1.9.
 
-Note that sequences derived from the phiX control library sequences may be present in the delivered files. In the near future, however, phiX sequences will be automatically filtered out from all samples. In some cases, the sequences may contain adapter 
+Sequences derived from the phiX control library have been filtered from the delivered files. In some cases, the sequences may contain adapter 
 sequences from the library preparation. This can be due to short fragment lengths
 (in small-RNA-seq experiments) when it is expected, or due to "adapter contamination"
-due to adapter or primer dimerization, which is usually not expected. We do not remove adapters by default, because this 
+resulting from adapter or primer dimerization, which is usually not expected. We do not remove adapters by default, because this 
 procedure is error-prone and better left to the customer who wants to use the data.
 For mate-pair runs, the sequences will contain mate-pair linkers, and here too we
 do not remove them by default because there is no reliable standard way to do so and

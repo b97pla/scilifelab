@@ -20,8 +20,8 @@ read2forsample = {}
 for fname in flist:
     if 'fastq' not in fname: continue 
     read = fname.split("_")[-1]
-    # print read
     tag = "_".join(fname.split("_")[3:-2])
+    print fname.split("_")
     # 2_date_fcid_sample_1.fastq
     if not tag in sample_names: sample_names.append(tag)
     if read == "1.fastq": read1forsample[tag]=fname
