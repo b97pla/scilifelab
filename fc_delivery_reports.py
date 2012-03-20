@@ -131,10 +131,6 @@ Required for successful run:
 
 - Clu. PF (#/mm2) > 475K 
 
-- Phasing < 0.4%
-
-- Prephasing < 1%
-
 - Average error rate for read1 and read2 < 2%
 
 Summary read 1
@@ -362,10 +358,10 @@ def generate_report(proj_conf):
     ok_r2 = True
     ok_cludens_r1 = True
     ok_cludens_r2 = True
-    ok_phasing_r1 = True
-    ok_phasing_r2 = True
-    ok_prephasing_r1 = True
-    ok_prephasing_r2 = True
+    # ok_phasing_r1 = True
+    # ok_phasing_r2 = True
+    # ok_prephasing_r1 = True
+    # ok_prephasing_r2 = True
     ok_err_rate = True 
     ok_err_r1 = True
     ok_err_r2 = True
@@ -397,12 +393,12 @@ def generate_report(proj_conf):
         prc_pf_string_r2 = str(prc_pf_r2) + '+/-' + str(prc_pf_sd_r2)
 
         # % phasing and prephasing
-        phas_r1 = stats['phasing']['read1'][l['lane']]
-        phas_r2 = stats['phasing']['read2'][l['lane']]
-        prephas_r1 = stats['prephasing']['read1'][l['lane']]
-        prephas_r2 = stats['prephasing']['read2'][l['lane']]
-        phas_string_r1 = str(phas_r1) + '/' + str(prephas_r1)
-        phas_string_r2 = str(phas_r2) + '/' + str(prephas_r2)
+        # phas_r1 = stats['phasing']['read1'][l['lane']]
+        # phas_r2 = stats['phasing']['read2'][l['lane']]
+        # prephas_r1 = stats['prephasing']['read1'][l['lane']]
+        # prephas_r2 = stats['prephasing']['read2'][l['lane']]
+        # phas_string_r1 = str(phas_r1) + '/' + str(prephas_r1)
+        # phas_string_r2 = str(phas_r2) + '/' + str(prephas_r2)
 
         # % aligned
         aln_r1 = stats['prc_aligned']['read1'][l['lane']]
@@ -432,22 +428,22 @@ def generate_report(proj_conf):
             ok_r2 = False
             ok_cludens_r2 = False
             comm_r2 += "Low cluster density. "
-        if float(phas_r1) > max_phas: 
-            ok_r1 = False
-            ok_phasing_r1 = False
-            comm_r1 += "High phasing. "
-        if float(phas_r2) > max_phas: 
-            ok_r2 = False
-            ok_phasing_r2 = False
-            comm_r2 += "High phasing. "
-        if float(prephas_r1) > max_prephas: 
-            ok_r1 = False
-            ok_prephasing_r1 = False
-            comm_r1 += "High prephasing. "
-        if float(prephas_r2) > max_prephas: 
-            ok_r2 = False
-            ok_prephasing_r2 = False
-            comm_r2 += "High prephasing. "
+        #if float(phas_r1) > max_phas: 
+        #    ok_r1 = False
+        #    ok_phasing_r1 = False
+        #    comm_r1 += "High phasing. "
+        #if float(phas_r2) > max_phas: 
+        #    ok_r2 = False
+        #    ok_phasing_r2 = False
+        #    comm_r2 += "High phasing. "
+        #if float(prephas_r1) > max_prephas: 
+        #    ok_r1 = False
+        #    ok_prephasing_r1 = False
+        #    comm_r1 += "High prephasing. "
+        #if float(prephas_r2) > max_prephas: 
+        #    ok_r2 = False
+        #    ok_prephasing_r2 = False
+        #    comm_r2 += "High prephasing. "
         avg_error_rate = (float(err_r1) + float(err_r2))/2
         if avg_error_rate > max_mean_err:
             ok_err_rate = False
@@ -463,8 +459,8 @@ def generate_report(proj_conf):
         if comm_r1 == "": comm_r1 = "OK"        
         if comm_r2 == "": comm_r2 = "OK"
 
-        tab_r1.add_row([l['lane'], clu_dens_string_r1, prc_pf_string_r1, clu_dens_pf_string_r1, phas_string_r1, aln_string_r1, err_str_r1, comm_r1])
-        tab_r2.add_row([l['lane'], clu_dens_string_r2, prc_pf_string_r2, clu_dens_pf_string_r2, phas_string_r2, aln_string_r2, err_str_r2, comm_r2])
+        tab_r1.add_row([l['lane'], clu_dens_string_r1, prc_pf_string_r1, clu_dens_pf_string_r1, aln_string_r1, err_str_r1, comm_r1])
+        tab_r2.add_row([l['lane'], clu_dens_string_r2, prc_pf_string_r2, clu_dens_pf_string_r2, aln_string_r2, err_str_r2, comm_r2])
 
     # Reinitialize comments for the summary. (Which will be for several lanes, potentially)
     comm_r1 = ""
@@ -472,10 +468,10 @@ def generate_report(proj_conf):
  
     if not ok_cludens_r1: comm_r1 += "Low cluster density. " 
     if not ok_cludens_r2: comm_r2 += "Low cluster density. " 
-    if not ok_phasing_r1: comm_r1 += "High phasing. " 
-    if not ok_phasing_r2: comm_r2 += "High phasing. " 
-    if not ok_prephasing_r1: comm_r1 += "High prephasing. " 
-    if not ok_prephasing_r2: comm_r2 += "High prephasing. " 
+    #if not ok_phasing_r1: comm_r1 += "High phasing. " 
+    #if not ok_phasing_r2: comm_r2 += "High phasing. " 
+    #if not ok_prephasing_r1: comm_r1 += "High prephasing. " 
+    #if not ok_prephasing_r2: comm_r2 += "High prephasing. " 
     if not ok_err_rate:
         if not ok_err_r1: 
             ok_r1 = False
