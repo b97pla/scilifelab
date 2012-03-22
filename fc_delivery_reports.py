@@ -304,7 +304,7 @@ def generate_report(proj_conf):
     del_base = "/proj/"
     proj_id = proj_conf['id']
     try: 
-        if customer_reference != '':
+        if len(customer_reference) > 1:
             proj_id += ' (' + customer_reference + ')'
     except:
         pass
