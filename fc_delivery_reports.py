@@ -257,7 +257,6 @@ def generate_report(proj_conf):
     ###
     uppnex_proj = ''
     min_reads_per_sample = ''
-    have_metadata = False
     try:
     	proj_data = ProjectMetaData(proj_conf['id'], proj_conf['config'])
     	uppnex_proj = proj_data.uppnex_id
@@ -269,7 +268,6 @@ def generate_report(proj_conf):
         customer_reference = proj_data.customer_reference
         application = proj_data.application
         no_finished_samples = proj_data.no_finished_samples
-        have_metadata = True
     except:
         print("WARNING: Could not fetch meta data from Google Docs")
 
@@ -295,7 +293,8 @@ def generate_report(proj_conf):
     tab = Texttable()
     if not uppnex_proj or len(uppnex_proj) < 4 or uppnex_proj[0:4] != 'b201':
         uppnex_proj = "b201YXXX"
-    
+        print "WARNING: Could not find UPPNEX project"
+
     run_name_comp = proj_conf['flowcell'].split('_')
     simple_run_name = run_name_comp[0] + run_name_comp[3][0]
     proj_level_dir = fixProjName(proj_conf['id'])
@@ -304,8 +303,12 @@ def generate_report(proj_conf):
     tab.add_row(["Run name:", proj_conf['flowcell']])
     del_base = "/proj/"
     proj_id = proj_conf['id']
-    if (have_metadata): proj_id += ' (' + customer_reference + ')'
-    
+    try: 
+        if customer_reference != '':
+            proj_id += ' (' + customer_reference + ')'
+    except:
+        pass
+
     tab.add_rows([["Project id:", proj_id], 
                   ["Date:", fc_date],
                   ["Instrument ID:", instr_id],
@@ -393,12 +396,12 @@ def generate_report(proj_conf):
         prc_pf_string_r2 = str(prc_pf_r2) + '+/-' + str(prc_pf_sd_r2)
 
         # % phasing and prephasing
-        # phas_r1 = stats['phasing']['read1'][l['lane']]
-        # phas_r2 = stats['phasing']['read2'][l['lane']]
-        # prephas_r1 = stats['prephasing']['read1'][l['lane']]
-        # prephas_r2 = stats['prephasing']['read2'][l['lane']]
-        # phas_string_r1 = str(phas_r1) + '/' + str(prephas_r1)
-        # phas_string_r2 = str(phas_r2) + '/' + str(prephas_r2)
+        phas_r1 = stats['phasing']['read1'][l['lane']]
+        phas_r2 = stats['phasing']['read2'][l['lane']]
+        prephas_r1 = stats['prephasing']['read1'][l['lane']]
+        prephas_r2 = stats['prephasing']['read2'][l['lane']]
+        phas_string_r1 = str(phas_r1) + '/' + str(prephas_r1)
+        phas_string_r2 = str(phas_r2) + '/' + str(prephas_r2)
 
         # % aligned
         aln_r1 = stats['prc_aligned']['read1'][l['lane']]
@@ -459,8 +462,8 @@ def generate_report(proj_conf):
         if comm_r1 == "": comm_r1 = "OK"        
         if comm_r2 == "": comm_r2 = "OK"
 
-        tab_r1.add_row([l['lane'], clu_dens_string_r1, prc_pf_string_r1, clu_dens_pf_string_r1, aln_string_r1, err_str_r1, comm_r1])
-        tab_r2.add_row([l['lane'], clu_dens_string_r2, prc_pf_string_r2, clu_dens_pf_string_r2, aln_string_r2, err_str_r2, comm_r2])
+        tab_r1.add_row([l['lane'], clu_dens_string_r1, prc_pf_string_r1, clu_dens_pf_string_r1, phas_string_r1, aln_string_r1, err_str_r1, comm_r1])
+        tab_r2.add_row([l['lane'], clu_dens_string_r2, prc_pf_string_r2, clu_dens_pf_string_r2, phas_string_r2, aln_string_r2, err_str_r2, comm_r2])
 
     # Reinitialize comments for the summary. (Which will be for several lanes, potentially)
     comm_r1 = ""
