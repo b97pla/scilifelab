@@ -2,16 +2,19 @@ import sys
 import os
 
 if len(sys.argv) < 4:
-    print "USAGE: python " + sys.argv[0] + " <path to folder with FASTQ files> <path to Bowtie index> <path to annotation GTF> [-o] (for using TopHat 1.0.14)"
+    print "USAGE: python " + sys.argv[0] + " <path to folder with FASTQ files> <path to Bowtie index> <path to annotation GTF> [-o] (for using TopHat 1.0.14) [-m] (for using regular Sanger quality scores)"
     sys.exit(0)
 
 old = False
+qscale = '--solexa1.3-quals'
 #
 fpath = sys.argv[1]
 refpath = sys.argv[2]
 annopath = sys.argv[3]
 if len(sys.argv) == 5: 
     if sys.argv[4] == "-o": old = True
+if len(sys.argv) == 6: 
+    if sys.argv[5] == "-m": qscale = ''
 flist = os.listdir(fpath)
 
 sample_names = []
@@ -57,7 +60,7 @@ for n in sorted(sample_names):
     oF.write("module load samtools/0.1.9\n")
     if old: oF.write("module load tophat/1.0.14\n")
     else: oF.write("module load tophat/1.3.3\n")
-    oF.write("module load cufflinks/1.2.1\n")
+    oF.write("module load cufflinks/1.3.0\n")
     oF.write("module load htseq/0.5.1\n")
 
     # TopHat
@@ -66,7 +69,7 @@ for n in sorted(sample_names):
     innerdist = int(size) - 320
     if not size.isdigit(): sys.exit(0)
 
-    oF.write("tophat -o tophat_out_" + n + " --solexa1.3-quals -p 8 -r " + str(innerdist) + " " + refpath + " " + fpath + "/" + read1forsample[n] + " " + fpath + "/" + read2forsample[n] + "\n")
+    oF.write("tophat -o tophat_out_" + n + " " + qscale + " -p 8 -r " + str(innerdist) + " " + refpath + " " + fpath + "/" + read1forsample[n] + " " + fpath + "/" + read2forsample[n] + "\n")
     # Samtools -> Picard
 
     oF.write("cd tophat_out_" + n + "\n")
