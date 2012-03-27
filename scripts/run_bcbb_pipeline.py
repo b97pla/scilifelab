@@ -10,12 +10,12 @@ import subprocess
 ANALYSIS_SCRIPT="automated_initial_analysis.py"
 ANALYSIS_DIR="/proj/a2010002/nobackup/illumina/"
 EMAIL="seqmaster@scilifelab.se"
-SLURM_ARGS="-A a2010002 -p node"
+SLURM_ARGS="-A a2010002 -p core"
 #SLURM_ARGS="-A a2010002 -p core"
 RUN_TIME="168:00:00"
 #RUN_TIME="120:00:00"
 PROCESS_YAML_SCRIPT = "/bubo/home/h27/pontusla/scilifelab/scripts/process_run_info.py"
-PROCESS_YAML = False
+PROCESS_YAML = True
 
 def main():
  
