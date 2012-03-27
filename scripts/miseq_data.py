@@ -4,6 +4,8 @@ import sys
 import glob
 import operator
 import csv
+import re
+import split_demultiplexed
 from optparse import OptionParser
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
 from Bio import SeqIO
@@ -14,6 +16,25 @@ import gzip
 def main(run_dir):
     runobj = MiSeqRun(run_dir)
     runobj._split_fastq()
+    
+def group_fastq_files(fastq_files):
+    """Divide the input fastq files into batches based on lane and read, ignoring set"""
+        
+    regexp = r'_(L\d+)_([RI]\d+)_'
+    batches = {}
+    for fastq_file in fastq_files:
+        m = re.search(regexp, fastq_file)
+        if not m or len(m.groups()) < 2:
+            print "WARNING: Could not determine lane and read from input file %s" % fastq_file
+            continue
+        
+        batch = "%s%s" % (m.group(1).strip(),m.group(2).strip())
+        if batch not in batches:
+            batches[batch] = []
+        batches[batch].append(fastq_file)
+
+    return batches.values()
+
     
 class MiSeqRun:
     
@@ -43,15 +64,17 @@ class MiSeqRun:
         if fastq_dir is None:
             fastq_dir = self._basecalls_dir()
         
-        indexreads = len(self._run_config.indexread())
-        nonindexreads = self._run_config.readcount() - indexreads
+        fastq_files = group_fastq_files(glob.glob(os.path.join(fastq_dir,"*.fastq*")))
         
-        fastq_files = []
-        for read in range(nonindexreads):
-            fastq_files.append(glob.glob(os.path.join(fastq_dir,"*_R%s_*.fastq*" % (read+1))))
-        for read in range(indexreads):
-            fastq_files.append(glob.glob(os.path.join(fastq_dir,"*_I%s_*.fastq*" % (read+1))))
-        
+#        indexreads = len(self._run_config.indexread())
+#        nonindexreads = self._run_config.readcount() - indexreads
+#        
+#        fastq_files = []
+#        for read in range(nonindexreads):
+#            fastq_files.append(glob.glob(os.path.join(fastq_dir,"*_R%s_*.fastq*" % (read+1))))
+#        for read in range(indexreads):
+#            fastq_files.append(glob.glob(os.path.join(fastq_dir,"*_I%s_*.fastq*" % (read+1))))
+#        
         return fastq_files
     
     def _find_samplesheet(self):
@@ -67,42 +90,12 @@ class MiSeqRun:
         
         samples = self.samplesheet.sample_names()
         samples.insert(0,"unmatched")
+        sample_names = {}
+        for i,name in enumerate(samples):
+            sample_names[str(i)] = name
         
         out_dir = self._multiplex_dir()
-        if not os.path.exists(out_dir):
-            os.mkdir(out_dir)
-            
-        # Loop over the fastq files
-        for fastq_files in self._fastq:
-            fastq_names = [os.path.basename(f) for f in fastq_files]
-            name = os.path.commonprefix(fastq_names).strip("_")
-            suffix = os.path.commonprefix([f[::-1] for f in fastq_names])[::-1]
-            
-            # open file handles to the sample files
-            out_handles = []
-            for sample in samples:
-                out_file = os.path.join(out_dir,"%s_%s%s" % (name,sample,suffix))
-                out_handles.append(FastQWriter(out_file))
-            for file in fastq_files:
-                iter = FastQParser(file)
-                for record in iter:
-                    index = record[0].rfind(":")
-                    i = int(record[0][index+1:].strip())
-                    out_handles[i].write(record)
-                        
-            counts = {}
-            for i,oh in enumerate(out_handles):
-                counts[i] = oh.rwritten()
-                oh.close()
-            
-        # Write the multiplex metrics
-        name = os.path.commonprefix([os.path.basename(f) for f in reduce(operator.add,self._fastq)]).strip("_")
-        metrics_file = os.path.join(out_dir,"%s_multiplex.metrics" % name)
-        with open(metrics_file,"wb") as fh:
-            cw = csv.writer(fh,dialect=csv.excel_tab)
-            cw.writerow(["samplesheet index","samplesheet sample name","records"])
-            for index, count in counts.items():
-                cw.writerow([index,samples[index],count])
+        split_demultiplexed._split_fastq_batches(self._fastq,out_dir,sample_names)
                 
 class FastQParser:
     
