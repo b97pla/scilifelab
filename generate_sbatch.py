@@ -1,25 +1,53 @@
+#!/usr/bin/env python
 import sys
 import os
+import optparse
+
+usage = """
+Generate sbatch files for running an mRNA-seq pipeline.
+Usage:
+
+generate_sbatch.py <directory of FASTQ files> <Bowtie index for reference genome> <gene/transcript annotation GTF file> 
+
+The three first options are mandatory. There are further flags you can use:
+
+-o, --old: Run old TopHat (1.0.14) instead - mainly to reproduce old runs
+-t, --projtag: Provide a project tag that will be shown in the queuing system to distinguish from other TopHat runs
+-p, --phred33: Use phred33 / Sanger quality scale, e g for MiSeq or CASAVA 1.8 and above
+-f, --fai: Generate UCSC Genome Browser compatible BigWig tracks, using the specified FASTA index (fai) file
+
+"""
 
 if len(sys.argv) < 4:
-    print "USAGE: python " + sys.argv[0] + " <path to folder with FASTQ files> <path to Bowtie index> <path to annotation GTF> [-o] (for using TopHat 1.0.14) [-m] (for using regular Sanger quality scores)"
+    print usage
     sys.exit(0)
 
-old = False
+parser = optparse.OptionParser()
+parser.add_option('-o', '--old', action="store_true", dest="old", default="False", help="Run old TopHat (1.0.14) instead - mainly to reproduce old runs")
+parser.add_option('-t', '--projtag', action="store", dest="projtag", default="", help="Provide a project tag that will be shown in the queuing system to distinguish from other TopHat runs")
+parser.add_option('-p', '--phred33', action="store_true", dest="phred33", default="False", help="Use phred33 / Sanger quality scale, e g for MiSeq or CASAVA1.8 and above")
+parser.add_option('-f', '--fai', action="store", dest="fai", default="", help="Provide FASTA index file for generating UCSC bigwig tracks")
+
+(opts, args) = parser.parse_args()
+
+old = opts.old
+phred33 = opts.phred33
+fai = opts.fai
+projtag = opts.projtag
+
 qscale = '--solexa1.3-quals'
-#
+if phred33: qscale = ''
+
 fpath = sys.argv[1]
 refpath = sys.argv[2]
 annopath = sys.argv[3]
-if len(sys.argv) == 5: 
-    if sys.argv[4] == "-o": old = True
-if len(sys.argv) == 6: 
-    if sys.argv[5] == "-m": qscale = ''
+
 flist = os.listdir(fpath)
 
 sample_names = []
 read1forsample = {}
 read2forsample = {}
+
 for fname in flist:
     if 'fastq' not in fname: continue 
     read = fname.split("_")[-1]
@@ -37,6 +65,10 @@ for n in sorted(sample_names):
 r = raw_input("Press n to exit")
 if r.upper() == "N": sys.exit(0)
 
+sFile = open("sample_names.txt", "w")
+for n in sorted(sample_names): 
+    sFile.write(n + "\n")
+
 for n in sorted(sample_names):
     print "Generating sbatch files for sample ", n
     oF = open("map_tophat_" + n + ".sh", "w")
@@ -44,9 +76,9 @@ for n in sorted(sample_names):
     oF.write("#SBATCH -A a2010002\n")                   
     oF.write("#SBATCH -p node\n")
     oF.write("#SBATCH -t 35:00:00\n")
-    oF.write("#SBATCH -J tophat_" + n + "\n")
-    oF.write("#SBATCH -e tophat_" + n + ".err\n")
-    oF.write("#SBATCH -o tophat_" + n + ".out\n")
+    oF.write("#SBATCH -J tophat_" + n + projtag + "\n")
+    oF.write("#SBATCH -e tophat_" + n + projtag + ".err\n")
+    oF.write("#SBATCH -o tophat_" + n + projtag + ".out\n")
     oF.write("#SBATCH --mail-user mikael.huss@scilifelab.se\n")
     oF.write("#SBATCH --mail-type=ALL\n")
 
@@ -58,7 +90,8 @@ for n in sorted(sample_names):
 
     oF.write("module load bioinfo-tools\n")
     oF.write("module load samtools/0.1.9\n")
-    if old: oF.write("module load tophat/1.0.14\n")
+    
+    if old == True: oF.write("module load tophat/1.0.14\n")
     else: oF.write("module load tophat/1.3.3\n")
     oF.write("module load cufflinks/1.3.0\n")
     oF.write("module load htseq/0.5.1\n")
@@ -66,14 +99,14 @@ for n in sorted(sample_names):
     # TopHat
 
     size = raw_input("Fragment size including adapters for sample" + n + "? ")
-    innerdist = int(size) - 320
+    innerdist = int(size) - 101 - 101 - 121
     if not size.isdigit(): sys.exit(0)
 
     oF.write("tophat -o tophat_out_" + n + " " + qscale + " -p 8 -r " + str(innerdist) + " " + refpath + " " + fpath + "/" + read1forsample[n] + " " + fpath + "/" + read2forsample[n] + "\n")
     # Samtools -> Picard
 
     oF.write("cd tophat_out_" + n + "\n")
-    if old: oF.write("samtools view -bT concat.fa.fa -o accepted_hits_" + n + ".bam " + "accepted_hits.sam\n")
+    if old == True: oF.write("samtools view -bT concat.fa.fa -o accepted_hits_" + n + ".bam " + "accepted_hits.sam\n")
     else: oF.write("mv accepted_hits.bam accepted_hits_" + n + ".bam\n")
     oF.write("java -Xmx2g -jar /home/lilia/glob/src/picard-tools-1.29/SortSam.jar INPUT=accepted_hits_" + n + ".bam OUTPUT=accepted_hits_sorted_" + n + ".bam SORT\
 _ORDER=coordinate VALIDATION_STRINGENCY=LENIENT\n")
@@ -95,7 +128,11 @@ Removed_" + n + ".bam ASSUME_SORTED=true REMOVE_DUPLICATES=true METRICS_FILE=" +
 
     #oF.write("samtools view accepted_hits_sorted_dupRemoved_" + n + ".bam |sort -k 3,3 -k 4,4n > accepted_hits_sorted_dupRemoved_col34Sorted_" + n + ".sam\n")
     #oF.write("cufflinks -p 8 -G " + annopath + " -o cufflinks_out_" + n + " accepted_hits_sorted_dupRemoved_col34Sorted_" + n + ".sam\n")
-    
+
+    # Make custom tracks
+    if fai != '':
+        oF.write("/bubo/home/h9/mikaelh/software/BEDTools-Version-2.10.1/bin/genomeCoverageBed -bga -split -ibam sample_sorted_dupRemoved_" + n + ".bam -g " + fai + " > sample_" + n + ".bga \n")
+        oF.write("/bubo/home/h9/mikaelh/bin/bedGraphToBigWig sample_" + n + ".bga " + fai + " sample_" + n + ".bw\n")
 
     # Clean up
     oF.write("rm accepted_hits_sorted_" + n + ".bam\n")
@@ -103,3 +140,10 @@ Removed_" + n + ".bam ASSUME_SORTED=true REMOVE_DUPLICATES=true METRICS_FILE=" +
     # oF.write("rm accepted_hits_sorted_dupRemoved_col34Sorted_" + n + ".sam\n")
 
     oF.close()
+
+
+
+
+
+
+

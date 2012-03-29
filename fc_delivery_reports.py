@@ -580,18 +580,20 @@ def generate_report(proj_conf):
                 # is_main_proj = False       
                 # if entry['description'].split(',')[1].strip() == proj_conf['id']:
                 #    is_main_proj = True
+                projs = set()
                 if entry.has_key('multiplex'):
                     for sample in entry['multiplex']:
                         if sample.has_key('sample_prj'):
+                            projs.add(sample['sample_prj'])
                             # if is_main_proj: 
                             #    print('INFO: rerun lane: skipping sample ' + sample['name'] + ' in lane ' + l['lane'] + ' which does not belong to the current project')
                             #    is_rerun=True
                             if sample['sample_prj'].strip() == proj_conf['id']:
                                 sample_name[sample['barcode_id']]=sample['name']
-                                is_rerun = True
                             #elif is_main_proj: 
                             #sample_name[sample['barcode_id']]=sample['name']
                 else: is_multiplexed = False
+                if len(projs) > 1: is_rerun = True
         samp_count = {}
 
         for k in bc_count.keys():
