@@ -322,16 +322,12 @@ def generate_report(proj_conf):
     tab.add_row(["Lane", "Sample(s)"])
     for l in proj_conf['lanes']:
         main_proj = l['description'].split(',')[1].strip()
-        # if main_proj == proj_conf['id']: is_main_proj = True
-        # else: is_main_proj = False
         samples = []
         if l.has_key('multiplex'):
             for mp in l['multiplex']:
                 if mp.has_key('sample_prj'):
                     if mp['sample_prj'] == proj_conf['id']:
                         samples.append(mp['name'])
-                # elif is_main_proj:
-                #    samples.append(mp['name'])
             tab.add_row([l['lane'], ", ".join(samples)])
         else:
             tab.add_row([l['lane'], "Non-multiplexed lane"])
@@ -361,10 +357,6 @@ def generate_report(proj_conf):
     ok_r2 = True
     ok_cludens_r1 = True
     ok_cludens_r2 = True
-    # ok_phasing_r1 = True
-    # ok_phasing_r2 = True
-    # ok_prephasing_r1 = True
-    # ok_prephasing_r2 = True
     ok_err_rate = True 
     ok_err_r1 = True
     ok_err_r2 = True
@@ -431,31 +423,13 @@ def generate_report(proj_conf):
             ok_r2 = False
             ok_cludens_r2 = False
             comm_r2 += "Low cluster density. "
-        #if float(phas_r1) > max_phas: 
-        #    ok_r1 = False
-        #    ok_phasing_r1 = False
-        #    comm_r1 += "High phasing. "
-        #if float(phas_r2) > max_phas: 
-        #    ok_r2 = False
-        #    ok_phasing_r2 = False
-        #    comm_r2 += "High phasing. "
-        #if float(prephas_r1) > max_prephas: 
-        #    ok_r1 = False
-        #    ok_prephasing_r1 = False
-        #    comm_r1 += "High prephasing. "
-        #if float(prephas_r2) > max_prephas: 
-        #    ok_r2 = False
-        #    ok_prephasing_r2 = False
-        #    comm_r2 += "High prephasing. "
         avg_error_rate = (float(err_r1) + float(err_r2))/2
         if avg_error_rate > max_mean_err:
             ok_err_rate = False
         if float(err_r1) > max_mean_err:
-            #ok_r1 = False
             comm_r1 += "High error rate. "
             ok_err_r1 = False
         if float(err_r2) > max_mean_err:
-            #ok_r2 = False
             comm_r2 += "High error rate. "
             ok_err_r2 = False
 
@@ -471,10 +445,6 @@ def generate_report(proj_conf):
  
     if not ok_cludens_r1: comm_r1 += "Low cluster density. " 
     if not ok_cludens_r2: comm_r2 += "Low cluster density. " 
-    #if not ok_phasing_r1: comm_r1 += "High phasing. " 
-    #if not ok_phasing_r2: comm_r2 += "High phasing. " 
-    #if not ok_prephasing_r1: comm_r1 += "High prephasing. " 
-    #if not ok_prephasing_r2: comm_r2 += "High prephasing. " 
     if not ok_err_rate:
         if not ok_err_r1: 
             ok_r1 = False
@@ -531,15 +501,9 @@ def generate_report(proj_conf):
         print("WARNING: could not find required run_info.yaml configuration file at '%s'" % run_info_yaml)
         return
 
-    #with open(run_info_yaml) as in_handle:
-    #    run_info = {'details': yaml.load(in_handle)}
-
     with open(run_info_yaml) as in_handle:
         run_info = yaml.load(in_handle)
 
-    # fc_name, fc_date = get_flowcell_info(proj_conf['flowcell'])
-    # bc_yield = bc_metrics.get_bc_stats(fc_date,fc_name,proj_conf['analysis_dir'], run_info)
-   
     fc_name, fc_date = get_flowcell_info(proj_conf['flowcell'])
     low_yield = False
     
@@ -577,21 +541,13 @@ def generate_report(proj_conf):
         # Check here for each sample if it belongs to the project
         for entry in run_info:
             if entry['lane'] == l['lane']:
-                # is_main_proj = False       
-                # if entry['description'].split(',')[1].strip() == proj_conf['id']:
-                #    is_main_proj = True
                 projs = set()
                 if entry.has_key('multiplex'):
                     for sample in entry['multiplex']:
                         if sample.has_key('sample_prj'):
                             projs.add(sample['sample_prj'])
-                            # if is_main_proj: 
-                            #    print('INFO: rerun lane: skipping sample ' + sample['name'] + ' in lane ' + l['lane'] + ' which does not belong to the current project')
-                            #    is_rerun=True
                             if sample['sample_prj'].strip() == proj_conf['id']:
                                 sample_name[sample['barcode_id']]=sample['name']
-                            #elif is_main_proj: 
-                            #sample_name[sample['barcode_id']]=sample['name']
                 else: is_multiplexed = False
                 if len(projs) > 1: is_rerun = True
         samp_count = {}
@@ -625,9 +581,6 @@ def generate_report(proj_conf):
                 if int (bc_count[k].split('(')[0]) < bc_multiplier * target_yield_per_lane: comment = 'Low.' 
                 tab.add_row([l['lane'], "Non-multiplexed lane", bc_count[k], min_reads_per_sample, comment])
 
-    # if low_yield:
-    #    comm = d['summary'] +  " Some samples had low yields."
-    #    d.update(summary = comm)
     delivery_type = "Final delivery. "
     if low_yield:
         delivery_type = "Partial delivery. "
@@ -639,7 +592,6 @@ def generate_report(proj_conf):
         else: ok_comm = ""
     else: ok_comm = "All samples yielded the expected number of sequences or more. "
 
-    #comm = delivery_type + d['summary'] + fail_comm + ok_comm
     comm = d['summary'] + fail_comm + ok_comm
     d.update(summary = comm)
 
