@@ -16,10 +16,13 @@ import os
 import sys
 import argparse
 import subprocess
+import datetime
 import couchdb
 
+
 def usage():
-    print "./"+sys.argv[0]+"directory --server localhost:5948 --db testdb"
+    print "./" + sys.argv[0] + "directory --server localhost:5948 --db testdb"
+
 
 def get_dirsizes(path="."):
     ''' Gets directory size.
@@ -29,11 +32,12 @@ def get_dirsizes(path="."):
     out = subprocess.check_output(["du", "-s", path[0]])
     return out.split('\t')[0]
 
+
 def main():
-    dirsizes = {}
-    server='localhost:5984'
-    db="log_tests"
-    root="."
+    dirsizes = {"time": datetime.datetime.now().isoformat()}
+    server = 'localhost:5984'
+    db = "log_tests"
+    root = "."
 
     parser = argparse.ArgumentParser(description="Compute directory size(s) and report them to a CouchDB database")
 
@@ -49,7 +53,7 @@ def main():
     args = parser.parse_args()
 
     for d in os.listdir(root):
-    	path = os.path.join(root, d)
+        path = os.path.join(root, d)
         dirsizes[path] = get_dirsizes(path)
 
     couch = couchdb.Server(server)
@@ -57,4 +61,4 @@ def main():
     db.save(dirsizes)
 
 if __name__ == "__main__":
-   main()
+    main()
