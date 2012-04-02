@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 '''
-Gets filesize of a first level of directories and reports
-it in JSON format.
+Gets filesize of a first level of directories and sends it to a CouchDB instance.
+
 Not using os.path.getsize neither os.stat.st_size since they report
 inaccurate filesizes:
 
@@ -12,8 +12,8 @@ http://stackoverflow.com/questions/1392413/calculating-a-directory-size-using-py
 
 import os
 import sys
-import json
 import subprocess
+import couchdb
 
 def get_dirsize(path="."):
     ''' Gets directory size.
@@ -23,6 +23,7 @@ def get_dirsize(path="."):
     out = subprocess.check_output(["du", "-s", path[0]])
     return out.split('\t')[0]
 
+
 if __name__ == "__main__":
     root = sys.argv[1]
     dirsizes = {}
@@ -31,4 +32,6 @@ if __name__ == "__main__":
     	path = os.path.join(root, d)
         dirsizes[path] = get_dirsize(path)
 
-print json.dumps(dirsizes, sort_keys=True)
+    couch = couchdb.Server('localhost:5984/')
+    db = couch['size_logs_tests']
+    db.save(dirsizes)
