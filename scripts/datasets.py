@@ -117,6 +117,58 @@ def get_formatted_data():
     return data
 
 
+def get_dirs_with_sizes_and_dates():
+    """Returns a list of dicts as we want them in the status data base.
+    """
+    # This of course need to be pointed to wherever the log file is available.
+    with open("/Users/valentinesvensson/Documents/sizegraphing/datasets_sizes.log") as data_f:
+        all_data = data_f.read()
+
+    data_lines = all_data.splitlines()
+    data = [line.split("\t") for line in data_lines]
+
+    for line in data:
+        line[0] = int(convert_human_readable_to_numbers(line[0]))
+        date_string = line[1].split("/")[-1].split("_")[0]
+        line[1] = line[1].split("/")[-1]
+        try:
+            line.append(datetime.datetime.strptime(date_string, "%y%m%d"))
+        except:
+            pass
+
+    data = [line for line in data if len(line) == 3]
+
+    string_picker = lambda l: l[1]
+    data = sorted(data, key=string_picker)
+
+    data = [list(g) for k, g in itertools.groupby(data, string_picker)]
+
+    size_picker = lambda l: l[0]
+    for dir_name_list in data:
+        dir_name_list = sorted(dir_name_list, key=size_picker)
+        for i, entry in enumerate(dir_name_list):
+            entry[-1] = entry[-1] + datetime.timedelta(days=i)
+
+    flat_data = []
+    for dir_name_list in data:
+        flat_data.extend(dir_name_list)
+
+    date_picker = lambda l: l[-1]
+    flat_data = sorted(flat_data, key=date_picker)
+    data = [list(g) for k, g in itertools.groupby(flat_data, date_picker)]
+
+    log_dicts = []
+
+    for date in data:
+        log_dict = {"time": date_picker(date[0]).isoformat()}
+        for date_data in date:
+            log_dict[string_picker(date_data)] = size_picker(date_data)
+
+        log_dicts.append(log_dict)
+
+    return log_dicts
+
+
 def trim_data(grouped_data, trim=True):
     """Trims away the file sizes where preprocessing has occured.
     """
