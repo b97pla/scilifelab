@@ -26,6 +26,12 @@ def get_dirsizes(path="."):
     out = subprocess.check_output(["du", "-s", path[0]])
     return out.split('\t')[0]
 
+def send_db(server, db, data):
+    ''' Submits provided data to database on server
+    '''
+    couch = couchdb.Server(server)
+    db = couch[db]
+    db.save(data)
 
 def main():
     dirsizes = {"time": datetime.datetime.now().isoformat()}
@@ -52,9 +58,8 @@ def main():
             dirsizes[path] = get_dirsizes(path)
 
     if not args.dry_run:
-        couch = couchdb.Server(args.server)
-        db = couch[args.db]
-        db.save(dirsizes)
+    	send_db(args.server, args.db, dirsizes)
+
 
 if __name__ == "__main__":
     main()
