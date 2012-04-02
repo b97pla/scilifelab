@@ -21,7 +21,7 @@ import couchdb
 def usage():
     print "./"+sys.argv[0]+"directory --server localhost:5948 --db testdb"
 
-def get_rootize(path="."):
+def get_dirsizes(path="."):
     ''' Gets directory size.
         TODO: Be replaced with a more pythonic way which reports the size correctly.
     '''
@@ -30,16 +30,17 @@ def get_rootize(path="."):
     return out.split('\t')[0]
 
 def main():
-    rootizes = {}
+    dirsizes = {}
     server='localhost:5984'
     db="log_tests"
+    root="."
 
     parser = argparse.ArgumentParser(description="Compute directory size(s) and report them to a CouchDB database")
 
-    parser.add_argument('dir', metavar='root', action='store', type=str,
-                        help="the directory to calculate rootizes from")
+    parser.add_argument('--dir', metavar='root', default=".", action='store',
+                        help="the directory to calculate dirsizes from")
 
-    parser.add_argument("--server", dest='server', action='store', type=str,
+    parser.add_argument("--server", dest='server', action='store',
                         default='localhost:5984', help="CouchDB instance to connect to, defaults to localhost:5984")
 
     parser.add_argument("--db", dest='db', action='store',
