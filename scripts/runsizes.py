@@ -6,11 +6,12 @@ Not using os.path.getsize neither os.stat.st_size since they report
 inaccurate filesizes:
 
 http://stackoverflow.com/questions/1392413/calculating-a-directory-size-using-python
+
+Usage: python runsizes.py --server 'http://localhost:5984' --db size_logs_tests --dir .
+
 '''
 # TODO: Manage depth of root
 # TODO: Filter out by .bcl files and/or include other ones
-# TOOD: Save time tag in the hash
-# TODO: Parametrized cmdline opts
 
 import os
 import sys
@@ -18,10 +19,6 @@ import argparse
 import subprocess
 import datetime
 import couchdb
-
-
-def usage():
-    print "./" + sys.argv[0] + "directory --server localhost:5948 --db testdb"
 
 
 def get_dirsizes(path="."):
@@ -36,28 +33,28 @@ def get_dirsizes(path="."):
 def main():
     dirsizes = {"time": datetime.datetime.now().isoformat()}
     server = 'localhost:5984'
-    db = "log_tests"
+    db = "tests"
     root = "."
 
     parser = argparse.ArgumentParser(description="Compute directory size(s) and report them to a CouchDB database")
 
-    parser.add_argument('--dir', metavar='root', default=".", action='store',
+    parser.add_argument('--dir', dest='root', action='store',
                         help="the directory to calculate dirsizes from")
 
     parser.add_argument("--server", dest='server', action='store',
-                        default='localhost:5984', help="CouchDB instance to connect to, defaults to localhost:5984")
+                        help="CouchDB instance to connect to, defaults to localhost:5984")
 
     parser.add_argument("--db", dest='db', action='store',
-                       help="CouchDB database name, defaults to log_tests")
+                       help="CouchDB database name, defaults to 'tests'")
 
     args = parser.parse_args()
 
-    for d in os.listdir(root):
-        path = os.path.join(root, d)
+    for d in os.listdir(args.root):
+    	path = os.path.join(args.root, d)
         dirsizes[path] = get_dirsizes(path)
 
-    couch = couchdb.Server(server)
-    db = couch[db]
+    couch = couchdb.Server(args.server)
+    db = couch[args.db]
     db.save(dirsizes)
 
 if __name__ == "__main__":
