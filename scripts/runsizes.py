@@ -34,7 +34,7 @@ def get_dirsizes(path="."):
 
 
 def main():
-    dirsizes = {"time": datetime.datetime.now.isoformat()}
+    dirsizes = {"time": datetime.datetime.now().isoformat()}
     server = 'localhost:5984'
     db = "log_tests"
     root = "."
