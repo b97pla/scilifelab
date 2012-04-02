@@ -6,11 +6,8 @@ Not using os.path.getsize neither os.stat.st_size since they report
 inaccurate filesizes:
 
 http://stackoverflow.com/questions/1392413/calculating-a-directory-size-using-python
-
-Usage: python runsizes.py --server 'http://localhost:5984' --db size_logs_tests --dir .
-
 '''
-# TODO: Manage depth of root
+# TODO: Manage depth of root (how many dir levels): http://stackoverflow.com/questions/229186/os-walk-without-digging-into-directories-below
 # TODO: Filter out by .bcl files and/or include other ones
 
 import os
@@ -32,30 +29,32 @@ def get_dirsizes(path="."):
 
 def main():
     dirsizes = {"time": datetime.datetime.now().isoformat()}
-    server = 'localhost:5984'
-    db = "tests"
-    root = "."
 
     parser = argparse.ArgumentParser(description="Compute directory size(s) and report them to a CouchDB database")
 
-    parser.add_argument('--dir', dest='root', action='store',
+    parser.add_argument('--dir', dest='root', action='append',
                         help="the directory to calculate dirsizes from")
 
-    parser.add_argument("--server", dest='server', action='store',
+    parser.add_argument("--server", dest='server', action='store', default="localhost:5984",
                         help="CouchDB instance to connect to, defaults to localhost:5984")
 
-    parser.add_argument("--db", dest='db', action='store',
-                       help="CouchDB database name, defaults to 'tests'")
+    parser.add_argument("--db", dest='db', action='store', default="tests",
+                        help="CouchDB database name, defaults to 'tests'")
+
+    parser.add_argument("--dry-run", action='store_true', default=False,
+                        help="Do not submit the resulting hash to CouchDB")
 
     args = parser.parse_args()
 
-    for d in os.listdir(args.root):
-    	path = os.path.join(args.root, d)
-        dirsizes[path] = get_dirsizes(path)
+    for r in args.root: # multiple --dir args provided
+        for d in os.listdir(r):
+            path = os.path.join(r, d)
+            dirsizes[path] = get_dirsizes(path)
 
-    couch = couchdb.Server(args.server)
-    db = couch[args.db]
-    db.save(dirsizes)
+    if not args.dry_run:
+        couch = couchdb.Server(args.server)
+        db = couch[args.db]
+        db.save(dirsizes)
 
 if __name__ == "__main__":
     main()
