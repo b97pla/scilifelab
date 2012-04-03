@@ -23,7 +23,7 @@ def get_dirsizes(path="."):
         TODO: Be replaced with a more pythonic way which reports the size correctly.
     '''
     path = path.strip().split('\t')
-    out = subprocess.check_output(["du", "-s", path[0]])
+    out = subprocess.check_output(["du", "-s", path[0]], stderr=subprocess.STDOUT)
     return out.split('\t')[0]
 
 def send_db(server, db, data):
@@ -34,7 +34,8 @@ def send_db(server, db, data):
     db.save(data)
 
 def main():
-    dirsizes = {"time": datetime.datetime.now().isoformat()}
+    dirsizes = {"time": datetime.datetime.now().isoformat(),
+                "errors": [] }
 
     parser = argparse.ArgumentParser(description="Compute directory size(s) and report them to a CouchDB database")
 
@@ -55,7 +56,10 @@ def main():
     for r in args.root: # multiple --dir args provided
         for d in os.listdir(r):
             path = os.path.join(r, d)
-            dirsizes[path] = get_dirsizes(path)
+            try:
+                dirsizes[path] = get_dirsizes(path)
+            except subprocess.CalledProcessError as pe:
+                dirsizes['errors'].append(pe.output)
 
     if not args.dry_run:
     	send_db(args.server, args.db, dirsizes)
