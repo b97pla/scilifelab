@@ -36,7 +36,7 @@ fai = opts.fai
 projtag = opts.projtag
 
 qscale = '--solexa1.3-quals'
-if phred33: qscale = ''
+if phred33 == True: qscale = ''
 
 fpath = sys.argv[1]
 refpath = sys.argv[2]
@@ -65,9 +65,9 @@ for n in sorted(sample_names):
 r = raw_input("Press n to exit")
 if r.upper() == "N": sys.exit(0)
 
-sFile = open("sample_names.txt", "w")
-for n in sorted(sample_names): 
-    sFile.write(n + "\n")
+#sFile = open("sample_names.txt", "w")
+#for n in sorted(sample_names): 
+#    sFile.write(n + "\n")
 
 for n in sorted(sample_names):
     print "Generating sbatch files for sample ", n
@@ -79,7 +79,7 @@ for n in sorted(sample_names):
     oF.write("#SBATCH -J tophat_" + n + projtag + "\n")
     oF.write("#SBATCH -e tophat_" + n + projtag + ".err\n")
     oF.write("#SBATCH -o tophat_" + n + projtag + ".out\n")
-    oF.write("#SBATCH --mail-user mikael.huss@scilifelab.se\n")
+    oF.write("#SBATCH --mail-user=mikael.huss@scilifelab.se\n")
     oF.write("#SBATCH --mail-type=ALL\n")
 
     oF.write("module unload bioinfo-tools\n")

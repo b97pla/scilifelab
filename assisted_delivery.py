@@ -199,11 +199,13 @@ for d in dirs_to_process:
             if 'unmatched' in fastq_file: continue
             # Extract barcode
             [lane, date, run_id, nophix, bcbb_bc, pe_read, dummy] = fastq_file.split("_")
+            #[lane, date, run_id, bcbb_bc, pe_read, dummy] = fastq_file.split("_")
             if sample_id_and_idx.has_key(int(bcbb_bc)):
                 customer_sample_id = sample_id_and_idx[int(bcbb_bc)]
                 new_file_name = lane + "_" + date + "_" + run_id + "_" + customer_sample_id.replace("/", "_") + "_" + pe_read + ".fastq"   
         else:
             [lane, date, run_id, nophix, name, pe_read,dummy] = fastq_file.split("_")
+            #[lane, date, run_id, name, pe_read,dummy] = fastq_file.split("_")
             new_file_name = lane + "_" + date + "_" + run_id + "_" + lane_sample + "_" + pe_read + ".fastq"   
        #  print "Preparing to copy file", fastq_file, "as ", new_file_name
         if new_file_name != '': files_to_copy.append([fastq_file, new_file_name])
