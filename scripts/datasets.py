@@ -70,7 +70,10 @@ def convert_human_readable_to_numbers(file_size):
     """
     dpref = file_size[-1]
     if dpref not in ["K", "M", "G", "T"]:
-        return 0
+        try:
+            return int(file_size)
+        except:
+            return 0
 
     file_size = file_size[:-1]
     if dpref == 'G':
@@ -117,11 +120,12 @@ def get_formatted_data():
     return data
 
 
-def get_dirs_with_sizes_and_dates():
+def get_dirs_with_sizes_and_dates(\
+    log_file="/Users/valentinesvensson/Documents/sizegraphing/datasets_sizes.log"):
     """Returns a list of dicts as we want them in the status data base.
     """
     # This of course need to be pointed to wherever the log file is available.
-    with open("/Users/valentinesvensson/Documents/sizegraphing/datasets_sizes.log") as data_f:
+    with open(log_file) as data_f:
         all_data = data_f.read()
 
     data_lines = all_data.splitlines()
@@ -130,7 +134,6 @@ def get_dirs_with_sizes_and_dates():
     for line in data:
         line[0] = int(convert_human_readable_to_numbers(line[0]))
         date_string = line[1].split("/")[-1].split("_")[0]
-        line[1] = line[1].split("/")[-1]
         try:
             line.append(datetime.datetime.strptime(date_string, "%y%m%d"))
         except:
