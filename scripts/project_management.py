@@ -6,7 +6,7 @@ Usage:
                             [<YAML run information>
                              --flowcell_alias=<flowcell_alias> --project_desc=<project_desc>
                              --install_data --move_data --symlink --only_install_run_info
-                             --customer_delivery --barcode_id_to_name
+                             --customer_delivery --barcode_id_to_name --use_full_names
                              --dry_run --verbose]
 
 
@@ -22,8 +22,7 @@ is output to the project directory. The pruning is based on the options
 <project_desc>. 
 
 In order to avoid downstream demultiplexing, a file sample_project_run_info.yaml 
-is created, in which each sample is put in a separate lane. Lane names are formatted
-as "number_samplename" by default.
+is created, in which each sample is put in a separate lane.
 
 Options:
   -a, --flowcell_alias=<flowcell alias>         By default, samples are moved to a directory named
@@ -34,6 +33,7 @@ Options:
                                                 to one directory <project_desc/flowcell_dir>.
   -b, --barcode_id_to_name                      Convert barcode ids to sample names
   -i, --only_install_run_info                   Only install pruned run_info file.
+  -f, --use_full_names                          Use full barcode name, including "_index"
   -m, --move_data                               Move data instead of copying
   -l, --symlink                                 Link data instead of copying
   -n, --dry_run                                 Don't do anything samples, just list what will happen
@@ -214,6 +214,8 @@ def _get_barcoded_fastq_files(lane, multiplex, fc_date, fc_name, fc_dir=None):
 
 def _convert_barcode_id_to_name(multiplex, fc_name, fq):
     bcid2name = dict([(str(mp.get_barcode_id()), get_sample_name(mp.get_barcode_name())) for mp in multiplex])
+    if options.use_full_names:
+        bcid2name = dict([(str(mp.get_barcode_id()), mp.get_full_name()) for mp in multiplex])
     bcid = re.search("_(\d+)_(\d+)_fastq.txt", fq)
     from_str = "%s_%s_fastq.txt" % (bcid.group(1), bcid.group(2))
     to_str   = "%s_%s.fastq" % (bcid2name[bcid.group(1)], bcid.group(2))
@@ -354,7 +356,7 @@ if __name__ == "__main__":
                              --flowcell_alias=<flowcell_alias>
                              --project_desc=<project_desc> --symlink
                              --move_data --only_install_run_info --install_data
-                             --dry_run --verbose]
+                             --use_full_names --dry_run --verbose]
 
     For more extensive help type project_management.py
 """
@@ -368,7 +370,9 @@ if __name__ == "__main__":
                       default=False)
     parser.add_option("-b", "--barcode_id_to_name", dest="barcode_id_to_name", action="store_true",
                       default=False)
-    parser.add_option("-f", "--only_install_run_info", dest="only_run_info", action="store_true",
+    parser.add_option("-i", "--only_install_run_info", dest="only_run_info", action="store_true",
+                      default=False)
+    parser.add_option("-f", "--use_full_names", dest="use_full_names", action="store_true",
                       default=False)
     parser.add_option("-m", "--move_data", dest="move", action="store_true",
                       default=False)
