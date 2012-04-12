@@ -10,12 +10,8 @@ setup(name = "scilifelab",
       author_email = "genomics@scilifelab.se",
       description = "Useful scripts for use at SciLife",
       license = "MIT",
-      scripts = ['scripts/analyze_quality_recal.py',
-                           ],
-      package_data = {
-          'config' : ['*.yaml'],
-          },
+      scripts = ['scripts/project_management.py'],
       install_requires = [
-          "bcbb >= 0.3a",
+          "bcbio-nextgen >= 0.2",
       ])
 os.system("git rev-parse --short --verify HEAD > ~/.scilifelab_version")
