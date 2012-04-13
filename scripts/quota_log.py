@@ -33,8 +33,8 @@ def main():
 
         project = proj.strip("\n").split()
         project_dict["project"] = project[0]
-        project_dict["usage"] = project[1]
-        project_dict["quota limit"] = project[2]
+        project_dict["usage (GB)"] = project[1]
+        project_dict["quota limit (GB)"] = project[2]
         try:
             project_dict["over quota"] = project[3]
         except:
