@@ -6,6 +6,7 @@ import argparse
 import datetime
 import subprocess
 import couchdb
+from platform import node as host_name
 
 def main():
     parser = argparse.ArgumentParser(description="Formats file system information as a dict, \
@@ -35,12 +36,11 @@ def main():
             except:
                 pass
 
-        a_dict = dict(zip(keys, values))
-        a_dict["time"] = current_time.isoformat()
+        log_dict = dict(zip(keys, values))
+        log_dict["time"] = current_time.isoformat()
+        log_dict["hostname"] = host_name()
 
-        file_systems.append(a_dict)
-
-    print(args)
+        file_systems.append(log_dict)
 
     if args.server == "":
         print(file_systems)
