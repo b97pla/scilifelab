@@ -22,7 +22,7 @@ def main():
     args = parser.parse_args()
 
     current_time = datetime.datetime.now()
-    uq = subprocess.Popen(["uquota", "-q"], stdout=subprocess.PIPE)
+    uq = subprocess.Popen(["/bubo/sw/uppmax/bin/uquota", "-q"], stdout=subprocess.PIPE)
     output = uq.communicate()[0]
 
     projects = output.split("\n/proj/")[1:]
