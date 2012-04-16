@@ -7,10 +7,8 @@ inaccurate filesizes:
 
 http://stackoverflow.com/questions/1392413/calculating-a-directory-size-using-python
 '''
-# TODO: Manage depth of root
+# TODO: Manage depth of root (how many dir levels): http://stackoverflow.com/questions/229186/os-walk-without-digging-into-directories-below
 # TODO: Filter out by .bcl files and/or include other ones
-# TOOD: Save time tag in the hash
-# TODO: Parametrized cmdline opts
 
 import os
 import sys
@@ -20,45 +18,52 @@ import datetime
 import couchdb
 
 
-def usage():
-    print "./" + sys.argv[0] + "directory --server localhost:5948 --db testdb"
-
-
 def get_dirsizes(path="."):
     ''' Gets directory size.
         TODO: Be replaced with a more pythonic way which reports the size correctly.
     '''
     path = path.strip().split('\t')
-    out = subprocess.check_output(["du", "-s", path[0]])
+    out = subprocess.check_output(["du", "-s", path[0]], stderr=subprocess.STDOUT)
     return out.split('\t')[0]
 
+def send_db(server, db, data):
+    ''' Submits provided data to database on server
+    '''
+    couch = couchdb.Server(server)
+    db = couch[db]
+    db.save(data)
 
 def main():
-    dirsizes = {"time": datetime.datetime.now().isoformat()}
-    server = 'localhost:5984'
-    db = "log_tests"
-    root = "."
+    dirsizes = {"time": datetime.datetime.now().isoformat(),
+                "errors": [] }
 
     parser = argparse.ArgumentParser(description="Compute directory size(s) and report them to a CouchDB database")
 
-    parser.add_argument('--dir', metavar='root', default=".", action='store',
+    parser.add_argument('--dir', dest='root', action='append',
                         help="the directory to calculate dirsizes from")
 
-    parser.add_argument("--server", dest='server', action='store',
-                        default='localhost:5984', help="CouchDB instance to connect to, defaults to localhost:5984")
+    parser.add_argument("--server", dest='server', action='store', default="localhost:5984",
+                        help="CouchDB instance to connect to, defaults to localhost:5984")
 
-    parser.add_argument("--db", dest='db', action='store',
-                       help="CouchDB database name, defaults to log_tests")
+    parser.add_argument("--db", dest='db', action='store', default="tests",
+                        help="CouchDB database name, defaults to 'tests'")
+
+    parser.add_argument("--dry-run", action='store_true', default=False,
+                        help="Do not submit the resulting hash to CouchDB")
 
     args = parser.parse_args()
 
-    for d in os.listdir(root):
-        path = os.path.join(root, d)
-        dirsizes[path] = get_dirsizes(path)
+    for r in args.root: # multiple --dir args provided
+        for d in os.listdir(r):
+            path = os.path.join(r, d)
+            try:
+                dirsizes[path] = get_dirsizes(path)
+            except subprocess.CalledProcessError as pe:
+                dirsizes['errors'].append(pe.output)
 
-    couch = couchdb.Server(server)
-    db = couch[db]
-    db.save(dirsizes)
+    if not args.dry_run:
+    	send_db(args.server, args.db, dirsizes)
+
 
 if __name__ == "__main__":
     main()
