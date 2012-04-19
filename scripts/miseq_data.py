@@ -5,7 +5,6 @@ import glob
 import operator
 import csv
 import re
-import split_demultiplexed
 from optparse import OptionParser
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
 from Bio import SeqIO
@@ -95,6 +94,8 @@ class MiSeqRun:
             sample_names[str(i)] = name
         
         out_dir = self._multiplex_dir()
+        
+        import split_demultiplexed 
         split_demultiplexed._split_fastq_batches(self._fastq,out_dir,sample_names)
                 
 class FastQParser:
@@ -112,14 +113,17 @@ class FastQParser:
     def next(self):
         record = []
         for i in range(4):
-            record.append(self._fh.next())
+            record.append(self._fh.next().strip())
         self._records_read += 1
         
         return record
 
     def rread(self):
         return self._records_read
-    
+
+    def seek(self,offset,whence=None):
+        self._fh.seek(offset,whence)
+        
     def close(self):
         self._fh.close()
 
@@ -135,7 +139,7 @@ class FastQWriter:
         
     def write(self,record):
         for row in record:
-            self._fh.write(row)
+            self._fh.write("%s\n" % row.strip("\n"))
         self._records_written += 1
     
     def rwritten(self):

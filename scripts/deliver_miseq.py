@@ -27,7 +27,7 @@ DEFAULT_RECIPIENT = "seqmaster@scilifelab.se"
 LOG_NAME = "Miseq Delivery"
 logger2 = logbook.Logger(LOG_NAME)
 
-def main(input_path, transferred_db, run_folder, uppnexid, samplesheet, logfile, email_notification, config_file, dryrun):
+def main(input_path, transferred_db, run_folder, uppnexid, samplesheet, logfile, email_notification, config_file, force, dryrun):
     
     config = {}
     if config_file is not None:
@@ -84,7 +84,7 @@ def main(input_path, transferred_db, run_folder, uppnexid, samplesheet, logfile,
                 
                 # Skip this folder if it has already been processed
                 logger2.info("Processing %s" % folder)
-                if _is_processed(folder,transferred_db):
+                if _is_processed(folder,transferred_db) and not force:
                     logger2.info("%s has already been processed, skipping" % folder) 
                     continue
             
@@ -265,6 +265,7 @@ if __name__ == "__main__":
     parser.add_option("-l", "--log-file", dest="logfile", default=None)
     parser.add_option("-e", "--email-notification", dest="email_notification", default=None)
     parser.add_option("-c", "--config-file", dest="config_file", default=None)
+    parser.add_option("-f", "--force", dest="force", action="store_true", default=False)
     parser.add_option("-n", "--dry-run", dest="dryrun", action="store_true", default=False)
     options, args = parser.parse_args()
     
@@ -278,5 +279,6 @@ if __name__ == "__main__":
          options.transferred_db, options.run_folder, 
          options.uppnexid, options.samplesheet,
          options.logfile, options.email_notification,
-         options.config_file, options.dryrun)
+         options.config_file, options.force,
+         options.dryrun)
 

@@ -7,15 +7,17 @@ import time
 import yaml
 import subprocess
 
+#ANALYSIS_SCRIPT="distributed_nextgen_pipeline.py"
 ANALYSIS_SCRIPT="automated_initial_analysis.py"
 ANALYSIS_DIR="/proj/a2010002/nobackup/illumina/"
 EMAIL="seqmaster@scilifelab.se"
-SLURM_ARGS="-A a2010002 -p core"
-#SLURM_ARGS="-A a2010002 -p core"
-RUN_TIME="168:00:00"
-#RUN_TIME="120:00:00"
+#SLURM_ARGS="-A a2010002 -p node"
+SLURM_ARGS="-A a2010002 -p node"
+#RUN_TIME="168:00:00"
+RUN_TIME="48:00:00"
 PROCESS_YAML_SCRIPT = "/bubo/home/h27/pontusla/scilifelab/scripts/process_run_info.py"
-PROCESS_YAML = True
+PROCESS_YAML = False
+FC_SPECIFIC_AMPQ = False
 
 def main():
  
@@ -75,6 +77,31 @@ def main():
     if not os.path.exists(work_dir):
         raise Exception("The path %s does not exist and was not created" % work_dir)
     
+    # if required, parse the machine id and flowcell position and use an ampq vhost specific for it
+    if FC_SPECIFIC_AMPQ:
+        machine_id = None
+        flowcell_position = None
+        for p in run_name.split("_").uppercase():
+            if p.startswith("SN"):
+                machine_id = p
+            elif p[0] in ("A","B") and p.endswith("XX"):
+                flowcell_position = p[0]
+        assert machine_id and flowcell_position, "Machine id and flowcell position could not be parsed from run name '%s'" % run_name
+        
+        # write a dedicated post_process.yaml for the ampq queue
+        if config.get("distributed",False):
+            config["distributed"]["rabbitmq_vhost"] = "bionextgen-%s-%s" % (machine_id,flowcell_position)
+        
+        post_process_config_orig = post_process_config
+        parts = os.path.splitext(post_process_config)
+        post_process_config = "%s-%s-%s%s" % (parts[0],machine_id,flowcell_position,parts[1])
+        
+        if os.path.exists(post_process_config):
+            print "Customized post process yaml '%s' already exists, will not overwrite" % post_process_config
+        else:
+            with open(post_process_config,"w") as fh:
+                fh.write(yaml.safe_dump(config, default_flow_style=False, allow_unicode=True)) 
+        
     # Translate the time string into seconds
     multiplier = (86400,3600,60,1)
     units = RUN_TIME.split(":")
