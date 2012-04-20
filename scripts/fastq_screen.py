@@ -5,9 +5,9 @@ import sys
 import glob
 import time
 
-def main():
-
+def main(options, args):
     samples = glob.glob(sys.argv[1]+"/*_barcode/*1_fastq.txt")
+    outdir = "fastq_screen"
 
     for sample1 in samples:
         sample2 = sample1.replace("1_fastq", "2_fastq")
@@ -18,7 +18,7 @@ def main():
         jt = s.createJobTemplate()
         jt.remoteCommand = 'fastq_screen'
         jt.args = ['--illumina', '--multilib', '--subset', '2000000', sample1, \
-                   '--paired', sample2, '--outdir', '.']
+                   '--paired', sample2, '--outdir', os.path.join(sys.argv[1], outdir)]
 
         # TODO: job name is always (null), must fix slurm_drmaa C library and its
         # custom parsing (substitute "slurmdrmaa_parse_native"
@@ -35,4 +35,18 @@ def main():
     exit(0)
 
 if __name__ == "__main__":
-    main()
+ #   import optparse
+#    usage = '%prog [options] infile outfile'
+
+#    parser = optparse.OptionParser(usage=usage, version="%%prog %s" % VERSION)
+#    parser.add_option('-f', '--filelist', action='store_true', default=False,
+#                      dest="filelist", help='provide a file with paths to process')
+#
+#    options, args = parser.parse_args()
+#
+#    
+#    if len(args) != 2:
+#        parser.print_usage(sys.stderr)
+#        sys.exit(1)
+    options, args ="foo", "bar"    
+    main(options, args)
