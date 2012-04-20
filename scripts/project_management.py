@@ -5,9 +5,9 @@ Usage:
   project_management.py     <YAML config file> <flowcell_dir> <project_dir>
                             [<YAML run information>
                              --flowcell_alias=<flowcell_alias> --project_desc=<project_desc>
-                             --install_data --move_data --symlink --only_install_run_info
-                             --customer_delivery --barcode_id_to_name --use_full_names
-                             --dry_run --verbose]
+                             --install_data --move_data --move_and_relink --symlink
+                             --only_install_run_info --customer_delivery --barcode_id_to_name
+                             --use_full_names --dry_run --verbose]
 
 
 Given a directory with demultiplexed flow cell data and a project id,
@@ -35,6 +35,7 @@ Options:
   -i, --only_install_run_info                   Only install pruned run_info file.
   -f, --use_full_names                          Use full barcode name, including "_index"
   -m, --move_data                               Move data instead of copying
+  -M, --move_and_relink                         Move data from source to target, and link from target to source
   -l, --symlink                                 Link data instead of copying
   -n, --dry_run                                 Don't do anything samples, just list what will happen
   -v, --verbose                                 Print some more information
@@ -222,13 +223,17 @@ def _convert_barcode_id_to_name(multiplex, fc_name, fq):
     return fq.replace(from_str, to_str)
  
 def _deliver_fastq_file(fq_src, fq_tgt, outdir, fc_link_dir=None):
+    f2 = None
     if options.link:
         f = os.symlink
     elif options.move:
         f = shutil.move
+    elif options.move_and_relink:
+        f = shutil.move
+        f2 = os.symlink
     else:
         f = shutil.copyfile
-    _handle_data(fq_src, os.path.join(outdir, fq_tgt), f)
+    _handle_data(fq_src, os.path.join(outdir, fq_tgt), f, f2)
 
 def _make_delivery_directory(fc):
     """Make the output directory"""
@@ -244,7 +249,7 @@ def _make_dir(dir, label):
     else:
         logger.warn("%s already exists: not creating new directory" % (dir))
 
-def _handle_data(src, tgt, f=shutil.copyfile):
+def _handle_data(src, tgt, f=shutil.copyfile, f2=None):
     if options.only_run_info:
         return
     if src is None:
@@ -254,9 +259,15 @@ def _handle_data(src, tgt, f=shutil.copyfile):
         return
     if options.dry_run:
         print "DRY_RUN: %s file %s to %s" % (f.__name__, src, tgt)
+        if not f2 is None:
+            print "DRY_RUN: %s file %s to %s" % (f2.__name__, tgt, src)
     else:
         logger.info("%s file %s to %s" % (f.__name__, src, tgt))
         f(src, tgt)
+        if not f2 is None:
+            logger.info("%s file %s to %s" % (f2.__name__, tgt, src))
+            f2(tgt, src)
+            
 
 def _deliver_data(data, fastqc, outdir):
     """Loop over data and fastqc and deliver files"""
@@ -355,8 +366,8 @@ if __name__ == "__main__":
                             [<YAML run information>
                              --flowcell_alias=<flowcell_alias>
                              --project_desc=<project_desc> --symlink
-                             --move_data --only_install_run_info --install_data
-                             --use_full_names --dry_run --verbose]
+                             --move_data --move_and_relink --only_install_run_info
+                             --install_data --use_full_names --dry_run --verbose]
 
     For more extensive help type project_management.py
 """
@@ -375,6 +386,8 @@ if __name__ == "__main__":
     parser.add_option("-f", "--use_full_names", dest="use_full_names", action="store_true",
                       default=False)
     parser.add_option("-m", "--move_data", dest="move", action="store_true",
+                      default=False)
+    parser.add_option("-M", "--move_and_relink", dest="move_and_relink", action="store_true",
                       default=False)
     parser.add_option("-l", "--symlink", dest="link", action="store_true",
                       default=False)
