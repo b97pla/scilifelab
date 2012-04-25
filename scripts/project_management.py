@@ -194,7 +194,7 @@ def process_lane(lane, pruned_fc, rawdata_fc, analysis_fc):
             fastq_tgt = fastq_src
             if options.customer_delivery or options.barcode_id_to_name:
                 fastq_tgt = _convert_barcode_id_to_name(multiplex, rawdata_fc.get_fc_name(), fastq_src)
-                fastq_tgt.replace("_nophix_", "_")
+                fastq_tgt = fastq_tgt.replace("_nophix_", "_")
             _deliver_fastq_file(fastq_src, os.path.basename(fastq_tgt), fc_data_dir)
             fastq_targets.append(os.path.join(fc_data_dir, os.path.basename(fastq_tgt)))
     lane.set_files(fastq_targets)
