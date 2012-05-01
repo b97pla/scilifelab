@@ -14,7 +14,7 @@ REFERENCE_DIR = "/bubo/nobackup/uppnex/reference/biodata/galaxy"
 SLURM_ARGS="-A a2010002 -p node"
 RUN_TIME="6:00:00"
 
-def main(input_path, genome, filter_file, read1, read2, aligner, slurm_parameters):
+def main(input_path, genome, filter_file, read1, read2, filtered_reads, aligner, slurm_parameters):
     
     if filter_file is None:
         filter_file, _ = get_genome_ref(genome, aligner, os.path.normpath(REFERENCE_DIR))
@@ -46,12 +46,12 @@ def main(input_path, genome, filter_file, read1, read2, aligner, slurm_parameter
         infiles.append([read1,read2])
     
     for read1, read2 in infiles:
-        jobid = filter_files_job(read1, read2,
+        jobid = filter_files_job(read1, read2, filtered_reads,
                                  filter_file, aligner,
                                  slurm_parameters)
         print "Your job was submitted with jobid %s" % jobid
 
-def filter_files_job(read1, read2, filter_file, aligner, slurm_parameters):
+def filter_files_job(read1, read2, filtered_reads, filter_file, aligner, slurm_parameters):
     
     slurm_project, slurm_run_time, slurm_partition = slurm_parameters
     slurm_args = "-A %s -t %s -p %s" % (slurm_project,slurm_run_time,slurm_partition)
@@ -60,7 +60,9 @@ def filter_files_job(read1, read2, filter_file, aligner, slurm_parameters):
     if read2 is not None:
         print "Including %s" % read2
     
-    outname = read1.replace("_1_fastq.txt","_filtered.fastq")
+    outname = read1.replace("fastq","-filtered.fastq")
+    assert outname != read1, "ERROR: Could not properly interpret file name"
+    
     args = ["--phred64-quals"]
     if slurm_partition == "node" or slurm_partition == "devel": args += ["-p", "8"]
     args += ["--un", outname,
@@ -72,7 +74,10 @@ def filter_files_job(read1, read2, filter_file, aligner, slurm_parameters):
     else:
         args += [read1]
     if aligner == "bowtie2": args += ["-S"]
-    args += ["/dev/null"]
+    if filtered_reads is not None:
+        args += [filtered_reads]
+    else:
+        args += ["/dev/null"]
     
     s = drmaa.Session()
     s.initialize()
@@ -97,6 +102,7 @@ if __name__ == "__main__":
     parser.add_option("-f", "--filter-file", dest="filter_file", default=None)
     parser.add_option("-1", "--read1", dest="read1", default=None)
     parser.add_option("-2", "--read2", dest="read2", default=None)
+    parser.add_option("-r", "--filtered-reads", dest="filtered_reads", default=None)
     parser.add_option("-p", "--slurm-partition", dest="slurm_partition", default="core")
     parser.add_option("-A", "--slurm-project", dest="slurm_project", default="a2010002")
     parser.add_option("-t", "--slurm-run-time", dest="slurm_run_time", default="3:00:00")
@@ -110,7 +116,7 @@ if __name__ == "__main__":
         sys.exit()
     main(os.path.normpath(input_path), 
          options.genome, options.filter_file, 
-         options.read1, options.read2,
+         options.read1, options.read2, options.filtered_reads,
          options.aligner, [options.slurm_project, 
                            options.slurm_run_time, 
                            options.slurm_partition])

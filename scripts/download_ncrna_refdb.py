@@ -8,20 +8,47 @@ from xml.etree import ElementTree
 from optparse import OptionParser
 
 BASE_URL = "http://www.ncrna.org/frnadb/api/"
+DEFAULT_NCRNA = ["tRNA","snRNA","snoRNA","rRNA","miRNA","scRNA","RNase_MRP_RNA","RNase_P_RNA","SRP_RNA","telomerase_RNA","vault_RNA","Y_RNA"]
 
-def main(base_url=BASE_URL, organism="Homo sapiens", so_name=["tRNA","snRNA","snoRNA","rRNA","miRNA","piRNA"]):
-    base_url=BASE_URL
-    organism="Homo sapiens"
-    so_name=["tRNA","snRNA","snoRNA","rRNA","miRNA","scRNA","RNase_MRP_RNA","RNase_P_RNA","SRP_RNA","telomerase_RNA","vault_RNA","Y_RNA"]
-    entry_ids = {}
-    for id in search(base_url,organism,so_name):
-        entry_ids[id] = 1
-    for id in entry_ids.keys():
-        print id
-    for entry_id in entry_ids.keys():
-        for entry in fetch_entry(base_url, entry_id):
-            print ">%s\n%s" % ("|".join([entry['id'],entry['ontology'],entry['organism'],entry['description']]),entry['sequence'])
+def main(base_url, so_name, organism="Homo sapiens"):
     
+    if base_url is None:
+        base_url=BASE_URL
+    
+    if len(so_name) == 0:
+        so_name = DEFAULT_NCRNA
+            
+    for so in so_name:
+        entry_ids = {}
+        sys.stderr.write("Searching for %s in %s\n" % (so,organism))
+        
+        for id in search(base_url,organism,[so]):
+            entry_ids[id] = 1
+        #for id in entry_ids.keys():
+        #    print id
+        total = len(entry_ids.keys())
+        processed = 0
+        fetched = 0
+        discarded = 0
+        sys.stderr.write("Found %d entries\n" % total)
+        for entry_id in entry_ids.keys():
+            for entry in fetch_entry(base_url, entry_id):
+                s = entry['sequence'].upper().replace("U","T")
+                ok = True
+                for c in s:
+                    if c == "A" or c == "C" or c == "G" or c == "T" or c == "N": continue
+                    ok = False
+                    discarded += 1
+                    break
+                if ok:
+                    print ">%s\n%s" % ("|".join([entry['id'],entry['ontology'],entry['organism'],entry['description']]),entry['sequence'])
+                    fetched += 1
+                processed += 1
+            if processed%100 == 0:
+                sys.stderr.write("%d of %d entries processed\n" % (processed,total))
+        sys.stderr.write("%d %s sequences discarded because of illegal nucleotides\n" % (discarded,so))
+        sys.stderr.write("%d %s sequences fetched for %s\n" % (fetched,so,organism))
+        
 def search(base_url, organism, so_name):
     so = " ".join(so_name) 
     query = urllib.quote("search/org=\"%s\" and sos any \"%s\"" % (organism,so))
@@ -81,10 +108,10 @@ def _parse_frnadb_search_result(result):
 
 if __name__ == "__main__":
     parser = OptionParser()
-    parser.add_option("-o", "--organism", dest="organism", action="append", default=None)
-    parser.add_option("-s", "--so_name", dest="so_name", action="append", default=None)
+    parser.add_option("-o", "--organism", dest="organism", default=None)
+    parser.add_option("-s", "--so_name", dest="so_name", action="append", default=[])
     parser.add_option("-u", "--base_url", dest="base_url", default=None)
     options, args = parser.parse_args()
     
-    main(options.base_url, options.organism, options.so_name)
+    main(options.base_url, options.so_name, options.organism)
 

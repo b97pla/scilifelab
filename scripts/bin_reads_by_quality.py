@@ -3,15 +3,15 @@ import os
 import sys
 import miseq_data
 
-PHRED_OFFSET = 33
+PHRED_OFFSET = 64
 
 def main():
     args = sys.argv[1:]
     
-    if len(args) < 1:
+    if len(args) < 2:
         return 1
-    qual = process_fastq(args[0],PHRED_OFFSET)
-    #print_average_quals(qual)
+    
+    process_fastq(args[0],args[1])
 
 def print_average_quals(qualities):
     
@@ -23,36 +23,31 @@ def print_average_quals(qualities):
         avg_quality.insert(0,bin)
         print ",".join([str(i) for i in avg_quality])
         
-def process_fastq(fastq_file, phred_offset=33):
+def process_fastq(fastq_r1, fastq_r2, bins=[25,30], phred_offset=64):
     
-    qual = {}
-    count = {}
-    out_handle = {}
-    fh = miseq_data.FastQParser(fastq_file)
-    outroot, ext = os.path.splitext(fastq_file)
+    fh_r1 = miseq_data.FastQParser(fastq_r1)
+    fh_r2 = miseq_data.FastQParser(fastq_r2)
+    oh1 = {}
+    oh2 = {}
+    root1, ext1 = os.path.splitext(fastq_r1)
+    root2, ext2 = os.path.splitext(fastq_r2)
+    for b in bins:
+        oh1[b] = miseq_data.FastQWriter("%s.Q%d%s" % (root1,b,ext1))
+        oh2[b] = miseq_data.FastQWriter("%s.Q%d%s" % (root2,b,ext2))
     
-    for record in fh:
-        quality = record[3].strip()
-        bin = int(round(quality_average(quality,phred_offset)))
-        if bin not in out_handle:
-            outfile = "%s.%d%s" % (outroot,bin,ext)
-            out_handle[bin] = miseq_data.FastQWriter(outfile)
-#            qual[bin] = [0. for i in range(len(quality))]
-#            count[bin] = 0
-#        for i,q in enumerate(quality):
-#            qual[bin][i] += ord(q)
-#        count[bin] += 1
-        out_handle[bin].write(record)
+    for r1 in fh_r1:
+        r2 = fh_r2.next()
+        assert r2[0][0:-1] == r1[0][0:-1], "FATAL: Read identifiers differ for paired reads (%s and %s)" % (r1[0],r2[0])
+            
+        bin = min(int(round(quality_average(r1[3].strip(),phred_offset))),int(round(quality_average(r2[3].strip(),phred_offset))))
         
-#    for bin, sum_quality in qual.items():
-#        for i,q in enumerate(sum_quality):
-#            q -= phred_offset*count[bin]
-#            qual[bin][i] = q/count[bin]
-    
-    for bin,oh in out_handle.items():
+        for b in bins:
+            if bin >= b:
+                oh1[b].write(r1)
+                oh2[b].write(r2)
+        
+    for oh in oh1.values() + oh2.values():
         oh.close()
-          
-    return qual
 
 
 def quality_average(quality_str, phred_offset):

@@ -7,17 +7,17 @@ import time
 import yaml
 import subprocess
 
-#ANALYSIS_SCRIPT="distributed_nextgen_pipeline.py"
-ANALYSIS_SCRIPT="automated_initial_analysis.py"
+ANALYSIS_SCRIPT="distributed_nextgen_pipeline.py"
+#ANALYSIS_SCRIPT="automated_initial_analysis.py"
 ANALYSIS_DIR="/proj/a2010002/nobackup/illumina/"
 EMAIL="seqmaster@scilifelab.se"
 #SLURM_ARGS="-A a2010002 -p node"
 SLURM_ARGS="-A a2010002 -p node"
-#RUN_TIME="168:00:00"
-RUN_TIME="48:00:00"
+RUN_TIME="144:00:00"
+#RUN_TIME="48:00:00"
 PROCESS_YAML_SCRIPT = "/bubo/home/h27/pontusla/scilifelab/scripts/process_run_info.py"
-PROCESS_YAML = False
-FC_SPECIFIC_AMPQ = False
+PROCESS_YAML = True
+FC_SPECIFIC_AMPQ = True
 
 def main():
  
@@ -41,7 +41,7 @@ def main():
         os.rename(run_info_file,run_info_backup)
         #cl = ["python","%s" % PROCESS_YAML_SCRIPT,run_info_backup,"--barcode_type","illumina","--trim","1","--analysis","Minimal","--out_file",run_info_file]
         #cl = ["python","%s" % PROCESS_YAML_SCRIPT,run_info_backup,"--barcode_type","illumina","--analysis","Minimal","--out_file",run_info_file,"--ascii"]
-        cl = ["python","%s" % PROCESS_YAML_SCRIPT,run_info_backup,"--analysis","Align_illumina","--out_file",run_info_file,"--genome_build","hg19","--ascii"]
+        cl = ["python","%s" % PROCESS_YAML_SCRIPT,run_info_backup,"--analysis","Align_illumina","--out_file",run_info_file,"--ascii","--clear_description"]
         print subprocess.check_output(cl)
         print "\n---------\n"
     
@@ -81,7 +81,7 @@ def main():
     if FC_SPECIFIC_AMPQ:
         machine_id = None
         flowcell_position = None
-        for p in run_name.split("_").uppercase():
+        for p in run_name.upper().split("_"):
             if p.startswith("SN"):
                 machine_id = p
             elif p[0] in ("A","B") and p.endswith("XX"):

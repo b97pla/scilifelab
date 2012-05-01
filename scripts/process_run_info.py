@@ -4,7 +4,7 @@ import sys
 import yaml
 from optparse import OptionParser
 
-def main(run_info_yaml, lane, out_file, genome_build, barcode_type, trim, ascii, analysis, description, verbose):
+def main(run_info_yaml, lane, out_file, genome_build, barcode_type, trim, ascii, analysis, description, clear_description, verbose):
     
     if verbose: print "Verifying that %s exists" % run_info_yaml
     assert os.path.exists(run_info_yaml)
@@ -22,7 +22,7 @@ def main(run_info_yaml, lane, out_file, genome_build, barcode_type, trim, ascii,
                 break
     for info in lane_info:
         if verbose: print "Processing lane %s" % info["lane"]
-        _process_info(info,genome_build,barcode_type,trim,ascii,analysis,description,verbose)
+        _process_info(info,genome_build,barcode_type,trim,ascii,analysis,description,clear_description,verbose)
     
     if out_file is not None:
         with open(out_file,'w') as fh:
@@ -31,7 +31,7 @@ def main(run_info_yaml, lane, out_file, genome_build, barcode_type, trim, ascii,
         print yaml.dump(run_info, allow_unicode=True, default_flow_style=False)
         
         
-def _process_info(info,genome_build,barcode_type,trim,ascii,analysis,description,verbose):
+def _process_info(info,genome_build,barcode_type,trim,ascii,analysis,description,clear_description,verbose):
     
     if genome_build is not None:
         if verbose: print "\tSetting genome build: %s" % genome_build
@@ -54,9 +54,14 @@ def _process_info(info,genome_build,barcode_type,trim,ascii,analysis,description
         if trim > 0:
             if verbose: print "\t\tTrimming %s nucleotides from end of barcode" % trim
             multiplex['sequence'] = multiplex['sequence'][0:(-1*trim)]
-        if ascii and 'description' in multiplex:
+        if clear_description and 'description' in multiplex:
+            del multiplex['description']
+        if ascii:
             if verbose: print "\t\tEnsuring ascii"
-            multiplex['description'] = _replace_ascii(multiplex['description'])
+            if 'sample_prj' in multiplex:
+                multiplex['sample_prj'] = _replace_ascii(multiplex['sample_prj'])
+            if 'description' in multiplex:
+                multiplex['description'] = _replace_ascii(multiplex['description'])
     
 def _replace_ascii(str):
     # Substitute swedish characters for sensible counterparts
@@ -77,6 +82,8 @@ if __name__ == "__main__":
     parser.add_option("-t", "--trim", dest="trim", default=0)
     parser.add_option("-a", "--analysis", dest="analysis", default=None)
     parser.add_option("-d", "--description", dest="description", default=None)
+    parser.add_option("-c", "--clear_description", dest="clear_description", default=False, \
+                                                        action="store_true")
     parser.add_option("-i", "--ascii", dest="ascii", default=False, \
                                                         action="store_true")
     parser.add_option("-v", "--verbose", dest="verbose", default=False, \
@@ -90,5 +97,5 @@ if __name__ == "__main__":
 
     main(run_info_yaml, int(options.lane), options.out_file, 
             options.genome_build, options.barcode_type, int(options.trim), \
-            options.ascii, options.analysis, options.description, options.verbose)
+            options.ascii, options.analysis, options.description, options.clear_description, options.verbose)
     
