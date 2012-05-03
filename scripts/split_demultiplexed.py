@@ -6,7 +6,9 @@ import os
 import csv
 import re
 import operator
-from miseq_data import (FastQParser, FastQWriter, MiSeqSampleSheet, group_fastq_files)
+from miseq_data import (MiSeqSampleSheet, group_fastq_files)
+from fastq_utils import (FastQParser, FastQWriter)
+ 
 from optparse import OptionParser
 
 def main(fastq_files, outdir, samplesheet):

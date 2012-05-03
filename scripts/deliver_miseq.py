@@ -8,24 +8,62 @@ import ConfigParser
 import subprocess
 import stat
 import logbook
+import copy
 from optparse import OptionParser
 from hashlib import md5
+from miseq_data import MiSeqRun
 
 from bcbio.utils import safe_makedir
 from bcbio.pipeline.config_loader import load_config
 
-DEFAULT_DB = os.path.join("~","log","miseq_transferred.db")
-DEFAULT_LOGFILE = os.path.join("~","log","miseq_deliveries.log")
-DEFAULT_SS_NAME = "SampleSheet.csv"
-DEFAULT_FQ_LOCATION = os.path.join("Data","Intensities","BaseCalls")
-DEFAULT_PROJECT_ROOT = os.path.join("/proj")
-DEFAULT_UPPNEXID_FIELD = "Description"
-DEFAULT_SMTP_HOST = "smtp.uu.se"
-DEFAULT_SMTP_PORT = 25
-DEFAULT_RECIPIENT = "seqmaster@scilifelab.se"
+DEFAULT_CONF = {
+                "transfer_db": os.path.join("~","log","miseq_transferred.db"),
+                "logfile": os.path.join("~","log","miseq_deliveries.log"),
+                "samplesheet_name": "SampleSheet.csv",
+                "fastq_path": os.path.join("Data","Intensities","BaseCalls"),
+                "project_root": os.path.join("/proj"),
+                "uppnexid_field": "Description",
+                "smtp_host": "smtp.uu.se",
+                "smtp_port": 25,
+                "email_recipient": "seqmaster@scilifelab.se"
+                }
 
 LOG_NAME = "Miseq Delivery"
 logger2 = logbook.Logger(LOG_NAME)
+
+def update_config_with_local(config, local):
+    cconf = copy.deepcopy(config)
+    for key in local.keys():
+        cconf[key] = local[key]
+    return cconf
+    
+
+def process_run_folder(run_folder, transferred_db, force=false, dry_run=false):
+                
+    # Skip this folder if it has already been processed
+    logger2.info("Processing %s" % run_folder)
+    if _is_processed(run_folder,transferred_db) and not force:
+        logger2.info("%s has already been processed, skipping" % run_folder) 
+        return
+ 
+    # Create a MiSeqRun object from the run_folder
+    miseqrun = MiSeqRun(run_folder)
+    
+    
+                # Locate the samplesheet and pasre the uppnex id if necessary
+                if uppnexid is None:
+                    local_samplesheet = samplesheet
+                    if local_samplesheet is None: local_samplesheet = os.path.join(input_path,folder,config.get("samplesheet_name",DEFAULT_SS_NAME))
+                    assert os.path.exists(local_samplesheet), "Could not find expected sample sheet %s" % local_samplesheet
+                    local_uppnexid = _fetch_uppnexid(local_samplesheet, config.get("uppnexid_field",DEFAULT_UPPNEXID_FIELD))
+                    assert local_uppnexid is not None and len(local_uppnexid) > 0, "Could not parse Uppnex ID for project from samplesheet %s" % local_samplesheet
+                else:
+                    local_uppnexid = uppnexid
+                    
+                logger2.info("Will deliver to inbox of project %s" % local_uppnexid)
+                   
+    
+            
 
 def main(input_path, transferred_db, run_folder, uppnexid, samplesheet, logfile, email_notification, config_file, force, dryrun):
     
