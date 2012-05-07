@@ -1,18 +1,8 @@
 This is a repo for some helper scripts that I use for NGS data delivery.
 
-* assisted_delivery.py is for delivering files to customer project directories. It uses some assumptions about directory structure. This script should now be able to handle the case with multiple projects per lane.
+* assisted_delivery.py is for delivering files to customer project directories. It uses some assumptions about directory structure. 
 
-TODO:
-	- add command-line option for specifying an analysis directory instead of the hard-coded one
-
-* fc_delivery_reports.py is for automatically generating delivery reports upon delivery. It should now be able to handle multiple projects per lane.
-
-TODO:
-	
-	- move constants into a config file
-	- (aesthetics) use existing method for fetching bar code stats instead of re-implementing 
-	- (aesthetics) write a proper function for classifying run as fail or success
-	- (aesthetics) write a proper function for filling in QC table
+* fc_delivery_reports.py is for automatically generating delivery reports upon delivery. 
 
 * count_barcodes.py is a very simple script for counting the number of occurrences of each DNA sequence barcode used to tag different samples. It's mostly meant to be used when the results of FASTQ de-multiplexing are unexpected and need to be checked in more detail. 
 

@@ -131,7 +131,7 @@ Removed_" + n + ".bam ASSUME_SORTED=true REMOVE_DUPLICATES=true METRICS_FILE=" +
 
     # Make custom tracks
     if fai != '':
-        oF.write("/bubo/home/h9/mikaelh/software/BEDTools-Version-2.10.1/bin/genomeCoverageBed -bga -split -ibam sample_sorted_dupRemoved_" + n + ".bam -g " + fai + " > sample_" + n + ".bga \n")
+        oF.write("/bubo/home/h9/mikaelh/software/BEDTools-Version-2.10.1/bin/genomeCoverageBed -bga -split -ibam accepted_hits_sorted_dupRemoved_" + n + ".bam -g " + fai + " > sample_" + n + ".bga \n")
         oF.write("/bubo/home/h9/mikaelh/bin/bedGraphToBigWig sample_" + n + ".bga " + fai + " sample_" + n + ".bw\n")
 
     # Clean up
