@@ -10,7 +10,7 @@ import subprocess
 ANALYSIS_SCRIPT="distributed_nextgen_pipeline.py"
 ANALYSIS_DIR="/proj/a2010002/nobackup/illumina/"
 EMAIL="seqmaster@scilifelab.se"
-SLURM_ARGS="-A a2010002 -p node"
+SLURM_ARGS="-A a2010002 -p node --qos=seqver"
 RUN_TIME="168:00:00"
 PROCESS_YAML_SCRIPT = "process_run_info.py"
 PROCESS_YAML = True
