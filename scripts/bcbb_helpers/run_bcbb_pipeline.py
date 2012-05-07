@@ -8,25 +8,16 @@ import yaml
 import subprocess
 
 ANALYSIS_SCRIPT="distributed_nextgen_pipeline.py"
-#ANALYSIS_SCRIPT="automated_initial_analysis.py"
 ANALYSIS_DIR="/proj/a2010002/nobackup/illumina/"
 EMAIL="seqmaster@scilifelab.se"
-#SLURM_ARGS="-A a2010002 -p node"
 SLURM_ARGS="-A a2010002 -p node"
 RUN_TIME="168:00:00"
-#RUN_TIME="48:00:00"
-PROCESS_YAML_SCRIPT = "/bubo/home/h27/pontusla/scilifelab/scripts/process_run_info.py"
+PROCESS_YAML_SCRIPT = "process_run_info.py"
 PROCESS_YAML = True
 FC_SPECIFIC_AMPQ = True
 
 def main():
  
-    # Ugly hack for overriding module system's GATK verison (will it work?)
-    # Not needed with customized module
-    #gatk_home = os.path.join(os.getenv("HOME"),"src","GATK","1.1")
-    #print "Setting GATK_HOME = %s" % gatk_home
-    #os.environ['GATK_HOME'] = gatk_home
-
     post_process_config = sys.argv[1]
     archive_dir = sys.argv[2]
     if len(sys.argv) > 3:
@@ -39,8 +30,6 @@ def main():
         print "---------\nProcessing run_info:"
         run_info_backup = "%s.orig" % run_info_file
         os.rename(run_info_file,run_info_backup)
-        #cl = ["python","%s" % PROCESS_YAML_SCRIPT,run_info_backup,"--barcode_type","illumina","--trim","1","--analysis","Minimal","--out_file",run_info_file]
-        #cl = ["python","%s" % PROCESS_YAML_SCRIPT,run_info_backup,"--barcode_type","illumina","--analysis","Minimal","--out_file",run_info_file,"--ascii"]
         cl = ["python","%s" % PROCESS_YAML_SCRIPT,run_info_backup,"--analysis","Align_illumina","--out_file",run_info_file,"--ascii","--clear_description"]
         print subprocess.check_output(cl)
         print "\n---------\n"
