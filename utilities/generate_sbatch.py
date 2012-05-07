@@ -15,7 +15,7 @@ The three first options are mandatory. There are further flags you can use:
 -t, --projtag: Provide a project tag that will be shown in the queuing system to distinguish from other TopHat runs
 -p, --phred33: Use phred33 / Sanger quality scale, e g for MiSeq or CASAVA 1.8 and above
 -f, --fai: Generate UCSC Genome Browser compatible BigWig tracks, using the specified FASTA index (fai) file
-
+-m, --mail: Specify a mailing address for SLURM
 """
 
 if len(sys.argv) < 4:
@@ -27,6 +27,8 @@ parser.add_option('-o', '--old', action="store_true", dest="old", default="False
 parser.add_option('-t', '--projtag', action="store", dest="projtag", default="", help="Provide a project tag that will be shown in the queuing system to distinguish from other TopHat runs")
 parser.add_option('-p', '--phred33', action="store_true", dest="phred33", default="False", help="Use phred33 / Sanger quality scale, e g for MiSeq or CASAVA1.8 and above")
 parser.add_option('-f', '--fai', action="store", dest="fai", default="", help="Provide FASTA index file for generating UCSC bigwig tracks")
+parser.add_option('-m', '--mail', action="store", dest="mail", default="mikael.huss@scilifelab.se", help="Specify a mailing address for SLURM mail notifications")
+parser.add_option('-a', '--alloc-time', action="store", dest="hours", default="10:00:00", help="Time to allocate in SLURM. Please specify as hours:minutes:seconds or days-hours:minutes:seconds")
 
 (opts, args) = parser.parse_args()
 
@@ -34,6 +36,10 @@ old = opts.old
 phred33 = opts.phred33
 fai = opts.fai
 projtag = opts.projtag
+mail = opts.mail
+hours = opts.hours
+
+if not len ( hours.split(':') ) == 3: sys.exit("Please specify the time allocation string as hours:minutes:seconds or days-hours:minutes:seconds") 
 
 qscale = '--solexa1.3-quals'
 if phred33 == True: qscale = ''
@@ -75,11 +81,11 @@ for n in sorted(sample_names):
     oF.write("#! /bin/bash -l\n")
     oF.write("#SBATCH -A a2010002\n")                   
     oF.write("#SBATCH -p node\n")
-    oF.write("#SBATCH -t 35:00:00\n")
+    oF.write("#SBATCH -t " + hours + "\n")
     oF.write("#SBATCH -J tophat_" + n + projtag + "\n")
     oF.write("#SBATCH -e tophat_" + n + projtag + ".err\n")
     oF.write("#SBATCH -o tophat_" + n + projtag + ".out\n")
-    oF.write("#SBATCH --mail-user=mikael.huss@scilifelab.se\n")
+    oF.write("#SBATCH --mail-user=" + mail + "\n")
     oF.write("#SBATCH --mail-type=ALL\n")
 
     oF.write("module unload bioinfo-tools\n")
