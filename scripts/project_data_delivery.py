@@ -50,7 +50,6 @@ import shutil
 from bcbio.log import logger, setup_logging
 from bcbio.pipeline.config_loader import load_config
 
-
 def main(config_file, delivery_dir, run_info_yaml, analysis_dir=None):
     if analysis_dir is None:
         analysis_dir = os.path.abspath(os.path.curdir)
@@ -75,21 +74,21 @@ def main(config_file, delivery_dir, run_info_yaml, analysis_dir=None):
         # Vcf files, tsv and tranches
         vcftypes = ('*.vcf', '*.idx', '*.tranches', '*.eval', '*.tsv')
         for vcftype in vcftypes:
-            glob_str = os.path.join(analysis_dir, str(info['lane']) +  vcftype)
+            glob_str = os.path.join(analysis_dir, str(info['lane']) +  "_" + vcftype)
             infiles[info['lane']]['vcf'].extend(glob.glob(glob_str))
         # Bam files
-        glob_str = os.path.join(analysis_dir, str(info['lane']) +  options.bam_glob)
+        glob_str = os.path.join(analysis_dir, str(info['lane']) + "_" + options.bam_glob)
         bamfiles = glob.glob(glob_str)
         infiles[info['lane']]['bam'] = bamfiles
         # Bigwig files
-        glob_str = os.path.join(analysis_dir, str(info['lane']) +  "*.bigwig")
+        glob_str = os.path.join(analysis_dir, str(info['lane']) + "_" + "*.bigwig")
         bigwigfiles = glob.glob(glob_str)
         infiles[info['lane']]['bigwig'] = bigwigfiles
         # metrics files
-        glob_str = os.path.join(analysis_dir, str(info['lane']) +  "*metrics")
+        glob_str = os.path.join(analysis_dir, str(info['lane']) +  "_" + "*metrics")
         metricsfiles = glob.glob(glob_str)
         infiles[info['lane']]['metrics'] = metricsfiles
-        
+    
     # Loop through the list and deliver if appropriate
     _make_dir(delivery_dir)
     _deliver_file(os.path.join(analysis_dir,"project-summary.csv"),os.path.join(delivery_dir,"project-summary.csv") )
@@ -125,6 +124,8 @@ def _deliver_file(src, tgt):
     else:
         f = shutil.copyfile
     if src is None:
+        return
+    if not os.path.exists(src):
         return
     if os.path.exists(tgt):
         logger.warn("%s already exists: not doing anything!" %(tgt))
