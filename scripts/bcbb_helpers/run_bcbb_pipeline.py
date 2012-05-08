@@ -30,7 +30,7 @@ def main():
         print "---------\nProcessing run_info:"
         run_info_backup = "%s.orig" % run_info_file
         os.rename(run_info_file,run_info_backup)
-        cl = ["python","%s" % PROCESS_YAML_SCRIPT,run_info_backup,"--analysis","Align_illumina","--out_file",run_info_file,"--ascii","--clear_description"]
+        cl = ["%s" % PROCESS_YAML_SCRIPT,run_info_backup,"--analysis","Align_illumina","--out_file",run_info_file,"--ascii","--clear_description"]
         print subprocess.check_output(cl)
         print "\n---------\n"
     
@@ -85,11 +85,8 @@ def main():
         parts = os.path.splitext(post_process_config)
         post_process_config = "%s-%s-%s%s" % (parts[0],machine_id,flowcell_position,parts[1])
         
-        if os.path.exists(post_process_config):
-            print "Customized post process yaml '%s' already exists, will not overwrite" % post_process_config
-        else:
-            with open(post_process_config,"w") as fh:
-                fh.write(yaml.safe_dump(config, default_flow_style=False, allow_unicode=True)) 
+        with open(post_process_config,"w") as fh:
+            fh.write(yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, width=1000)) 
         
     # Translate the time string into seconds
     multiplier = (86400,3600,60,1)
