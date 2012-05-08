@@ -84,23 +84,26 @@ flow_cell = temp[3][0] # A or B
 created_proj_dir_name = fixProjName(projid)
 created_run_dir_name = "20" + start_date + flow_cell + "_hiseq2000"
 
-del_path = '/proj/' +  uppmaxproj + "/INBOX/" + created_proj_dir_name 
-#if uppmaxproj[0:5] == 'b2012': del_path = '/lynx/cvol/v1/' + uppmaxproj + "/INBOX/" + created_dir_name
-#else: del_path = '/bubo/proj/' +  uppmaxproj + "/INBOX/" + created_dir_name
+# "Old school" style
+#del_path = '/proj/' +  uppmaxproj + "/INBOX/" + created_proj_dir_name + "/" + created_run_dir_name
 
-print "Will create a top-level project directory", del_path       
+# New
+del_path_top = '/proj/' +  uppmaxproj + "/INBOX/" + created_proj_dir_name 
+
+print "Will create a top-level project directory", del_path_top       
 if not dry: 
-    logfile.write("Creating top-level delivery directory:" + del_path + " (or leaving it in place if already present)\n")
-    if os.path.exists(del_path):
-        print "Directory", del_path, " already exists!"
+    logfile.write("Creating top-level delivery directory:" + del_path_top + " (or leaving it in place if already present)\n")
+    if os.path.exists(del_path_top):
+        print "Directory", del_path_top, " already exists!"
     else:
         try:
-            os.mkdir(del_path)
+            os.mkdir(del_path_top)
         except:
             print "Could not create delivery directory!"
             sys.exit(0)
 
-del_path = '/proj/' +  uppmaxproj + "/INBOX/" + created_proj_dir_name + "/" + created_run_dir_name
+del_path = del_path_top + "/" + runname
+
 print "Will create a run directory", del_path
 if not dry: 
     logfile.write("Creating run-level delivery directory:" + del_path + " (or leaving it in place if already present)\n")
