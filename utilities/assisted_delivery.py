@@ -32,6 +32,7 @@ dry = True
 
 projid = sys.argv[1].lower()
 runname = sys.argv[2].strip("/")
+abbr_runname = runname.split("_")[0] + "_" + runname.split("_")[3] 
 yamlfile = base_yaml_path + runname + "/run_info.yaml"
 uppmaxproj = sys.argv[3]
 
@@ -102,7 +103,7 @@ if not dry:
             print "Could not create delivery directory!"
             sys.exit(0)
 
-del_path = del_path_top + "/" + runname
+del_path = del_path_top + "/" + abbr_runname
 
 print "Will create a run directory", del_path
 if not dry: 
