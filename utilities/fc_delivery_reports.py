@@ -245,10 +245,86 @@ def main(flowcell_id, archive_dir, analysis_dir, config_file):
         if modify_conf:
             i = lines.index("latex_documents = [\n")
             newconf = lines[:i+3] + sdout + lines[i+3:]
+            ## Change the preamble
+            i = newconf.index("#'preamble': '',\n")
+            newconf = newconf[:i+1] + _latex_preamble() + newconf[i+1:]
+            ## Set the logo
+            i = newconf.index("#latex_logo = None\n")
+            newconf = newconf[:i+1] + _latex_logo() + newconf[i+1:]
             fp = open("conf.py", "w")
             fp.write("".join(newconf))
             fp.close()
 
+
+def _latex_logo():
+    '''Set the logo'''
+    logo = ["latex_logo = '/proj/a2010002/projects/delivery_reports/grf/scilife-sniss.jpg'"]
+    return logo
+
+def _latex_preamble():
+    '''Template for preamble. Sets new header'''
+    preamble = ["'preamble' : r'''",
+                r'''
+                \usepackage[headheight=3cm]{geometry}
+                \makeatletter
+                \fancypagestyle{plain}{%
+                \fancyhf{}
+                \fancyhead[L]{{
+                \begin{tabular}{l}
+                Science for Life Laboratory (SciLifeLab)\\
+                \textbf{Document type}\\
+                BLA\\
+                \textbf{Creation date}\\
+                2012-
+                \end{tabular}
+                }}
+                \fancyhead[C]{{
+                \begin{tabular}{l}
+                \textbf{Document name}\\
+                HiSeq Delivery note\\
+                \textbf{Valid from}\\
+                \\
+                \end{tabular}
+                }}
+                \fancyhead[R]{{\begin{tabular}{ll}
+                \textbf{ID number\_edition} & \\
+                20140\_1 & \\
+                \textbf{Issuer} & \textbf{Approver}\\
+                Mikael H/MH & \\
+                \end{tabular}
+                }}
+                }
+                \fancyhf{}
+                \fancyhead[L]{{
+                \begin{tabular}{l}
+                Science for Life Laboratory (SciLifeLab)\\
+                \textbf{Document type}\\
+                BLA\\
+                \textbf{Creation date}\\
+                2012-
+                \end{tabular}
+                }}
+                \fancyhead[C]{{
+                \begin{tabular}{l}\\
+                \textbf{Document name}\\
+                HiSeq Delivery note\\
+                \textbf{Valid from}\\
+                \\
+                \end{tabular}
+                }}
+                \fancyhead[R]{{\begin{tabular}{ll}
+                \\
+                \textbf{ID number\_edition} & \\
+                20140\_1 & \\
+                \textbf{Issuer} & \textbf{Approver}\\
+                Mikael H/MH & \\
+                \end{tabular}
+                }}
+                \makeatother
+                \pagestyle{fancy}
+                ''',
+                "'''"] 
+    return preamble
 
 def generate_report(proj_conf):
     
