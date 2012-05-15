@@ -23,7 +23,7 @@ def get_dirsizes(path="."):
         TODO: Be replaced with a more pythonic way which reports the size correctly.
     '''
     path = path.strip().split('\t')
-    out = subprocess.check_output(["du", "-s", path[0]], stderr=subprocess.STDOUT)
+    out = subprocess.check_output(["du", "-sb", path[0]], stderr=subprocess.STDOUT)
     return out.split('\t')[0]
 
 def send_db(server, db, data):
@@ -35,6 +35,7 @@ def send_db(server, db, data):
 
 def main():
     dirsizes = {"time": datetime.datetime.now().isoformat(),
+                "unit": "bytes",
                 "errors": [] }
 
     parser = argparse.ArgumentParser(description="Compute directory size(s) and report them to a CouchDB database")
