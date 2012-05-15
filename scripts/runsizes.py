@@ -58,7 +58,7 @@ def main():
         for d in os.listdir(r):
             path = os.path.join(r, d)
             try:
-                dirsizes[path] = get_dirsizes(path)
+                dirsizes[path] = int(get_dirsizes(path))
             except subprocess.CalledProcessError as pe:
                 dirsizes['errors'].append(pe.output)
 
