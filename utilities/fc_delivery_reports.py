@@ -294,7 +294,7 @@ def generate_report(proj_conf):
         print "WARNING: Could not find UPPNEX project"
 
     run_name_comp = proj_conf['flowcell'].split('_')
-    simple_run_name = run_name_comp[0] + run_name_comp[3][0]
+    simple_run_name = run_name_comp[0] + "_" + run_name_comp[3]
     proj_level_dir = fixProjName(proj_conf['id'])
     instr_id = run_name_comp[1]
     fc_name, fc_date = get_flowcell_info(proj_conf['flowcell'])
@@ -312,7 +312,7 @@ def generate_report(proj_conf):
                   ["Instrument ID:", instr_id],
                   ["Flow cell ID:", fc_name],
                   ["Uppnex project:", uppnex_proj],
-                  ["Delivery directory:", del_base + uppnex_proj + "/INBOX/" + proj_level_dir + "/" + proj_conf['flowcell']]])
+                  ["Delivery directory:", del_base + uppnex_proj + "/INBOX/" + proj_level_dir + "/" + simple_run_name]])
     d.update(infotable=tab.draw())
     
     ## Lane table
