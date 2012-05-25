@@ -5,6 +5,7 @@
 #SBATCH -p core 
 #SBATCH -n 1
 #SBATCH -t 2:00:00
+#SBATCH --qos=seqver
 
 F1=$1
 RUNDIR=`dirname ${F1}`/..
