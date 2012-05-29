@@ -89,7 +89,7 @@ def run_analysis(work_dir, post_process, fc_dir, run_info):
     
     #jt.outputPath = output
     #jt.errorPath = error 
-    jt.nativeSpecification = "-t %s -A %s -p %s %s" % (slurm_args['time'],slurm_args['project'],slurm_args['partition'],slurm_args.get('extra',""))
+    jt.nativeSpecification = "-t %s -A %s -p %s -N %d -n %d %s" % (slurm_args['time'],slurm_args['project'],slurm_args['partition'],slurm_args['nodes'],slurm_args['cores'],slurm_args.get('extra',""))
 
     print "Submitting job"
     jobid = s.runJob(jt)
@@ -379,14 +379,23 @@ def slurm_arguments(config_file):
     with open(config_file) as fh:
         config = yaml.load(fh)
     
-    analysis_script = PARALLELL_ANALYSIS_SCRIPT    
+    analysis_script = PARALLELL_ANALYSIS_SCRIPT
+    ncores = 1
+    nnodes = 1    
+    partition = 'core'
     num_cores = config['algorithm'].get('num_cores',1)
     if num_cores == 'messaging':
         analysis_script = DISTRIBUTED_ANALYSIS_SCRIPT
+    else:
+        ncores = min(8,num_cores)
+        nnodes = 1
+        if ncores > 1: partition = 'node'
     
     slurm_args['script'] = analysis_script
     slurm_args['project'] = 'a2010002'
-    slurm_args['partition'] = 'core'
+    slurm_args['partition'] = partition
+    slurm_args['nodes'] = nnodes
+    slurm_args['cores'] = ncores
     slurm_args['time'] = '168:00:00'
     slurm_args['extra'] = ['--qos=seqver']
 
