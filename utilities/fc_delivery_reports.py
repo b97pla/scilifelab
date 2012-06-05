@@ -76,19 +76,31 @@ Sequence yield per sample
 
 ${yieldtable}
 
-"Rerun lane" means that the samples were in a 'mixed' rerun lane containing samples from different projects. In these cases the expected number of sequences will be less than the expected number for a whole lane. 
+"Rerun lane" means that the samples were in a 'mixed' rerun lane containing
+samples from different projects. In these cases the expected number of
+sequences will be less than the expected number for a whole lane.
 
-"Unmatched" gives the number of sequences that could not be reliably assigned to a specific barcode sequence (and thus to a specific sample) in a multiplexed run. There is always a certain amount of unmatched reads. In a rerun lane, the unmatched number will not be in proportion to the number of sequences for your specific samples, so the number will seem higher than it actually is.
+"Unmatched" gives the number of sequences that could not be reliably assigned to
+a specific barcode sequence (and thus to a specific sample) in a multiplexed
+run. There is always a certain amount of unmatched reads. In a rerun lane, the
+unmatched number will not be in proportion to the number of sequences for your
+specific samples, so the number will seem higher than it actually is.
 
-"High" means that the number of unmatched sequences (see above) was higher than expected. 
+"High" means that the number of unmatched sequences (see above) was higher than
+expected.
 
-"Low" means that the number of sequences for the sample was lower than expected for the run. Note that if this was a re-run, the total number of sequences for the sample (including previous runs) could still be sufficient for the sample to be finished. In such cases, the Summary should contain information about whether this is the case.
+"Low" means that the number of sequences for the sample was lower than expected
+for the run. Note that if this was a re-run, the total number of sequences for
+the sample (including previous runs) could still be sufficient for the sample
+to be finished. In such cases, the Summary should contain information about
+whether this is the case.
 
 Delivery
 --------
 
-NOTE: This delivery note only concerns raw sequence data delivery, that is, raw FASTQ sequence files (de-multiplexed if applicable.)
-If you have ordered analysis, you will be notified of the analysis results later.
+NOTE: This delivery note only concerns raw sequence data delivery, that is, raw
+FASTQ sequence files (de-multiplexed if applicable.) If you have ordered
+analysis, you will be notified of the analysis results later.
 
 The clustering was performed on a cBot cluster generation system using
 a HiSeq paired-end read cluster generation kit according to the
@@ -98,39 +110,48 @@ with 1% phiX control library, except for lane 8, which has 2% phiX.
 The sequencing runs were performed according to the
 manufacturer's instructions. Base conversion was done using Illumina's OLB v1.9.
 
-Sequences derived from the phiX control library have been filtered from the delivered files. In some cases, the sequences may contain adapter 
-sequences from the library preparation. This can be due to short fragment lengths
-(in small-RNA-seq experiments) when it is expected, or due to "adapter contamination"
-resulting from adapter or primer dimerization, which is usually not expected. We do not remove adapters by default, because this 
-procedure is error-prone and better left to the customer who wants to use the data.
-For mate-pair runs, the sequences will contain mate-pair linkers, and here too we
-do not remove them by default because there is no reliable standard way to do so and
-is therefore better left up to the end user. 
-Please contact us for more information about
-how to remove PhiX, adapter contamination and mate pair linkers. 
+Sequences derived from the phiX control library have been filtered from the
+delivered files. In some cases, the sequences may contain adapter  sequences
+from the library preparation. This can be due to short fragment lengths (in
+small-RNA-seq experiments) when it is expected, or due to "adapter
+contamination" resulting from adapter or primer dimerization, which is usually
+not expected. We do not remove adapters by default, because this  procedure is
+error-prone and better left to the customer who wants to use the data. For
+mate-pair runs, the sequences will contain mate-pair linkers, and here too we
+do not remove them by default because there is no reliable standard way to do
+so and is therefore better left up to the end user.
 
-We'd like to hear from you! Please notify us when you publish using data produced at Science For Life Laboratory (SciLifeLab) Stockholm. To acknowledge SciLifeLab Stockholm in your article, you can use a sentence like "The authors would like to acknowledge support from Science for Life Laboratory, the national infrastructure SNISS, and Uppmax for providing assistance in massively parallel sequencing and computational infrastructure."
+Please contact us for more information about how to remove PhiX, adapter
+contamination and mate pair linkers.
 
-If you have any questions about this delivery, or other issues, you are welcome to email us at genomics_support@scilifelab.se.
+We'd like to hear from you! Please notify us when you publish using data
+produced at Science For Life Laboratory (SciLifeLab) Stockholm. To acknowledge
+SciLifeLab Stockholm in your article, you can use a sentence like "The authors
+would like to acknowledge support from Science for Life Laboratory, the
+national infrastructure SNISS, and Uppmax for providing assistance in massively
+parallel sequencing and computational infrastructure."
+
+If you have any questions about this delivery, or other issues, you are welcome
+to email us at genomics_support@scilifelab.se.
 
 General information
 -------------------
 
 ${infotable}
 
-The sequence files are named after the following scheme:
-lane_date_flowcell-ID_sample_barcode-index_1(2).fastq, where the 1 or 2 represents the first
-(forward) and the second (reverse) read in a paired-end run. Single
-end runs will have only the first read. The files only contain
-sequences that have passed Illumina's chastity filter. The quality scores in the fastq files
-are in the "Phred64" format, sometimes known as "Illumina 1.3+" format.
+The sequence files are named after the following scheme: lane_date_flowcell-
+ID_sample_barcode-index_1(2).fastq, where the 1 or 2 represents the first
+(forward) and the second (reverse) read in a paired-end run. Single end runs
+will have only the first read. The files only contain sequences that have
+passed Illumina's chastity filter. The quality scores in the fastq files are in
+the "Phred64" format, sometimes known as "Illumina 1.3+" format.
 
 Run information
 ---------------
 
 Required for successful run:
 
-- Clu. PF (#/mm2) > 475K 
+- Clu. PF (#/mm2) > 475K
 
 - Average error rate for read1 and read2 < 2%
 
@@ -147,10 +168,12 @@ ${read2table}
 QC plots
 ~~~~~~~~
 
-Note: The plots below are zoomable without loss of resolution. For example, in Adobe Reader, you could select View > Zoom > Zoom To > Magnification 400% to see the plots more clearly. 
+Note: The plots below are zoomable without loss of resolution. For example, in
+Adobe Reader, you could select View > Zoom > Zoom To > Magnification 400% to
+see the plots more clearly.
 
 .. raw:: latex
-   
+
    \clearpage
 
 Quality score
