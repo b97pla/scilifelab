@@ -1,0 +1,84 @@
+<!doctype html>
+<head>
+  <meta charset="utf-8">
+  <title></title>
+  <meta name="description" content="">
+  <link rel="stylesheet" href="sample_delivery_report.css">
+</head>
+
+<body>
+  <header>
+    <h1>Raw data delivery Note</h1>
+
+    <h2>SciLifeLab Stockholm</h2>
+    <!-- Month day, year -->
+    <h2> {{formatted_date}} </h2>
+  </header>
+  <div role="main">
+
+<h1>Project name</h1>
+
+<!-- <project name> (customer reference if available) -->
+<p> {{ project_name }} {% if customer_reference %}
+    ({{ customer_reference }}) {% endif %}</p>
+
+<h1>UPPNEX project id</h1>
+<!-- b201yxxx -->
+<p>{{ uppnex_project_id }}</p>
+
+<h1>Sequence data directory</h1>
+<!-- /proj/<uppnex project id>/INBOX/<project name>/<start data>_<FC id> -->
+<p>{{ seq_data_directory }}</p>
+
+<h1>Sample</h1>
+<!-- <scilifelab name> / <customer name> -->
+<p> {{ scilifelab_name }} / {{ customer_name }} </p>
+<p> Ordered amount in millions of read (pairs). </p>
+
+<h1>Method</h1>
+
+<p> Clustered on cBot and sequenced on HiSeq 2000 according to manufacturer’s
+instructions. Base conversion using OLB v1.9, demultiplexed and converted to
+fastq using CASAVA v1.8. </p>
+
+<h1>Results</h1>
+
+<p> {{ rounded_read_count }} million reads in lane with PhiX error rate
+{{ phix_error_rate }}%. Average quality score {{ avg_quality_score }}. </p>
+
+<aside>Graph 1</aside>
+<aside>Graph 2</aside>
+
+<h1>Comments</h1>
+
+<p>Successful run/unsuccessful run, enough data/not enough data</p>
+
+<h1>Information</h1>
+
+<h2>Acknowledgement</h2>
+
+<p>Please notify us when you publish using data produced at Science For Life
+Laboratory (SciLifeLab) Stockholm. To acknowledge SciLifeLab Stockholm in your
+article, you can use a sentence like “The authors would like to acknowledge
+support from Science for Life Laboratory, the national infrastructure SNISS,
+and Uppmax for providing assistance in massively parallel sequencing and
+computational infrastructure.”</p>
+
+<h2>Naming conventions</h2>
+
+<p>The data is delivered in fastq format using Illumina 1.8 quality scores.
+There will be one file for the forward reads and one file for the reverse
+reads. More information on our naming conventions can be found here.</p>
+
+<h2>Data access at UPPMAX</h2>
+
+<p>Data from the sequencing will be uploaded to the UPPNEX (UPPMAX Next
+Generation sequence Cluster &amp; Storage, www.uppmax.uu.se), from which the
+user can access it. If you have problems to access your data, please contact
+SciLifeLab genomics_support@scilifelab.se. If you have questions regarding
+UPPNEX, please contact support@uppmax.uu.se. Information on how to access your
+data can be found here.</p>
+
+  </div>
+</body>
+</html>
