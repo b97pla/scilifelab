@@ -53,7 +53,7 @@ illumina_idx = {'ATCACG':'index1',
                 }
 
 if len(sys.argv)<4:
-    print "python", sys.argv[0], "<fastq file containing barcode sequence> <position where bar code starts> <length of bar code>"
+    print "python", sys.argv[0], "<fastq file (can be gzipped; make sure the file extension is *gz) containing barcode sequence> <position where bar code starts> <length of bar code>"
     sys.exit(0)
     
 bcodes = {} # collect counts for all observed barcodes
