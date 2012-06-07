@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-    run_cmd.py cmd args [slurm options]
+    run_cmd.py "cmd args" [slurm options]
 """
 import drmaa
 import os

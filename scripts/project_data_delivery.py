@@ -11,6 +11,7 @@ file describing analysis setup, copy files to delivery directory. By
 default, the following files are delivered:
 
   - project-summary.csv
+  - YAML run info if present
   - run_summary.yaml
   - *.vcf
   - *.vcf.idx
@@ -93,6 +94,7 @@ def main(config_file, delivery_dir, run_info_yaml, analysis_dir=None):
     _make_dir(delivery_dir)
     _deliver_file(os.path.join(analysis_dir,"project-summary.csv"),os.path.join(delivery_dir,"project-summary.csv") )
     _deliver_file(os.path.join(analysis_dir,"run_summary.yaml"),os.path.join(delivery_dir,"run_summary.yaml") )
+    _deliver_file(run_info_yaml,os.path.join(delivery_dir,"sample_run_info.yaml") )
     for lane_num in infiles.keys():
         lane = infiles[lane_num]
         if not options.no_vcf:
@@ -106,6 +108,10 @@ def main(config_file, delivery_dir, run_info_yaml, analysis_dir=None):
         if not options.no_metrics:
             for metrics in lane['metrics']:
                 (src, tgt) = _rename_sample_file(metrics, lane_num, lane2sample[lane_num],delivery_dir)
+                _deliver_file(src, tgt)
+        if options.bam:
+            for bamfile in lane['bam']:
+                (src, tgt) = _rename_sample_file(bamfile, lane_num, lane2sample[lane_num],delivery_dir)
                 _deliver_file(src, tgt)
 
 
@@ -158,7 +164,7 @@ if __name__ == "__main__":
     parser.add_option("-a", "--analysis_dir", dest="analysis_dir")
     parser.add_option("-b", "--bam", dest="bam", action="store_true",
                       default=False)
-    parser.add_option("-g", "--bam_glob", dest="bam_glob", default="*-sort-dup-gatkrecal-realign*.bam")
+    parser.add_option("-g", "--bam_glob", dest="bam_glob", default="*-sort-dup-gatkrecal-realign*.bam*")
     parser.add_option("-f", "--only_install_run_info", dest="only_run_info", action="store_true",
                       default=False)
     parser.add_option("-m", "--move_data", dest="move", action="store_true",
