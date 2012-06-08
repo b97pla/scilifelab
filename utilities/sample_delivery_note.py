@@ -1,3 +1,7 @@
+"""Script for generating a PDF delivery note for a sample.
+The script uses reportlab for PDF, for which a user guide can be found here:
+http://www.reportlab.com/software/opensource/rl-toolkit/guide/
+"""
 from datetime import datetime
 from collections import OrderedDict
 
@@ -16,23 +20,33 @@ h2 = styles['Heading2']
 h3 = styles['Heading3']
 h4 = styles['Heading4']
 
+# This is basically a template of ('headline', 'content') pairs.
+# Use dictionary based python string formatting to fill out variables.
 paragraphs = OrderedDict()
 paragraphs["Project name"] = "{project_name} ({customer_reference})"
+
 paragraphs["UPPNEX project id"] = "{uppnex_project_id}"
+
 paragraphs["Sequence data directory"] = \
 "/proj/{uppnex_project_id}/INBOX/{project_name}/{start_date}_{FC_id}"
+
 paragraphs["Sample"] = "{scilifelab_name} / {customer_name}\n\n" \
                        "Ordered amount in millions of read (pairs)."
+
 paragraphs["Method"] = "Clustered on cBot and sequenced on HiSeq 2000 " \
                        "according to manufacturer's instructions. Base " \
                        "conversion using OLB v1.9, demultiplexed and " \
                        "converted to fastq using CASAVA v1.8."
+
 paragraphs["Results"] = "{rounded_read_count} million reads in lane with PhiX " \
                         "error rate {phix_error_rate}%. Average quality score " \
                         "{avg_quality_score}."
+
 paragraphs["Comments"] = "Successful run/unsuccessful run, enough data/not " \
                          "enough data"
+
 paragraphs["Information"] = OrderedDict()
+
 paragraphs["Information"]["Acknowledgement"] = \
 "Please notify us when you publish using data produced at Science For Life " \
 "Laboratory (SciLifeLab) Stockholm. To acknowledge SciLifeLab Stockholm in your " \
@@ -40,10 +54,12 @@ paragraphs["Information"]["Acknowledgement"] = \
 "support from Science for Life Laboratory, the national infrastructure SNISS, " \
 "and Uppmax for providing assistance in massively parallel sequencing and " \
 'computational infrastructure."'
+
 paragraphs["Information"]["Naming conventions"] = \
 "The data is delivered in fastq format using Illumina 1.8 quality scores. " \
 "There will be one file for the forward reads and one file for the reverse " \
 "reads. More information on our naming conventions can be found here."
+
 paragraphs["Information"]["Data access at UPPMAX"] = \
 "Data from the sequencing will be uploaded to the UPPNEX (UPPMAX Next " \
 "Generation sequence Cluster & Storage, www.uppmax.uu.se), from which the " \
@@ -54,12 +70,19 @@ paragraphs["Information"]["Data access at UPPMAX"] = \
 
 
 def formatted_page(canvas, doc):
+    """Page format for a document, which adds headers and footers and the like
+    which should be on every page of the delivery note.
+    """
     canvas.saveState()
     canvas.drawImage("sll_logo.gif", 2 * cm, defaultPageSize[1] - 2 * cm, 4 * cm, 1.25 * cm)
     canvas.restoreState()
 
 
 def make_note(parameters):
+    """Builds a pdf note based on the passed dictionary of parameters.
+    For the structure of the parameters, see the code of the function
+    make_example_note.
+    """
     story = []
     story.append(Paragraph("Raw data delivery note", h1))
     story.append(Paragraph("SciLifeLab Stockholm", h2))
@@ -78,36 +101,10 @@ def make_note(parameters):
     doc.build(story, onFirstPage=formatted_page, onLaterPages=formatted_page)
 
 
-"""
-story.append(Paragraph("Project name", h3))
-story.append(Paragraph("A_test (Some_test)", p))
-story.append(Paragraph("UPPNEX project id", h3))
-story.append(Paragraph("b2013444", p))
-story.append(Paragraph("Sequence data directory", h3))
-story.append(Paragraph(directory, p))
-story.append(Paragraph("Sample", h3))
-story.append(Paragraph(sample, p))
-story.append(Paragraph("Method", h3))
-story.append(Paragraph(method, p))
-story.append(Paragraph("Results", h3))
-story.append(Paragraph(results, p))
-story.append(Spacer(0, 4 * cm * 2 + 1 * cm))  # Graphs should go here
-story.append(Paragraph("Comments", h3))
-story.append(Paragraph(comments, p))
-story.append(Paragraph("Information", h3))
-story.append(Paragraph("Acknowledgement", h4))
-story.append(Paragraph(acknowledgement, p))
-story.append(Paragraph("Naming conventions", h4))
-story.append(Paragraph(naming, p))
-story.append(Paragraph("Data access at UPPMAX", h4))
-story.append(Paragraph(data_access, p))
-doc = SimpleDocTemplate("mydoc.pdf")
-doc.build(story, onFirstPage=formatted_page, onLaterPages=formatted_page)
-"""
-
-
 def make_example_note():
-    """Make a note with some simple nonsensical data.
+    """Make a note with some simple nonsensical data. Looking at this function
+    and running it to make a PDF should give an idea about the structure of the
+    script.
     """
     parameters = {
     "project_name": "A_test",
