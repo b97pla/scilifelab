@@ -75,3 +75,31 @@ def gtQ30(record,offset=PHRED_OFFSET):
         if ord(c) >= cutoff:
             g += 1
     return round(100*float(g)/len(qual),1)
+
+def parse_header(header):
+    """Parses the FASTQ header as specified by CASAVA 1.8.2 and returns the fields in a dictionary
+       @<instrument>:<run number>:<flowcell ID>:<lane>:<tile>:<x-pos>:<y-pos> <read>:<is filtered>:<control number>:<index sequence>
+    """
+    if header[0] != '@':
+        return None
+    
+    instrument, run_number, flowcell_id, lane, tile, x_pos, y_pos_read, is_filtered, control_number, index = header[1:].split(":")
+    y_pos, read = y_pos_read.split()
+    return {'instrument': str(instrument),
+            'run_number': int(run_number),
+            'flowcell_id': str(flowcell_id),
+            'lane': int(lane),
+            'tile': int(tile),
+            'x_pos': int(x_pos),
+            'y_pos': int(y_pos),
+            'read': int(read),
+            'is_filtered': (is_filtered == 'Y'),
+            'control_number': int(control_number),
+            'index': str(index)} # Note that MiSeq Reporter outputs a SampleSheet index rather than the index sequence
+    
+    
+    
+    
+    
+    
+    
