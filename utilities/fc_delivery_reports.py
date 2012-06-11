@@ -441,8 +441,8 @@ def generate_report(proj_conf):
     comm_r1 = ""
     comm_r2 = ""
  
-    # if not ok_cludens_r1: comm_r1 += "Low cluster density. " 
-    # if not ok_cludens_r2: comm_r2 += "Low cluster density. " 
+    if not ok_cludens_r1: comm_r1 += "Low cluster density. " 
+    if not ok_cludens_r2: comm_r2 += "Low cluster density. " 
     if not ok_err_rate:
         if not ok_err_r1: 
             ok_r1 = False
@@ -520,7 +520,7 @@ def generate_report(proj_conf):
         for line in bc_file:
             c = line.strip().split()
             bc_count[c[0]]=c[1] + ' (~' + str (int ( round (float(c[1])/1000000) ) ) + " million)"
-        no_samples = len(bc_count)
+        no_samples = len(bc_count) - 1
         if no_samples == 0:
             print("WARNING: did not find a BC metrics file... Skipping lane %s for %s" %(l['lane'], proj_conf['id']))
             continue
@@ -554,6 +554,10 @@ def generate_report(proj_conf):
             if not k.isdigit(): pass
             else: 
                 if sample_name.has_key(int(k)): samp_count[sample_name[int(k)]] =  bc_count[k]
+
+        print "DEBUG: Target yield per sample = ", target_yield_per_sample
+        print "DEBUG: Min reads per sample = ", min_reads_per_sample
+        print "DEBUG: No samples: ", no_samples
 
         for k in sorted(samp_count.keys()):
             comment = ''
