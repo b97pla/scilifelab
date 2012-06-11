@@ -37,7 +37,7 @@ FC_SPECIFIC_AMPQ = True
 
 def main(post_process_config_file, fc_dir, run_info_file=None, only_run=False, only_setup=False, ignore_casava=False):
  
-    run_arguments = [os.getcwd(),post_process_config_file,fc_dir,run_info_file]
+    run_arguments = [[os.getcwd(),post_process_config_file,fc_dir,run_info_file]]
     if has_casava_output(fc_dir) and not ignore_casava:
         if not only_run:
             sample_run_arguments, project_run_arguments = setup_analysis_directory_structure(post_process_config_file, fc_dir, run_info_file, ANALYSIS_DIR)
@@ -89,8 +89,9 @@ def run_analysis(work_dir, post_process, fc_dir, run_info):
     
     #jt.outputPath = output
     #jt.errorPath = error 
-    jt.nativeSpecification = "-t %s -A %s -p %s -N %d -n %d %s" % (slurm_args['time'],slurm_args['project'],slurm_args['partition'],slurm_args['nodes'],slurm_args['cores'],slurm_args.get('extra',""))
-
+    #jt.nativeSpecification = "-t %s -A %s -p %s -n %d %s" % (slurm_args['time'],slurm_args['project'],slurm_args['partition'],slurm_args['cores']," ".join(slurm_args.get('extra',[])))
+    jt.nativeSpecification = "-t %s -A %s -p %s %s" % (slurm_args['time'],slurm_args['project'],slurm_args['partition']," ".join(slurm_args.get('extra',[])))
+    
     print "Submitting job"
     jobid = s.runJob(jt)
     print 'Your job has been submitted with id ' + jobid
@@ -238,13 +239,13 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
                     
             sample_config = override_with_custom_config(sample_config,custom_config)
             
-            arguments = _setup_config_files(dst_sample_dir,sample_config,post_process_config_file,sample_name,fc_date,fc_name)
+            arguments = _setup_config_files(dst_sample_dir,sample_config,post_process_config_file,fc_dir_structure['fc_dir'],sample_name,fc_date,fc_name)
             project_configs.append(sample_config[0])
-            sample_run_arguments.append([arguments[1],arguments[0],".",arguments[2]])
+            sample_run_arguments.append([arguments[1],arguments[0],arguments[2],arguments[3]])
         
         # Write config files to the project directory
-        arguments = _setup_config_files(project_dir,project_configs,post_process_config_file,"%s_%s_%s" % (fc_date,fc_name,project_name),fc_date,fc_name)
-        project_run_arguments.append([arguments[1],arguments[0],".",arguments[2]])
+        arguments = _setup_config_files(project_dir,project_configs,post_process_config_file,fc_dir_structure['fc_dir'],"%s_%s_%s" % (fc_date,fc_name,project_name),fc_date,fc_name)
+        project_run_arguments.append([arguments[1],arguments[0],arguments[2],arguments[3]])
     
     return sample_run_arguments, project_run_arguments
 
@@ -278,7 +279,7 @@ def override_with_custom_config(org_config, custom_config):
         
     return new_config
        
-def _setup_config_files(dst_dir,configs,post_process_config_file,sample_name="run",fc_date=None,fc_name=None):
+def _setup_config_files(dst_dir,configs,post_process_config_file,fc_dir,sample_name="run",fc_date=None,fc_name=None):
     
     # Setup the data structure
     config_data_structure = {'details': configs}
@@ -304,10 +305,10 @@ def _setup_config_files(dst_dir,configs,post_process_config_file,sample_name="ru
     # Write the command for running the pipeline with the configuration files
     run_command_file = os.path.join(dst_dir,"%s-bcbb-command.txt" % sample_name)
     with open(run_command_file,"w") as fh:
-        fh.write(" ".join([os.path.basename(__file__),"--only-run",os.path.basename(local_post_process_file), ".", os.path.basename(config_file)])) 
+        fh.write(" ".join([os.path.basename(__file__),"--only-run",os.path.basename(local_post_process_file), fc_dir, os.path.basename(config_file)])) 
         fh.write("\n")   
     
-    return [os.path.basename(local_post_process_file), dst_dir, os.path.basename(config_file)]
+    return [os.path.basename(local_post_process_file), dst_dir, fc_dir, os.path.basename(config_file)]
     
 def bcbb_configuration_from_samplesheet(csv_samplesheet):
     """Parse an illumina csv-samplesheet and return a dictionary suitable for the bcbb-pipeline
@@ -332,7 +333,7 @@ def do_rsync(src_files, dst_dir):
     cl.extend(src_files)
     cl.append(dst_dir)
     cl = [str(i) for i in cl]
-    # For now, just touch the files rather than copy them
+    # For testing, just touch the files rather than copy them
     # for f in src_files:
     #    open(os.path.join(dst_dir,os.path.basename(f)),"w").close()
     subprocess.check_call(cl)
@@ -381,20 +382,17 @@ def slurm_arguments(config_file):
     
     analysis_script = PARALLELL_ANALYSIS_SCRIPT
     ncores = 1
-    nnodes = 1    
     partition = 'core'
     num_cores = config['algorithm'].get('num_cores',1)
     if num_cores == 'messaging':
         analysis_script = DISTRIBUTED_ANALYSIS_SCRIPT
     else:
-        ncores = min(8,num_cores)
-        nnodes = 1
+        ncores = min(8,int(num_cores))
         if ncores > 1: partition = 'node'
     
     slurm_args['script'] = analysis_script
     slurm_args['project'] = 'a2010002'
     slurm_args['partition'] = partition
-    slurm_args['nodes'] = nnodes
     slurm_args['cores'] = ncores
     slurm_args['time'] = '168:00:00'
     slurm_args['extra'] = ['--qos=seqver']
