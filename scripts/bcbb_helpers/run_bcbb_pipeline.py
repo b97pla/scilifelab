@@ -12,21 +12,14 @@ from optparse import OptionParser
 
 import bcbio.solexa.flowcell
 import bcbio.solexa.samplesheet
+from bcbio.pipeline.config_loader import load_config
 
 # The directory where CASAVA has written the demuxed output
 CASAVA_OUTPUT_DIR = "Unaligned"
-# If True, will launch a separate analysis process for each sample. 
-# If False, will launch one analysis process for each project.
-RUN_PIPELINE_BY_SAMPLE = True
 # The analysis script for running the pipeline in parallell mode (on one node)  
 PARALLELL_ANALYSIS_SCRIPT="automated_initial_analysis.py"
 # The analysis script for running the pipeline in distributed mode (across multiple nodes/cores)
 DISTRIBUTED_ANALYSIS_SCRIPT="distributed_nextgen_pipeline.py"
-# The toplevel analysis directory.Project-specific directories will be written beneath
-#ANALYSIS_DIR="/proj/a2010002/nobackup/illumina/"
-ANALYSIS_DIR="/proj/a2010002/nobackup/illumina/pipeline_test/archive/casava_analysis"
-# Not implemented in the drmaa module
-EMAIL="seqmaster@scilifelab.se"
 # For non-CASAVA analysis, this script is used to sanitize the run_info.yaml configuration file
 PROCESS_YAML_SCRIPT = "process_run_info.py"
 # If True, will sanitize the run_info.yaml configuration file when running non-CASAVA analysis
@@ -40,14 +33,11 @@ def main(post_process_config_file, fc_dir, run_info_file=None, only_run=False, o
     run_arguments = [[os.getcwd(),post_process_config_file,fc_dir,run_info_file]]
     if has_casava_output(fc_dir) and not ignore_casava:
         if not only_run:
-            sample_run_arguments, project_run_arguments = setup_analysis_directory_structure(post_process_config_file, fc_dir, run_info_file, ANALYSIS_DIR)
-            if RUN_PIPELINE_BY_SAMPLE:
-                run_arguments = sample_run_arguments
-            else:
-                run_arguments = project_run_arguments 
+            run_arguments = setup_analysis_directory_structure(post_process_config_file, fc_dir, run_info_file)
+             
     else:
         if not only_run:
-            run_arguments = setup_analysis(post_process_config_file, fc_dir, run_info_file, ANALYSIS_DIR)
+            run_arguments = setup_analysis(post_process_config_file, fc_dir, run_info_file)
     
     if not only_setup:
         for arguments in run_arguments:
@@ -63,6 +53,22 @@ def run_analysis(work_dir, post_process, fc_dir, run_info):
     start_dir = os.getcwd()
     os.chdir(work_dir)
     
+    config = load_config(post_process)
+    
+    cp = config["distributed"]["cluster_platform"]
+    cluster = __import__("bcbio.distributed.{0}".format(cp), fromlist=[cp])
+    platform_args = config["distributed"]["platform_args"].split()
+    job_cl = [PARALLELL_ANALYSIS_SCRIPT, post_process, fc_dir, run_info]
+    
+    print "Submitting job"
+    jobid = cluster.submit_job(platform_args, job_cl)
+    print 'Your job has been submitted with id ' + jobid
+
+    # Change back to the starting directory
+    os.chdir(start_dir)
+
+    return
+    
     # Get the slurm arguments
     slurm_args = slurm_arguments(post_process)
     
@@ -76,20 +82,6 @@ def run_analysis(work_dir, post_process, fc_dir, run_info):
     if run_info is not None:
         args.append(run_info)
     jt.args = args
-    
-    # TODO: job name is always (null), must fix slurm_drmaa C library and its
-    # custom parsing (substitute "slurmdrmaa_parse_native"
-    # for GNU GetOpt on slurm_drmaa/util.c)
-    #jt.job_name = run_name
-    #jt.blockEmail = 0
-    #jt.mail = EMAIL
-    #output = os.path.join(work_dir,"%s.out" % run_name)
-    #error = os.path.join(work_dir,"%s.err" % run_name)
-    #print "Setting output and error paths (%s,%s)" % (output,error)
-    
-    #jt.outputPath = output
-    #jt.errorPath = error 
-    #jt.nativeSpecification = "-t %s -A %s -p %s -n %d %s" % (slurm_args['time'],slurm_args['project'],slurm_args['partition'],slurm_args['cores']," ".join(slurm_args.get('extra',[])))
     jt.nativeSpecification = "-t %s -A %s -p %s %s" % (slurm_args['time'],slurm_args['project'],slurm_args['partition']," ".join(slurm_args.get('extra',[])))
     
     print "Submitting job"
@@ -102,7 +94,7 @@ def run_analysis(work_dir, post_process, fc_dir, run_info):
     # Change back to the starting directory
     os.chdir(start_dir)
 
-def setup_analysis(post_process_config, archive_dir, run_info_file, analysis_dir):
+def setup_analysis(post_process_config, archive_dir, run_info_file):
     """Does a non-casava pre-analysis setup and returns a list of arguments
        that can be passed to the run_analysis function in order to start the
        analysis.
@@ -129,7 +121,7 @@ def setup_analysis(post_process_config, archive_dir, run_info_file, analysis_dir
         config = yaml.load(ppc)
     
     analysis = config.get("analysis",{})
-    base_dir = analysis.get("base_dir",analysis_dir)
+    base_dir = analysis["base_dir"]
     
     print "Getting run name from %s" % archive_dir
     # Get the run name from the archive dir
@@ -173,25 +165,28 @@ def setup_analysis(post_process_config, archive_dir, run_info_file, analysis_dir
             
     return [[os.getcwd(),post_process_config,archive_dir,run_info_file]]
         
-def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_config_file, analysis_dir):
+def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_config_file):
     """Parse the CASAVA 1.8+ generated flowcell directory and create a 
        corresponding directory structure suitable for bcbb analysis,
        complete with sample-specific and project-specific configuration files.
        Returns a list of arguments, both sample- and project-specific, that can 
        be passed to the run_analysis method for execution
     """
-    
+    config = load_config(post_process_config_file)
+    analysis_dir = config["analysis"]["base_dir"]
     assert os.path.exists(fc_dir), "ERROR: Flowcell directory %s does not exist" % fc_dir
     assert os.path.exists(analysis_dir), "ERROR: Analysis top directory %s does not exist" % analysis_dir
     
-    # A list with the arguments to each run, both when running by sample and by project
+    # A list with the arguments to each run, when running by sample
     sample_run_arguments = []
-    project_run_arguments = []
     
     # Parse the flowcell dir
     fc_dir_structure = parse_casava_directory(fc_dir)
     [fc_date, fc_name] = [fc_dir_structure['fc_date'],fc_dir_structure['fc_name']]
     fc_run_id = "%s_%s" % (fc_date,fc_name)
+    
+    # Copy the basecall stats directory 
+    _copy_basecall_stats(os.path.join(fc_dir_structure['fc_dir'],fc_dir_structure['basecall_stats_dir']), analysis_dir)
     
     # Parse the custom_config_file
     custom_config = []
@@ -206,9 +201,6 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
         project_dir = os.path.join(analysis_dir,project_name)
         if not os.path.exists(project_dir):
             os.mkdir(project_dir,0770)
-        
-        # Collect the individual sample configs
-        project_configs = []
         
         # Iterate over the samples in the project
         for sample_no, sample in enumerate(project.get('samples',[])):
@@ -228,7 +220,9 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
             sample_files = do_rsync([os.path.join(src_sample_dir,f) for f in sample.get('files',[])],dst_sample_dir)
             
             # Generate a sample-specific configuration yaml structure
-            sample_config = bcbb_configuration_from_samplesheet(os.path.join(src_sample_dir,sample['samplesheet'])) 
+            samplesheet = os.path.join(src_sample_dir,sample['samplesheet'])
+            sample_config = bcbb_configuration_from_samplesheet(samplesheet)
+             
             # Append the sequence files to the config
             for lane in sample_config:
                 if 'multiplex' in lane:
@@ -240,15 +234,30 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
             sample_config = override_with_custom_config(sample_config,custom_config)
             
             arguments = _setup_config_files(dst_sample_dir,sample_config,post_process_config_file,fc_dir_structure['fc_dir'],sample_name,fc_date,fc_name)
-            project_configs.append(sample_config[0])
             sample_run_arguments.append([arguments[1],arguments[0],arguments[2],arguments[3]])
         
-        # Write config files to the project directory
-        arguments = _setup_config_files(project_dir,project_configs,post_process_config_file,fc_dir_structure['fc_dir'],"%s_%s_%s" % (fc_date,fc_name,project_name),fc_date,fc_name)
-        project_run_arguments.append([arguments[1],arguments[0],arguments[2],arguments[3]])
-    
-    return sample_run_arguments, project_run_arguments
+    return sample_run_arguments
 
+def _copy_basecall_stats(source_dir, destination_dir):
+    """Copy relevant files from the Basecall_Stats_FCID directory
+       to the analysis directory
+    """
+    
+    # First create the directory in the destination
+    dirname = os.path.join(destination_dir,os.path.basename(source_dir))
+    try:
+        os.mkdir(dirname)
+    except:
+        pass
+    
+    # List the files/directories to copy
+    files = glob.glob(os.path.join(source_dir,"*.htm"))
+    files += glob.glob(os.path.join(source_dir,"*.xml"))
+    files += glob.glob(os.path.join(source_dir,"*.xsl"))
+    files += [os.path.join(source_dir,"Plots")]
+    files += [os.path.join(source_dir,"css")]
+    do_rsync(files,dirname)
+ 
 def override_with_custom_config(org_config, custom_config):
     """Override the default configuration from the .csv samplesheets
        with a custom configuration. Will replace overlapping options
@@ -298,6 +307,11 @@ def _setup_config_files(dst_dir,configs,post_process_config_file,fc_dir,sample_n
         local_post_process = yaml.load(fh) 
     # Update galaxy config to point to the original location
     local_post_process['galaxy_config'] = bcbio.utils.add_full_path(local_post_process['galaxy_config'],os.path.abspath(os.path.dirname(post_process_config_file)))
+    # Add job name and output paths to the cluster platform arguments
+    if 'distributed' in local_post_process and 'platform_args' in local_post_process['distributed']:
+        slurm_out = "%s-bcbb.log" % sample_name
+        local_post_process['distributed']['platform_args'] = "%s -J %s -o %s -D %s" % (local_post_process['distributed']['platform_args'], sample_name, slurm_out, dst_dir)
+           
     local_post_process_file = os.path.join(dst_dir,"%s-post_process.yaml" % sample_name)
     with open(local_post_process_file,'w') as fh:
         fh.write(yaml.safe_dump(local_post_process, default_flow_style=False, allow_unicode=True, width=1000))
@@ -329,7 +343,7 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet):
     return config
                 
 def do_rsync(src_files, dst_dir):
-    cl = ["rsync","-ca"]
+    cl = ["rsync","-car"]
     cl.extend(src_files)
     cl.append(dst_dir)
     cl = [str(i) for i in cl]
@@ -348,6 +362,13 @@ def parse_casava_directory(fc_dir):
     fc_dir = os.path.abspath(fc_dir)
     fc_name, fc_date = bcbio.solexa.flowcell.get_flowcell_info(fc_dir)
     unaligned_dir = os.path.join(fc_dir,CASAVA_OUTPUT_DIR)
+    basecall_stats_dir_pattern = os.path.join(unaligned_dir,"Basecall_Stats_*")
+    basecall_stats_dir = None
+    try:
+        basecall_stats_dir = os.path.relpath(glob.glob(basecall_stats_dir_pattern)[0],fc_dir)
+    except:
+        print "WARNING: Could not locate basecall stats directory under %s" % unaligned_dir
+        
     project_dir_pattern = os.path.join(unaligned_dir,"Project_*")
     for project_dir in glob.glob(project_dir_pattern):
         project_samples = []
@@ -362,7 +383,8 @@ def parse_casava_directory(fc_dir):
             project_samples.append({'sample_dir': os.path.relpath(sample_dir,project_dir), 'sample_name': sample_name, 'files': fastq_files, 'samplesheet': os.path.basename(samplesheet[0])})
         project_name = project_dir.replace(project_dir_pattern[0:-1],'')
         projects.append({'project_dir': os.path.relpath(project_dir,unaligned_dir), 'project_name': project_name, 'samples': project_samples})
-    return {'fc_dir': fc_dir, 'fc_name': fc_name, 'fc_date': fc_date, 'data_dir': os.path.relpath(unaligned_dir,fc_dir), 'projects': projects}
+    
+    return {'fc_dir': fc_dir, 'fc_name': fc_name, 'fc_date': fc_date, 'data_dir': os.path.relpath(unaligned_dir,fc_dir), 'basecall_stats_dir': basecall_stats_dir, 'projects': projects}
     
 def has_casava_output(fc_dir):
     try:
