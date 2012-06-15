@@ -83,11 +83,9 @@ def parse_header(header):
     if header[0] != '@':
         return None
     
-    print ",".join(header[1:].split(":"))
-    exit()
-    instrument, run_number, flowcell_id, lane, tile, x_pos, y_pos, read, is_filtered, control_number, index = header[1:].split(":")
-
-    return {'instrument': str(instrument.strip()),
+    instrument, run_number, flowcell_id, lane, tile, x_pos, y_pos_read, is_filtered, control_number, index = header[1:].split(":")
+    y_pos, read = y_pos_read.split()
+    return {'instrument': str(instrument),
             'run_number': int(run_number),
             'flowcell_id': str(flowcell_id),
             'lane': int(lane),
