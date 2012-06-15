@@ -46,7 +46,7 @@ def main(post_process_config_file, fc_dir, run_info_file=None, only_run=False, o
 def run_analysis(work_dir, post_process, fc_dir, run_info):
     """Changes into the supplied work_dir directory and submits 
         the job using the supplied arguments and with slurm parameters
-        obtained from the 'slurm_arguments' function.
+        obtained from the post_process.yaml configuration
     """
     
     # Move to the working directory
@@ -64,33 +64,6 @@ def run_analysis(work_dir, post_process, fc_dir, run_info):
     jobid = cluster.submit_job(platform_args, job_cl)
     print 'Your job has been submitted with id ' + jobid
 
-    # Change back to the starting directory
-    os.chdir(start_dir)
-
-    return
-    
-    # Get the slurm arguments
-    slurm_args = slurm_arguments(post_process)
-    
-    print "Initializing session"
-    s = drmaa.Session()
-    s.initialize()
-
-    jt = s.createJobTemplate()
-    jt.remoteCommand = slurm_args['script']
-    args = [post_process,fc_dir]
-    if run_info is not None:
-        args.append(run_info)
-    jt.args = args
-    jt.nativeSpecification = "-t %s -A %s -p %s %s" % (slurm_args['time'],slurm_args['project'],slurm_args['partition']," ".join(slurm_args.get('extra',[])))
-    
-    print "Submitting job"
-    jobid = s.runJob(jt)
-    print 'Your job has been submitted with id ' + jobid
-
-    s.deleteJobTemplate(jt)
-    s.exit()
-    
     # Change back to the starting directory
     os.chdir(start_dir)
 
@@ -394,32 +367,6 @@ def has_casava_output(fc_dir):
     except:
         pass
     return False
-
-def slurm_arguments(config_file):
-    
-    slurm_args = {}
-    config = {}
-    with open(config_file) as fh:
-        config = yaml.load(fh)
-    
-    analysis_script = PARALLELL_ANALYSIS_SCRIPT
-    ncores = 1
-    partition = 'core'
-    num_cores = config['algorithm'].get('num_cores',1)
-    if num_cores == 'messaging':
-        analysis_script = DISTRIBUTED_ANALYSIS_SCRIPT
-    else:
-        ncores = min(8,int(num_cores))
-        if ncores > 1: partition = 'node'
-    
-    slurm_args['script'] = analysis_script
-    slurm_args['project'] = 'a2010002'
-    slurm_args['partition'] = partition
-    slurm_args['cores'] = ncores
-    slurm_args['time'] = '168:00:00'
-    slurm_args['extra'] = ['--qos=seqver']
-
-    return slurm_args
 
 if __name__ == "__main__":
 
