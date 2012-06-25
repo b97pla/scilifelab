@@ -74,8 +74,8 @@ dirs_to_copy_from = []
 proj_base_dir = os.path.join(base_path, projid)
 
 os.chdir(proj_base_dir)
+run_found = False
 for i in glob.glob('*'):
-    run_found = False
     avail = set()
     # print "DEBUG: Abbreviated run name: ", abbr_runname
     if os.path.isdir(i):
@@ -141,6 +141,7 @@ for direc in dirs_to_copy_from:
     for fq in glob.glob(os.path.join(proj_base_dir, direc, abbr_runname, "nophix", "*fastq.txt")):
         [path, fname] = os.path.split(fq)
         dest_file_name = fname.replace("_fastq.txt", ".fastq")
+        dest_file_name = dest_file_name.replace("_nophix_", "_")
         dest = os.path.join(run_path, dest_file_name)
         print "Will copy (rsync) ", fq, "to ", dest 
         if not dry: 
