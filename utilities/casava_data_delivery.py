@@ -6,9 +6,8 @@ import sys, os, yaml, glob, shutil
 from datetime import datetime
 import optparse
 
-def_casava_path = '/proj/a2010002/nobackup/illumina/pipeline_test/archive/casava_analysis/'
+def_casava_path = '/proj/a2010002/nobackup/illumina/'
 def_log_path = '/bubo/home/h9/mikaelh/delivery_logs/'
-base_yaml_path = '/proj/a2010002/archive/'
 
 def fixProjName(pname):
     newname = pname[0].upper()
@@ -38,8 +37,6 @@ parser.add_option('-l', '--log-path', action="store", dest="logpath", default=de
 base_path = opts.caspath
 log_path = opts.logpath
 
-# base_yaml_path = '/bubo/home/h9/mikaelh/'
-
 print "DEBUG: Base path: ", base_path
 
 dry = True
@@ -47,15 +44,12 @@ dry = True
 #projid = sys.argv[1].lower()
 projid = sys.argv[1]
 runname = sys.argv[2].strip("/")
-abbr_runname = runname.split("_")[0] + "_" + runname.split("_")[3] 
-yamlfile = base_yaml_path + runname + "/run_info.yaml"
+runname_comps = runname.split("_")
+if len(runname_comps) == 4: abbr_runname = runname.split("_")[0] + "_" + runname.split("_")[3] 
+else: abbr_runname = runname
 uppmaxproj = sys.argv[3]
 
-# print "Project name: ", fixProjName(projid)
-
 if sys.argv[4].lower() == "n": dry = False
-
-projdata = yaml.load(open(yamlfile))
 
 dt = datetime.now()
 time_str  = str(dt.year) + "_" + str(dt.month) + "_" + str(dt.day) + "_" + str(dt.hour) + "_" + str(dt.minute) + "_" + str(dt.second)
@@ -66,33 +60,12 @@ if not dry:
 
 print "Project to move files for:", projid
 #if not dry: logfile.write("Project to move files for:" + "\n" + fixProjName(projid) + "\n")
+
+if not projid in os.listdir(base_path): 
+    print "Could not find project. Check directory listing:"
+    for f in os.listdir(base_path): print f
+
 if not dry: logfile.write("Project to move files for:" + "\n" + projid + "\n")
-
-matching = set()
-available = set()
-
-for entry in projdata:
-    available.add(entry['description'].split(',')[-1].strip())
-    #if entry['description'].split(',')[-1].strip().lower()==projid: 
-    if entry['description'].split(',')[-1].strip()==projid: 
-        matching.add(entry['lane'])
-    elif entry.has_key('multiplex'):
-            for sample in entry['multiplex']:
-                if sample.has_key('sample_prj'):
-                    available.add(sample['sample_prj'])
-                    #if sample['sample_prj'].split(',')[-1].strip().lower()==projid: 
-                    if sample['sample_prj'].split(',')[-1].strip()==projid: 
-                        matching.add(entry['lane'])
-                    
-if len(matching)==0:
-    print "No matching project found. Possibilities:"
-    for prid in sorted(available):
-        print prid
-    sys.exit(0)
-
-elif dry:
-    print "I will move files from lanes " + ",".join(matching) 
-
 
 dirs_to_copy_from = []
 
@@ -101,29 +74,29 @@ proj_base_dir = os.path.join(base_path, projid)
 
 os.chdir(proj_base_dir)
 for i in glob.glob('*'):
+    run_found = False
+    avail = set()
     # print "DEBUG: Abbreviated run name: ", abbr_runname
     if os.path.isdir(i):
         dir_cont = os.listdir(i)
+        for d in dir_cont: avail.add(d) 
         if abbr_runname in dir_cont: 
             print "DEBUG: Sample ", i, " has been run on FC ", runname
+            run_found = True
             dirs_to_copy_from.append(i)
         else:
             print "DEBUG: Sample ", i, " has not been run on FC ", runname
+
+if not run_found:
+    print "Could not find specified run for the samples in this project. Available runs:"
+    for a in avail: print a
+    sys.exit(0)
 
 if not dry: logfile.flush()
 
 # Create directory in user's INBOX
 
-temp = runname.split('_')
-start_date = temp[0]
-flow_cell = temp[3][0] # A or B
 created_proj_dir_name = fixProjName(projid)
-created_run_dir_name = "20" + start_date + flow_cell + "_hiseq2000"
-
-# "Old school" style
-#del_path = '/proj/' +  uppmaxproj + "/INBOX/" + created_proj_dir_name + "/" + created_run_dir_name
-
-# New
 del_path_top = '/proj/' +  uppmaxproj + "/INBOX/" + created_proj_dir_name 
 
 print "Will create a top-level project directory", del_path_top       
@@ -166,8 +139,7 @@ for direc in dirs_to_copy_from:
     phixfiltered_path = os.path.join(proj_base_dir, direc, abbr_runname, "nophix")
     for fq in glob.glob(os.path.join(proj_base_dir, direc, abbr_runname, "nophix", "*fastq.txt")):
         [path, fname] = os.path.split(fq)
-        [lane, date, fc, idx, nophix, end, rest] = fname.split("_")
-        dest_file_name = "_".join([lane, date, fc, idx, end]) + ".fastq"
+        dest_file_name = fname.replace("_fastq.txt", ".fastq")
         dest = os.path.join(run_path, dest_file_name)
         print "Will copy (rsync) ", fq, "to ", dest 
         if not dry: 
