@@ -397,7 +397,7 @@ if __name__ == "__main__":
     parser.add_option("-n", "--dry_run", dest="dry_run", action="store_true",
                       default=False)
     (options, args) = parser.parse_args()
-    if len(args) < 3:
+    if len(args) < 3 or len(args) > 4:
         print __doc__
         sys.exit()
     

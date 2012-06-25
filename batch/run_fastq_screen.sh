@@ -19,6 +19,12 @@ then
   gunzip -c ${F1}.gz > ${F1}
 fi
 
+if [ ${F2##*.} == "gz" ]
+then
+  F2=${F2/.gz/}
+  gunzip -c ${F2}.gz > ${F2}
+fi
+
 #fastq_screen --outdir ${OUTDIR} --subset 2000000 --illumina --multilib $F1
 fastq_screen --outdir ${OUTDIR} --subset 2000000 --illumina --multilib $F1 --paired $F2
 
