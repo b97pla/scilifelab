@@ -64,6 +64,7 @@ print "Project to move files for:", projid
 if not projid in os.listdir(base_path): 
     print "Could not find project. Check directory listing:"
     for f in os.listdir(base_path): print f
+    sys.exit(0)
 
 if not dry: logfile.write("Project to move files for:" + "\n" + projid + "\n")
 
