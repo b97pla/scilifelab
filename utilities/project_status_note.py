@@ -151,8 +151,14 @@ def make_status_note(prj="", opts=None):
     for r in res:
         if r['key']['Project_id'] == prj:
             doc = r['key']
-    if not doc: sys.exit("Could not find project summary for " + prj)
+    if not doc: 
+        print "Could not find project summary for " + prj
+        print "Available projects: "
+        for r in res:
+            print r['key']['Project_id']
+        sys.exit(0)
 
+    all_passed = True
     try:
         # Project ID
         parameters['project_name'] = doc['Project_id']
@@ -199,13 +205,17 @@ def make_status_note(prj="", opts=None):
             else:
                 pass
                 #print "Couldn't determine status of sample ", s
+            if status != "P": all_passed = False
             row.append(status)
             sample_table.append(row)
     except: 
         print "Failed to retrieve all information. Currently looking at this data structure:", doc
         sys.exit(0)
     # How to define whether a project is finished?
-    parameters['finished'] = 'Cannot yet assess if finished'
+    if not all_passed: 
+        parameters['finished'] = 'Not finished, or cannot yet assess if finished.'
+    else:
+        parameters['finished'] = 'Project finished.'
     parameters['sample_table']=sample_table
     make_note(parameters)
 
