@@ -243,10 +243,86 @@ def main(flowcell_id, archive_dir, analysis_dir, config_file):
         if modify_conf:
             i = lines.index("latex_documents = [\n")
             newconf = lines[:i+3] + sdout + lines[i+3:]
+            ## Change the preamble
+            i = newconf.index("#'preamble': '',\n")
+            newconf = newconf[:i+1] + _latex_preamble() + newconf[i+1:]
+            ## Set the logo
+            i = newconf.index("#latex_logo = None\n")
+            newconf = newconf[:i+1] + _latex_logo() + newconf[i+1:]
             fp = open("conf.py", "w")
             fp.write("".join(newconf))
             fp.close()
 
+
+def _latex_logo():
+    '''Set the logo'''
+    logo = ["latex_logo = '/proj/a2010002/projects/delivery_reports/grf/scilife-sniss.jpg'"]
+    return logo
+
+def _latex_preamble():
+    '''Template for preamble. Sets new header'''
+    preamble = ["'preamble' : r'''",
+                r'''
+                \usepackage[headheight=3cm]{geometry}
+                \makeatletter
+                \fancypagestyle{plain}{%
+                \fancyhf{}
+                \fancyhead[L]{{
+                \begin{tabular}{l}
+                Science for Life Laboratory (SciLifeLab)\\
+                \textbf{Document type}\\
+                BLA\\
+                \textbf{Creation date}\\
+                2012-
+                \end{tabular}
+                }}
+                \fancyhead[C]{{
+                \begin{tabular}{l}
+                \textbf{Document name}\\
+                HiSeq Delivery note\\
+                \textbf{Valid from}\\
+                \\
+                \end{tabular}
+                }}
+                \fancyhead[R]{{\begin{tabular}{ll}
+                \textbf{ID number\_edition} & \\
+                20140\_1 & \\
+                \textbf{Issuer} & \textbf{Approver}\\
+                Mikael H/MH & \\
+                \end{tabular}
+                }}
+                }
+                \fancyhf{}
+                \fancyhead[L]{{
+                \begin{tabular}{l}
+                Science for Life Laboratory (SciLifeLab)\\
+                \textbf{Document type}\\
+                BLA\\
+                \textbf{Creation date}\\
+                2012-
+                \end{tabular}
+                }}
+                \fancyhead[C]{{
+                \begin{tabular}{l}\\
+                \textbf{Document name}\\
+                HiSeq Delivery note\\
+                \textbf{Valid from}\\
+                \\
+                \end{tabular}
+                }}
+                \fancyhead[R]{{\begin{tabular}{ll}
+                \\
+                \textbf{ID number\_edition} & \\
+                20140\_1 & \\
+                \textbf{Issuer} & \textbf{Approver}\\
+                Mikael H/MH & \\
+                \end{tabular}
+                }}
+                \makeatother
+                \pagestyle{fancy}
+                ''',
+                "'''"] 
+    return preamble
 
 def generate_report(proj_conf):
     
@@ -294,7 +370,7 @@ def generate_report(proj_conf):
         print "WARNING: Could not find UPPNEX project"
 
     run_name_comp = proj_conf['flowcell'].split('_')
-    simple_run_name = run_name_comp[0] + run_name_comp[3][0]
+    simple_run_name = run_name_comp[0] + "_" + run_name_comp[3]
     proj_level_dir = fixProjName(proj_conf['id'])
     instr_id = run_name_comp[1]
     fc_name, fc_date = get_flowcell_info(proj_conf['flowcell'])
@@ -312,7 +388,7 @@ def generate_report(proj_conf):
                   ["Instrument ID:", instr_id],
                   ["Flow cell ID:", fc_name],
                   ["Uppnex project:", uppnex_proj],
-                  ["Delivery directory:", del_base + uppnex_proj + "/INBOX/" + proj_level_dir + "/" + proj_conf['flowcell']]])
+                  ["Delivery directory:", del_base + uppnex_proj + "/INBOX/" + proj_level_dir + "/" + simple_run_name]])
     d.update(infotable=tab.draw())
     
     ## Lane table
@@ -441,8 +517,8 @@ def generate_report(proj_conf):
     comm_r1 = ""
     comm_r2 = ""
  
-    # if not ok_cludens_r1: comm_r1 += "Low cluster density. " 
-    # if not ok_cludens_r2: comm_r2 += "Low cluster density. " 
+    if not ok_cludens_r1: comm_r1 += "Low cluster density. " 
+    if not ok_cludens_r2: comm_r2 += "Low cluster density. " 
     if not ok_err_rate:
         if not ok_err_r1: 
             ok_r1 = False
@@ -520,7 +596,7 @@ def generate_report(proj_conf):
         for line in bc_file:
             c = line.strip().split()
             bc_count[c[0]]=c[1] + ' (~' + str (int ( round (float(c[1])/1000000) ) ) + " million)"
-        no_samples = len(bc_count)
+        no_samples = len(bc_count) - 1
         if no_samples == 0:
             print("WARNING: did not find a BC metrics file... Skipping lane %s for %s" %(l['lane'], proj_conf['id']))
             continue
@@ -554,6 +630,10 @@ def generate_report(proj_conf):
             if not k.isdigit(): pass
             else: 
                 if sample_name.has_key(int(k)): samp_count[sample_name[int(k)]] =  bc_count[k]
+
+        print "DEBUG: Target yield per sample = ", target_yield_per_sample
+        print "DEBUG: Min reads per sample = ", min_reads_per_sample
+        print "DEBUG: No samples: ", no_samples
 
         for k in sorted(samp_count.keys()):
             comment = ''
