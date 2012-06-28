@@ -55,10 +55,16 @@ def run_analysis(work_dir, post_process, fc_dir, run_info):
     
     config = load_config(post_process)
     
+    if str(config["algorithm"]["num_cores"]) == "messaging":
+        analysis_script = DISTRIBUTED_ANALYSIS_SCRIPT
+    else:
+        analysis_script = PARALLELL_ANALYSIS_SCRIPT
+        
+    job_cl = [analysis_script, post_process, fc_dir, run_info]
+    
     cp = config["distributed"]["cluster_platform"]
     cluster = __import__("bcbio.distributed.{0}".format(cp), fromlist=[cp])
     platform_args = config["distributed"]["platform_args"].split()
-    job_cl = [PARALLELL_ANALYSIS_SCRIPT, post_process, fc_dir, run_info]
     
     print "Submitting job"
     jobid = cluster.submit_job(platform_args, job_cl)
