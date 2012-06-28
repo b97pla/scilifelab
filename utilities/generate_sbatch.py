@@ -61,13 +61,13 @@ for fname in flist:
     print fname.split("_")
     # 2_date_fcid_sample_1.fastq
     if not tag in sample_names: sample_names.append(tag)
-    if read == "1.fastq": read1forsample[tag]=fname
-    if read == "2.fastq": read2forsample[tag]=fname
+    if (read == "1.Q25.fastq") | (read == "1.fastq"): read1forsample[tag]=fname
+    if (read == "2.Q25.fastq") | (read == "2.fastq"): read2forsample[tag]=fname
 
 print "Best guess for sample names: "
 for n in sorted(sample_names):
     print n
-
+print read2forsample.keys()
 r = raw_input("Press n to exit")
 if r.upper() == "N": sys.exit(0)
 
