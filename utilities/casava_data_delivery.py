@@ -119,10 +119,16 @@ for direc in dirs_to_copy_from:
     for fq in glob.glob(os.path.join(phixfiltered_path, "*fastq.txt*")):
         [path, fname] = os.path.split(fq)
         run_name = os.path.basename(os.path.split(os.path.split(fq)[0])[0])
+        if not os.path.exists(os.path.join(sample_path, run_name)):
+            try:
+                os.mkdir(os.path.join(sample_path, run_name))
+            except:
+                print "Could noy create run level directory!"
+                sys.exit(0)
         sample = os.path.basename(sample_path)
         dest_file_name = fname.replace("_fastq.txt", ".fastq")
         dest_file_name = dest_file_name.replace("_nophix_", "_" + sample + "_")
-        dest = os.path.join(del_path_top, sample, run_name, dest_file_name)
+        dest = os.path.join(sample_path, run_name, dest_file_name)
         print "Will copy (rsync) ", fq, "to ", dest 
         if not dry: 
             command_to_execute = 'rsync -ac ' + fq + ' ' + dest
