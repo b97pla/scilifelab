@@ -138,14 +138,15 @@ for direc in dirs_to_copy_from:
 
     run_path = os.path.join(sample_path, abbr_runname)
     phixfiltered_path = os.path.join(proj_base_dir, direc, abbr_runname, "nophix")
-    for fq in glob.glob(os.path.join(proj_base_dir, direc, abbr_runname, "nophix", "*fastq.txt")):
+    for fq in glob.glob(os.path.join(phixfiltered_path, "*fastq.txt*")):
         [path, fname] = os.path.split(fq)
+        sample = os.path.basename(sample_path)
         dest_file_name = fname.replace("_fastq.txt", ".fastq")
-        dest_file_name = dest_file_name.replace("_nophix_", "_")
+        dest_file_name = dest_file_name.replace("_nophix_", "_" + sample + "_")
         dest = os.path.join(run_path, dest_file_name)
         print "Will copy (rsync) ", fq, "to ", dest 
         if not dry: 
-            command_to_execute = 'rsync -a ' + fq + ' ' + dest
+            command_to_execute = 'rsync -ac ' + fq + ' ' + dest
             os.system(command_to_execute) 
             logfile.write("Executing command: " + command_to_execute)
             logfile.flush()

@@ -158,6 +158,8 @@ def make_status_note(prj="", opts=None):
             print r['key']['Project_id']
         sys.exit(0)
 
+    # print doc 
+
     all_passed = True
     try:
         # Project ID
