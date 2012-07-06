@@ -11,6 +11,7 @@ setup(name = "scilifelab",
       description = "Useful scripts for use at SciLife",
       license = "MIT",
       scripts = ['scripts/project_management.py',
+                 'scripts/runsizes.py',
                  'scripts/bcbb_helpers/run_bcbb_pipeline.py',
                  'scripts/bcbb_helpers/process_run_info.py'],
       install_requires = [
