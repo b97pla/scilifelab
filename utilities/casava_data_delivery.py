@@ -24,32 +24,28 @@ def fixProjName(pname):
             postperiod = False
     return newname
 
-if len(sys.argv) < 5:
-    print "USAGE: python " + sys.argv[0] + " <project ID> <run name> <UPPMAX project> <Dry run, y/n>  [-c <path to Casava dir> (optional)] [-l <path to log file dir [optional]>]"
+if len(sys.argv) < 3:
+    print "USAGE: python " + sys.argv[0] + " <project ID> <UPPMAX project> [-d Dry run -i Interactive -c <path to Casava dir> (optional)] [-l <path to log file dir [optional]>]"
     sys.exit(0)
 
 parser = optparse.OptionParser()
 parser.add_option('-c', '--casava-path', action="store", dest="caspath", default=def_casava_path, help="Specify a path to a Casava directory manually")
 parser.add_option('-l', '--log-path', action="store", dest="logpath", default=def_log_path, help="Specify a path to a log file")
+parser.add_option('-i', '--interactive', action="store_true", dest="interactive", default=False, help="Interactively select samples to be delivered")
+parser.add_option('-d', '--dry-run', action="store_true", dest="dry", default=False, help="Dry run")
 
 (opts, args) = parser.parse_args()
 
 base_path = opts.caspath
 log_path = opts.logpath
+interactive = opts.interactive
+dry = opts.dry
 
 print "DEBUG: Base path: ", base_path
 
-dry = True
-
 #projid = sys.argv[1].lower()
 projid = sys.argv[1]
-runname = sys.argv[2].strip("/")
-runname_comps = runname.split("_")
-if len(runname_comps) == 4: abbr_runname = runname.split("_")[0] + "_" + runname.split("_")[3] 
-else: abbr_runname = runname
-uppmaxproj = sys.argv[3]
-
-if sys.argv[4].lower() == "n": dry = False
+uppmaxproj = sys.argv[2]
 
 dt = datetime.now()
 time_str  = str(dt.year) + "_" + str(dt.month) + "_" + str(dt.day) + "_" + str(dt.hour) + "_" + str(dt.minute) + "_" + str(dt.second)
@@ -76,23 +72,9 @@ proj_base_dir = os.path.join(base_path, projid)
 os.chdir(proj_base_dir)
 run_found = False
 for i in glob.glob('*'):
-    avail = set()
-    # print "DEBUG: Abbreviated run name: ", abbr_runname
     if os.path.isdir(i):
-        dir_cont = os.listdir(i)
-        for d in dir_cont: avail.add(d) 
-        if abbr_runname in dir_cont: 
-            print "DEBUG: Sample ", i, " has been run on FC ", runname
-            run_found = True
-            dirs_to_copy_from.append(i)
-        else:
-            print "DEBUG: Sample ", i, " has not been run on FC ", runname
-
-if not run_found:
-    print "Could not find specified run for the samples in this project. Available runs:"
-    for a in avail: print a
-    sys.exit(0)
-
+        dirs_to_copy_from.append(i)
+        
 if not dry: logfile.flush()
 
 # Create directory in user's INBOX
@@ -112,11 +94,16 @@ if not dry:
             print "Could not create project-level delivery directory!"
             sys.exit(0)
 
-print "Will create sample-level directories"
-
+skip_list = []
+if interactive:
+    for direc in dirs_to_copy_from:
+        print "Deliver sample ", direc, " ? (y/n)"
+        ans = raw_input()
+        if ans.lower() != 'y': skip_list.append(direc)
+   
 for direc in dirs_to_copy_from:
+    if direc in skip_list: continue
     sample_path = os.path.join(del_path_top, direc)
-    run_path = os.path.join(sample_path, abbr_runname)
     if not dry: 
         logfile.write("Creating sample-level delivery directory:" + sample_path + " (or leaving it in place if already present)\n")
         if os.path.exists(sample_path):
@@ -127,25 +114,24 @@ for direc in dirs_to_copy_from:
             except:
                 print "Could not create sample-level delivery directory!"
                 sys.exit(0)
-        logfile.write("Creating run-level delivery directory:" + run_path + " (or leaving it in place if already present)\n")
-        if os.path.exists(run_path):
-            print "Directory ", run_path, " already exists!"  
-        else:    
-            try:
-                os.mkdir(run_path)
-            except:
-                sys.exit("Could not create run-level delivery directory!")
 
-    run_path = os.path.join(sample_path, abbr_runname)
-    phixfiltered_path = os.path.join(proj_base_dir, direc, abbr_runname, "nophix")
-    for fq in glob.glob(os.path.join(proj_base_dir, direc, abbr_runname, "nophix", "*fastq.txt")):
+    phixfiltered_path = os.path.join(proj_base_dir, direc, "*", "nophix")
+    for fq in glob.glob(os.path.join(phixfiltered_path, "*fastq.txt*")):
         [path, fname] = os.path.split(fq)
+        run_name = os.path.basename(os.path.split(os.path.split(fq)[0])[0])
+        if not os.path.exists(os.path.join(sample_path, run_name)):
+            try:
+                os.mkdir(os.path.join(sample_path, run_name))
+            except:
+                print "Could noy create run level directory!"
+                sys.exit(0)
+        sample = os.path.basename(sample_path)
         dest_file_name = fname.replace("_fastq.txt", ".fastq")
-        dest_file_name = dest_file_name.replace("_nophix_", "_")
-        dest = os.path.join(run_path, dest_file_name)
+        dest_file_name = dest_file_name.replace("_nophix_", "_" + sample + "_")
+        dest = os.path.join(sample_path, run_name, dest_file_name)
         print "Will copy (rsync) ", fq, "to ", dest 
         if not dry: 
-            command_to_execute = 'rsync -a ' + fq + ' ' + dest
+            command_to_execute = 'rsync -ac ' + fq + ' ' + dest
             os.system(command_to_execute) 
             logfile.write("Executing command: " + command_to_execute)
             logfile.flush()
