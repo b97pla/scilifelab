@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import drmaa
 import os
 import sys
 import glob
@@ -7,10 +6,11 @@ import time
 import yaml
 import subprocess
 
-ANALYSIS_SCRIPT="distributed_nextgen_pipeline.py"
+DISTRIBUTED_ANALYSIS_SCRIPT="distributed_nextgen_pipeline.py"
+PARALLELL_ANALYSIS_SCRIPT="automated_initial_analysis.py"
 ANALYSIS_DIR="/proj/a2010002/nobackup/illumina/"
 EMAIL="seqmaster@scilifelab.se"
-SLURM_ARGS="-A a2010002 -p node --qos=seqver"
+SLURM_ARGS="-A a2010002 -p node --qos=seqver -t 168:00:00 --mail-user=seqmaster@scilifelab.se --mail-type=ALL"
 RUN_TIME="168:00:00"
 PROCESS_YAML_SCRIPT = "process_run_info.py"
 PROCESS_YAML = True
@@ -88,45 +88,20 @@ def main():
         with open(post_process_config,"w") as fh:
             fh.write(yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, width=1000)) 
         
-    # Translate the time string into seconds
-    multiplier = (86400,3600,60,1)
-    units = RUN_TIME.split(":")
-    seconds = 0
-    for i in range(1,len(units)+1):
-        seconds += multiplier[-1*i]*int(units[-1*i])
-    print "Will request job to run for %s seconds" % seconds
-    print "Initializing session"
-    s = drmaa.Session()
-    s.initialize()
-
-    jt = s.createJobTemplate()
-    jt.remoteCommand = ANALYSIS_SCRIPT
-    args = [post_process_config,archive_dir]
-    if run_info_file is not None:
-        args.append(run_info_file)
-    jt.args = args
+    if str(config["algorithm"]["num_cores"]) == "messaging":
+        analysis_script = DISTRIBUTED_ANALYSIS_SCRIPT
+    else:
+        analysis_script = PARALLELL_ANALYSIS_SCRIPT
+        
+    job_cl = [analysis_script, post_process_config, archive_dir, run_info_file]
     
-    # TODO: job name is always (null), must fix slurm_drmaa C library and its
-    # custom parsing (substitute "slurmdrmaa_parse_native"
-    # for GNU GetOpt on slurm_drmaa/util.c)
-    #jt.job_name = run_name
-    #jt.blockEmail = 0
-    #jt.mail = EMAIL
-    #jt.hardRunDurationLimit(seconds)
-    output = os.path.join(work_dir,"%s.out" % run_name)
-    error = os.path.join(work_dir,"%s.err" % run_name)
-    print "Setting output and error paths (%s,%s)" % (output,error)
+    cp = config["distributed"]["cluster_platform"]
+    cluster = __import__("bcbio.distributed.{0}".format(cp), fromlist=[cp])
+    platform_args = "%s -J %s -o %s.log" % (SLURM_ARGS, run_name, run_name)
     
-    #jt.outputPath = output
-    #jt.errorPath = error 
-    jt.nativeSpecification = "%s -t %s" % (SLURM_ARGS,RUN_TIME)
-
     print "Submitting job"
-    jobid = s.runJob(jt)
+    jobid = cluster.submit_job(platform_args.split(), job_cl)
     print 'Your job has been submitted with id ' + jobid
-
-    s.deleteJobTemplate(jt)
-    s.exit()
 
     exit(0)
 
