@@ -18,5 +18,7 @@ setup(name = "scilifelab",
           "bcbio-nextgen >= 0.2",
           "drmaa >= 0.5",
 	  "sphinx >= 1.1.3",
+	  "couchdb >= 0.8",
+          "reportlab >= 2.5",
       ])
 os.system("git rev-parse --short --verify HEAD > ~/.scilifelab_version")
