@@ -89,12 +89,19 @@ def main(config_file, delivery_dir, run_info_yaml, analysis_dir=None):
         glob_str = os.path.join(analysis_dir, str(info['lane']) +  "_" + "*metrics")
         metricsfiles = glob.glob(glob_str)
         infiles[info['lane']]['metrics'] = metricsfiles
+
+    # snpEff files
+    glob_str = os.path.join(analysis_dir, "snpEff*")
+    snpeff_files = glob.glob(glob_str)
     
     # Loop through the list and deliver if appropriate
     _make_dir(delivery_dir)
     _deliver_file(os.path.join(analysis_dir,"project-summary.csv"),os.path.join(delivery_dir,"project-summary.csv") )
     _deliver_file(os.path.join(analysis_dir,"run_summary.yaml"),os.path.join(delivery_dir,"run_summary.yaml") )
-    _deliver_file(run_info_yaml,os.path.join(delivery_dir,"sample_run_info.yaml") )
+    _deliver_file(run_info_yaml,os.path.join(delivery_dir,os.path.basename(run_info_yaml) ))
+    if not options.no_vcf:
+        for sf in snpeff_files:
+            _deliver_file(sf, os.path.join(delivery_dir,os.path.basename(sf) ))
     for lane_num in infiles.keys():
         lane = infiles[lane_num]
         if not options.no_vcf:
