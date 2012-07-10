@@ -1,0 +1,13 @@
+from cement.core import backend, foundation, hook, handler
+from pmtools import PmController
+from pmtools.controller.project import ProjectController
+
+app = foundation.CementApp('pm', base_controller=PmController)
+
+try:
+    handler.register(ProjectController)
+    app.setup()
+    app.run()
+
+finally:
+    app.close()
