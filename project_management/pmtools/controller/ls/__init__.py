@@ -73,7 +73,17 @@ class LsController(AbstractBaseController):
             print "\n".join(self._filtered_ls(out.splitlines()))
         else:
             self.log.warn(err)
-        
+
+    @controller.expose(help="List analysis folder")
+    def analysis(self):
+        """List contents of analysis folder"""
+        (out, err, code) = exec_cmd(["ls",  self.app.config.get("config", "analysis")])
+        if code == 0:
+            ## FIXME: use output formatter for stuff like this
+            print "\n".join(self._filtered_ls(out.splitlines()))
+        else:
+            self.log.warn(err)
+
 ## Runinfo controller
 class RunInfoController(SubSubController):
     class Meta:
