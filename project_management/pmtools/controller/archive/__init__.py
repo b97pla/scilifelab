@@ -5,7 +5,9 @@ Define a main abstract base controller with arguments common to all
 subcommands in the archive group. Add controllers for commands that
 require extra arguments.
 """
+import re
 from cement.core import controller
+from cement.utils.shell import *
 from pmtools import AbstractBaseController, SubSubController
 
 ## Main archive controller
@@ -42,6 +44,18 @@ class LsController(SubSubController):
             (['-a', '--all'], dict(help="list all")),
             ]
 
+    def _setup(self, app_obj):
+        # shortcuts
+        super(SubSubController, self)._setup(app_obj)
+        # Compile ignore regexps
+        self.reignore = re.compile(self.config.get("config", "ignore").replace("\n", "|"))
+
+    def _filtered_ls(self, out):
+        """Filter output"""
+        def ignore(line):
+            return self.reignore.match(line) == None
+        return filter(ignore, out)
+    
     @controller.expose(hide=True)
     def default(self):
         pass
@@ -49,7 +63,12 @@ class LsController(SubSubController):
     @controller.expose(help="List contents of archive folder")
     def ls(self):
         """List contents of archive folder"""
-        print "ls"
+        (out, err, code) = exec_cmd(["ls",  self.app.config.get("config", "archive")])
+        if code == 0:
+            ## FIXME: use output formatter for stuff like this
+            print "\n".join(self._filtered_ls(out.splitlines()))
+        else:
+            self.log.warn(err)
 
 
 class HelloController(controller.CementBaseController):

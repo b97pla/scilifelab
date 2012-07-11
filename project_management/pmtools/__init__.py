@@ -10,6 +10,12 @@ import textwrap
 
 from cement.core import foundation, controller, handler, backend
 
+## I personally don't like the default help formatting output from
+## argparse which I think is difficult to read
+## Currently identical to RawDescriptionHelpFormatter
+class PmHelpFormatter(argparse.HelpFormatter):
+    def _fill_text(self, text, width, indent):
+        return ''.join([indent + line for line in text.splitlines(True)])
 
 ## Abstract base controller -- for sharing arguments
 class AbstractBaseController(controller.CementBaseController):
@@ -21,6 +27,9 @@ class AbstractBaseController(controller.CementBaseController):
     def _setup(self, base_app):
         super(AbstractBaseController, self)._setup(base_app)
         self.shared_config = dict()
+
+    def _not_implemented(self):
+        print "Not implemented yet"
 
     def _parse_args(self):
         """
@@ -46,7 +55,7 @@ class AbstractBaseController(controller.CementBaseController):
                         
         self.app.args.description = self._help_text
         self.app.args.usage = self._usage_text
-        self.app.args.formatter_class=argparse.RawDescriptionHelpFormatter
+        self.app.args.formatter_class=PmHelpFormatter
 
         self.app._parse_args()
         self.pargs = self.app.pargs
@@ -129,7 +138,6 @@ class SubSubController(controller.CementBaseController):
     def _setup(self, base_app):
         super(SubSubController, self)._setup(base_app)
 
-
 ##############################
 ## Main pm base controller
 ##############################
@@ -137,18 +145,15 @@ class PmController(controller.CementBaseController):
     class Meta:
         label = 'pm'
         description = 'Project/pipeline management tools'
-        config_defaults = dict(
-                 config="%s/.pm/pm.conf" % os.getenv("HOME")
-            )
-        arguments = [
-            (['--config'], dict(help = "pm config file [default ~/.pm/pm.conf]", action="store", dest="config"))
-            ]
-
 
     @controller.expose(hide=True)
     def default(self):
         defaults =  backend.defaults('pm')
         print defaults['pm']
+
+    def _setup(self, app_obj):
+        # shortcuts
+        super(PmController, self)._setup(app_obj)
 
     def _parse_args(self):
         """
@@ -175,7 +180,7 @@ class PmController(controller.CementBaseController):
                         break
         self.app.args.description = self._help_text
         self.app.args.usage = self._usage_text
-        self.app.args.formatter_class=argparse.RawDescriptionHelpFormatter
+        self.app.args.formatter_class=PmHelpFormatter
 
         self.app._parse_args()
         self.pargs = self.app.pargs
