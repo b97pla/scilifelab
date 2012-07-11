@@ -3,11 +3,12 @@ Pipeline Management Tools
 
 Usage: pm command [options]
 """
-
-from cement.core import foundation, controller, handler
-import argparse
+import os
 import re
+import argparse
 import textwrap
+
+from cement.core import foundation, controller, handler, backend
 
 
 ## Abstract base controller -- for sharing arguments
@@ -135,21 +136,29 @@ class SubSubController(controller.CementBaseController):
 class PmController(controller.CementBaseController):
     class Meta:
         label = 'pm'
-        description = ''
+        description = 'Project/pipeline management tools'
+        config_defaults = dict(
+                 config="%s/.pm/pm.conf" % os.getenv("HOME")
+            )
+        arguments = [
+            (['--config'], dict(help = "pm config file [default ~/.pm/pm.conf]", action="store", dest="config"))
+            ]
+
 
     @controller.expose(hide=True)
     def default(self):
-        pass
-        #print dir(self)
-
+        defaults =  backend.defaults('pm')
+        print defaults['pm']
 
     def _parse_args(self):
         """
         Parse command line arguments and determine a command to dispatch.
         
         """
+        if len(self.app.argv) == 0:
+            self.app.argv.append("-h")
+
         # chop off a command argument if it matches an exposed command
-        print "Parsing args in pm controller"
         if len(self.app.argv) > 0 and not self.app.argv[0].startswith('-'):
             
             # translate dashes back to underscores
@@ -164,7 +173,6 @@ class PmController(controller.CementBaseController):
                         self.command = func['label']
                         self.app.argv.pop(0)
                         break
-                        
         self.app.args.description = self._help_text
         self.app.args.usage = self._usage_text
         self.app.args.formatter_class=argparse.RawDescriptionHelpFormatter

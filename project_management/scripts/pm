@@ -1,18 +1,25 @@
+import os
 from cement.core import backend, foundation, hook, handler
 import argparse
 from pmtools import PmController
 from pmtools.controller.project import ProjectController
-from pmtools.controller.archive import ArchiveController, LsController, HelloController
+from pmtools.controller.archive import ArchiveController, LsController
 
 app = foundation.CementApp('pm', base_controller=PmController)
 
 try:
-    #handler.register(ProjectController)
     handler.register(ArchiveController)
     handler.register(LsController)
-    handler.register(HelloController)
     app.setup()
-    app.args.formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    print dir(app)
+    ##print "Applicaiton config: %s"  % app.config.get("pm", "config")
+    ##app.args.add_argument('--config', action=dict(help = "pm config file [default ~/.pm/base.conf]"))
+    try:
+        app.config.parse_file(os.path.join(os.getenv("HOME"), ".pm.conf"))
+    except:
+        print "No config file in %s"
+        sys.exit()
+
     app.run()
 
 finally:
