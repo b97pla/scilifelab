@@ -1,8 +1,12 @@
 """
 Pm Archive module
+
+Define a main abstract base controller with arguments common to all
+subcommands in the archive group. Add controllers for commands that
+require extra arguments.
 """
 from cement.core import controller
-from pmtools import AbstractBaseController, PmController
+from pmtools import AbstractBaseController, SubSubController
 
 ## Main archive controller
 class ArchiveController(AbstractBaseController):
@@ -11,11 +15,11 @@ class ArchiveController(AbstractBaseController):
     """
     class Meta:
         label = 'archive'
-        stacked_on = 'pm'
+        stacked_on = None
         description = 'Manage archive folder'
         interface = controller.IController
         arguments = [
-            (['-p', '--project'], dict(help="project"))
+            (['-f', '--flowcell'], dict(help="Flowcell id")),
             ]
 
     @controller.expose(hide=True)
@@ -23,16 +27,16 @@ class ArchiveController(AbstractBaseController):
         __doc__
 
 
-    # @controller.expose(help="Compress files of an archive")
-    # def compress(self):
-    #     print "compress"
+    @controller.expose(help="Compress files of an archive")
+    def compress(self):
+        print "compress"
 
 
-class LsController(controller.CementBaseController):
+class LsController(SubSubController):
     class Meta:
         label = 'list'
         stacked_on= 'archive'
-        description='List contents of archive folder'
+        description='List controller'
         interface = controller.IController
         arguments = [
             (['-a', '--all'], dict(help="list all")),
@@ -42,10 +46,10 @@ class LsController(controller.CementBaseController):
     def default(self):
         pass
 
-    # @controller.expose(help="List contents of archive folder")
-    # def ls(self):
-    #     """List contents of archive folder"""
-    #     print "ls"
+    @controller.expose(help="List contents of archive folder")
+    def ls(self):
+        """List contents of archive folder"""
+        print "ls"
 
 
 class HelloController(controller.CementBaseController):

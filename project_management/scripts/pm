@@ -1,4 +1,5 @@
 from cement.core import backend, foundation, hook, handler
+import argparse
 from pmtools import PmController
 from pmtools.controller.project import ProjectController
 from pmtools.controller.archive import ArchiveController, LsController, HelloController
@@ -10,8 +11,8 @@ try:
     handler.register(ArchiveController)
     handler.register(LsController)
     handler.register(HelloController)
-    print dir(app)
     app.setup()
+    app.args.formatter_class=argparse.ArgumentDefaultsHelpFormatter
     app.run()
 
 finally:
