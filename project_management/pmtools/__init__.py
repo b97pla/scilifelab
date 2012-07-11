@@ -16,7 +16,10 @@ class AbstractBaseController(controller.CementBaseController):
     def _setup(self, base_app):
         super(AbstractBaseController, self)._setup(base_app)
         self.shared_config = dict()
-
+    
+    @property
+    def _help_text(self):
+        print "My own help"
 
 ## Main pm base controller
 class PmController(controller.CementBaseController):
@@ -26,7 +29,8 @@ class PmController(controller.CementBaseController):
 
     @controller.expose(hide=True)
     def default(self):
-        print dir(self)
+        pass
+        #print dir(self)
 
 
 

@@ -1,11 +1,16 @@
 from cement.core import backend, foundation, hook, handler
 from pmtools import PmController
 from pmtools.controller.project import ProjectController
+from pmtools.controller.archive import ArchiveController, LsController, HelloController
 
 app = foundation.CementApp('pm', base_controller=PmController)
 
 try:
-    handler.register(ProjectController)
+    #handler.register(ProjectController)
+    handler.register(ArchiveController)
+    handler.register(LsController)
+    handler.register(HelloController)
+    print dir(app)
     app.setup()
     app.run()
 
