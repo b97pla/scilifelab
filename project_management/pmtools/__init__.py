@@ -151,7 +151,7 @@ class PmController(controller.CementBaseController):
         assert self.config.get(section, label), "no section %s with label %s in config file; please define accordingly" %(section, label)
         d = self.config.get(section,label)
         if not(os.path.exists(d)):
-            self.log.warn("no such path %s", % d)
+            self.log.warn("no such path %s" % d)
             sys.exit()
         return d
 
