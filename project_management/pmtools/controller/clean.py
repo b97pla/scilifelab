@@ -21,8 +21,8 @@ class CleanController(AbstractBaseController):
         description = 'Functionality for cleaning up analysis/project folders'
         interface = controller.IController
         arguments = [
-            (['fc'], dict(help="flowcell", action="store", default=None, nargs="?")),
-            (['-f', '--flowcell'], dict(help="Flowcell id", action="store")),
+            (['id'], dict(help="Flowcell id/project id", action="store", default=None)),
+            (['-l', '--lane'], dict(help="Lane id", default=None, action="store")),
             (['-p', '--project'], dict(help="Project id", action="store")),
             (['-b', '--bam_files'], dict(help="Work on bam files", default=False, action="store_true")),
             ]
@@ -34,9 +34,17 @@ class CleanController(AbstractBaseController):
     @controller.expose(help="Clean up folder", hide=True)
     def default(self):
         """Clean up folder"""
-        if self.pargs.fc is None:
+        if self.pargs.id is None:
             print self.__doc__
         else:
             print self.pargs
 
-    
+    @controller.expose(help="perform clean operation on a project in project folder")
+    def project(self):
+        self._not_implemented()
+
+    @controller.expose(help="perform clean operation on a flowcell in analysis folder")
+    def analysis(self):
+        self._not_implemented()
+
+        

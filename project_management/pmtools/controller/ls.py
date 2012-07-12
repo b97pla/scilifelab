@@ -1,5 +1,7 @@
 """
 Pm ls module
+
+Functions for listing archive, analysis and project directories
 """
 import re
 import sys
@@ -31,13 +33,13 @@ class LsController(AbstractBaseController):
 
     @controller.expose(hide=True)
     def default(self):
-        print __doc__
+        print "FIXME: show help"
 
     def _setup(self, app_obj):
         # shortcuts
         super(AbstractBaseController, self)._setup(app_obj)
         # Compile ignore regexps
-        self.reignore = re.compile("|".join(self.config.get("config", "ignore")))#.replace("\n", "|"))
+        self.reignore = re.compile(self.config.get("config", "ignore").replace("\n", "|"))
 
     def _filtered_ls(self, out):
         """Filter output"""
@@ -47,7 +49,7 @@ class LsController(AbstractBaseController):
     
     @controller.expose(help="List project folder")
     def proj(self):
-        assert self.config.get("projects" "root"), "no projects root directory"
+        assert self.config.get("projects", "root"), "no projects root directory"
         (out, err, code) = exec_cmd(["ls",  self.config.get("projects", "root")])
         if code == 0:
             ## FIXME: use output formatter for stuff like this
@@ -57,7 +59,7 @@ class LsController(AbstractBaseController):
 
     @controller.expose(help="List finished projects folder")
     def finished_proj(self):
-        assert self.config.get("projects" "root"), "no projects root directory"
+        assert self.config.get("projects","root"), "no projects root directory"
         (out, err, code) = exec_cmd(["ls",  os.path.join(self.config.get("projects", "root"), "finished_projects")])
         if code == 0:
             ## FIXME: use output formatter for stuff like this
@@ -138,6 +140,6 @@ class RunInfoController(SubSubController):
             w=csv.writer(sys.stdout, delimiter="\t")
             w.writerows(runinfo_tab)
         elif self.pargs.projects:
-            print "available projects:\n\t" + "\n\t".join(list(set(self._column(runinfo_tab, "sample_prj"))))
+            print "available projects for flowcell %s:\n\t" %self.pargs.flowcell + "\n\t".join(list(set(self._column(runinfo_tab, "sample_prj"))))
         else:
             print runinfo_yaml

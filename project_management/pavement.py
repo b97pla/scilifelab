@@ -15,7 +15,7 @@ setup(
         "cement >= 1.9.12",
         ],
     test_suite = 'nose.collector',
-    scripts = ['scripts/pm', 'scripts/pm-init'],
+    scripts = ['scripts/pm.py'],
     package_dir = {'pmtools':'pmtools'},
     package_data = {'pmtools':['templates/tpl/make/*']}
 )

@@ -145,7 +145,10 @@ class PmController(controller.CementBaseController):
     class Meta:
         label = 'pm'
         description = 'Project/pipeline management tools'
-
+        arguments = [
+            (['--config'], dict(help="print configuration", action="store_true")),
+            (['--config-example'], dict(help="print configuration example", action="store_true")),
+            ]
     ## Config helpers
     def get_dir(self, section, label):
         assert self.config.get(section, label), "no section %s with label %s in config file; please define accordingly" %(section, label)
@@ -154,11 +157,6 @@ class PmController(controller.CementBaseController):
             self.log.warn("no such path %s" % d)
             sys.exit()
         return d
-
-    @controller.expose(hide=True)
-    def default(self):
-        defaults =  backend.defaults('pm')
-        print defaults['pm']
 
     def _setup(self, app_obj):
         # shortcuts
@@ -193,3 +191,7 @@ class PmController(controller.CementBaseController):
 
         self.app._parse_args()
         self.pargs = self.app.pargs
+
+    @controller.expose(hide=True)
+    def default(self):
+        pass
