@@ -3,7 +3,6 @@ from cement.core import backend, foundation, hook, handler
 import argparse
 from pmtools import PmController
 from pmtools.controller.project import ProjectController
-from pmtools.controller.archive import ArchiveController
 from pmtools.controller.clean import CleanController
 from pmtools.controller.compress import CompressController
 from pmtools.controller.ls import LsController, RunInfoController
@@ -25,7 +24,6 @@ defaults['log']['file']  = os.path.join(os.getenv("HOME"), "log", "pm.log")
 app = foundation.CementApp('pm', base_controller=PmController, config_defaults = defaults, extensions = ['json'])
     
 try:
-    handler.register(ArchiveController)
     handler.register(LsController)
     handler.register(RunInfoController)
     handler.register(CleanController)
@@ -38,23 +36,6 @@ try:
         app.log.warn("No config file %s; please create and set relevant config sections" % CONFIGFILE)
         sys.exit()
     app.run()
-
-    
-    if app.pargs.config:
-        print "FIXME: show config"
-
-    if app.pargs.config_example:
-        print """Configuration example: save as ~/.pm.conf and modify at will
-
-    [config]
-    archive = /path/to/archive
-    analysis = /path/to/illumina
-
-    [projects]
-    root = /path/to/projects
-    repos = /path/to/repos
-        """
-
 
 finally:
     app.close()

@@ -194,4 +194,19 @@ class PmController(controller.CementBaseController):
 
     @controller.expose(hide=True)
     def default(self):
-        pass
+        if self.app.pargs.config:
+            print "FIXME: show config"
+        if self.app.pargs.config_example:
+            print """Configuration example: save as ~/.pm.conf and modify at will
+
+    [config]
+    archive = /path/to/archive
+    analysis = /path/to/illumina
+
+    [projects]
+    root = /path/to/projects
+    repos = /path/to/repos
+        """
+
+
+
