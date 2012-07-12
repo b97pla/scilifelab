@@ -146,6 +146,15 @@ class PmController(controller.CementBaseController):
         label = 'pm'
         description = 'Project/pipeline management tools'
 
+    ## Config helpers
+    def get_dir(self, section, label):
+        assert self.config.get(section, label), "no section %s with label %s in config file; please define accordingly" %(section, label)
+        d = self.config.get(section,label)
+        if not(os.path.exists(d)):
+            self.log.warn("no such path %s", % d)
+            sys.exit()
+        return d
+
     @controller.expose(hide=True)
     def default(self):
         defaults =  backend.defaults('pm')

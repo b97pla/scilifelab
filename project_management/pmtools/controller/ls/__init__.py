@@ -24,20 +24,20 @@ class LsController(AbstractBaseController):
         description = 'List archive, analysis, project folders'
         interface = controller.IController
         arguments = [
-            (['-f', '--flowcell'], dict(help="Flowcell id")),
+            (['flowcell'], dict(help="Flowcell id", nargs="?", default="default")),
             (['-a', '--archive'], dict(help="List archive")),
             (['-p', '--project'], dict(help="Project id")),
             ]
 
     @controller.expose(hide=True)
     def default(self):
-        __doc__
+        print __doc__
 
     def _setup(self, app_obj):
         # shortcuts
         super(AbstractBaseController, self)._setup(app_obj)
         # Compile ignore regexps
-        self.reignore = re.compile(self.config.get("config", "ignore").replace("\n", "|"))
+        self.reignore = re.compile("|".join(self.config.get("config", "ignore")))#.replace("\n", "|"))
 
     def _filtered_ls(self, out):
         """Filter output"""
@@ -47,7 +47,8 @@ class LsController(AbstractBaseController):
     
     @controller.expose(help="List project folder")
     def proj(self):
-        (out, err, code) = exec_cmd(["ls",  self.app.config.get("projects", "root")])
+        assert self.config.get("projects" "root"), "no projects root directory"
+        (out, err, code) = exec_cmd(["ls",  self.config.get("projects", "root")])
         if code == 0:
             ## FIXME: use output formatter for stuff like this
             print "\n".join(self._filtered_ls(out.splitlines()))
@@ -56,18 +57,19 @@ class LsController(AbstractBaseController):
 
     @controller.expose(help="List finished projects folder")
     def finished_proj(self):
-        (out, err, code) = exec_cmd(["ls",  os.path.join(self.app.config.get("projects", "root"), "finished_projects")])
+        assert self.config.get("projects" "root"), "no projects root directory"
+        (out, err, code) = exec_cmd(["ls",  os.path.join(self.config.get("projects", "root"), "finished_projects")])
         if code == 0:
             ## FIXME: use output formatter for stuff like this
             print "\n".join(self._filtered_ls(out.splitlines()))
         else:
             self.log.warn(err)
 
-
     @controller.expose(help="List archive folder")
     def archive(self):
         """List contents of archive folder"""
-        (out, err, code) = exec_cmd(["ls",  self.app.config.get("config", "archive")])
+        assert self.config.get("config", "archive"), "no config archive directory"
+        (out, err, code) = exec_cmd(["ls",  self.config.get("config", "archive")])
         if code == 0:
             ## FIXME: use output formatter for stuff like this
             print "\n".join(self._filtered_ls(out.splitlines()))
@@ -124,8 +126,9 @@ class RunInfoController(SubSubController):
     def runinfo(self):
         """List runinfo for a given flowcell"""
         if self.pargs.flowcell is None:
-            print "Please provide flowcell id [-f]"
+            print "Please provide flowcell id"
             return
+        assert self.config.get("config", "archive"), "archive directory not defined"
         f = os.path.join(self.config.get("config", "archive"), self.pargs.flowcell, "run_info.yaml")
         self.log.info("Opening file %s" %f)
         with open(f) as fh:
