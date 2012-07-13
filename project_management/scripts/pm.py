@@ -11,12 +11,13 @@ CONFIGFILE=os.path.join(os.getenv("HOME"), ".pm.conf")
 
 ## Tried to set this in controller subclass but doesn't work?!?
 ## FIXME: move to separate config.py module
-defaults = backend.defaults('config', 'projects','log')
-defaults['config']['archive']  = None
-defaults['config']['analysis']  = None
-defaults['config']['ignore'] = ["slurm*", "tmp*"]
-defaults['projects']['root']  = None
+defaults = backend.defaults('analysis', 'archive', 'config' 'project','log')
+defaults['analysis']['root']  = None
+defaults['archive']['root']  = None
+defaults['project']['root']  = None
 defaults['projects']['repos']  = None
+
+defaults['config']['ignore'] = ["slurm*", "tmp*"]
 defaults['log']['level']  = "INFO"
 defaults['log']['file']  = os.path.join(os.getenv("HOME"), "log", "pm.log")
 

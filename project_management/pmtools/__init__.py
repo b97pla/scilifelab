@@ -29,12 +29,19 @@ class AbstractBaseController(controller.CementBaseController):
         self.shared_config = dict()
 
     def _not_implemented(self):
-        print "Not implemented yet"
+        print "FIXME: Not implemented yet"
 
+    def _obsolete(self, msg):
+        self.log.info("This function is obsolete.")
+        self.log.info(msg)
+        sys.exit()
+
+    # Copied from cement
+    # Modification: - PmHelpFormatter
+    #               - only relevant options should be listed for any given command 
     def _parse_args(self):
         """
         Parse command line arguments and determine a command to dispatch.
-        
         """
         # chop off a command argument if it matches an exposed command
         if len(self.app.argv) > 0 and not self.app.argv[0].startswith('-'):
@@ -149,7 +156,7 @@ class PmController(controller.CementBaseController):
             (['--config'], dict(help="print configuration", action="store_true")),
             (['--config-example'], dict(help="print configuration example", action="store_true")),
             ]
-    ## Config helpers
+    ## Config helpers - not used?
     def get_dir(self, section, label):
         assert self.config.get(section, label), "no section %s with label %s in config file; please define accordingly" %(section, label)
         d = self.config.get(section,label)
@@ -197,13 +204,22 @@ class PmController(controller.CementBaseController):
         if self.app.pargs.config:
             print "FIXME: show config"
         if self.app.pargs.config_example:
-            print """Configuration example: save as ~/.pm.conf and modify at will
+            print """Configuration example: save as ~/.pm.conf and modify at will. 
 
     [config]
-    archive = /path/to/archive
+    ignore = slurm*, tmp*
+
+    [archive]
+    root = /path/to/archive
+
+    [analysis]
     analysis = /path/to/illumina
 
-    [projects]
+    [log]
+    level = INFO
+    file = ~/log/pm.log
+
+    [project]
     root = /path/to/projects
     repos = /path/to/repos
         """

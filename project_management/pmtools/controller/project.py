@@ -17,8 +17,8 @@ class ProjectController(AbstractBaseController):
     def default(self):
         __doc__
 
-    @controller.expose()
+    @controller.expose(help="Initalize project folder")
     def init(self):
-        print "in init"
+        self._not_implemented()
 
 
