@@ -6,6 +6,7 @@ from pmtools import PmController
 from pmtools.controller.project import ProjectController
 from pmtools.controller.archive import ArchiveController
 from pmtools.controller.analysis import AnalysisController
+from pmtools.controller.deliver import DeliveryController
 ##from pmtools.controller.compress import CompressController
 ##from pmtools.controller.statusdb import StatusdbController
 ##from pmtools.controller.clean import CleanController
@@ -31,6 +32,7 @@ try:
     handler.register(ProjectController)
     handler.register(ArchiveController)
     handler.register(AnalysisController)
+    handler.register(DeliveryController)
     # handler.register(CompressController)
     # handler.register(CleanController)
     # handler.register(LsController)

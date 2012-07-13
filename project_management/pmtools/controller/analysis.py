@@ -9,7 +9,7 @@ Commands:
        bcstats  print information about barcode stats
        status   print status about an analysis
 """
-
+import sys
 from cement.core import controller
 from pmtools import AbstractBaseController
 

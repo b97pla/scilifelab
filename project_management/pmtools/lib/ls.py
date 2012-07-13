@@ -2,6 +2,7 @@
 ls library
 """
 
+import sys
 import csv
 
 def runinfo_to_tab(runinfo_yaml):
@@ -11,6 +12,8 @@ def runinfo_dump(runinfo_tab, fh=sys.stdout):
     w=csv.writer(fh, delimiter="\t")
     w.writerows(runinfo_tab)
 
+def runinfo_projects(runinfo_tab):
+    return list(set(_column(runinfo_tab, "sample_prj")))
 
 def _yaml_to_tab(runinfo_yaml):
     """Convert yaml to tab"""

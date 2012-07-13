@@ -9,11 +9,11 @@ Commands:
 """
 
 import os
+import yaml
 
 from cement.core import controller
-from cement.utils.shell import *
 from pmtools import AbstractBaseController
-
+from pmtools.lib.ls import runinfo_to_tab, runinfo_dump, runinfo_projects
 
 ## Main archive controller
 class ArchiveController(AbstractBaseController):
@@ -30,21 +30,18 @@ class ArchiveController(AbstractBaseController):
             (['-P', '--list-projects'], dict(action="store_true", default=False, help="list projects of flowcell")),
             ]
 
-
     @controller.expose(hide=True)
     def default(self):
-        print __doc__
-
+        self._not_implemented("Add help message")
 
     @controller.expose(help="List contents")
     def ls(self):
         assert self.config.get("archive", "root"), "no config archive directory"
-        (out, err, code) = exec_cmd(["ls",  self.config.get("archive", "root")])
-        if code == 0:
-            ## FIXME: use output formatter for stuff like this
+        ##(out, err, code) = exec_cmd(["ls",  self.config.get("archive", "root")])
+        out = self.sh(["ls",  self.config.get("archive", "root")])
+        ## FIXME: use output formatter for stuff like this
+        if out:
             print "\n".join(self._filtered_ls(out.splitlines()))
-        else:
-            self.log.warn(err)
 
     @controller.expose(help="List runinfo contents")
     def runinfo(self):
@@ -60,8 +57,8 @@ class ArchiveController(AbstractBaseController):
         runinfo_tab = runinfo_to_tab(runinfo_yaml)
         if self.pargs.tab:
             runinfo_dump(runinfo_tab)
-        elif self.pargs.projects:
-            print "available projects for flowcell %s:\n\t" %self.pargs.flowcell + "\n\t".join(list(set(self._column(runinfo_tab, "sample_prj"))))
+        elif self.pargs.list_projects:
+            print "available projects for flowcell %s:\n\t" %self.pargs.flowcell + "\n\t".join(runinfo_projects(runinfo_tab))
         else:
             print runinfo_yaml
 

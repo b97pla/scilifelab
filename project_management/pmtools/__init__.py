@@ -1,15 +1,15 @@
 """
 Pipeline Management Tools
-
-Usage: pm command [options]
 """
 __import__('pkg_resources').declare_namespace(__name__)
 
-
 import os
+import sys
 import re
 import argparse
 import textwrap
+import subprocess
+# import drmaa
 
 from cement.core import foundation, controller, handler, backend
 from cement.utils.shell import *
@@ -19,18 +19,21 @@ from cement.utils.shell import *
 ## Currently identical to RawDescriptionHelpFormatter
 class PmHelpFormatter(argparse.HelpFormatter):
     def _fill_text(self, text, width, indent):
-        return ''.join([indent + line for line in text.splitlines(True)])
+        return ' '.join([indent + line for line in text.splitlines(True)])
 
+##############################
 ## Abstract base controller -- for sharing arguments
+## If you need to add functions that are accessible to controllers, add the functions here
+## FIXME: make sbatch/drmaa abstract base controller with arguments shared over those functions that need access to slurm (e.g. compress)
+##############################    
 class AbstractBaseController(controller.CementBaseController):
     class Meta:
-        arguments = [
-            (['-n', '--dry_run'], dict(help="dry_run - don't actually do anything")),
-            ]
-
+        pass
+    
     def _setup(self, base_app):
         super(AbstractBaseController, self)._setup(base_app)
         self.reignore = re.compile(self.config.get("config", "ignore").replace("\n", "|"))
+        self.arguments.append((['-n', '--dry_run'], dict(help="dry_run - don't actually do anything", action="store_true", default=False)))
         self.shared_config = dict()
 
     ## FIXME: this should be accesible to all modules; now I'm 
@@ -40,13 +43,119 @@ class AbstractBaseController(controller.CementBaseController):
             return self.reignore.match(line) == None
         return filter(ignore, out)
 
-    def _not_implemented(self):
+    def _not_implemented(self, msg=None):
         print "FIXME: Not implemented yet"
+        if msg != None:
+            print msg
+        sys.exit()
 
     def _obsolete(self, msg):
         self.log.info("This function is obsolete.")
         self.log.info(msg)
         sys.exit()
+
+    ## yes or no: http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input
+    def query_yes_no(self, question, default="yes"):
+        """Ask a yes/no question via raw_input() and return their answer.
+        
+        "question" is a string that is presented to the user.
+        "default" is the presumed answer if the user just hits <Enter>.
+        It must be "yes" (the default), "no" or None (meaning
+        an answer is required of the user).
+        
+        The "answer" return value is one of "yes" or "no".
+        """
+        valid = {"yes":True,   "y":True,  "ye":True,
+                 "no":False,     "n":False}
+        if default == None:
+            prompt = " [y/n] "
+        elif default == "yes":
+            prompt = " [Y/n] "
+        elif default == "no":
+            prompt = " [y/N] "
+        else:
+            raise ValueError("invalid default answer: '%s'" % default)
+
+        while True:
+            sys.stdout.write(question + prompt)
+            choice = raw_input().lower()
+            if default is not None and choice == '':
+                return valid[default]
+            elif choice in valid:
+                return valid[choice]
+            else:
+                sys.stdout.write("Please respond with 'yes' or 'no' "\
+                                 "(or 'y' or 'n').\n")
+
+
+    ## Config helpers - not used?
+    def get_dir(self, section, label):
+        assert self.config.get(section, label), "no section %s with label %s in config file; please define accordingly" %(section, label)
+        d = self.config.get(section,label)
+        if not(os.path.exists(d)):
+            self.log.warn("no such path %s" % d)
+            sys.exit()
+        return d
+
+    ## Taken from paver.easy
+    ## FIXME: add time stamp (better: make DRY_RUN a log level that only prints to console)
+    def _dry(self, message, func, *args, **kw):
+        if self.pargs.dry_run:
+            print >> sys.stderr, "(DRY_RUN): " + message
+            return
+        self.log.info(message)
+        return func(*args, **kw)
+
+    ## Implement paver-like dry code
+    ## NOTE: this is copied from paver.easy, with the slight modification that cmd_args is passed (a list)
+    ## FIXME: accept both list (cmd_args) and command (as in paver)? 
+    def sh(self, cmd_args, capture=True, ignore_error=False, cwd=None):
+        command = " ".join(cmd_args)
+        def runpipe():
+            kwargs = { 'shell': True, 'cwd': cwd}
+            if capture:
+                kwargs['stderr'] = subprocess.STDOUT
+                kwargs['stdout'] = subprocess.PIPE
+            p = subprocess.Popen(command, **kwargs)
+            p_stdout = p.communicate()[0]
+            if p.returncode and not ignore_error:
+                if capture:
+                    error(p_stdout)
+                raise Exception("Subprocess return code: %d" % p.returncode)
+            if capture:
+                return p_stdout
+        return self._dry(command, runpipe)
+
+    ## FIXME: add sbatch function and templates in case drmaa fails?
+    def drmaa(self, cmd_args, jobname, partition="core"):
+        if self.pargs.node:
+            partition = "node"
+        if not self.pargs.uppmax_project:
+            self.log.warn("no uppmax id provided; cannot proceed with drmma command")
+            sys.exit()
+        command = " ".join(cmd_args)
+        def runpipe():
+            s = drmaa.Session()
+            s.initialize()
+            
+            jt = s.createJobTemplate()
+            jt.remoteCommand = cmd_args[0]
+            jt.args = cmd_args[1:]
+            
+            # # TODO: job name is always (null), must fix slurm_drmaa C library and its
+            # # custom parsing (substitute "slurmdrmaa_parse_native"
+            # # for GNU GetOpt on slurm_drmaa/util.c)
+            jt.job_name = jobname
+            jt.nativeSpecification = "-A a2010002 -p core -t 00:10:00"# % (self.pargs.uppmax_project, partition)#, str(self.pargs.sbatch_time))
+            jobid = self._dry(s.runJob(jt))
+            self.log.info('Your job has been submitted with id ' + jobid)
+    
+            s.deleteJobTemplate(jt)
+            s.exit()
+
+        return self._dry(command, runpipe)
+
+        
 
     # Copied from cement
     # Modification: - PmHelpFormatter
@@ -167,27 +276,6 @@ class PmController(controller.CementBaseController):
             (['--config'], dict(help="print configuration", action="store_true")),
             (['--config-example'], dict(help="print configuration example", action="store_true")),
             ]
-    ## Config helpers - not used?
-    def get_dir(self, section, label):
-        assert self.config.get(section, label), "no section %s with label %s in config file; please define accordingly" %(section, label)
-        d = self.config.get(section,label)
-        if not(os.path.exists(d)):
-            self.log.warn("no such path %s" % d)
-            sys.exit()
-        return d
-
-    ## Taken from paver.easy
-    def _dry(self, message, func, *args, **kw):
-        self.log.info(message)
-        if self.pargs.dry_run:
-            return
-        return func(*args, **kw)
-
-    ## Implement paver-like dry code
-    def sh(self, cmd_args, capture=False, ignore_error=False, cwd=None):
-        exec_cmd(cmd_args)
-        #self._dry(cmd_args, exec_cmd)
-        
 
     def _setup(self, app_obj):
         # shortcuts
