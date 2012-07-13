@@ -12,8 +12,9 @@ import csv
 from cement.core import controller, output, backend
 from cement.utils.shell import *
 from pmtools import AbstractBaseController, SubSubController
+from pmtools.lib.ls import runinfo_to_tab, runinfo_dump
 
-Log = backend.minimal_logger(__name__)
+## Log = backend.minimal_logger(__name__)
 
 ## Main ls controller
 class LsController(AbstractBaseController):
@@ -33,7 +34,7 @@ class LsController(AbstractBaseController):
 
     @controller.expose(hide=True)
     def default(self):
-        print "FIXME: show help"
+        self._not_implemented("FIXME: show help")
 
     def _setup(self, app_obj):
         # shortcuts
@@ -89,7 +90,7 @@ class LsController(AbstractBaseController):
             self.log.warn(err)
 
 ## Runinfo controller
-class RunInfoController(SubSubController):
+class RunInfoController(SubController):
     class Meta:
         label = 'runinfo-ctrl'
         stacked_on= 'ls'
@@ -101,24 +102,6 @@ class RunInfoController(SubSubController):
             (['-P', '--projects'], dict(action="store_true", default=False, help="list projects of yaml file")),
             ]
 
-    def _yaml_to_tab(self, runinfo_yaml):
-        """Convert yaml to tab"""
-        out = []
-        lanelabels = ["lane", "description", "flowcell_id", "genome_build", "analysis"]
-        mplabels = ["barcode_type", "barcode_id", "sample_prj", "name", "sequence"]
-        header = lanelabels + mplabels
-        out.append(header)
-        for info in runinfo_yaml:
-            laneinfo = [info.get(x, None) for x in lanelabels]
-            for mp in info.get("multiplex", None):
-                mpinfo = [mp.get(x, None) for x in mplabels]
-                line = laneinfo + mpinfo
-                out.append(line)
-        return out
-
-    def _column(self, matrix, label):
-        i = matrix[0].index(label)
-        return [row[i] for row in matrix[1:]]
 
     @controller.expose(hide=True)
     def default(self):
@@ -130,12 +113,12 @@ class RunInfoController(SubSubController):
         if self.pargs.flowcell is None:
             print "Please provide flowcell id"
             return
-        assert self.config.get("config", "archive"), "archive directory not defined"
-        f = os.path.join(self.config.get("config", "archive"), self.pargs.flowcell, "run_info.yaml")
+        assert self.config.get("archive", "root"), "archive directory not defined"
+        f = os.path.join(self.config.get("archive", "root"), self.pargs.flowcell, "run_info.yaml")
         self.log.info("Opening file %s" %f)
         with open(f) as fh:
             runinfo_yaml = yaml.load(fh)
-        runinfo_tab = self._yaml_to_tab(runinfo_yaml)
+        runinfo_tab = runinfo_to_tab(runinfo_yaml)
         if self.pargs.tab:
             w=csv.writer(sys.stdout, delimiter="\t")
             w.writerows(runinfo_tab)

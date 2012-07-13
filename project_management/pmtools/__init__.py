@@ -3,12 +3,16 @@ Pipeline Management Tools
 
 Usage: pm command [options]
 """
+__import__('pkg_resources').declare_namespace(__name__)
+
+
 import os
 import re
 import argparse
 import textwrap
 
 from cement.core import foundation, controller, handler, backend
+from cement.utils.shell import *
 
 ## I personally don't like the default help formatting output from
 ## argparse which I think is difficult to read
@@ -26,7 +30,15 @@ class AbstractBaseController(controller.CementBaseController):
 
     def _setup(self, base_app):
         super(AbstractBaseController, self)._setup(base_app)
+        self.reignore = re.compile(self.config.get("config", "ignore").replace("\n", "|"))
         self.shared_config = dict()
+
+    ## FIXME: this should be accesible to all modules; now I'm 
+    def _filtered_ls(self, out):
+        """Filter output"""
+        def ignore(line):
+            return self.reignore.match(line) == None
+        return filter(ignore, out)
 
     def _not_implemented(self):
         print "FIXME: Not implemented yet"
@@ -135,15 +147,14 @@ commands:
             txt = self._meta.description
         return textwrap.dedent(txt)        
 
-
 ## Main controller for all subsubcommands
 ## Currently does nothing
-class SubSubController(controller.CementBaseController):
+class SubController(controller.CementBaseController):
     class Meta:
         pass
 
     def _setup(self, base_app):
-        super(SubSubController, self)._setup(base_app)
+        super(SubController, self)._setup(base_app)
 
 ##############################
 ## Main pm base controller
@@ -164,6 +175,19 @@ class PmController(controller.CementBaseController):
             self.log.warn("no such path %s" % d)
             sys.exit()
         return d
+
+    ## Taken from paver.easy
+    def _dry(self, message, func, *args, **kw):
+        self.log.info(message)
+        if self.pargs.dry_run:
+            return
+        return func(*args, **kw)
+
+    ## Implement paver-like dry code
+    def sh(self, cmd_args, capture=False, ignore_error=False, cwd=None):
+        exec_cmd(cmd_args)
+        #self._dry(cmd_args, exec_cmd)
+        
 
     def _setup(self, app_obj):
         # shortcuts
