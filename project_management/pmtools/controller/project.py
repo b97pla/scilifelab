@@ -10,6 +10,22 @@ Commands:
        compress    compress files
        clean       remove files
        du          calculate disk usage
+
+Synopsis:
+
+The following command creates a directory in the project root
+named j_doe_00_00. The '-g' flag adds a git directory to the
+project repos, and initializes the project subdirectory j_doe_00_00_git 
+for use with git.
+
+   pm project init j_doe_00_00 -g
+
+FIXME: Boilerplate code can be added to the project by running
+
+   pm project add j_doe_00_00
+
+The boilerplate code includes makefiles, sbatch templates, and documentation
+templates.
 """
 import os
 import sys
@@ -36,11 +52,12 @@ class ProjectController(AbstractBaseController):
             (['-A', '--uppmax-project'], dict(help="uppmax project id for use with sbatch", action="store")),
             (['-t', '--sbatch-time'], dict(help="sbatch time limit", default="00:10:00", action="store")),
             (['-N', '--node'], dict(help="run node job", default=False, action="store_true")),
+            (['-g', '--git'], dict(help="Initialize git directory in repos and project gitdir", default=False, action="store_true")),
             ]
 
     @controller.expose(hide=True)
     def default(self):
-        __doc__
+        print __doc__
 
     @controller.expose(help="List project folder")
     def ls(self):
@@ -54,7 +71,23 @@ class ProjectController(AbstractBaseController):
 
     @controller.expose(help="Initalize project folder")
     def init(self):
-        self._not_implemented()
+        if self.pargs.projectid=="":
+            return
+        self.log.info("Initalizing project %s" % self.pargs.projectid)
+        ## Create directory structure
+        dirs = ["%s_git" % self.pargs.projectid, "data", "intermediate"]
+        gitdirs = ["config", "sbatch", "doc", "lib"] 
+        [self.safe_makedir(os.path.join(self.config.get("project", "root"), self.pargs.projectid, x)) for x in dirs]
+        [self.safe_makedir(os.path.join(self.config.get("project", "root"), self.pargs.projectid, dirs[0], x)) for x in gitdirs]
+        ## Initialize git if repos defined and flag set
+        if self.config.get("project", "repos") and self.pargs.gitdir:
+            dirs = {
+                'repos':os.path.join(self.config.get("project", "repos"), "current", self.pargs.projectid),
+                'gitdir':os.path.join(self.config.get("project", "root"), self.pargs.projectid, "%s_git" % self.pargs.projectid)
+                    }
+            self.safe_makedir(dirs['repos'])
+            self.sh(["cd", dirs['repos'], "&& git init --bare"])
+            self.sh(["cd", dirs['gitdir'], "&& git init && git remote add origin", dirs['repos']])
 
     @controller.expose(help="Add boilerplate code")
     def add(self):

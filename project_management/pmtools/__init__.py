@@ -36,7 +36,6 @@ class AbstractBaseController(controller.CementBaseController):
         self.arguments.append((['-n', '--dry_run'], dict(help="dry_run - don't actually do anything", action="store_true", default=False)))
         self.shared_config = dict()
 
-    ## FIXME: this should be accesible to all modules; now I'm 
     def _filtered_ls(self, out):
         """Filter output"""
         def ignore(line):
@@ -87,6 +86,19 @@ class AbstractBaseController(controller.CementBaseController):
                 sys.stdout.write("Please respond with 'yes' or 'no' "\
                                  "(or 'y' or 'n').\n")
 
+    def safe_makedir(self, dname):
+        """Make a directory if it doesn't exist"""
+        def runpipe():
+            if not os.path.exists(dname):
+                try:
+                    os.makedirs(dname)
+                except OSError:
+                    if not os.path.isdir(dname):
+                        raise
+            else:
+                self.log.info("Directory %s already exists" % dname)
+            return dname
+        return self._dry("Make directory %s" % dname, runpipe)
 
     ## Config helpers - not used?
     def get_dir(self, section, label):
@@ -98,7 +110,7 @@ class AbstractBaseController(controller.CementBaseController):
         return d
 
     ## Taken from paver.easy
-    ## FIXME: add time stamp (better: make DRY_RUN a log level that only prints to console)
+    ## FIXME: add time stamp (better: make DRY_RUN a log level that only prints to console, for instance by using the interface ILog)
     def _dry(self, message, func, *args, **kw):
         if self.pargs.dry_run:
             print >> sys.stderr, "(DRY_RUN): " + message
@@ -152,11 +164,9 @@ class AbstractBaseController(controller.CementBaseController):
     
             s.deleteJobTemplate(jt)
             s.exit()
-
-        return self._dry(command, runpipe)
-
+        ##return self._dry(command, runpipe)
+        return self._not_implemented("Implement drmaa code as soon as drmaa library fixed!\nSee AbstractBaseController.drmaa function")
         
-
     # Copied from cement
     # Modification: - PmHelpFormatter
     #               - only relevant options should be listed for any given command 
