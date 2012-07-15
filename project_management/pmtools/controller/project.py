@@ -80,7 +80,7 @@ class ProjectController(AbstractBaseController):
         [self.safe_makedir(os.path.join(self.config.get("project", "root"), self.pargs.projectid, x)) for x in dirs]
         [self.safe_makedir(os.path.join(self.config.get("project", "root"), self.pargs.projectid, dirs[0], x)) for x in gitdirs]
         ## Initialize git if repos defined and flag set
-        if self.config.get("project", "repos") and self.pargs.gitdir:
+        if self.config.get("project", "repos") and self.pargs.git:
             dirs = {
                 'repos':os.path.join(self.config.get("project", "repos"), "current", self.pargs.projectid),
                 'gitdir':os.path.join(self.config.get("project", "root"), self.pargs.projectid, "%s_git" % self.pargs.projectid)
