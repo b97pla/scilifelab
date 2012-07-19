@@ -4,7 +4,7 @@
 #SBATCH -t 10:00:00
 #SBATCH -J pbzip2
 #SBATCH -A a2010002
-#SBATCH --mail-user=roman.valls.guimera@scilifelab.se
+#SBATCH --mail-user=per.unneberg@scilifelab.se
 #SBATCH --mail-type=ALL
 
 # Compress everything:
