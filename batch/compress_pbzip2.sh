@@ -17,7 +17,8 @@ function usage {
     echo "Output: file.bz2 if it's a single file or dir.tar.bz2, -d for decompressing"
 }
 
-if [ ! -e "$1" ]; then
+
+if [ $# == 0 ]; then
 	usage && exit
 fi
 
