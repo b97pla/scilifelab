@@ -55,7 +55,7 @@ read1forsample = {}
 read2forsample = {}
 
 for fname in flist:
-    if 'fastq' not in fname: continue 
+    if not os.path.splitext(fname)[1]==".fastq": continue
     read = fname.split("_")[-1]
     tag = "_".join(fname.split("_")[3:-2])
     print fname.split("_")
@@ -99,7 +99,7 @@ for n in sorted(sample_names):
     
     if old == True: oF.write("module load tophat/1.0.14\n")
     else: oF.write("module load tophat/1.3.3\n")
-    oF.write("module load cufflinks/1.3.0\n")
+    oF.write("module load cufflinks/2.0.2\n")
     oF.write("module load htseq/0.5.1\n")
 
     # TopHat

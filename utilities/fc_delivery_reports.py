@@ -587,7 +587,7 @@ def generate_report(proj_conf):
     low_samples = []
 
     for l in proj_conf['lanes']:
-        bc_file_name = os.path.join(proj_conf['analysis_dir'], proj_conf['flowcell'], '_'.join([l['lane'], fc_date, fc_name, "nophix_barcode"]), '_'.join([l['lane'], fc_date, fc_name, "nophix_bc.metrics"]))
+        bc_file_name = os.path.join(proj_conf['analysis_dir'], proj_conf['flowcell'], '_'.join([l['lane'], fc_date, fc_name, "nophix_barcode"]), '_'.join([l['lane'], fc_date, fc_name, "nophix.bc_metrics"]))
         try:
             bc_file = open(bc_file_name)
         except:

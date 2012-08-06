@@ -2,8 +2,7 @@
 
 #SBATCH -J fq_screen
 #SBATCH -A a2010002
-#SBATCH -p core 
-#SBATCH -n 1
+#SBATCH -p node
 #SBATCH -t 6:00:00
 #SBATCH --qos=seqver
 
