@@ -99,7 +99,7 @@ for n in sorted(sample_names):
     
     if old == True: oF.write("module load tophat/1.0.14\n")
     else: oF.write("module load tophat/1.3.3\n")
-    oF.write("module load cufflinks/1.3.0\n")
+    oF.write("module load cufflinks/2.0.2\n")
     oF.write("module load htseq/0.5.1\n")
 
     # TopHat
