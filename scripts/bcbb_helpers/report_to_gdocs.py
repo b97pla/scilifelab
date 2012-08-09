@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+"""Helper script that uploads demultiplex (barcode) counts and QC data to godcs.
+"""
 import os
 import glob
 import yaml
@@ -12,8 +15,14 @@ from bcbio.pipeline.demultiplex import _write_demultiplex_metrics
 from bcbio.google.sequencing_report import create_report_on_gdocs
 
 
-def main(run_id, config_file, archive_dir, analysis_dir, run_info_file=None, dryrun=False):
+def main(run_id, config_file, run_info_file=None, dryrun=False):
+    assert os.path.exists(config_file), \
+    "The post process configuration file, %s, could not be found" % config_file
+
+    config = load_config(config_file)
+    archive_dir = config["analysis"]["store_dir"]
     archive_dir = os.path.normpath(archive_dir)
+    analysis_dir = config["analysis"]["base_dir"]
     analysis_dir = os.path.normpath(analysis_dir)
 
     dirs = {"work": os.path.join(analysis_dir, run_id),
@@ -24,9 +33,6 @@ def main(run_id, config_file, archive_dir, analysis_dir, run_info_file=None, dry
 
     assert run_id, \
     "No run id was specified"
-    assert os.path.exists(config_file), \
-    "The post process configuration file, %s, could not be found" % config_file
-    config = load_config(config_file)
     assert "gdocs_upload" in config, \
     "The configuration file, %s, has no section specifying the Google docs details" % config_file
     assert os.path.exists(run_info_file), \
@@ -71,8 +77,6 @@ def main(run_id, config_file, archive_dir, analysis_dir, run_info_file=None, dry
 if __name__ == "__main__":
     parser = OptionParser()
     parser.add_option("-c", "--config-file", dest="config_file", default=None)
-    parser.add_option("-r", "--archive-dir", dest="archive_dir", default="/proj/a2010002/archive")
-    parser.add_option("-a", "--analysis-dir", dest="analysis_dir", default="/proj/a2010002/nobackup/illumina")
     parser.add_option("-f", "--run-info-file", dest="run_info_file", default=None)
     parser.add_option("-n", "--dry-run", dest="dryrun", action="store_true", default=False)
     options, args = parser.parse_args()
