@@ -99,7 +99,7 @@ for n in sorted(sample_names):
     oF.write("#SBATCH --mail-type=ALL\n")
 
     oF.write("module unload bioinfo-tools\n")
-    oF.write("module unload samtools\n")
+    #oF.write("module unload samtools\n")
     oF.write("module unload tophat\n")
     oF.write("module unload cufflinks\n")
     oF.write("module unload htseq\n")
