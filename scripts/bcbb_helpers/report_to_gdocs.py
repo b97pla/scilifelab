@@ -17,7 +17,7 @@ from bcbio.google.sequencing_report import create_report_on_gdocs
 
 def main(run_id, config_file, run_info_file=None, dryrun=False):
     assert os.path.exists(config_file), \
-    "The post process configuration file, %s, could not be found" % config_file
+    "The post process configuration file, {}, could not be found".format(config_file)
 
     config = load_config(config_file)
     archive_dir = config["analysis"]["store_dir"]
@@ -34,13 +34,13 @@ def main(run_id, config_file, run_info_file=None, dryrun=False):
     assert run_id, \
     "No run id was specified"
     assert "gdocs_upload" in config, \
-    "The configuration file, %s, has no section specifying the Google docs details" % config_file
+    "The configuration file, {}, has no section specifying the Google docs details".format(config_file)
     assert os.path.exists(run_info_file), \
-    "The run info configuration file, %s, could not be found" % run_info_file
+    "The run info configuration file, {}, could not be found".format(run_info_file)
     assert os.path.exists(dirs["flowcell"]), \
-    "The flowcell directory, %s, could not be found" % dirs["flowcell"]
+    "The flowcell directory, {}, could not be found".format(dirs["flowcell"])
     assert os.path.exists(dirs["work"]), \
-    "The work directory, %s, could not be found" % dirs["work"]
+    "The work directory, {}, could not be found".format(dirs["work"])
 
     fc_name, fc_date = get_flowcell_info(dirs["flowcell"])
     # If we have no bc_metrics files in the workdir, we may be looking at a Casava run.
