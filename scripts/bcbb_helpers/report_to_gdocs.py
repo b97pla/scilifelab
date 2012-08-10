@@ -62,16 +62,14 @@ def main(run_id, config_file, run_info_file=None, dryrun=False):
 
                     _write_demultiplex_metrics(multiplex, bc_metrics, os.path.join(dirs["work"], metrics_file))
 
-    sys.exit(0)
-
-    print "A report will be created on Google Docs based on the demultiplexed data in %s" % dirs["work"]
-    print "The configuration file is %s and the run info file is %s" % (config_file, run_info_file)
-    print "The run was started on %s and has flowcell id %s" % (fc_date, fc_name)
+    print("A report will be created on Google Docs based on the demultiplexed data in {}".format(dirs["work"]))
+    print("The configuration file is {0} and the run info file is {1}".format(config_file, run_info_file))
+    print("The run was started on {0} and has flowcell id {1}".format(fc_date, fc_name))
 
     if not dryrun:
         create_report_on_gdocs(fc_date, fc_name, run_info_file, dirs, config)
     else:
-        print "DRY-RUN: nothing uploaded"
+        print("DRY-RUN: nothing uploaded")
 
 
 if __name__ == "__main__":
@@ -85,8 +83,9 @@ if __name__ == "__main__":
     if len(args) == 1:
         run_id = args[0]
     else:
-        print __doc__
+        print(__doc__)
         sys.exit()
+
     main(run_id, options.config_file,
          os.path.normpath(options.archive_dir), os.path.normpath(options.analysis_dir),
          options.run_info_file, options.dryrun)
