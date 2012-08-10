@@ -49,18 +49,21 @@ def main(run_id, config_file, run_info_file=None, dryrun=False):
     bc_metrics_files += glob.glob(os.path.join(dirs["work"], "*bc.metrics"))
     if len(bc_metrics_files) == 0:
         casava_stats = _find_demultiplex_stats_htm(run_id, config)
-        if casava_stats:
-            bc_metrics = _parse_demultiplex_stats_htm(casava_stats)
-            with open(run_info_file) as fh:
-                info = yaml.load(fh)
+    else:
+        casava_stats = None
 
-            for item in info:
-                metrics_file = "_".join([item["lane"], fc_date, fc_name, "bc.metrics"])
-                multiplex = item.get("multiplex", [])
-                for plex in multiplex:
-                    plex["lane"] = item["lane"]
+    if casava_stats:
+        bc_metrics = _parse_demultiplex_stats_htm(casava_stats)
+        with open(run_info_file) as fh:
+            info = yaml.load(fh)
 
-                _write_demultiplex_metrics(multiplex, bc_metrics, os.path.join(dirs["work"], metrics_file))
+        for item in info:
+            metrics_file = "_".join([item["lane"], fc_date, fc_name, "bc.metrics"])
+            multiplex = item.get("multiplex", [])
+            for plex in multiplex:
+                plex["lane"] = item["lane"]
+
+            _write_demultiplex_metrics(multiplex, bc_metrics, os.path.join(dirs["work"], metrics_file))
 
     print("A report will be created on Google Docs based on the demultiplexed data in {}".format(dirs["work"]))
     print("The configuration file is {0} and the run info file is {1}".format(config_file, run_info_file))
