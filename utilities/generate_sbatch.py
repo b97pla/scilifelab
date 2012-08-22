@@ -89,7 +89,7 @@ for n in sorted(sample_names):
     print "Generating sbatch files for sample ", n
     oF = open("map_tophat_" + n + ".sh", "w")
     oF.write("#! /bin/bash -l\n")
-    oF.write("#SBATCH -A a2010002\n")                   
+    oF.write("#SBATCH -A a2012043\n")                   
     oF.write("#SBATCH -p node\n")
     oF.write("#SBATCH -t " + hours + "\n")
     oF.write("#SBATCH -J tophat_" + n + projtag + "\n")
