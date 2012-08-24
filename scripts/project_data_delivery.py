@@ -63,9 +63,8 @@ def main(config_file, delivery_dir, run_info_yaml, analysis_dir=None):
         logger.error("No analysis directory found!")
         sys.exit()
 
-    fp = open(run_info_yaml)
-    run_info_structure = yaml.load(fp)
-    fp.close()
+    with open(run_info_yaml) as fp:
+        run_info_structure = yaml.load(fp)    
     
     lane2sample = dict()
     infiles = dict()
@@ -121,18 +120,18 @@ def _rename_sample_file(src, lane, sample, outdir):
 
 def _deliver_file(src, tgt):
     if options.move:
-        f = shutil.move
+        deliver_fn = shutil.move
     else:
-        f = shutil.copyfile
+        deliver_fn = shutil.copyfile
     if src is None:
         return
     if os.path.exists(tgt):
         logger.warn("%s already exists: not doing anything!" %(tgt))
         return
     if options.dry_run:
-        print "DRY_RUN: %s file %s to %s" % (f.__name__, src, tgt)
+        print "DRY_RUN: %s file %s to %s" % (deliver_fn.__name__, src, tgt)
     else:
-        logger.info("%s file %s to %s" % (f.__name__, src, tgt))
+        logger.info("%s file %s to %s" % (deliver_fn.__name__, src, tgt))
         f(src, tgt)
 
 

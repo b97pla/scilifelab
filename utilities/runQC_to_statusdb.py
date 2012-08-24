@@ -10,36 +10,14 @@ Usage:
 import os
 import sys
 import argparse
-import time
 import couchdb
 
 from bcbio.log import logger, setup_logging, version
 from bcbio.log import logger2 as log
 from bcbio.qc import FlowcellQCMetrics
-
-# Taken from bcbio.qc
-def _save_obj(db, obj, url):
-    dbobj = db.get(obj.get_db_id())
-    if dbobj is None:
-        obj["creation_time"] = time.strftime("%x %X")
-        obj["modification_time"] = time.strftime("%x %X")
-        log.info("Creating entity type %s with id %s in url %s" % (obj["entity_type"], obj.get_db_id(), url))
-        db.save(obj)
-    else:
-        obj["_rev"] = dbobj.get("_rev")
-        obj["creation_time"] = dbobj["creation_time"]
-        ## FIXME: always ne: probably some date field gets updated somewhere
-        if obj != dbobj:
-            obj["modification_time"] = time.strftime("%x %X")
-            log.info("Updating %s object with id %s in url %s" % (obj["entity_type"], obj.get_db_id(), url))
-            db.save(obj)
-        else:
-            log.info("Object %s already present in url %s and not in need of updating" % (obj.get_db_id(), url))
-    return True
-
+from bcbio.qc.qcreport import _save_obj
 
 def main(fc_dir,  statusdb, run_info_yaml):
-
     work_dir = os.getcwd()
     config = dict()
     config["log_dir"] = os.path.join(work_dir, "log")
