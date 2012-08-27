@@ -9,7 +9,8 @@ import re
 import argparse
 import textwrap
 import subprocess
-# import drmaa
+import drmaa
+from mako.template import Template
 
 from cement.core import foundation, controller, handler, backend
 from cement.utils.shell import *
@@ -21,19 +22,47 @@ class PmHelpFormatter(argparse.HelpFormatter):
     def _fill_text(self, text, width, indent):
         return ' '.join([indent + line for line in text.splitlines(True)])
 
+SBATCH_TEMPLATE = Template('''\
+#!/bin/bash -l
+TMPDIR=/scratch/$SLURM_JOB_ID
+
+#SBATCH -A ${project_id}
+#SBATCH -t ${time}
+#SBATCH -o ${jobname}.stdout
+#SBATCH -e ${jobname}.stderr
+#SBATCH -J ${jobname}
+#SBATCH -D ${workdir}
+#SBATCH -p ${partition}
+#SBATCH -n ${cores}
+#SBATCH --mail-type=${mail_type}
+#SBATCH --mail-user=${mail_user}
+<%
+if (constraint):
+    constraint_str = "#SBATCH -C " + constraint
+else:
+    constraint_str = ""
+%>
+${constraint_str}
+${header}
+${command_str}
+${footer}
+''')
+
 ##############################
-## Abstract base controller -- for sharing arguments
-## If you need to add functions that are accessible to controllers, add the functions here
+## Abstract base controller -- for sharing arguments and functions with subclassing controllers
 ## FIXME: make sbatch/drmaa abstract base controller with arguments shared over those functions that need access to slurm (e.g. compress)
 ##############################    
 class AbstractBaseController(controller.CementBaseController):
+    """
+    This is an abstract base controller.
+    """
     class Meta:
         pass
-    
+            
     def _setup(self, base_app):
+        self._meta.arguments.append( (['-n', '--dry_run'], dict(help="dry_run - don't actually do anything", action="store_true", default=False)) )
         super(AbstractBaseController, self)._setup(base_app)
         self.reignore = re.compile(self.config.get("config", "ignore").replace("\n", "|"))
-        self.arguments.append((['-n', '--dry_run'], dict(help="dry_run - don't actually do anything", action="store_true", default=False)))
         self.shared_config = dict()
 
     def _filtered_ls(self, out):
@@ -138,34 +167,56 @@ class AbstractBaseController(controller.CementBaseController):
                 return p_stdout
         return self._dry(command, runpipe)
 
+    # def sbatch(self, cmd_args, jobname, partition="core"):
+    #     command = " ".join(cmd_args)
+    #     kw = dict(
+    #         mail_type = "ALL",
+    #         header = "",
+    #         footer = "",
+    #         constraint = "",
+    #         partition = partition,
+    #         jobname = jobname,
+    #         mail_user = "per.unneberg@scilifelab.se",
+    #         cores = 1,
+    #         time = 
+    #         )
+
+    #     def runpipe():
+    #         pass
+
     ## FIXME: add sbatch function and templates in case drmaa fails?
     def drmaa(self, cmd_args, jobname, partition="core"):
         if self.pargs.node:
             partition = "node"
         if not self.pargs.uppmax_project:
-            self.log.warn("no uppmax id provided; cannot proceed with drmma command")
+            self.log.warn("no uppmax id provided; cannot proceed with drmaa command")
             sys.exit()
         command = " ".join(cmd_args)
         def runpipe():
+            print "in runpipe"
             s = drmaa.Session()
             s.initialize()
-            
+            print s
             jt = s.createJobTemplate()
             jt.remoteCommand = cmd_args[0]
             jt.args = cmd_args[1:]
-            
+
             # # TODO: job name is always (null), must fix slurm_drmaa C library and its
             # # custom parsing (substitute "slurmdrmaa_parse_native"
             # # for GNU GetOpt on slurm_drmaa/util.c)
             jt.job_name = jobname
-            jt.nativeSpecification = "-A a2010002 -p core -t 00:10:00"# % (self.pargs.uppmax_project, partition)#, str(self.pargs.sbatch_time))
-            jobid = self._dry(s.runJob(jt))
+            jt.nativeSpecification = "-A a2010002 -p devel"# % (self.pargs.uppmax_project, partition)#, str(self.pargs.sbatch_time))
+
+            print jt
+            jobid = s.runJob(jt)
+            print jobid
             self.log.info('Your job has been submitted with id ' + jobid)
     
             s.deleteJobTemplate(jt)
             s.exit()
-        ##return self._dry(command, runpipe)
-        return self._not_implemented("Implement drmaa code as soon as drmaa library fixed!\nSee AbstractBaseController.drmaa function")
+            print "Exiting runpipe"
+        return self._dry(command, runpipe)
+        ##return self._not_implemented("Implement drmaa code as soon as drmaa library fixed!\nSee AbstractBaseController.drmaa function")
         
     # Copied from cement
     # Modification: - PmHelpFormatter

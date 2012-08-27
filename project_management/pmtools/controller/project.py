@@ -10,6 +10,7 @@ Commands:
        compress    compress files
        clean       remove files
        du          calculate disk usage
+       deliver     deliver project data to customer
 
 Synopsis:
 
@@ -53,12 +54,16 @@ class ProjectController(AbstractBaseController):
             (['-t', '--sbatch-time'], dict(help="sbatch time limit", default="00:10:00", action="store")),
             (['-N', '--node'], dict(help="run node job", default=False, action="store_true")),
             (['-g', '--git'], dict(help="Initialize git directory in repos and project gitdir", default=False, action="store_true")),
+            (['-S', '--sampleid'], dict(help="project sample id", action="store")),
+            (['-F', '--flowcellid'], dict(help="project flowcell id", action="store")),
             ]
 
+    ## default
     @controller.expose(hide=True)
     def default(self):
         print __doc__
 
+    ## ls
     @controller.expose(help="List project folder")
     def ls(self):
         assert os.path.exists(os.path.join(self.config.get("project", "root"), self.pargs.projectid)), "no project directory %s"  % self.pargs.projectid
@@ -69,6 +74,7 @@ class ProjectController(AbstractBaseController):
         if out:
             print "\n".join(self._filtered_ls(out.splitlines()))
 
+    ## init
     @controller.expose(help="Initalize project folder")
     def init(self):
         if self.pargs.projectid=="":
@@ -89,21 +95,37 @@ class ProjectController(AbstractBaseController):
             self.sh(["cd", dirs['repos'], "&& git init --bare"])
             self.sh(["cd", dirs['gitdir'], "&& git init && git remote add origin", dirs['repos']])
 
+    ## utility functions
+    def _assert_project(self, msg="No project defined: please supply a valid project name"):
+        assert os.path.exists(os.path.join(self.config.get("project", "root"), self.pargs.projectid)), "no project directory %s"  % self.pargs.projectid
+        if self.pargs.projectid=="":
+            print self.log._meta.namespace
+            print "in assert"
+
+            print dir(self.log.app)
+            self.log.info(msg)
+            self.log.warn(msg)
+            sys.exit()
+            sys.exit()
+
+    def _flowcells(self):
+        files = os.listdir(os.path.join(self.config.get("project", "root")), "data")
+        return files
+
+    ## add
     @controller.expose(help="Add boilerplate code")
     def add(self):
         self._not_implemented()
 
+    ## clean
     @controller.expose(help="Remove files")
     def clean(self):
         self._not_implemented()
 
+    ## compress
     @controller.expose(help="Compress files")
     def compress(self):
-        assert os.path.exists(os.path.join(self.config.get("project", "root"), self.pargs.projectid)), "no project directory %s"  % self.pargs.projectid
-        if self.pargs.projectid=="":
-            self.log.warn("Not running compress function on project root directory")
-            sys.exit()
-
+        self._assert_project("Not running compress function on project root directory")
         ## Set pattern for compress operations
         plist = []
         if self.pargs.fastq:
@@ -114,7 +136,6 @@ class ProjectController(AbstractBaseController):
 
         def compress_filter(f):
             return re.search(pattern, f) != None
-
         flist = []
         for root, dirs, files in os.walk(os.path.join(self.config.get("project", "root"), self.pargs.projectid)):
             flist = flist + [os.path.join(root, x) for x in filter(compress_filter, files)]
@@ -122,11 +143,22 @@ class ProjectController(AbstractBaseController):
         if not self.query_yes_no("Going to compress %s files. Are you sure you want to continue?" % len(flist)):
             sys.exit()
         for f in flist:
+            print "compressing %s" %f
             self.drmaa(["gzip",  "-v",  "%s" % f], "compress")
-            
+
+    ## du
     @controller.expose(help="Calculate disk usage in intermediate and data directories")
     def du(self):
         self._not_implemented()
 
 
+    ## deliver
+    ##
+    ## NOTE: this is a temporary workaround for cases where data has
+    ## been removed from analysis directory
+    @controller.expose(help="Deliver project data")
+    def delivery(self):
+        self._assert_project()
+        ## FIXME: list a flowcell and deliver from there
+        print self._flowcells()
 
