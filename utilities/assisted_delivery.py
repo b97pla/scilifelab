@@ -137,7 +137,7 @@ for d in dirs_to_process:
         sys.exit(0)
 
     os.chdir(dirpath)
-    bcname = d + "_bc.metrics"
+    bcname = d + ".bc_metrics"
     #bcname = "bc.metrics"
     lane = dirpath[0]
     print "LANE ", lane
@@ -217,14 +217,12 @@ for d in dirs_to_process:
     for pair in files_to_copy:
         source = os.getcwd() + "/" + pair[0]
         dest = del_path + "/" + pair[1]
-        
-        if not dry: 
-            print "Moving from " + source + " to " + dest
-            logfile.write("Moving " + source + " to " + dest + "\n")
-            logfile.flush()
-            shutil.copyfile(source, dest)
-            #shutil.move(source, dest)
-            print "Will move from ", source, "to", dest
+        print "Will copy (rsync) ", source, "to ", dest         
+        if not dry:
+            command_to_execute = 'rsync -ac ' + source + ' ' + dest
+            logfile.write("Executing command: " + command_to_execute + "\n")
+            logfile.flush() 
+            os.system(command_to_execute) 
 
     os.chdir('..')
     #os.chdir('../..')

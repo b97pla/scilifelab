@@ -285,11 +285,16 @@ def _get_analysis_results(fc, lane):
     
     For now just glob the analysis directory for fastqc output and files with the give flowcell name
     """
+    data = []
+    fastqc = []
     flowcell = "_".join([lane.get_name(), fc.get_fc_id()])
-    glob_str = os.path.join(fc.get_fc_dir(), flowcell + "*.*")
-    data = glob.glob(glob_str)
-    glob_str = os.path.join(fc.get_fc_dir(), "fastqc", flowcell + "*")
-    fastqc = glob.glob(glob_str)
+    for l in fc.get_lanes():
+        bcids = l.get_barcode_ids()
+        for barcode_id in bcids:
+            glob_str = os.path.join(fc.get_fc_dir(), flowcell + "*_%s*.*" % barcode_id)
+            data = data + glob.glob(glob_str)
+            glob_str = os.path.join(fc.get_fc_dir(), "fastqc", flowcell + "*_%s-sort*" % barcode_id)
+            fastqc = fastqc + glob.glob(glob_str)
     return data, fastqc
 
 def _save_run_info(fc, filename):
@@ -310,7 +315,7 @@ def _sample_based_run_info(fc):
         for barcode_id in bcids:
             s = l.get_sample_by_barcode(barcode_id)
             lane_num = lane_num + 1
-            newl = Lane(data={"description":s.get_name(), "lane" :lane_num, "multiplex":[], "analysis":"Minimal", "genome_build":s.get_genome_build(), "sample_prj":s.get_project()})
+            newl = Lane(data={"description":str(s.get_name()), "lane" :lane_num, "multiplex":[], "analysis":"Minimal", "genome_build":s.get_genome_build(), "sample_prj":s.get_project()})
             newl.set_name("%s" % lane_num)
             files = l.get_files()
             if options.customer_delivery or options.barcode_id_to_name:

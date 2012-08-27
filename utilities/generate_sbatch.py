@@ -55,7 +55,7 @@ read1forsample = {}
 read2forsample = {}
 
 for fname in flist:
-    if 'fastq' not in fname: continue 
+    if not os.path.splitext(fname)[1]==".fastq": continue
     read = fname.split("_")[-1]
     tag = "_".join(fname.split("_")[3:-2])
     print fname.split("_")
