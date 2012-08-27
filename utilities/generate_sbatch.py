@@ -2,6 +2,7 @@
 import sys
 import os
 import optparse
+import yaml
 
 usage = """
 Generate sbatch files for running an mRNA-seq pipeline.
@@ -11,11 +12,13 @@ generate_sbatch.py <directory of FASTQ files> <Bowtie index for reference genome
 
 The three first options are mandatory. There are further flags you can use:
 
+-c, --config: Provide config file (post_process.yaml)
 -o, --old: Run old TopHat (1.0.14) instead - mainly to reproduce old runs
 -t, --projtag: Provide a project tag that will be shown in the queuing system to distinguish from other TopHat runs
 -p, --phred33: Use phred33 / Sanger quality scale, e g for MiSeq or CASAVA 1.8 and above
 -f, --fai: Generate UCSC Genome Browser compatible BigWig tracks, using the specified FASTA index (fai) file
 -m, --mail: Specify a mailing address for SLURM
+-a, --alloc-time: Time to allocate in SLURM. Hours:minutes:seconds or days-hours:minutes:seconds
 """
 
 if len(sys.argv) < 4:
@@ -23,6 +26,7 @@ if len(sys.argv) < 4:
     sys.exit(0)
 
 parser = optparse.OptionParser()
+parser.add_option('-c', '--config', action="store", dest="conffile", default=os.path.expanduser("~/config/post_process.yaml"), help="Specify config file (post_process.yaml)")
 parser.add_option('-o', '--old', action="store_true", dest="old", default="False", help="Run old TopHat (1.0.14) instead - mainly to reproduce old runs")
 parser.add_option('-t', '--projtag', action="store", dest="projtag", default="", help="Provide a project tag that will be shown in the queuing system to distinguish from other TopHat runs")
 parser.add_option('-p', '--phred33', action="store_true", dest="phred33", default="False", help="Use phred33 / Sanger quality scale, e g for MiSeq or CASAVA1.8 and above")
@@ -38,6 +42,7 @@ fai = opts.fai
 projtag = opts.projtag
 mail = opts.mail
 hours = opts.hours
+conffile = opts.conffile
 
 if not len ( hours.split(':') ) == 3: sys.exit("Please specify the time allocation string as hours:minutes:seconds or days-hours:minutes:seconds") 
 
@@ -53,6 +58,11 @@ flist = os.listdir(fpath)
 sample_names = []
 read1forsample = {}
 read2forsample = {}
+
+try:
+    conf = yaml.load(open(conffile))
+except:
+    sys.exit("Could not open configuration file " + conffile)
 
 for fname in flist:
     if not os.path.splitext(fname)[1]==".fastq": continue
@@ -79,7 +89,7 @@ for n in sorted(sample_names):
     print "Generating sbatch files for sample ", n
     oF = open("map_tophat_" + n + ".sh", "w")
     oF.write("#! /bin/bash -l\n")
-    oF.write("#SBATCH -A a2010002\n")                   
+    oF.write("#SBATCH -A a2012043\n")                   
     oF.write("#SBATCH -p node\n")
     oF.write("#SBATCH -t " + hours + "\n")
     oF.write("#SBATCH -J tophat_" + n + projtag + "\n")
@@ -89,18 +99,20 @@ for n in sorted(sample_names):
     oF.write("#SBATCH --mail-type=ALL\n")
 
     oF.write("module unload bioinfo-tools\n")
-    oF.write("module unload samtools\n")
+    #oF.write("module unload samtools\n")
     oF.write("module unload tophat\n")
     oF.write("module unload cufflinks\n")
     oF.write("module unload htseq\n")
 
     oF.write("module load bioinfo-tools\n")
-    oF.write("module load samtools/0.1.9\n")
+    # oF.write("module load samtools/0.1.9\n")
+
+    tool_versions = conf['custom_algorithms']['RNA-seq analysis']
     
     if old == True: oF.write("module load tophat/1.0.14\n")
-    else: oF.write("module load tophat/1.3.3\n")
-    oF.write("module load cufflinks/1.3.0\n")
-    oF.write("module load htseq/0.5.1\n")
+    else: oF.write("module load tophat/" + tool_versions['aligner_version'] + "\n")
+    oF.write("module load cufflinks/" + tool_versions['quantifyer_version'] + "\n")
+    oF.write("module load htseq/" + tool_versions['counts_version'] + "\n")
 
     # TopHat
 
@@ -114,9 +126,9 @@ for n in sorted(sample_names):
     oF.write("cd tophat_out_" + n + "\n")
     if old == True: oF.write("samtools view -bT concat.fa.fa -o accepted_hits_" + n + ".bam " + "accepted_hits.sam\n")
     else: oF.write("mv accepted_hits.bam accepted_hits_" + n + ".bam\n")
-    oF.write("java -Xmx2g -jar /home/lilia/glob/src/picard-tools-1.29/SortSam.jar INPUT=accepted_hits_" + n + ".bam OUTPUT=accepted_hits_sorted_" + n + ".bam SORT\
+    oF.write("java -Xmx2g -jar /home/lilia/glob/src/picard-tools-" + tool_versions['dup_remover_version'] + "/SortSam.jar INPUT=accepted_hits_" + n + ".bam OUTPUT=accepted_hits_sorted_" + n + ".bam SORT\
 _ORDER=coordinate VALIDATION_STRINGENCY=LENIENT\n")
-    oF.write("java -Xmx2g -jar /home/lilia/glob/src/picard-tools-1.29/MarkDuplicates.jar INPUT=accepted_hits_sorted_" + n + ".bam OUTPUT=accepted_hits_sorted_dup\
+    oF.write("java -Xmx2g -jar /home/lilia/glob/src/picard-tools-" + tool_versions['dup_remover_version'] + "/MarkDuplicates.jar INPUT=accepted_hits_sorted_" + n + ".bam OUTPUT=accepted_hits_sorted_dup\
 Removed_" + n + ".bam ASSUME_SORTED=true REMOVE_DUPLICATES=true METRICS_FILE=" + n + "_picardDup_metrics VALIDATION_STRINGENCY=LENIENT\n")
 
     # HTSeq
