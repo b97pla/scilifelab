@@ -20,7 +20,7 @@ class DeliveryController(AbstractBaseController):
     Functionality for deliveries
     """
     class Meta:
-        label = 'delivery'
+        label = 'deliver'
         description = 'Deliver data'
         arguments = [
             (['runid'], dict(help="run id")),
@@ -36,4 +36,5 @@ class DeliveryController(AbstractBaseController):
         self._not_implemented("On hold. Archive data needs to be processed first")
         assert os.path.exists(os.path.join(self.config.get("archive", "root")), self.pargs.runid), "no such runid " % self.pargs.runid
         assert os.path.exists(os.path.join(self.config.get("archive", "root")), self.pargs.runid), "no such project id" % self.pargs.projectid
-        
+
+    #@controller.expose(help="Custom delivery. Deliver ")

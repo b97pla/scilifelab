@@ -57,6 +57,7 @@ class ProjectController(AbstractBaseController):
             (['-S', '--sampleid'], dict(help="project sample id", action="store")),
             (['-F', '--flowcellid'], dict(help="project flowcell id", action="store")),
             ]
+        flowcelldir = None
 
     ## default
     @controller.expose(hide=True)
@@ -109,7 +110,11 @@ class ProjectController(AbstractBaseController):
             sys.exit()
 
     def _flowcells(self):
-        files = os.listdir(os.path.join(self.config.get("project", "root")), "data")
+        self._meta.flowcelldir = os.path.join(self.config.get("project", "root"), self.pargs.projectid, "nobackup", "data")
+        if not os.path.exists(self._meta.flowcelldir):
+              self._meta.flowcelldir = os.path.join(self.config.get("project", "root"), self.pargs.projectid,"data")
+        print self._meta.flowcelldir
+        files = os.listdir(self._meta.flowcelldir)
         return files
 
     ## add
@@ -157,8 +162,9 @@ class ProjectController(AbstractBaseController):
     ## NOTE: this is a temporary workaround for cases where data has
     ## been removed from analysis directory
     @controller.expose(help="Deliver project data")
-    def delivery(self):
+    def deliver(self):
         self._assert_project()
         ## FIXME: list a flowcell and deliver from there
-        print self._flowcells()
+        if not self.pargs.flowcellid:
+            self.log.info("No flowcellid provided. Please provide a flowcellid from which to deliver. Available options are:\n\t{}".format("\n\t".join(self._flowcells())))
 
