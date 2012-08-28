@@ -9,7 +9,6 @@ import re
 import argparse
 import textwrap
 import subprocess
-import drmaa
 from mako.template import Template
 
 from cement.core import foundation, controller, handler, backend
@@ -186,6 +185,11 @@ class AbstractBaseController(controller.CementBaseController):
 
     ## FIXME: add sbatch function and templates in case drmaa fails?
     def drmaa(self, cmd_args, jobname, partition="core"):
+        if not os.getenv("DRMAA_LIBRARY_PATH"):
+            return
+        else:
+            import drmaa
+
         if self.pargs.node:
             partition = "node"
         if not self.pargs.uppmax_project:
@@ -331,7 +335,7 @@ class SubController(controller.CementBaseController):
 ##############################
 class PmController(controller.CementBaseController):
     class Meta:
-        label = 'pm'
+        label = 'base'
         description = 'Project/pipeline management tools'
         arguments = [
             (['--config'], dict(help="print configuration", action="store_true")),

@@ -36,8 +36,6 @@ try:
     # handler.register(CleanController)
     # handler.register(LsController)
     app.setup()
-    print app.log
-    app.log.warn("testing logging", "help")
         
     try:
         app.config.parse_file(CONFIGFILE)
