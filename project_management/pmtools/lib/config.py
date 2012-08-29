@@ -1,0 +1,16 @@
+"""
+Configuration settings
+"""
+
+import os
+from cement.core import backend
+
+config_defaults = backend.defaults('analysis', 'archive', 'config', 'project','log')
+config_defaults['analysis']['root']  = None
+config_defaults['archive']['root']  = None
+config_defaults['project']['root']  = None
+config_defaults['project']['repos']  = None
+config_defaults['config']['ignore'] = ["slurm*", "tmp*"]
+config_defaults['log']['level']  = "INFO"
+config_defaults['log']['file']  = os.path.join(os.getenv("HOME"), "log", "pm.log")
+
