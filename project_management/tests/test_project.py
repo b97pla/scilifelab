@@ -4,7 +4,6 @@ Test project subcontroller
 
 import os
 from cement.utils import test
-from cement.core import backend
 from pmtools import PmController, PmApp
 from test_default import PmTestApp
 
