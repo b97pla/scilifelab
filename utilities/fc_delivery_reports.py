@@ -26,20 +26,20 @@ Options:
 import os
 import sys
 from optparse import OptionParser
-# from operator import itemgetter
+from operator import itemgetter
 import yaml
-# import glob
-# import re
+import glob
+import re
 from mako.template import Template
 from mako.lookup import TemplateLookup
 
-# from bcbio.log import create_log_handler
+from bcbio.log import create_log_handler
 # from bcbio.pipeline import log
 import bcbio.templates.mako2rst as m2r
 from texttable import Texttable
 
-# from bcbio.google import bc_metrics
-from bcbio.solexa.flowcell import get_flowcell_info
+from bcbio.google import bc_metrics 
+from bcbio.solexa.flowcell import get_flowcell_info 
 import read_illumina_summary_xml as summ
 from bcbio.pipeline.config_loader import load_config
 from bcbio.scilifelab.google.project_metadata import ProjectMetaData
@@ -272,11 +272,87 @@ def main(flowcell_id, archive_dir, analysis_dir, config_file):
                 modify_conf = True
         if modify_conf:
             i = lines.index("latex_documents = [\n")
-            newconf = lines[:i + 3] + sdout + lines[i + 3:]
+            newconf = lines[:i+3] + sdout + lines[i+3:]
+            ## Change the preamble
+            i = newconf.index("#'preamble': '',\n")
+            newconf = newconf[:i+1] + _latex_preamble() + newconf[i+1:]
+            ## Set the logo
+            i = newconf.index("#latex_logo = None\n")
+            newconf = newconf[:i+1] + _latex_logo() + newconf[i+1:]
             fp = open("conf.py", "w")
             fp.write("".join(newconf))
             fp.close()
 
+
+def _latex_logo():
+    '''Set the logo'''
+    logo = ["latex_logo = '/proj/a2010002/projects/delivery_reports/grf/scilife-sniss.jpg'"]
+    return logo
+
+def _latex_preamble():
+    '''Template for preamble. Sets new header'''
+    preamble = ["'preamble' : r'''",
+                r'''
+                \usepackage[headheight=3cm]{geometry}
+                \makeatletter
+                \fancypagestyle{plain}{%
+                \fancyhf{}
+                \fancyhead[L]{{
+                \begin{tabular}{l}
+                Science for Life Laboratory (SciLifeLab)\\
+                \textbf{Document type}\\
+                BLA\\
+                \textbf{Creation date}\\
+                2012-
+                \end{tabular}
+                }}
+                \fancyhead[C]{{
+                \begin{tabular}{l}
+                \textbf{Document name}\\
+                HiSeq Delivery note\\
+                \textbf{Valid from}\\
+                \\
+                \end{tabular}
+                }}
+                \fancyhead[R]{{\begin{tabular}{ll}
+                \textbf{ID number\_edition} & \\
+                20140\_1 & \\
+                \textbf{Issuer} & \textbf{Approver}\\
+                Mikael H/MH & \\
+                \end{tabular}
+                }}
+                }
+                \fancyhf{}
+                \fancyhead[L]{{
+                \begin{tabular}{l}
+                Science for Life Laboratory (SciLifeLab)\\
+                \textbf{Document type}\\
+                BLA\\
+                \textbf{Creation date}\\
+                2012-
+                \end{tabular}
+                }}
+                \fancyhead[C]{{
+                \begin{tabular}{l}\\
+                \textbf{Document name}\\
+                HiSeq Delivery note\\
+                \textbf{Valid from}\\
+                \\
+                \end{tabular}
+                }}
+                \fancyhead[R]{{\begin{tabular}{ll}
+                \\
+                \textbf{ID number\_edition} & \\
+                20140\_1 & \\
+                \textbf{Issuer} & \textbf{Approver}\\
+                Mikael H/MH & \\
+                \end{tabular}
+                }}
+                \makeatother
+                \pagestyle{fancy}
+                ''',
+                "'''"] 
+    return preamble
 
 def generate_report(proj_conf):
 
@@ -342,7 +418,7 @@ def generate_report(proj_conf):
                   ["Instrument ID:", instr_id],
                   ["Flow cell ID:", fc_name],
                   ["Uppnex project:", uppnex_proj],
-                  ["Delivery directory:", del_base + uppnex_proj + "/INBOX/" + proj_level_dir + "/20" + simple_run_name + "_hiseq2000"]])
+                  ["Delivery directory:", del_base + uppnex_proj + "/INBOX/" + proj_level_dir + "/" + simple_run_name]])
     d.update(infotable=tab.draw())
 
     ## Lane table
@@ -547,7 +623,7 @@ def generate_report(proj_conf):
     low_samples = []
 
     for l in proj_conf['lanes']:
-        bc_file_name = os.path.join(proj_conf['analysis_dir'], proj_conf['flowcell'], '_'.join([l['lane'], fc_date, fc_name, "nophix_barcode"]), '_'.join([l['lane'], fc_date, fc_name, "nophix_bc.metrics"]))
+        bc_file_name = os.path.join(proj_conf['analysis_dir'], proj_conf['flowcell'], '_'.join([l['lane'], fc_date, fc_name, "nophix_barcode"]), '_'.join([l['lane'], fc_date, fc_name, "nophix.bc_metrics"]))
         try:
             bc_file = open(bc_file_name)
         except:
@@ -556,7 +632,7 @@ def generate_report(proj_conf):
         for line in bc_file:
             c = line.strip().split()
             bc_count[c[0]] = c[1] + ' (~' + str(int(round(float(c[1]) / 1000000))) + " million)"
-        no_samples = len(bc_count)
+        no_samples = len(bc_count) - 1
         if no_samples == 0:
             print("WARNING: did not find a BC metrics file... Skipping lane %s for %s" % (l['lane'], proj_conf['id']))
             continue
@@ -657,8 +733,7 @@ if __name__ == "__main__":
     parser = OptionParser(usage=usage)
     parser.add_option("-a", "--archive_dir", dest="archive_dir", default="/bubo/proj/a2010002/archive")
     parser.add_option("-b", "--analysis_dir", dest="analysis_dir", default="/bubo/proj/a2010002/nobackup/illumina")
-    parser.add_option("-n", "--dry_run", dest="dry_run", action="store_true",
-                      default=False)
+    parser.add_option("-n", "--dry_run", dest="dry_run", action="store_true",default=False)
     parser.add_option("--v1.5", dest="v1_5_fc", action="store_true", default=False)
     parser.add_option("-c", "--config-file", dest="config_file", default=None)
     (options, args) = parser.parse_args()

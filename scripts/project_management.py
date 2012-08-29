@@ -5,9 +5,9 @@ Usage:
   project_management.py     <YAML config file> <flowcell_dir> <project_dir>
                             [<YAML run information>
                              --flowcell_alias=<flowcell_alias> --project_desc=<project_desc>
-                             --install_data --move_data --symlink --only_install_run_info
-                             --customer_delivery --barcode_id_to_name --use_full_names
-                             --dry_run --verbose]
+                             --install_data --move_data --move_and_relink --symlink
+                             --only_install_run_info --customer_delivery --barcode_id_to_name
+                             --no_full_names --dry_run --verbose]
 
 
 Given a directory with demultiplexed flow cell data and a project id,
@@ -33,8 +33,9 @@ Options:
                                                 to one directory <project_desc/flowcell_dir>.
   -b, --barcode_id_to_name                      Convert barcode ids to sample names
   -i, --only_install_run_info                   Only install pruned run_info file.
-  -f, --use_full_names                          Use full barcode name, including "_index"
+  -f, --no_full_names                           Don't use full barcode name, including "_index"
   -m, --move_data                               Move data instead of copying
+  -M, --move_and_relink                         Move data from source to target, and link from target to source
   -l, --symlink                                 Link data instead of copying
   -n, --dry_run                                 Don't do anything samples, just list what will happen
   -v, --verbose                                 Print some more information
@@ -193,6 +194,7 @@ def process_lane(lane, pruned_fc, rawdata_fc, analysis_fc):
             fastq_tgt = fastq_src
             if options.customer_delivery or options.barcode_id_to_name:
                 fastq_tgt = _convert_barcode_id_to_name(multiplex, rawdata_fc.get_fc_name(), fastq_src)
+                fastq_tgt = fastq_tgt.replace("_nophix_", "_")
             _deliver_fastq_file(fastq_src, os.path.basename(fastq_tgt), fc_data_dir)
             fastq_targets.append(os.path.join(fc_data_dir, os.path.basename(fastq_tgt)))
     lane.set_files(fastq_targets)
@@ -213,22 +215,26 @@ def _get_barcoded_fastq_files(lane, multiplex, fc_date, fc_name, fc_dir=None):
     return fq
 
 def _convert_barcode_id_to_name(multiplex, fc_name, fq):
-    bcid2name = dict([(str(mp.get_barcode_id()), get_sample_name(mp.get_barcode_name())) for mp in multiplex])
-    if options.use_full_names:
-        bcid2name = dict([(str(mp.get_barcode_id()), mp.get_full_name()) for mp in multiplex])
+    bcid2name = dict([(str(mp.get_barcode_id()), mp.get_full_name()) for mp in multiplex])
+    if options.no_full_names:
+        bcid2name = dict([(str(mp.get_barcode_id()), get_sample_name(mp.get_barcode_name())) for mp in multiplex])
     bcid = re.search("_(\d+)_(\d+)_fastq.txt", fq)
     from_str = "%s_%s_fastq.txt" % (bcid.group(1), bcid.group(2))
     to_str   = "%s_%s.fastq" % (bcid2name[bcid.group(1)], bcid.group(2))
     return fq.replace(from_str, to_str)
  
 def _deliver_fastq_file(fq_src, fq_tgt, outdir, fc_link_dir=None):
+    f2 = None
     if options.link:
         f = os.symlink
     elif options.move:
         f = shutil.move
+    elif options.move_and_relink:
+        f = shutil.move
+        f2 = os.symlink
     else:
         f = shutil.copyfile
-    _handle_data(fq_src, os.path.join(outdir, fq_tgt), f)
+    _handle_data(fq_src, os.path.join(outdir, fq_tgt), f, f2)
 
 def _make_delivery_directory(fc):
     """Make the output directory"""
@@ -244,7 +250,7 @@ def _make_dir(dir, label):
     else:
         logger.warn("%s already exists: not creating new directory" % (dir))
 
-def _handle_data(src, tgt, f=shutil.copyfile):
+def _handle_data(src, tgt, f=shutil.copyfile, f2=None):
     if options.only_run_info:
         return
     if src is None:
@@ -254,9 +260,15 @@ def _handle_data(src, tgt, f=shutil.copyfile):
         return
     if options.dry_run:
         print "DRY_RUN: %s file %s to %s" % (f.__name__, src, tgt)
+        if not f2 is None:
+            print "DRY_RUN: %s file %s to %s" % (f2.__name__, tgt, src)
     else:
         logger.info("%s file %s to %s" % (f.__name__, src, tgt))
         f(src, tgt)
+        if not f2 is None:
+            logger.info("%s file %s to %s" % (f2.__name__, tgt, src))
+            f2(tgt, src)
+            
 
 def _deliver_data(data, fastqc, outdir):
     """Loop over data and fastqc and deliver files"""
@@ -273,11 +285,16 @@ def _get_analysis_results(fc, lane):
     
     For now just glob the analysis directory for fastqc output and files with the give flowcell name
     """
+    data = []
+    fastqc = []
     flowcell = "_".join([lane.get_name(), fc.get_fc_id()])
-    glob_str = os.path.join(fc.get_fc_dir(), flowcell + "*.*")
-    data = glob.glob(glob_str)
-    glob_str = os.path.join(fc.get_fc_dir(), "fastqc", flowcell + "*")
-    fastqc = glob.glob(glob_str)
+    for l in fc.get_lanes():
+        bcids = l.get_barcode_ids()
+        for barcode_id in bcids:
+            glob_str = os.path.join(fc.get_fc_dir(), flowcell + "*_%s*.*" % barcode_id)
+            data = data + glob.glob(glob_str)
+            glob_str = os.path.join(fc.get_fc_dir(), "fastqc", flowcell + "*_%s-sort*" % barcode_id)
+            fastqc = fastqc + glob.glob(glob_str)
     return data, fastqc
 
 def _save_run_info(fc, filename):
@@ -298,7 +315,7 @@ def _sample_based_run_info(fc):
         for barcode_id in bcids:
             s = l.get_sample_by_barcode(barcode_id)
             lane_num = lane_num + 1
-            newl = Lane(data={"description":s.get_name(), "lane" :lane_num, "multiplex":[], "analysis":"Minimal", "genome_build":s.get_genome_build(), "sample_prj":s.get_project()})
+            newl = Lane(data={"description":str(s.get_name()), "lane" :lane_num, "multiplex":[], "analysis":"Minimal", "genome_build":s.get_genome_build(), "sample_prj":s.get_project()})
             newl.set_name("%s" % lane_num)
             files = l.get_files()
             if options.customer_delivery or options.barcode_id_to_name:
@@ -355,8 +372,8 @@ if __name__ == "__main__":
                             [<YAML run information>
                              --flowcell_alias=<flowcell_alias>
                              --project_desc=<project_desc> --symlink
-                             --move_data --only_install_run_info --install_data
-                             --use_full_names --dry_run --verbose]
+                             --move_data --move_and_relink --only_install_run_info
+                             --install_data --no_full_names --dry_run --verbose]
 
     For more extensive help type project_management.py
 """
@@ -372,9 +389,11 @@ if __name__ == "__main__":
                       default=False)
     parser.add_option("-i", "--only_install_run_info", dest="only_run_info", action="store_true",
                       default=False)
-    parser.add_option("-f", "--use_full_names", dest="use_full_names", action="store_true",
+    parser.add_option("-f", "--no_full_names", dest="no_full_names", action="store_true",
                       default=False)
     parser.add_option("-m", "--move_data", dest="move", action="store_true",
+                      default=False)
+    parser.add_option("-M", "--move_and_relink", dest="move_and_relink", action="store_true",
                       default=False)
     parser.add_option("-l", "--symlink", dest="link", action="store_true",
                       default=False)
@@ -383,7 +402,7 @@ if __name__ == "__main__":
     parser.add_option("-n", "--dry_run", dest="dry_run", action="store_true",
                       default=False)
     (options, args) = parser.parse_args()
-    if len(args) < 3:
+    if len(args) < 3 or len(args) > 4:
         print __doc__
         sys.exit()
     
