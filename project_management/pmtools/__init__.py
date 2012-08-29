@@ -14,6 +14,7 @@ from mako.template import Template
 from cement.core import foundation, controller, handler, backend
 from cement.utils.shell import *
 
+
 ## I personally don't like the default help formatting output from
 ## argparse which I think is difficult to read
 ## Currently identical to RawDescriptionHelpFormatter
@@ -390,7 +391,7 @@ class PmController(controller.CementBaseController):
     root = /path/to/archive
 
     [analysis]
-    analysis = /path/to/illumina
+    root = /path/to/illumina
 
     [log]
     level = INFO
@@ -402,4 +403,13 @@ class PmController(controller.CementBaseController):
         """
 
 
+
+
+##############################
+## PmApp
+##############################
+class PmApp(foundation.CementApp):
+    class Meta:
+        label = "pm"
+        base_controller = PmController
 

@@ -1,26 +1,21 @@
 """
-Test initialization of projects
+Test project subcontroller
 """
 
-# import os
-# import unittest
+import os
 from cement.utils import test
-# from pm.cli.main import pm
+from cement.core import backend
+from pmtools import PmController, PmApp
+from test_default import PmTestApp
 
-# class TestApp(pm):
-#     class Meta:
-#         argv = []
-#         config_files = []
-
-#class InitProjectTest(unittest.TestCase):
 class InitProjectTest(test.CementTestCase):
-#    app_class = pm
-    def setUp(self):
-        print "setting up test"
-        #       print pm
-
+    app_class = PmTestApp
+    
     def test_project_init(self):
-        print "Testing project init"
+        self.app.setup()
+        self.ok(self.app.config.has_key('archive', 'root'))
+        self.eq(self.app.config.get('analysis', 'root'), os.path.join(os.path.abspath(os.getcwd()), "data", "analysis"))
+
 
     def test_project_data_delivery(self):
-        print "Testing project data delivery"
+        pass
