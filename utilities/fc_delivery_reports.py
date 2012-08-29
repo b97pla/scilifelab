@@ -595,9 +595,9 @@ def generate_report(proj_conf):
 	if not os.path.exists(bc_file):
 		bc_file = bc_file_name_prefix + "_bc.metrics"
         try:
-            bc_file = open(bc_file_name)
+            bc_file = open(bc_file)
         except:
-            sys.exit("Could not find bc metrics file " + bc_file_name)
+            sys.exit("Could not find bc metrics file " + bc_file)
         bc_count = {}
         for line in bc_file:
             c = line.strip().split()
