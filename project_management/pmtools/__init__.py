@@ -347,35 +347,35 @@ class PmController(controller.CementBaseController):
         # shortcuts
         super(PmController, self)._setup(app_obj)
 
-    # def _parse_args(self):
-    #     """
-    #     Parse command line arguments and determine a command to dispatch.
+    def _parse_args(self):
+        """
+        Parse command line arguments and determine a command to dispatch.
         
-    #     """
-    #     if len(self.app.argv) == 0:
-    #         self.app.argv.append("-h")
+        """
+        if len(self.app.argv) == 0:
+            self.app.argv.append("-h")
 
-    #     # chop off a command argument if it matches an exposed command
-    #     if len(self.app.argv) > 0 and not self.app.argv[0].startswith('-'):
+        # chop off a command argument if it matches an exposed command
+        if len(self.app.argv) > 0 and not self.app.argv[0].startswith('-'):
             
-    #         # translate dashes back to underscores
-    #         cmd = re.sub('-', '_', self.app.argv[0])
-    #         if cmd in self.exposed:
-    #             self.command = cmd
-    #             self.app.argv.pop(0)
-    #         else:
-    #             for label in self.exposed:
-    #                 func = self.exposed[label]
-    #                 if self.app.argv[0] in func['aliases']:
-    #                     self.command = func['label']
-    #                     self.app.argv.pop(0)
-    #                     break
-    #     self.app.args.description = self._help_text
-    #     self.app.args.usage = self._usage_text
-    #     self.app.args.formatter_class=PmHelpFormatter
+            # translate dashes back to underscores
+            cmd = re.sub('-', '_', self.app.argv[0])
+            if cmd in self.exposed:
+                self.command = cmd
+                self.app.argv.pop(0)
+            else:
+                for label in self.exposed:
+                    func = self.exposed[label]
+                    if self.app.argv[0] in func['aliases']:
+                        self.command = func['label']
+                        self.app.argv.pop(0)
+                        break
+        self.app.args.description = self._help_text
+        self.app.args.usage = self._usage_text
+        self.app.args.formatter_class=PmHelpFormatter
 
-    #     self.app._parse_args()
-    #     self.pargs = self.app.pargs
+        self.app._parse_args()
+        self.pargs = self.app.pargs
 
     @controller.expose(hide=True)
     def default(self):
