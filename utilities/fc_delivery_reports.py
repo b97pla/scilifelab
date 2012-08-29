@@ -118,11 +118,13 @@ General information
 ${infotable}
 
 The sequence files are named after the following scheme:
-lane_date_flowcell-ID_sample_barcode-index_1(2).fastq, where the 1 or 2 represents the first
+lane_date_flowcell-ID_sample_barcode-index_1(2).fastq[.gz], where the 1 or 2 represents the first
 (forward) and the second (reverse) read in a paired-end run. Single
 end runs will have only the first read. The files only contain
 sequences that have passed Illumina's chastity filter. The quality scores in the fastq files
-are in the "Phred64" format, sometimes known as "Illumina 1.3+" format.
+are in the "Phred64" format, sometimes known as "Illumina 1.3+" format. If the files ends
+with a .gz extension, they have been compressed with gzip prior to delivery and, if needed, can 
+be de-compressed with the command 'gzip -d FILENAME'.
 
 Run information
 ---------------

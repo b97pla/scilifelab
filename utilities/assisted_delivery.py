@@ -199,7 +199,14 @@ for d in dirs_to_process:
     # print os.listdir(".")
     files_to_copy = []
 
-    for fastq_file in glob.glob("*fastq.txt"):
+    for fastq_file in (glob.glob("*fastq.txt") + glob.glob("*fastq.txt.gz")):
+        # Skip if this is a non-compressed file and there exists a compressed version
+        if os.path.exists(fastq_file + ".gz"):
+           continue
+        ext = ""
+        if os.path.splitext(fastq_file)[1] == ".gz": 
+            ext = os.path.splitext(fastq_file)[1]
+        
         if lane_info.has_key('multiplex'):
             new_file_name = ''
             if 'unmatched' in fastq_file: continue
@@ -208,25 +215,23 @@ for d in dirs_to_process:
             #[lane, date, run_id, bcbb_bc, pe_read, dummy] = fastq_file.split("_")
             if sample_id_and_idx.has_key(int(bcbb_bc)):
                 customer_sample_id = sample_id_and_idx[int(bcbb_bc)]
-                new_file_name = lane + "_" + date + "_" + run_id + "_" + customer_sample_id.replace("/", "_") + "_" + pe_read + ".fastq"   
+                new_file_name = lane + "_" + date + "_" + run_id + "_" + customer_sample_id.replace("/", "_") + "_" + pe_read + ".fastq" + ext  
         else:
             [lane, date, run_id, nophix, name, pe_read,dummy] = fastq_file.split("_")
             #[lane, date, run_id, name, pe_read,dummy] = fastq_file.split("_")
-            new_file_name = lane + "_" + date + "_" + run_id + "_" + lane_sample + "_" + pe_read + ".fastq"   
+            new_file_name = lane + "_" + date + "_" + run_id + "_" + lane_sample + "_" + pe_read + ".fastq" + ext   
        #  print "Preparing to copy file", fastq_file, "as ", new_file_name
         if new_file_name != '': files_to_copy.append([fastq_file, new_file_name])
 
     for pair in files_to_copy:
         source = os.getcwd() + "/" + pair[0]
         dest = del_path + "/" + pair[1]
-        
-        if not dry: 
-            print "Moving from " + source + " to " + dest
-            logfile.write("Moving " + source + " to " + dest + "\n")
-            logfile.flush()
-            shutil.copyfile(source, dest)
-            #shutil.move(source, dest)
-            print "Will move from ", source, "to", dest
+        print "Will copy (rsync) ", source, "to ", dest         
+        if not dry:
+            command_to_execute = 'rsync -ac ' + source + ' ' + dest
+            logfile.write("Executing command: " + command_to_execute + "\n")
+            logfile.flush() 
+            os.system(command_to_execute) 
 
     os.chdir('..')
     #os.chdir('../..')
