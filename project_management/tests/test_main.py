@@ -19,3 +19,11 @@ class PmMainTest(test.CementTestCase):
             app.run()
         finally:
             app.close()
+
+    def test_2_help(self):
+        app = PmApp('pm', base_controller=PmController, config_defaults = config_defaults, extensions = ['json'], argv=['--help'], config_files=[])
+        try:
+            app.setup()
+            app.run()
+        finally:
+            app.close()

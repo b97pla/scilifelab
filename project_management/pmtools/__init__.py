@@ -22,31 +22,6 @@ class PmHelpFormatter(argparse.HelpFormatter):
     def _fill_text(self, text, width, indent):
         return ' '.join([indent + line for line in text.splitlines(True)])
 
-SBATCH_TEMPLATE = Template('''\
-#!/bin/bash -l
-TMPDIR=/scratch/$SLURM_JOB_ID
-
-#SBATCH -A ${project_id}
-#SBATCH -t ${time}
-#SBATCH -o ${jobname}.stdout
-#SBATCH -e ${jobname}.stderr
-#SBATCH -J ${jobname}
-#SBATCH -D ${workdir}
-#SBATCH -p ${partition}
-#SBATCH -n ${cores}
-#SBATCH --mail-type=${mail_type}
-#SBATCH --mail-user=${mail_user}
-<%
-if (constraint):
-    constraint_str = "#SBATCH -C " + constraint
-else:
-    constraint_str = ""
-%>
-${constraint_str}
-${header}
-${command_str}
-${footer}
-''')
 
 ##############################
 ## Abstract base controller -- for sharing arguments and functions with subclassing controllers
@@ -75,12 +50,10 @@ class AbstractBaseController(controller.CementBaseController):
         print "FIXME: Not implemented yet"
         if msg != None:
             print msg
-        sys.exit()
 
     def _obsolete(self, msg):
         self.log.info("This function is obsolete.")
         self.log.info(msg)
-        sys.exit()
 
     ## yes or no: http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input
     def query_yes_no(self, question, default="yes"):
@@ -341,48 +314,19 @@ class PmController(controller.CementBaseController):
         arguments = [
             (['--config'], dict(help="print configuration", action="store_true")),
             (['--config-example'], dict(help="print configuration example", action="store_true")),
+            #(['-h','--help'], dict(help="print help", action="store_true")),
             ]
 
     def _setup(self, app_obj):
         # shortcuts
         super(PmController, self)._setup(app_obj)
 
-    def _parse_args(self):
-        """
-        Parse command line arguments and determine a command to dispatch.
-        
-        """
-        if len(self.app.argv) == 0:
-            self.app.argv.append("-h")
-
-        # chop off a command argument if it matches an exposed command
-        if len(self.app.argv) > 0 and not self.app.argv[0].startswith('-'):
-            
-            # translate dashes back to underscores
-            cmd = re.sub('-', '_', self.app.argv[0])
-            if cmd in self.exposed:
-                self.command = cmd
-                self.app.argv.pop(0)
-            else:
-                for label in self.exposed:
-                    func = self.exposed[label]
-                    if self.app.argv[0] in func['aliases']:
-                        self.command = func['label']
-                        self.app.argv.pop(0)
-                        break
-        self.app.args.description = self._help_text
-        self.app.args.usage = self._usage_text
-        self.app.args.formatter_class=PmHelpFormatter
-
-        self.app._parse_args()
-        self.pargs = self.app.pargs
-
     @controller.expose(hide=True)
     def default(self):
         if self.app.pargs.config:
             print "FIXME: show config"
-        if self.app.pargs.config_example:
-            print """Configuration example: save as ~/.pm.conf and modify at will. 
+        elif self.app.pargs.config_example:
+            print """Configuration example: save as ~/.pm.conf and modify at will.
 
     [config]
     ignore = slurm*, tmp*
@@ -401,6 +345,10 @@ class PmController(controller.CementBaseController):
     root = /path/to/projects
     repos = /path/to/repos
         """
+        else:
+            print __doc__
+
+        
 
 
 
