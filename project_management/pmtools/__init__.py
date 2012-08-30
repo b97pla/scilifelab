@@ -37,7 +37,12 @@ class AbstractBaseController(controller.CementBaseController):
     def _setup(self, base_app):
         self._meta.arguments.append( (['-n', '--dry_run'], dict(help="dry_run - don't actually do anything", action="store_true", default=False)) )
         super(AbstractBaseController, self)._setup(base_app)
-        self.reignore = re.compile(self.config.get("config", "ignore").replace("\n", "|"))
+        ## Sometimes read as string, sometimes as list...
+        ignore = self.config.get("config", "ignore")
+        if type(ignore) == str:
+            self.reignore = re.compile(ignore.replace("\n", "|"))
+        elif type(ignore) == list:
+            self.reignore = re.compile("|".join(ignore))
         self.shared_config = dict()
 
     def _filtered_ls(self, out):
