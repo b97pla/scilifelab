@@ -2,25 +2,21 @@
 Test analysis subcontroller
 """
 
+import os
 from cement.core import handler
-from cement.utils import test
-from test_default import PmTestApp
+from test_default import PmTest
 from pmtools.controller.analysis import AnalysisController
 
-class PmAnalysisTest(test.CementTestCase):
-    app_class = PmTestApp
+class PmAnalysisTest(PmTest):
+    OUTPUT_FILES = []
 
     def test_1_ls(self):
-        app = self.make_app(argv = ['analysis', 'ls'])
+        self.app = self.make_app(argv = ['analysis', 'ls'])
         handler.register(AnalysisController)
-        app.setup()
-        app.run()
-        app.close()
+        self._run_app()
 
     def test_2_bcstats(self):
-        app = self.make_app(argv = ['analysis','bcstats'])
+        self.app = self.make_app(argv = ['analysis','bcstats'])
         handler.register(AnalysisController)
-        app.setup()
-        app.run()
-        app.close()
+        self._run_app()
         

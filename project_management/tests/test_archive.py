@@ -3,47 +3,33 @@ Test analysis subcontroller
 """
 
 from cement.core import handler
-from cement.utils import test
-from test_default import PmTestApp, clean
+from test_default import PmTest
 from pmtools.controller.archive import ArchiveController
 
-class PmArchiveTest(test.CementTestCase):
-    app_class = PmTestApp
-
-    def setUp(self):
-        clean()
-        
+class PmArchiveTest(PmTest):
+    OUTPUT_FILES = []
+    
     def test_1_default(self):
-        app = self.make_app(argv=['archive'])
+        self.app = self.make_app(argv=['archive'])
         handler.register(ArchiveController)
-        app.setup()
-        app.run()
-        app.close()
+        self._run_app()
 
     def test_2_ls(self):
-        app = self.make_app(argv=['archive', 'ls'])
+        self.app = self.make_app(argv=['archive', 'ls'])
         handler.register(ArchiveController)
-        app.setup()
-        app.run()
-        app.close()
+        self._run_app()
 
     def test_3_runinfo_default(self):
-        app = self.make_app(argv=['archive', 'runinfo'])
+        self.app = self.make_app(argv=['archive', 'runinfo'])
         handler.register(ArchiveController)
-        app.setup()
-        app.run()
-        app.close()
+        self._run_app()
 
     def test_4_runinfo(self):
-        app = self.make_app(argv=['archive', 'runinfo', '120829_SN0001_0001_AA001AAAXX'])
+        self.app = self.make_app(argv=['archive', 'runinfo', '120829_SN0001_0001_AA001AAAXX'])
         handler.register(ArchiveController)
-        app.setup()
-        app.run()
-        app.close()
+        self._run_app()
 
     def test_5_runinfo_tab(self):
-        app = self.make_app(argv=['archive', 'runinfo', '120829_SN0001_0001_AA001AAAXX', '-t'])
+        self.app = self.make_app(argv=['archive', 'runinfo', '120829_SN0001_0001_AA001AAAXX', '-t'])
         handler.register(ArchiveController)
-        app.setup()
-        app.run()
-        app.close()
+        self._run_app()

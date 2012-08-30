@@ -19,11 +19,3 @@ class PmMainTest(test.CementTestCase):
         finally:
             app.close()
 
-    ## Fails
-    # def test_2_help(self):
-    #     app = self.make_app(argv=['-h'])
-    #     try:
-    #         app.setup()
-    #         app.run()
-    #     finally:
-    #         app.close()

@@ -1,5 +1,6 @@
 import os
-from cement.core import backend
+from cement.core import backend, handler
+from cement.utils import test
 from pmtools import PmApp
 
 ## Set default configuration
@@ -20,6 +21,22 @@ class PmTestApp(PmApp):
         config_defaults = config_defaults
 
 
-## cleanup outputs
-def clean():
-    print "cleaning"
+## Main pm test 
+class PmTest(test.CementTestCase):
+    app_class = PmTestApp
+    app = None
+    OUTPUT_FILES = []
+
+    def setUp(self):
+        self._clean()
+
+    def _clean(self):
+        print "cleaning"
+
+    def _run_app(self):
+        try:
+            self.app.setup()
+            self.app.run()
+        finally:
+            self.app.close()
+        
