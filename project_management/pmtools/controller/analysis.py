@@ -25,11 +25,10 @@ class AnalysisController(AbstractBaseController):
     @controller.expose(hide=True)
     def default(self):
         print __doc__
-        sys.exit()
 
     @controller.expose(help="List contents")
     def ls(self):
-        self._not_implemented()
+        self._ls("analysis", "root")
 
     @controller.expose(help="List runinfo contents")
     def runinfo(self):

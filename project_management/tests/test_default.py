@@ -12,9 +12,14 @@ config_defaults['config']['ignore'] = ["slurm*", "tmp*"]
 config_defaults['log']['level']  = "INFO"
 config_defaults['log']['file']  = os.path.join(os.path.abspath(os.getcwd()), "data", "log", "pm.log")
 
+## Testing app
 class PmTestApp(PmApp):
     class Meta:
         argv = []
         config_files = []
         config_defaults = config_defaults
 
+
+## cleanup outputs
+def clean():
+    print "cleaning"

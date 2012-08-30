@@ -36,12 +36,7 @@ class ArchiveController(AbstractBaseController):
 
     @controller.expose(help="List contents")
     def ls(self):
-        assert self.config.get("archive", "root"), "no config archive directory"
-        ##(out, err, code) = exec_cmd(["ls",  self.config.get("archive", "root")])
-        out = self.sh(["ls",  self.config.get("archive", "root")])
-        ## FIXME: use output formatter for stuff like this
-        if out:
-            print "\n".join(self._filtered_ls(out.splitlines()))
+        self._ls("archive", "root")
 
     @controller.expose(help="List runinfo contents")
     def runinfo(self):

@@ -51,6 +51,13 @@ class AbstractBaseController(controller.CementBaseController):
             return self.reignore.match(line) == None
         return filter(ignore, out)
 
+    def _ls(self, section, label):
+        """List contents of path in config section label"""
+        assert self.config.get(section, label), "no config section {} with label {}".format(section, label)
+        out = self.sh(["ls",  self.config.get(section, label)])
+        if out:
+            print "\n".join(self._filtered_ls(out.splitlines()))
+
     def _not_implemented(self, msg=None):
         print "FIXME: Not implemented yet"
         if msg != None:
