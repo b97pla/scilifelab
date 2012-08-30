@@ -98,17 +98,16 @@ class ProjectController(AbstractBaseController):
 
     ## utility functions
     def _assert_project(self, msg="No project defined: please supply a valid project name"):
-        if self.pargs.projectid != "":
-            assert os.path.exists(os.path.join(self.config.get("project", "root"), self.pargs.projectid)), "no project directory %s"  % self.pargs.projectid
+        assert os.path.exists(os.path.join(self.config.get("project", "root"), self.pargs.projectid)), "no project directory %s"  % self.pargs.projectid
         if self.pargs.projectid=="":
-            self.log.info(msg)
             self.log.warn(msg)
 
     def _flowcells(self):
         self._meta.flowcelldir = os.path.join(self.config.get("project", "root"), self.pargs.projectid, "nobackup", "data")
         if not os.path.exists(self._meta.flowcelldir):
               self._meta.flowcelldir = os.path.join(self.config.get("project", "root"), self.pargs.projectid,"data")
-        print self._meta.flowcelldir
+        if not os.path.exists(self._meta.flowcelldir):
+            return []
         files = os.listdir(self._meta.flowcelldir)
         return files
 
@@ -143,7 +142,7 @@ class ProjectController(AbstractBaseController):
         if not self.query_yes_no("Going to compress %s files. Are you sure you want to continue?" % len(flist)):
             sys.exit()
         for f in flist:
-            print "compressing %s" %f
+            self.log.info("compressing {}".format(f))
             self.drmaa(["gzip",  "-v",  "%s" % f], "compress")
 
     ## du
@@ -159,7 +158,8 @@ class ProjectController(AbstractBaseController):
     @controller.expose(help="Deliver project data")
     def deliver(self):
         self._assert_project()
-        ## FIXME: list a flowcell and deliver from there
         if not self.pargs.flowcellid:
-            self.log.info("No flowcellid provided. Please provide a flowcellid from which to deliver. Available options are:\n\t{}".format("\n\t".join(self._flowcells())))
+            self.log.warn("No flowcellid provided. Please provide a flowcellid from which to deliver. Available options are:\n\t{}".format("\n\t".join(self._flowcells())))
+            return
+        
 
