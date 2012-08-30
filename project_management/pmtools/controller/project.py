@@ -98,16 +98,11 @@ class ProjectController(AbstractBaseController):
 
     ## utility functions
     def _assert_project(self, msg="No project defined: please supply a valid project name"):
-        assert os.path.exists(os.path.join(self.config.get("project", "root"), self.pargs.projectid)), "no project directory %s"  % self.pargs.projectid
+        if self.pargs.projectid != "":
+            assert os.path.exists(os.path.join(self.config.get("project", "root"), self.pargs.projectid)), "no project directory %s"  % self.pargs.projectid
         if self.pargs.projectid=="":
-            print self.log._meta.namespace
-            print "in assert"
-
-            print dir(self.log.app)
             self.log.info(msg)
             self.log.warn(msg)
-            sys.exit()
-            sys.exit()
 
     def _flowcells(self):
         self._meta.flowcelldir = os.path.join(self.config.get("project", "root"), self.pargs.projectid, "nobackup", "data")

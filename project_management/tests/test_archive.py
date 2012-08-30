@@ -26,3 +26,24 @@ class PmArchiveTest(test.CementTestCase):
         app.setup()
         app.run()
         app.close()
+
+    def test_3_runinfo_default(self):
+        app = self.make_app(argv=['archive', 'runinfo'])
+        handler.register(ArchiveController)
+        app.setup()
+        app.run()
+        app.close()
+
+    def test_4_runinfo(self):
+        app = self.make_app(argv=['archive', 'runinfo', '120829_SN0001_0001_AA001AAAXX'])
+        handler.register(ArchiveController)
+        app.setup()
+        app.run()
+        app.close()
+
+    def test_5_runinfo_tab(self):
+        app = self.make_app(argv=['archive', 'runinfo', '120829_SN0001_0001_AA001AAAXX', '-t'])
+        handler.register(ArchiveController)
+        app.setup()
+        app.run()
+        app.close()
