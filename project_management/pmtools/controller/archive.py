@@ -13,7 +13,7 @@ import yaml
 
 from cement.core import controller
 from pmtools import AbstractBaseController
-from pmtools.lib.ls import runinfo_to_tab, runinfo_dump, runinfo_projects
+from pmtools.lib.runinfo import runinfo_to_tab, runinfo_dump, runinfo_projects
 
 ## Main archive controller
 class ArchiveController(AbstractBaseController):
