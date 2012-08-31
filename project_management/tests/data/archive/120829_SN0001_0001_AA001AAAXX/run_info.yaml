@@ -46,3 +46,33 @@
     name: P1_107_index7
     sample_prj: J.Doe_00_01
     sequence: CAGATC
+- analysis: Align_illumina
+  description: Lane 2, J.Doe_00_02
+  flowcell_id: A001AAAXX
+  genome_build: unknown
+  lane: '2'
+  multiplex:
+  - barcode_id: 5
+    barcode_type: SampleSheet
+    genome_build: unknown
+    name: P2_101_index19a
+    sample_prj: J.Doe_00_02
+    sequence: ATCACG
+  - barcode_id: 7
+    barcode_type: SampleSheet
+    genome_build: unknown
+    name: P2_102_index12a
+    sample_prj: J.Doe_00_02
+    sequence: CGATGT
+  - barcode_id: 17
+    barcode_type: SampleSheet
+    genome_build: unknown
+    name: P2_103_index3a
+    sample_prj: J.Doe_00_02
+    sequence: TTAGGC
+  - barcode_id: 19
+    barcode_type: SampleSheet
+    genome_build: unknown
+    name: P2_104_index4a
+    sample_prj: J.Doe_00_02
+    sequence: TGACCA

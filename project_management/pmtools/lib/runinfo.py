@@ -5,13 +5,13 @@ runinfo file utilities
 import os
 import sys
 import yaml
-
+import csv
 
 def runinfo_to_tab(runinfo_yaml):
     """Convert yaml to tabular format"""
     return _yaml_to_tab(runinfo_yaml)
 
-def runinfo_dump(runinfo_tab, fh=sys.stdout):
+def runinfo_tab_dump(runinfo_tab, fh=sys.stdout):
     """Dump runinfo tabular information"""
     w=csv.writer(fh, delimiter="\t")
     w.writerows(runinfo_tab)

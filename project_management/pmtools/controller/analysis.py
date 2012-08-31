@@ -1,5 +1,6 @@
-"""
-Pm analysis module
+"""Pm analysis module"""
+
+__doc__ = """Pm analysis module
 
 Perform operations on analysis directory. 
 
@@ -18,10 +19,13 @@ from pmtools.lib.runinfo import get_runinfo, subset_runinfo_by_project
 
 ## Auxiliary functions
 def get_files(runinfo_tab, type="fastq", project=None, lane=None):
-    """Get files for an analysis"""
+    """Get files from an analysis"""
     i = subset_runinfo_by_project(runinfo_tab, project)
     return i
 
+def get_regexp_files():
+    """Get files based on a regular expression in an archive folder"""
+    pass
 
 ## Main analysis controller
 class AnalysisController(AbstractBaseController):
@@ -60,13 +64,8 @@ class AnalysisController(AbstractBaseController):
 
     @controller.expose(help="Calculate hs metrics for samples")
     def hs_metrics(self):
-        if not self.pargs.flowcell:
-            self.log.warn("No flowcell information provided")
+        if not self._check_pargs(["flowcell", "project"]):
             return
-        if not self.pargs.project:
-            self.log.warn("No project provided")
-            return
-
         self.log.info("hs_metrics: This is a temporary solution for calculating hs metrics for samples using picard tools")
         ## Get runinfo
         if os.path.exists(os.path.join(self.config.get("archive", "root"), self.pargs.flowcell, "run_info.yaml")):

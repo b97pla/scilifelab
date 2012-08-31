@@ -11,9 +11,8 @@ import textwrap
 import subprocess
 from mako.template import Template
 
-from cement.core import foundation, controller, handler, backend
+from cement.core import foundation, controller, handler, backend, output
 from cement.utils.shell import *
-
 
 ## I personally don't like the default help formatting output from
 ## argparse which I think is difficult to read
@@ -55,16 +54,24 @@ class AbstractBaseController(controller.CementBaseController):
         assert self.config.get(section, label), "no config section {} with label {}".format(section, label)
         out = self.sh(["ls",  self.config.get(section, label)])
         if out:
-            print "\n".join(self._filtered_ls(out.splitlines()))
+            self.app._output_data["stdout"].append(out)
 
     def _not_implemented(self, msg=None):
-        print "FIXME: Not implemented yet"
+        self.log.warn("FIXME: Not implemented yet")
         if msg != None:
-            print msg
+            self.log.warn(msg)
 
     def _obsolete(self, msg):
         self.log.warn("This function is obsolete.")
         self.log.warn(msg)
+
+    def _check_pargs(self, pargs, msg=None):
+        """Check that list of pargs are present"""
+        for p in pargs:
+            if not self.pargs.__getattribute__(p):
+                self.log.warn("Required argument '{}' lacking".format(p))
+                return False
+        return True
 
     ## yes or no: http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input
     def query_yes_no(self, question, default="yes"):
@@ -76,6 +83,10 @@ class AbstractBaseController(controller.CementBaseController):
         an answer is required of the user).
         
         The "answer" return value is one of "yes" or "no".
+
+        :param: question
+        :param: default
+        :returns: yes or no
         """
         valid = {"yes":True,   "y":True,  "ye":True,
                  "no":False,     "n":False}
@@ -114,22 +125,33 @@ class AbstractBaseController(controller.CementBaseController):
         return self._dry("Make directory %s" % dname, runpipe)
 
     ## Config helpers - not used?
-    def get_dir(self, section, label):
-        assert self.config.get(section, label), "no section %s with label %s in config file; please define accordingly" %(section, label)
-        d = self.config.get(section,label)
-        if not(os.path.exists(d)):
-            self.log.warn("no such path %s" % d)
-            sys.exit()
-        return d
+    # def get_dir(self, section, label):
+    #     assert self.config.get(section, label), "no section %s with label %s in config file; please define accordingly" %(section, label)
+    #     d = self.config.get(section,label)
+    #     if not(os.path.exists(d)):
+    #         self.log.warn("no such path %s" % d)
+    #         sys.exit()
+    #     return d
 
     ## Taken from paver.easy
     ## FIXME: add time stamp (better: make DRY_RUN a log level that only prints to console, for instance by using the interface ILog)
     def _dry(self, message, func, *args, **kw):
         if self.pargs.dry_run:
             print >> sys.stderr, "(DRY_RUN): " + message
+            self.app._output_data["stderr"].append("(DRY_RUN): " + message)
             return
         self.log.info(message)
         return func(*args, **kw)
+
+    def exec_cmd(self, cmd_args, capture=True, ignore_error=False, **kw):
+        """Execute a command via drmaa, sbatch, or shell"""
+        if self.pargs.drmaa:
+            exec_fun = self.drmaa
+        elif self.pargs.sbatch:
+            exec_fun = self.sbatch
+        else:
+            exec_fun = self.sh
+        exec_fun(cmd_args, capture, ignore_error, kw)
 
     ## Implement paver-like dry code
     ## NOTE: this is copied from paver.easy, with the slight modification that cmd_args is passed (a list)
@@ -151,6 +173,8 @@ class AbstractBaseController(controller.CementBaseController):
                 return p_stdout
         return self._dry(command, runpipe)
 
+    def sbatch(self, cmd_args, capture=True, ignore_error=False, cwd=None, **kw):
+        pass
     # def sbatch(self, cmd_args, jobname, partition="core"):
     #     command = " ".join(cmd_args)
     #     kw = dict(
@@ -168,7 +192,7 @@ class AbstractBaseController(controller.CementBaseController):
     #     def runpipe():
     #         pass
 
-    def drmaa(self, cmd_args, jobname, partition="core"):
+    def drmaa(self, cmd_args, capture=True, ignore_error=False, cwd=None, **kw):
         if not os.getenv("DRMAA_LIBRARY_PATH"):
             self.log.info("No environment variable DRMAA_LIBRARY_PATH: will not attempt to submit job via DRMAA")
             return
@@ -365,7 +389,29 @@ class PmController(controller.CementBaseController):
 ## PmApp
 ##############################
 class PmApp(foundation.CementApp):
+
     class Meta:
         label = "pm"
         base_controller = PmController
+    
+    def setup(self):
+        super(PmApp, self).setup()
+        self._output_data = dict(stdout=[], stderr=[])
 
+    def flush(self):
+        """Flush output contained in _output_data dictionary"""
+        if len(self._output_data["stdout"]) > 0:
+            print "\n".join(self._output_data["stdout"])
+        if self._output_data["stderr"]:
+            print >> sys.stderr, "\n".join(self._output_data["stderr"])
+            
+##############################
+## PmOutputHandler
+##############################
+class PmOutputHandler(output.CementOutputHandler):
+    class Meta:
+        label = 'pmout'
+
+    def render(self, data, template = None):
+        if len(data["stdout"]) > 0:
+            print "\n".join(self._output_data["stdout"])

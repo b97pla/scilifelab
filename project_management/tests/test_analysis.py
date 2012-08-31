@@ -19,4 +19,9 @@ class PmAnalysisTest(PmTest):
         self.app = self.make_app(argv = ['analysis','bcstats'])
         handler.register(AnalysisController)
         self._run_app()
+
+    def test_3_hsmetrics(self):
+        self.app = self.make_app(argv = ['analysis', 'hs_metrics'])
+        handler.register(AnalysisController)
+        self._run_app()
         
