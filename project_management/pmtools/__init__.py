@@ -25,7 +25,6 @@ class PmHelpFormatter(argparse.HelpFormatter):
 
 ##############################
 ## Abstract base controller -- for sharing arguments and functions with subclassing controllers
-## FIXME: make sbatch/drmaa abstract base controller with arguments shared over those functions that need access to slurm (e.g. compress)
 ##############################    
 class AbstractBaseController(controller.CementBaseController):
     """
@@ -64,8 +63,8 @@ class AbstractBaseController(controller.CementBaseController):
             print msg
 
     def _obsolete(self, msg):
-        self.log.info("This function is obsolete.")
-        self.log.info(msg)
+        self.log.warn("This function is obsolete.")
+        self.log.warn(msg)
 
     ## yes or no: http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input
     def query_yes_no(self, question, default="yes"):
@@ -169,9 +168,9 @@ class AbstractBaseController(controller.CementBaseController):
     #     def runpipe():
     #         pass
 
-    ## FIXME: add sbatch function and templates in case drmaa fails?
     def drmaa(self, cmd_args, jobname, partition="core"):
         if not os.getenv("DRMAA_LIBRARY_PATH"):
+            self.log.info("No environment variable DRMAA_LIBRARY_PATH: will not attempt to submit job via DRMAA")
             return
         else:
             import drmaa
@@ -307,8 +306,10 @@ commands:
             txt = self._meta.description
         return textwrap.dedent(txt)        
 
+##############################
 ## Main controller for all subsubcommands
 ## Currently does nothing
+##############################
 class SubController(controller.CementBaseController):
     class Meta:
         pass
@@ -359,11 +360,6 @@ class PmController(controller.CementBaseController):
         """
         else:
             print __doc__
-
-        
-
-
-
 
 ##############################
 ## PmApp
