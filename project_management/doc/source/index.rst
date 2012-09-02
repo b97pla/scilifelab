@@ -3,20 +3,26 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to pmtools's documentation!
+Project management tools
 ===================================
 
-Contents:
+pmtools is a client application for performing common project
+management tasks of next-generation sequencing data. It is primarily
+intented for use at `Science for Life Laboratory.
+<http://www.scilifelab.se>`_ The interface is based on `Cement.
+<http://builtoncement.com/2.1/>`_ 
+
+Features include:
+
+ * Submission of jobs via DRMAA
+ * Compression of project files
+
+
+Documentation
+-------------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
+   api/index
+   doc/index

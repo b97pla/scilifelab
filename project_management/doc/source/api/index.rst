@@ -18,4 +18,5 @@ Pmtools Lib Modules
    :maxdepth: 1
    
    lib/config
+   lib/runinfo
    
