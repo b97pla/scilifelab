@@ -13,6 +13,9 @@ config_defaults['config']['ignore'] = ["slurm*", "tmp*"]
 config_defaults['log']['level']  = "INFO"
 config_defaults['log']['file']  = os.path.join(os.path.abspath(os.getcwd()), "data", "log", "pm.log")
 
+## Function for generating (touching) 
+
+
 ## Output handler for tests
 class PmTestOutputHandler(output.CementOutputHandler):
     class Meta:

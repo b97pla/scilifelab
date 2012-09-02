@@ -1,16 +1,7 @@
-"""Pm analysis module"""
-
-usage = """Pm analysis module
-
-Perform operations on analysis directory. 
-
-Commands:
-       ls            list contents
-       runinfo       print runinfo contents
-       bcstats       print information about barcode stats
-       status        print status about an analysis
-       hs_metrics    calculate hs metrics for samples
 """
+Pm analysis module
+"""
+
 import sys
 import os
 from cement.core import controller
@@ -44,7 +35,7 @@ class AnalysisController(AbstractBaseController):
 
     @controller.expose(hide=True)
     def default(self):
-        print usage
+        print self._help_text
 
     @controller.expose(help="List contents")
     def ls(self):
@@ -62,17 +53,17 @@ class AnalysisController(AbstractBaseController):
     def status(self):
         self._not_implemented()
 
-    @controller.expose(help="Calculate hs metrics for samples")
-    def hs_metrics(self):
-        if not self._check_pargs(["flowcell", "project"]):
-            return
-        self.log.info("hs_metrics: This is a temporary solution for calculating hs metrics for samples using picard tools")
-        ## Get runinfo
-        if os.path.exists(os.path.join(self.config.get("archive", "root"), self.pargs.flowcell, "run_info.yaml")):
-            runinfo_tab = get_runinfo(os.path.join(self.config.get("archive", "root"), self.pargs.flowcell, "run_info.yaml"))
-        elif os.path.exists(os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell, "run_info.yaml")):
-            runinfo_tab = get_runinfo(os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell, "run_info.yaml"))
-        else:
-            self.log.warn("No run information available")
-            return
-        print get_files(runinfo_tab, project=self.pargs.project)
+    #@controller.expose(help="Calculate hs metrics for samples")
+    # def hs_metrics(self):
+    #     if not self._check_pargs(["flowcell", "project"]):
+    #         return
+    #     self.log.info("hs_metrics: This is a temporary solution for calculating hs metrics for samples using picard tools")
+    #     ## Get runinfo
+    #     if os.path.exists(os.path.join(self.config.get("archive", "root"), self.pargs.flowcell, "run_info.yaml")):
+    #         runinfo_tab = get_runinfo(os.path.join(self.config.get("archive", "root"), self.pargs.flowcell, "run_info.yaml"))
+    #     elif os.path.exists(os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell, "run_info.yaml")):
+    #         runinfo_tab = get_runinfo(os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell, "run_info.yaml"))
+    #     else:
+    #         self.log.warn("No run information available")
+    #         return
+    #     print get_files(runinfo_tab, project=self.pargs.project)

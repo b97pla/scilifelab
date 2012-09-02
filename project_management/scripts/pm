@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import sys
 from cement.core import foundation, hook, handler
 import argparse
 from pmtools.lib.config import config_defaults
@@ -9,9 +10,16 @@ from pmtools.controller.archive import ArchiveController
 from pmtools.controller.analysis import AnalysisController
 from pmtools.controller.deliver import DeliveryController
 
-CONFIGFILE=os.path.join(os.getenv("HOME"), ".pm.conf")
+CONFIGFILE=os.path.join(os.getenv("HOME"), ".pm", "pm.conf")
 
-app = PmApp('pm', base_controller=PmController, config_defaults = config_defaults, extensions = ['json'], output_handler=PmOutputHandler)
+app = PmApp('pm', 
+            base_controller=PmController, 
+            config_defaults = config_defaults,
+            output_handler=PmOutputHandler, 
+            config_files=[CONFIGFILE], 
+            extensions=['json',
+                        'pmtools.ext.ext_hs_metrics']
+            )
 
 try:
     handler.register(ProjectController)
@@ -19,12 +27,12 @@ try:
     handler.register(AnalysisController)
     handler.register(DeliveryController)
     app.setup()
-        
     try:
         app.config.parse_file(CONFIGFILE)
     except:
         app.log.warn("No config file %s; please create and set relevant config sections" % CONFIGFILE)
         sys.exit()
+
     app.run()
     app.render(app._output_data)
 

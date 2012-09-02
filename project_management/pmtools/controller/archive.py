@@ -1,12 +1,4 @@
 """Pm archive module"""
-usage = """Pm archive module
-
-Perform operations on archive directory. 
-
-Commands:
-       ls       list contents
-       runinfo  print runinfo contents
-"""
 
 import os
 import yaml
@@ -36,13 +28,7 @@ class ArchiveController(AbstractBaseController):
 
     @controller.expose(hide=True)
     def default(self):
-        """
-        Default function.
-
-        :param: None
-        :returns: None
-        """
-        print usage
+        print self._help_text
 
     @controller.expose(help="List contents")
     def ls(self):

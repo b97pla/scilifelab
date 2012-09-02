@@ -1,6 +1,14 @@
 API Reference
 =============
 
+Pmtools
+-------
+
+.. toctree::
+   :maxdepth: 1
+
+   pmtools
+
 Pmtools Controller Modules
 --------------------------
 

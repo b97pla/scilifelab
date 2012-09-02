@@ -1,18 +1,29 @@
 """
 Pm Project module
+=================
 
 Provide functionality for project management.
 
 Commands:
-       ls          list contents
-       init        initialize a project folder
-       add         add boilerplate code
-       compress    compress files
-       clean       remove files
-       du          calculate disk usage
-       deliver     deliver project data to customer
+^^^^^^^^^
+      
+       ls
+         list contents
+       init
+         initialize a project folder
+       add
+         add boilerplate code
+       compress
+         compress files
+       clean      
+         remove files
+       du          
+         calculate disk usage
+       deliver     
+         deliver project data to customer
 
 Synopsis:
+---------
 
 The following command creates a directory in the project root
 named j_doe_00_00. The '-g' flag adds a git directory to the
@@ -27,6 +38,9 @@ FIXME: Boilerplate code can be added to the project by running
 
 The boilerplate code includes makefiles, sbatch templates, and documentation
 templates.
+
+Code
+====
 """
 import os
 import sys
@@ -62,7 +76,7 @@ class ProjectController(AbstractBaseController):
     ## default
     @controller.expose(hide=True)
     def default(self):
-        print __doc__
+        print self._help_text
 
     ## ls
     @controller.expose(help="List project folder")

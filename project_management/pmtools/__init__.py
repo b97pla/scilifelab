@@ -1,18 +1,21 @@
 """
 Pipeline Management Tools
+=========================
+
+Commands
+---------
+
+  analysis                
+    Manage analysis
+  archive                  
+    Manage archive
+  deliver                  
+    Deliver data
+  project                  
+    Manage projects
+
 """
 __import__('pkg_resources').declare_namespace(__name__)
-
-usage = """
-Pipeline Management Tools
-
-commands:
-
-  analysis                 Manage analysis
-  archive                  Manage archive
-  deliver                  Deliver data
-  project                  Manage projects
-"""
 
 import os
 import sys
@@ -47,6 +50,7 @@ class AbstractBaseController(controller.CementBaseController):
     def _setup(self, base_app):
         self._meta.arguments.append( (['-n', '--dry_run'], dict(help="dry_run - don't actually do anything", action="store_true", default=False)) )
         super(AbstractBaseController, self)._setup(base_app)
+
         ## Sometimes read as string, sometimes as list...
         ignore = self.config.get("config", "ignore")
         if type(ignore) == str:
@@ -63,7 +67,8 @@ class AbstractBaseController(controller.CementBaseController):
 
     def _ls(self, section, label):
         """List contents of path in config section label"""
-        assert self.config.get(section, label), "no config section {} with label {}".format(section, label)
+        ##assert self.config.get(section, label), "no config section {} with label {}".format(section, label)
+        self._assert_config(section, label)
         out = self.sh(["ls",  self.config.get(section, label)])
         if out:
             self.app._output_data["stdout"].write(out.rstrip())
@@ -84,6 +89,22 @@ class AbstractBaseController(controller.CementBaseController):
                 self.log.warn("Required argument '{}' lacking".format(p))
                 return False
         return True
+
+    def _assert_config(self, section, label):
+        """
+        Assert existence of config label. If not present, require
+        that the section/label be defined in configuration file.
+        """
+        if not self.config.has_section(section):
+            self.log.error("no such section '{}'; please define in configuration file".format(section))
+            sys.exit()
+        config_dict = self.config.get_section_dict(section)
+        if not config_dict.has_key(label):
+            self.log.error("no section '{}' with label '{}' in config file; please define accordingly".format(section, label))
+            sys.exit()
+        elif config_dict[label] is None:
+            self.log.error("config section '{}' with label '{}' set to 'None'; please define accordingly".format(section, label))
+            sys.exit()
 
     ## yes or no: http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input
     def query_yes_no(self, question, default="yes"):
@@ -375,7 +396,7 @@ class PmController(controller.CementBaseController):
         if self.app.pargs.config:
             print "FIXME: show config"
         elif self.app.pargs.config_example:
-            print """Configuration example: save as ~/.pm.conf and modify at will.
+            print """Configuration example: save as ~/.pm/pm.conf and modify at will.
 
     [config]
     ignore = slurm*, tmp*
@@ -395,7 +416,7 @@ class PmController(controller.CementBaseController):
     repos = /path/to/repos
         """
         else:
-            print usage
+            print self._help_text
 
 ##############################
 ## PmApp
@@ -405,7 +426,7 @@ class PmApp(foundation.CementApp):
     class Meta:
         label = "pm"
         base_controller = PmController
-    
+
     def setup(self):
         super(PmApp, self).setup()
         self._output_data = dict(stdout=StringIO(), stderr=StringIO())
