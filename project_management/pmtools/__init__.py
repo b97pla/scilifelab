@@ -24,10 +24,8 @@ import argparse
 import textwrap
 import subprocess
 from cStringIO import StringIO
-from mako.template import Template
 
 from cement.core import foundation, controller, handler, backend, output
-from cement.utils.shell import *
 
 from pmtools.core import command
 from pmtools.core.help import PmHelpFormatter
@@ -65,10 +63,8 @@ class AbstractBaseController(controller.CementBaseController):
 
     def _ls(self, section, label):
         """List contents of path in config section label"""
-        ##assert self.config.get(section, label), "no config section {} with label {}".format(section, label)
         self._assert_config(section, label)
         out = self.app.cmd.command(["ls", self.config.get(section, label)])
-        #out = self.sh(["ls",  self.config.get(section, label)])
         if out:
             self.app._output_data["stdout"].write(out.rstrip())
 
@@ -128,64 +124,6 @@ class AbstractBaseController(controller.CementBaseController):
     #         sys.exit()
     #     return d
 
-    ## Taken from paver.easy
-    ## FIXME: add time stamp (better: make DRY_RUN a log level that only prints to console, for instance by using the interface ILog)
-    def _dry(self, message, func, *args, **kw):
-        if self.pargs.dry_run:
-            print >> sys.stderr, "(DRY_RUN): " + message
-            self.app._output_data["stderr"].write("(DRY_RUN): " + message)
-            return
-        self.log.info(message)
-        return func(*args, **kw)
-
-    def exec_cmd(self, cmd_args, capture=True, ignore_error=False, **kw):
-        """Execute a command via drmaa, sbatch, or shell"""
-        if self.pargs.drmaa:
-            exec_fun = self.drmaa
-        elif self.pargs.sbatch:
-            exec_fun = self.sbatch
-        else:
-            exec_fun = self.sh
-        exec_fun(cmd_args, capture, ignore_error, kw)
-
-    ## Implement paver-like dry code
-    ## NOTE: this is copied from paver.easy, with the slight modification that cmd_args is passed (a list)
-    ## FIXME: accept both list (cmd_args) and command (as in paver)? 
-    def sh(self, cmd_args, capture=True, ignore_error=False, cwd=None):
-        command = " ".join(cmd_args)
-        def runpipe():
-            kwargs = { 'shell': True, 'cwd': cwd}
-            if capture:
-                kwargs['stderr'] = subprocess.STDOUT
-                kwargs['stdout'] = subprocess.PIPE
-            p = subprocess.Popen(command, **kwargs)
-            p_stdout = p.communicate()[0]
-            if p.returncode and not ignore_error:
-                if capture:
-                    error(p_stdout)
-                raise Exception("Subprocess return code: %d" % p.returncode)
-            if capture:
-                return p_stdout
-        return self._dry(command, runpipe)
-
-    def sbatch(self, cmd_args, capture=True, ignore_error=False, cwd=None, **kw):
-        self._not_implemented("Implement sbatch script processing")
-    # def sbatch(self, cmd_args, jobname, partition="core"):
-    #     command = " ".join(cmd_args)
-    #     kw = dict(
-    #         mail_type = "ALL",
-    #         header = "",
-    #         footer = "",
-    #         constraint = "",
-    #         partition = partition,
-    #         jobname = jobname,
-    #         mail_user = "per.unneberg@scilifelab.se",
-    #         cores = 1,
-    #         time = 
-    #         )
-
-    #     def runpipe():
-    #         pass
         
     # Copied from cement
     # Modification: - PmHelpFormatter

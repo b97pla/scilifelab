@@ -79,6 +79,8 @@ class CommandHandler(handler.CementBaseHandler):
     def __init__(self, *args, **kw):
         super(CommandHandler, self).__init__(*args, **kw)
 
+    ## Taken from paver.easy
+    ## FIXME: add time stamp (better: make DRY_RUN a log level that only prints to console, for instance by using the interface ILog)
     def dry(self, message, func, *args, **kw):
         if self.app.pargs.dry_run:
             print >> sys.stderr, "(DRY_RUN): " + message
