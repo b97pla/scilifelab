@@ -21,7 +21,7 @@ class PmTestOutputHandler(output.CementOutputHandler):
     def render(self, data, template = None):
         for key in data:
             if data[key]:
-                print "{} => {}".format(key, data[key])
+                print "{} => {}".format(key, data[key].getvalue())
 
 ## Testing app
 class PmTestApp(PmApp):
