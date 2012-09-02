@@ -186,45 +186,6 @@ class AbstractBaseController(controller.CementBaseController):
 
     #     def runpipe():
     #         pass
-
-    def drmaa(self, cmd_args, capture=True, ignore_error=False, cwd=None, **kw):
-        if not os.getenv("DRMAA_LIBRARY_PATH"):
-            self.log.info("No environment variable DRMAA_LIBRARY_PATH: will not attempt to submit job via DRMAA")
-            return
-        else:
-            import drmaa
-
-        if self.pargs.node:
-            partition = "node"
-        if not self.pargs.uppmax_project:
-            self.log.warn("no uppmax id provided; cannot proceed with drmaa command")
-            sys.exit()
-        command = " ".join(cmd_args)
-        def runpipe():
-            print "in runpipe"
-            s = drmaa.Session()
-            s.initialize()
-            print s
-            jt = s.createJobTemplate()
-            jt.remoteCommand = cmd_args[0]
-            jt.args = cmd_args[1:]
-
-            # # TODO: job name is always (null), must fix slurm_drmaa C library and its
-            # # custom parsing (substitute "slurmdrmaa_parse_native"
-            # # for GNU GetOpt on slurm_drmaa/util.c)
-            jt.job_name = jobname
-            jt.nativeSpecification = "-A a2010002 -p devel"# % (self.pargs.uppmax_project, partition)#, str(self.pargs.sbatch_time))
-
-            print jt
-            jobid = s.runJob(jt)
-            print jobid
-            self.log.info('Your job has been submitted with id ' + jobid)
-    
-            s.deleteJobTemplate(jt)
-            s.exit()
-            print "Exiting runpipe"
-        return self._dry(command, runpipe)
-        ##return self._not_implemented("Implement drmaa code as soon as drmaa library fixed!\nSee AbstractBaseController.drmaa function")
         
     # Copied from cement
     # Modification: - PmHelpFormatter
@@ -401,7 +362,7 @@ class PmApp(foundation.CementApp):
 
     def _setup_cmd_handler(self):
         LOG.debug("setting up {}.command handler".format(self._meta.label))
-        self.cmd = self._resolve_handler('cmd', self._meta.cmd_handler)
+        self.cmd = self._resolve_handler('command', self._meta.cmd_handler)
 
     def flush(self):
         """Flush output contained in _output_data dictionary"""

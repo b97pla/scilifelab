@@ -1,6 +1,4 @@
-"""
-shell extension
-"""
+"""Shell extension"""
 
 import subprocess
 
@@ -27,7 +25,6 @@ class ShCommandHandler(command.CommandHandler):
 
     def command(self, cmd_args, capture=True, ignore_error=False, cwd=None, **kw):
         cmd = " ".join(cmd_args)
-        print dir(self.app.pargs)
         def runpipe():
             kwargs = { 'shell': True, 'cwd': cwd}
             if capture:

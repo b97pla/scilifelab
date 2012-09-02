@@ -1,6 +1,7 @@
 """
 hs_metrics extension
 """
+import os
 from cement.core import backend, controller, handler
 from pmtools import AbstractBaseController
 
