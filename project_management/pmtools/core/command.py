@@ -83,8 +83,8 @@ class CommandHandler(handler.CementBaseHandler):
     ## FIXME: add time stamp (better: make DRY_RUN a log level that only prints to console, for instance by using the interface ILog)
     def dry(self, message, func, *args, **kw):
         if self.app.pargs.dry_run:
-            print >> sys.stderr, "(DRY_RUN): " + message
-            self.app._output_data["stderr"].write("(DRY_RUN): " + message)
+            ##print >> sys.stderr, "(DRY_RUN): " + message + "\n"
+            self.app._output_data["stderr"].write("(DRY_RUN): " + message + "\n")
             return
         self.app.log.info(message)
         return func(*args, **kw)

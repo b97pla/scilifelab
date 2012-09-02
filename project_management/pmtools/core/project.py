@@ -153,12 +153,11 @@ class ProjectController(AbstractBaseController):
         flist = []
         for root, dirs, files in os.walk(os.path.join(self.config.get("project", "root"), self.pargs.projectid)):
             flist = flist + [os.path.join(root, x) for x in filter(compress_filter, files)]
-        ##self.log.info("Going to compress %s files. Are you sure you want to continue?" % len(flist))
         if not query_yes_no("Going to compress %s files. Are you sure you want to continue?" % len(flist)):
             sys.exit()
         for f in flist:
             self.log.info("compressing {}".format(f))
-            self.drmaa(["gzip",  "-v",  "%s" % f], "compress")
+            self.app.cmd.command(["gzip",  "-v",  "%s" % f], "compress")
 
     ## du
     @controller.expose(help="Calculate disk usage in intermediate and data directories")

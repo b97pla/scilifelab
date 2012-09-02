@@ -19,6 +19,7 @@ app = PmApp('pm',
             config_files=[CONFIGFILE], 
             extensions=['json',
                         'pmtools.ext.ext_distributed',                        
+                        'pmtools.ext.ext_bcbb',                        
                         'pmtools.ext.ext_hs_metrics']
             )
 

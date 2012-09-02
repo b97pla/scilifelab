@@ -128,101 +128,101 @@ class AbstractBaseController(controller.CementBaseController):
     # Copied from cement
     # Modification: - PmHelpFormatter
     #               - only relevant options should be listed for any given command 
-    def _parse_args(self):
-        """
-        Parse command line arguments and determine a command to dispatch.
-        """
-        # chop off a command argument if it matches an exposed command
-        if len(self.app.argv) > 0 and not self.app.argv[0].startswith('-'):
-            # translate dashes back to underscores
-            cmd = re.sub('-', '_', self.app.argv[0])
-            if cmd in self.exposed:
-                visible = {cmd : self.visible[cmd]}
-                self.visible = visible
-                self.command = cmd
-                self.app.argv.pop(0)
-            else:
-                for label in self.exposed:
-                    func = self.exposed[label]
-                    if self.app.argv[0] in func['aliases']:
-                        self.command = func['label']
-                        self.app.argv.pop(0)
-                        break
+#     def _parse_args(self):
+#         """
+#         Parse command line arguments and determine a command to dispatch.
+#         """
+#         # chop off a command argument if it matches an exposed command
+#         if len(self.app.argv) > 0 and not self.app.argv[0].startswith('-'):
+#             # translate dashes back to underscores
+#             cmd = re.sub('-', '_', self.app.argv[0])
+#             if cmd in self.exposed:
+#                 visible = {cmd : self.visible[cmd]}
+#                 self.visible = visible
+#                 self.command = cmd
+#                 self.app.argv.pop(0)
+#             else:
+#                 for label in self.exposed:
+#                     func = self.exposed[label]
+#                     if self.app.argv[0] in func['aliases']:
+#                         self.command = func['label']
+#                         self.app.argv.pop(0)
+#                         break
                         
-        self.app.args.description = self._help_text
-        self.app.args.usage = self._usage_text
-        self.app.args.formatter_class=PmHelpFormatter
+#         self.app.args.description = self._help_text
+#         self.app.args.usage = self._usage_text
+#         self.app.args.formatter_class=PmHelpFormatter
 
-        self.app._parse_args()
-        self.pargs = self.app.pargs
+#         self.app._parse_args()
+#         self.pargs = self.app.pargs
 
-    @property
-    def _usage_text(self):
-        """
-        Returns the usage text displayed when '--help' is passed.
+#     @property
+#     def _usage_text(self):
+#         """
+#         Returns the usage text displayed when '--help' is passed.
         
-        """
-        if self == self.app._meta.base_controller:
-            txt = "%s <CMD> -opt1 --opt2=VAL [arg1] [arg2] ..." % \
-                self.app.args.prog
-        elif self.command != "default":
-            txt = "%s %s %s -opt1 --opt2=VAL [arg1] [arg2] ..." % \
-                (self.app.args.prog, self._meta.label, self.command)
-        else:
-            txt = "%s %s <CMD> -opt1 --opt2=VAL [arg1] [arg2] ..." % \
-                  (self.app.args.prog, self._meta.label)
-        return txt
+#         """
+#         if self == self.app._meta.base_controller:
+#             txt = "%s <CMD> -opt1 --opt2=VAL [arg1] [arg2] ..." % \
+#                 self.app.args.prog
+#         elif self.command != "default":
+#             txt = "%s %s %s -opt1 --opt2=VAL [arg1] [arg2] ..." % \
+#                 (self.app.args.prog, self._meta.label, self.command)
+#         else:
+#             txt = "%s %s <CMD> -opt1 --opt2=VAL [arg1] [arg2] ..." % \
+#                   (self.app.args.prog, self._meta.label)
+#         return txt
 
-    @property
-    def _help_text(self):
-        """
-        Returns the help text displayed when '--help' is passed.
+#     @property
+#     def _help_text(self):
+#         """
+#         Returns the help text displayed when '--help' is passed.
         
-        """
-        cmd_txt = ''
+#         """
+#         cmd_txt = ''
         
-        # hack it up to keep commands in alphabetical order
-        sorted_labels = []
+#         # hack it up to keep commands in alphabetical order
+#         sorted_labels = []
         
-        for label in list(self.visible.keys()):
-            old_label = label
-            label = re.sub('_', '-', label)
-            sorted_labels.append(label)
+#         for label in list(self.visible.keys()):
+#             old_label = label
+#             label = re.sub('_', '-', label)
+#             sorted_labels.append(label)
             
-            if label != old_label:
-                self.visible[label] = self.visible[old_label]
-                del self.visible[old_label]
-        sorted_labels.sort()
+#             if label != old_label:
+#                 self.visible[label] = self.visible[old_label]
+#                 del self.visible[old_label]
+#         sorted_labels.sort()
 
-        for label in sorted_labels:
-            func = self.visible[label]
-            if len(func['aliases']) > 0:
-                cmd_txt = cmd_txt + "  %s (aliases: %s)\n" % \
-                            (label, ', '.join(func['aliases']))
-            else:
-                cmd_txt = cmd_txt + "  %s\n" % label
+#         for label in sorted_labels:
+#             func = self.visible[label]
+#             if len(func['aliases']) > 0:
+#                 cmd_txt = cmd_txt + "  %s (aliases: %s)\n" % \
+#                             (label, ', '.join(func['aliases']))
+#             else:
+#                 cmd_txt = cmd_txt + "  %s\n" % label
             
-            if func['help']:
-                cmd_txt = cmd_txt + "    %s\n\n" % func['help']
-            else:
-                cmd_txt = cmd_txt + "\n"
-        if len(cmd_txt) > 0:
-            if self.command == "default":
-                txt = '''%s
+#             if func['help']:
+#                 cmd_txt = cmd_txt + "    %s\n\n" % func['help']
+#             else:
+#                 cmd_txt = cmd_txt + "\n"
+#         if len(cmd_txt) > 0:
+#             if self.command == "default":
+#                 txt = '''%s
                 
-commands:
+# commands:
                 
-%s
+# %s
 
 
-''' % (self._meta.description, cmd_txt)
-            else:
-                txt = '''
-%s
-''' % (cmd_txt)
-        else:
-            txt = self._meta.description
-        return textwrap.dedent(txt)        
+# ''' % (self._meta.description, cmd_txt)
+#             else:
+#                 txt = '''
+# %s
+# ''' % (cmd_txt)
+#         else:
+#             txt = self._meta.description
+#         return textwrap.dedent(txt)        
 
 ##############################
 ## Main controller for all subsubcommands
@@ -245,7 +245,6 @@ class PmController(controller.CementBaseController):
         arguments = [
             (['--config'], dict(help="print configuration", action="store_true")),
             (['--config-example'], dict(help="print configuration example", action="store_true")),
-            #(['-h','--help'], dict(help="print help", action="store_true")),
             ]
 
     def _setup(self, app_obj):

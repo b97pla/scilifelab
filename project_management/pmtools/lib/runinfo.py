@@ -10,8 +10,26 @@ import csv
 import glob
 from cStringIO import StringIO
 
-# class RunInfo():
-#     def 
+## FIXME: rewrite this hack
+def load_runinfo(config, flowcell):
+    if os.path.exists(os.path.join(config.get("archive", "root"), flowcell, "run_info.yaml")):
+        runinfo_tab = get_runinfo(os.path.join(config.get("archive", "root"), flowcell, "run_info.yaml"))
+    elif os.path.exists(os.path.join(config.get("analysis", "root"), flowcell, "run_info.yaml")):
+        runinfo_tab = get_runinfo(os.path.join(config.get("analysis", "root"), flowcell, "run_info.yaml"))
+    else:
+        self.log.warn("No run information available")
+        return None
+    return runinfo_tab
+
+def get_runinfo(path, tab=True):
+    """Get runinfo contents as tab for a given path."""
+    with open(path) as fh:
+        runinfo_yaml = yaml.load(fh)
+    if tab:
+        return _runinfo_to_tab(runinfo_yaml)
+    else:
+        return runinfo_yaml
+
 
 def _runinfo_to_tab(runinfo_yaml):
     """Convert yaml to tabular format"""
@@ -48,14 +66,6 @@ def _convert_barcode_id_to_name(multiplex, fc_name, fq):
     to_str   = "%s_%s.fastq" % (bcid2name[bcid.group(1)], bcid.group(2))
     return fq.replace(from_str, to_str)
 
-def get_runinfo(path, tab=False):
-    """Get runinfo contents as tab for a given path."""
-    with open(path) as fh:
-        runinfo_yaml = yaml.load(fh)
-    if tab:
-        return _runinfo_to_tab(runinfo_yaml)
-    else:
-        return runinfo_yaml
 
 def dump_runinfo(runinfo, tab=True):
     """Dump runinfo tabular information to output """
@@ -70,6 +80,15 @@ def dump_runinfo(runinfo, tab=True):
 def runinfo_projects(runinfo_tab):
     """List runinfo projects"""
     return list(set(_column(runinfo_tab, "sample_prj")))
+
+def runinfo_lanes(runinfo_tab):
+    """List runinfo lanes"""
+    return list(set(_column(runinfo_tab, "lane")))
+
+def runinfo_barcodes(runinfo_tab, lane):
+    """List runinfo barcodes for a lane"""
+    info = subset_runinfo(runinfo_tab, "lane", lane)
+    return list(set(_column(info, "barcode_id")))
 
 def subset_runinfo(runinfo_tab, column, query):
     """Get subset of runinfo by subsetting a header"""

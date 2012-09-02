@@ -33,7 +33,7 @@ class ShCommandHandler(command.CommandHandler):
             p_stdout = p.communicate()[0]
             if p.returncode and not ignore_error:
                 if capture:
-                    error(p_stdout)
+                    self.app.log.error(p_stdout)
                 raise Exception("Subprocess return code: %d" % p.returncode)
             if capture:
                 return p_stdout

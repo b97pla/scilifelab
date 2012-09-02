@@ -2,7 +2,7 @@
 import sys
 
 ## yes or no: http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input
-def query_yes_no(self, question, default="yes"):
+def query_yes_no(question, default="yes"):
     """Ask a yes/no question via raw_input() and return their answer.
     
     "question" is a string that is presented to the user.
