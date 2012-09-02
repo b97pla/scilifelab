@@ -137,7 +137,9 @@ for d in dirs_to_process:
         sys.exit(0)
 
     os.chdir(dirpath)
-    bcname = d + ".bc_metrics"
+    bcname = d + "_bc.metrics"
+    if not os.path.exists(bcname):
+	bcname = d + ".bc_metrics"
     #bcname = "bc.metrics"
     lane = dirpath[0]
     print "LANE ", lane
