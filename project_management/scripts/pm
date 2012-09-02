@@ -5,10 +5,10 @@ from cement.core import foundation, hook, handler
 import argparse
 from pmtools.lib.config import config_defaults
 from pmtools import PmController, PmApp, PmOutputHandler
-from pmtools.controller.project import ProjectController
-from pmtools.controller.archive import ArchiveController
-from pmtools.controller.analysis import AnalysisController
-from pmtools.controller.deliver import DeliveryController
+from pmtools.core.project import ProjectController
+from pmtools.core.archive import ArchiveController
+from pmtools.core.analysis import AnalysisController
+from pmtools.core.deliver import DeliveryController
 
 CONFIGFILE=os.path.join(os.getenv("HOME"), ".pm", "pm.conf")
 

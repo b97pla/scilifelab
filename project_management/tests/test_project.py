@@ -3,7 +3,7 @@ Test project subcontroller
 """
 from cement.core import handler
 from test_default import PmTest
-from pmtools.controller.project import ProjectController
+from pmtools.core.project import ProjectController
 
 class InitProjectTest(PmTest):
     OUTPUT_FILES = []

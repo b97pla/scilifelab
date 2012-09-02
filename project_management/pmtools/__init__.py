@@ -29,13 +29,11 @@ from mako.template import Template
 from cement.core import foundation, controller, handler, backend, output
 from cement.utils.shell import *
 
-## I personally don't like the default help formatting output from
-## argparse which I think is difficult to read
-## Currently identical to RawDescriptionHelpFormatter
-class PmHelpFormatter(argparse.HelpFormatter):
-    def _fill_text(self, text, width, indent):
-        return ' '.join([indent + line for line in text.splitlines(True)])
+from pmtools.core import command
+from pmtools.core.help import PmHelpFormatter
+from pmtools.ext import ext_shell
 
+LOG = backend.minimal_logger(__name__)    
 
 ##############################
 ## Abstract base controller -- for sharing arguments and functions with subclassing controllers
@@ -69,7 +67,8 @@ class AbstractBaseController(controller.CementBaseController):
         """List contents of path in config section label"""
         ##assert self.config.get(section, label), "no config section {} with label {}".format(section, label)
         self._assert_config(section, label)
-        out = self.sh(["ls",  self.config.get(section, label)])
+        out = self.app.cmd.command(["ls", self.config.get(section, label)])
+        #out = self.sh(["ls",  self.config.get(section, label)])
         if out:
             self.app._output_data["stdout"].write(out.rstrip())
 
@@ -105,43 +104,6 @@ class AbstractBaseController(controller.CementBaseController):
         elif config_dict[label] is None:
             self.log.error("config section '{}' with label '{}' set to 'None'; please define accordingly".format(section, label))
             sys.exit()
-
-    ## yes or no: http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input
-    def query_yes_no(self, question, default="yes"):
-        """Ask a yes/no question via raw_input() and return their answer.
-        
-        "question" is a string that is presented to the user.
-        "default" is the presumed answer if the user just hits <Enter>.
-        It must be "yes" (the default), "no" or None (meaning
-        an answer is required of the user).
-        
-        The "answer" return value is one of "yes" or "no".
-
-        :param: question
-        :param: default
-        :returns: yes or no
-        """
-        valid = {"yes":True,   "y":True,  "ye":True,
-                 "no":False,     "n":False}
-        if default == None:
-            prompt = " [y/n] "
-        elif default == "yes":
-            prompt = " [Y/n] "
-        elif default == "no":
-            prompt = " [y/N] "
-        else:
-            raise ValueError("invalid default answer: '%s'" % default)
-
-        while True:
-            sys.stdout.write(question + prompt)
-            choice = raw_input().lower()
-            if default is not None and choice == '':
-                return valid[default]
-            elif choice in valid:
-                return valid[choice]
-            else:
-                sys.stdout.write("Please respond with 'yes' or 'no' "\
-                                 "(or 'y' or 'n').\n")
 
     def safe_makedir(self, dname):
         """Make a directory if it doesn't exist"""
@@ -207,7 +169,7 @@ class AbstractBaseController(controller.CementBaseController):
         return self._dry(command, runpipe)
 
     def sbatch(self, cmd_args, capture=True, ignore_error=False, cwd=None, **kw):
-        pass
+        self._not_implemented("Implement sbatch script processing")
     # def sbatch(self, cmd_args, jobname, partition="core"):
     #     command = " ".join(cmd_args)
     #     kw = dict(
@@ -422,14 +384,24 @@ class PmController(controller.CementBaseController):
 ## PmApp
 ##############################
 class PmApp(foundation.CementApp):
-
     class Meta:
         label = "pm"
         base_controller = PmController
+        cmd_handler = ext_shell.ShCommandHandler
+
+    def __init__(self, label=None, **kw):
+        super(PmApp, self).__init__(**kw)
+        handler.define(command.ICommand)
+        self.cmd = None
 
     def setup(self):
         super(PmApp, self).setup()
+        self._setup_cmd_handler()
         self._output_data = dict(stdout=StringIO(), stderr=StringIO())
+
+    def _setup_cmd_handler(self):
+        LOG.debug("setting up {}.command handler".format(self._meta.label))
+        self.cmd = self._resolve_handler('cmd', self._meta.cmd_handler)
 
     def flush(self):
         """Flush output contained in _output_data dictionary"""

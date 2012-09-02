@@ -5,7 +5,7 @@ import os
 import yaml
 from cement.core import handler
 from test_default import PmTest, PmTestOutputHandler
-from pmtools.controller.archive import ArchiveController
+from pmtools.core.archive import ArchiveController
 from pmtools.lib.runinfo import get_runinfo, dump_runinfo
 
 class PmArchiveTest(PmTest):

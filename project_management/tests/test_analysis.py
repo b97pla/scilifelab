@@ -5,7 +5,7 @@ Test analysis subcontroller
 import os
 from cement.core import handler
 from test_default import PmTest
-from pmtools.controller.analysis import AnalysisController
+from pmtools.core.analysis import AnalysisController
 
 class PmAnalysisTest(PmTest):
 

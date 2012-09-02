@@ -48,6 +48,7 @@ import re
 
 from cement.core import controller
 from pmtools import AbstractBaseController
+from pmtools.utils.misc import query_yes_no
 
 ## Main project controller
 class ProjectController(AbstractBaseController):
@@ -153,7 +154,7 @@ class ProjectController(AbstractBaseController):
         for root, dirs, files in os.walk(os.path.join(self.config.get("project", "root"), self.pargs.projectid)):
             flist = flist + [os.path.join(root, x) for x in filter(compress_filter, files)]
         ##self.log.info("Going to compress %s files. Are you sure you want to continue?" % len(flist))
-        if not self.query_yes_no("Going to compress %s files. Are you sure you want to continue?" % len(flist)):
+        if not query_yes_no("Going to compress %s files. Are you sure you want to continue?" % len(flist)):
             sys.exit()
         for f in flist:
             self.log.info("compressing {}".format(f))
