@@ -6,7 +6,6 @@ import sys
 from cement.core import backend, handler, hook
 
 from pmtools.core import command
-from pmtools.utils.dry import dry
 
 LOG = backend.minimal_logger(__name__)
 

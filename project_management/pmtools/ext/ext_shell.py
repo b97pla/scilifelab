@@ -5,7 +5,6 @@ import subprocess
 from cement.core import backend, handler
 
 from pmtools.core import command
-from pmtools.utils.dry import dry
 
 Log = backend.minimal_logger(__name__)
 
