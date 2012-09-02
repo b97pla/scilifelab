@@ -3,12 +3,24 @@ Pipeline Management Tools
 """
 __import__('pkg_resources').declare_namespace(__name__)
 
+usage = """
+Pipeline Management Tools
+
+commands:
+
+  analysis                 Manage analysis
+  archive                  Manage archive
+  deliver                  Deliver data
+  project                  Manage projects
+"""
+
 import os
 import sys
 import re
 import argparse
 import textwrap
 import subprocess
+from cStringIO import StringIO
 from mako.template import Template
 
 from cement.core import foundation, controller, handler, backend, output
@@ -54,7 +66,7 @@ class AbstractBaseController(controller.CementBaseController):
         assert self.config.get(section, label), "no config section {} with label {}".format(section, label)
         out = self.sh(["ls",  self.config.get(section, label)])
         if out:
-            self.app._output_data["stdout"].append(out)
+            self.app._output_data["stdout"].write(out.rstrip())
 
     def _not_implemented(self, msg=None):
         self.log.warn("FIXME: Not implemented yet")
@@ -138,7 +150,7 @@ class AbstractBaseController(controller.CementBaseController):
     def _dry(self, message, func, *args, **kw):
         if self.pargs.dry_run:
             print >> sys.stderr, "(DRY_RUN): " + message
-            self.app._output_data["stderr"].append("(DRY_RUN): " + message)
+            self.app._output_data["stderr"].write("(DRY_RUN): " + message)
             return
         self.log.info(message)
         return func(*args, **kw)
@@ -383,7 +395,7 @@ class PmController(controller.CementBaseController):
     repos = /path/to/repos
         """
         else:
-            print __doc__
+            print usage
 
 ##############################
 ## PmApp
@@ -396,14 +408,14 @@ class PmApp(foundation.CementApp):
     
     def setup(self):
         super(PmApp, self).setup()
-        self._output_data = dict(stdout=[], stderr=[])
+        self._output_data = dict(stdout=StringIO(), stderr=StringIO())
 
     def flush(self):
         """Flush output contained in _output_data dictionary"""
-        if len(self._output_data["stdout"]) > 0:
-            print "\n".join(self._output_data["stdout"])
-        if self._output_data["stderr"]:
-            print >> sys.stderr, "\n".join(self._output_data["stderr"])
+        if self._output_data["stdout"].getvalue():
+            print self._output_data["stdout"].getvalue()
+        if self._output_data["stderr"].getvalue():
+            print >> sys.stderr, self._output_data["stderr"].getvalue()
             
 ##############################
 ## PmOutputHandler
@@ -413,5 +425,8 @@ class PmOutputHandler(output.CementOutputHandler):
         label = 'pmout'
 
     def render(self, data, template = None):
-        if len(data["stdout"]) > 0:
-            print "\n".join(self._output_data["stdout"])
+        if data["stdout"].getvalue():
+            print >> sys.stdout, data["stdout"].getvalue()
+        if data["stderr"].getvalue():
+            print >> sys.stderr, data["stderr"].getvalue()
+            

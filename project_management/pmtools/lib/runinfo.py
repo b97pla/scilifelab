@@ -5,20 +5,17 @@ runinfo file utilities
 import os
 import sys
 import yaml
+import json
 import csv
+import glob
+from cStringIO import StringIO
 
-def runinfo_to_tab(runinfo_yaml):
+# class RunInfo():
+#     def 
+
+def _runinfo_to_tab(runinfo_yaml):
     """Convert yaml to tabular format"""
     return _yaml_to_tab(runinfo_yaml)
-
-def runinfo_tab_dump(runinfo_tab, fh=sys.stdout):
-    """Dump runinfo tabular information"""
-    w=csv.writer(fh, delimiter="\t")
-    w.writerows(runinfo_tab)
-
-def runinfo_projects(runinfo_tab):
-    """List runinfo projects"""
-    return list(set(_column(runinfo_tab, "sample_prj")))
 
 def _yaml_to_tab(runinfo_yaml):
     """Convert yaml to tab"""
@@ -51,18 +48,40 @@ def _convert_barcode_id_to_name(multiplex, fc_name, fq):
     to_str   = "%s_%s.fastq" % (bcid2name[bcid.group(1)], bcid.group(2))
     return fq.replace(from_str, to_str)
 
-def get_runinfo(path):
+def get_runinfo(path, tab=False):
     """Get runinfo contents as tab for a given path."""
     with open(path) as fh:
         runinfo_yaml = yaml.load(fh)
-    runinfo_tab = runinfo_to_tab(runinfo_yaml)
-    return runinfo_tab
+    if tab:
+        return _runinfo_to_tab(runinfo_yaml)
+    else:
+        return runinfo_yaml
 
-def subset_runinfo_by_project(runinfo_tab, project):
-    """Get subset of runinfo by project"""
-    sample_prj = runinfo_projects(runinfo_tab)
-    i = [j for j in range(1, len(sample_prj)) if sample_prj[j]==project]
-    return [runinfo_tab[j] for j in i]
+def dump_runinfo(runinfo, tab=True):
+    """Dump runinfo tabular information to output """
+    fh = StringIO()
+    if tab:
+        w = csv.writer(fh, delimiter="\t")
+        w.writerows(runinfo)
+    else:
+        fh.write(json.dumps(runinfo))
+    return fh.getvalue()
+
+def runinfo_projects(runinfo_tab):
+    """List runinfo projects"""
+    return list(set(_column(runinfo_tab, "sample_prj")))
+
+def subset_runinfo(runinfo_tab, column, query):
+    """Get subset of runinfo by subsetting a header"""
+    vals = list(_column(runinfo_tab, column))
+    i = [0] + [j + 1 for j in range(0, len(vals)) if vals[j]==query]
+    return [runinfo_tab[j] for j in i ]
+
+def find_files(runinfo_tab, path):
+    glob_str = [os.path.join(path, "{}_*_?{}_barcode/{}_[0-9][0-9][0-9][0-9][0-9][0-9]_?{}_nophix_{}*".format(x[0], x[2], x[0], x[2], x[6])) for x in runinfo_tab[1:]]
+    print glob_str
+    res = [glob.glob(x) for x in glob_str]
+    return res
 
 
 # def list_runinfo(self):

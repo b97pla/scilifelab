@@ -3,7 +3,7 @@ import os
 from cement.core import foundation, hook, handler
 import argparse
 from pmtools.lib.config import config_defaults
-from pmtools import PmController, PmApp
+from pmtools import PmController, PmApp, PmOutputHandler
 from pmtools.controller.project import ProjectController
 from pmtools.controller.archive import ArchiveController
 from pmtools.controller.analysis import AnalysisController
@@ -11,7 +11,7 @@ from pmtools.controller.deliver import DeliveryController
 
 CONFIGFILE=os.path.join(os.getenv("HOME"), ".pm.conf")
 
-app = PmApp('pm', base_controller=PmController, config_defaults = config_defaults, extensions = ['json'])
+app = PmApp('pm', base_controller=PmController, config_defaults = config_defaults, extensions = ['json'], output_handler=PmOutputHandler)
 
 try:
     handler.register(ProjectController)
@@ -26,6 +26,7 @@ try:
         app.log.warn("No config file %s; please create and set relevant config sections" % CONFIGFILE)
         sys.exit()
     app.run()
+    app.render(app._output_data)
 
 finally:
     app.close()

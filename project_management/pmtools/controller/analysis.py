@@ -1,6 +1,6 @@
 """Pm analysis module"""
 
-__doc__ = """Pm analysis module
+usage = """Pm analysis module
 
 Perform operations on analysis directory. 
 
@@ -15,12 +15,12 @@ import sys
 import os
 from cement.core import controller
 from pmtools import AbstractBaseController
-from pmtools.lib.runinfo import get_runinfo, subset_runinfo_by_project
+from pmtools.lib.runinfo import get_runinfo, subset_runinfo
 
 ## Auxiliary functions
 def get_files(runinfo_tab, type="fastq", project=None, lane=None):
     """Get files from an analysis"""
-    i = subset_runinfo_by_project(runinfo_tab, project)
+    i = subset_runinfo(runinfo_tab, "sample_prj", project)
     return i
 
 def get_regexp_files():
@@ -44,7 +44,7 @@ class AnalysisController(AbstractBaseController):
 
     @controller.expose(hide=True)
     def default(self):
-        print __doc__
+        print usage
 
     @controller.expose(help="List contents")
     def ls(self):
