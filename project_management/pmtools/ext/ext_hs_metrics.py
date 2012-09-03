@@ -18,7 +18,9 @@ def get_files(path, runinfo_tab, ext="sort-dup.bam", project=None, lane=None):
         barcodes = runinfo_barcodes(info, l)
         for bc in barcodes:
             glob_str = "{}/{}_*_*_{}-{}".format(path, l, bc, ext)
-            files.append(glob.glob(glob_str)[0])
+            glob_res = glob.glob(glob_str)
+            if glob_res:
+                files.append(glob_res[0])
     return files
 
 def get_regexp_files():
