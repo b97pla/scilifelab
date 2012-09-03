@@ -1,5 +1,6 @@
 """misc"""
 import sys
+import os
 
 ## yes or no: http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input
 def query_yes_no(question, default="yes", force=False):
@@ -42,3 +43,22 @@ def query_yes_no(question, default="yes", force=False):
         else:
             sys.stdout.write("Please respond with 'yes' or 'no' "\
                                  "(or 'y' or 'n').\n")
+
+
+def walk(rootdir):
+    """Perform a directory walk"""
+    flist = []
+    for root, dirs, files in os.walk(rootdir):
+        flist = flist + [os.path.join(root, x) for x in files]
+    return flist
+            
+def filtered_walk(rootdir, filter_fn):
+    """Perform a filtered directory walk.
+
+    :param: rootdir - root directory
+    :param: filter_fn - filtering function of class <re>
+    """
+    flist = []
+    for root, dirs, files in os.walk(rootdir):
+        flist = flist + [os.path.join(root, x) for x in filter(filter_fn, files)]
+    return flist

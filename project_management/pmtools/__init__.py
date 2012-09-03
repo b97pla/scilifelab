@@ -102,21 +102,107 @@ class AbstractBaseController(controller.CementBaseController):
             self.log.error("config section '{}' with label '{}' set to 'None'; please define accordingly".format(section, label))
             sys.exit()
 
-    def safe_makedir(self, dname):
-        """Make a directory if it doesn't exist"""
-        def runpipe():
-            if not os.path.exists(dname):
-                try:
-                    os.makedirs(dname)
-                except OSError:
-                    if not os.path.isdir(dname):
-                        raise
-            else:
-                self.log.info("Directory %s already exists" % dname)
-            return dname
-        return self._dry("Make directory %s" % dname, runpipe)
+##############################
+## Main controller for all subsubcommands
+## Currently does nothing
+##############################
+class SubController(controller.CementBaseController):
+    class Meta:
+        pass
 
-    ## Config helpers - not used?
+    def _setup(self, base_app):
+        super(SubController, self)._setup(base_app)
+
+##############################
+## Main pm base controller
+##############################
+class PmController(controller.CementBaseController):
+    class Meta:
+        label = 'base'
+        description = 'Project/pipeline management tools'
+        arguments = [
+            (['--config'], dict(help="print configuration", action="store_true")),
+            (['--config-example'], dict(help="print configuration example", action="store_true")),
+            ]
+
+    def _setup(self, app_obj):
+        # shortcuts
+        super(PmController, self)._setup(app_obj)
+
+    @controller.expose(hide=True)
+    def default(self):
+        if self.app.pargs.config:
+            print "FIXME: show config"
+        elif self.app.pargs.config_example:
+            print """Configuration example: save as ~/.pm/pm.conf and modify at will.
+
+    [config]
+    ignore = slurm*, tmp*
+
+    [archive]
+    root = /path/to/archive
+
+    [analysis]
+    root = /path/to/illumina
+
+    [log]
+    level = INFO
+    file = ~/log/pm.log
+
+    [project]
+    root = /path/to/projects
+    repos = /path/to/repos
+        """
+        else:
+            print self._help_text
+
+##############################
+## PmApp
+##############################
+class PmApp(foundation.CementApp):
+    class Meta:
+        label = "pm"
+        base_controller = PmController
+        cmd_handler = ext_shell.ShCommandHandler
+
+    def __init__(self, label=None, **kw):
+        super(PmApp, self).__init__(**kw)
+        handler.define(command.ICommand)
+        self.cmd = None
+
+    def setup(self):
+        super(PmApp, self).setup()
+        self._setup_cmd_handler()
+        self._output_data = dict(stdout=StringIO(), stderr=StringIO())
+
+    def _setup_cmd_handler(self):
+        LOG.debug("setting up {}.command handler".format(self._meta.label))
+        self.cmd = self._resolve_handler('command', self._meta.cmd_handler)
+
+    def flush(self):
+        """Flush output contained in _output_data dictionary"""
+        if self._output_data["stdout"].getvalue():
+            print self._output_data["stdout"].getvalue()
+        if self._output_data["stderr"].getvalue():
+            print >> sys.stderr, self._output_data["stderr"].getvalue()
+            
+##############################
+## PmOutputHandler
+##############################
+class PmOutputHandler(output.CementOutputHandler):
+    class Meta:
+        label = 'pmout'
+
+    def render(self, data, template = None):
+        if data["stdout"].getvalue():
+            print >> sys.stdout, data["stdout"].getvalue()
+        if data["stderr"].getvalue():
+            print >> sys.stderr, data["stderr"].getvalue()
+            
+##############################
+## Obsolete
+##############################
+## Config helpers - not used?
     # def get_dir(self, section, label):
     #     assert self.config.get(section, label), "no section %s with label %s in config file; please define accordingly" %(section, label)
     #     d = self.config.get(section,label)
@@ -224,101 +310,3 @@ class AbstractBaseController(controller.CementBaseController):
 #         else:
 #             txt = self._meta.description
 #         return textwrap.dedent(txt)        
-
-##############################
-## Main controller for all subsubcommands
-## Currently does nothing
-##############################
-class SubController(controller.CementBaseController):
-    class Meta:
-        pass
-
-    def _setup(self, base_app):
-        super(SubController, self)._setup(base_app)
-
-##############################
-## Main pm base controller
-##############################
-class PmController(controller.CementBaseController):
-    class Meta:
-        label = 'base'
-        description = 'Project/pipeline management tools'
-        arguments = [
-            (['--config'], dict(help="print configuration", action="store_true")),
-            (['--config-example'], dict(help="print configuration example", action="store_true")),
-            ]
-
-    def _setup(self, app_obj):
-        # shortcuts
-        super(PmController, self)._setup(app_obj)
-
-    @controller.expose(hide=True)
-    def default(self):
-        if self.app.pargs.config:
-            print "FIXME: show config"
-        elif self.app.pargs.config_example:
-            print """Configuration example: save as ~/.pm/pm.conf and modify at will.
-
-    [config]
-    ignore = slurm*, tmp*
-
-    [archive]
-    root = /path/to/archive
-
-    [analysis]
-    root = /path/to/illumina
-
-    [log]
-    level = INFO
-    file = ~/log/pm.log
-
-    [project]
-    root = /path/to/projects
-    repos = /path/to/repos
-        """
-        else:
-            print self._help_text
-
-##############################
-## PmApp
-##############################
-class PmApp(foundation.CementApp):
-    class Meta:
-        label = "pm"
-        base_controller = PmController
-        cmd_handler = ext_shell.ShCommandHandler
-
-    def __init__(self, label=None, **kw):
-        super(PmApp, self).__init__(**kw)
-        handler.define(command.ICommand)
-        self.cmd = None
-
-    def setup(self):
-        super(PmApp, self).setup()
-        self._setup_cmd_handler()
-        self._output_data = dict(stdout=StringIO(), stderr=StringIO())
-
-    def _setup_cmd_handler(self):
-        LOG.debug("setting up {}.command handler".format(self._meta.label))
-        self.cmd = self._resolve_handler('command', self._meta.cmd_handler)
-
-    def flush(self):
-        """Flush output contained in _output_data dictionary"""
-        if self._output_data["stdout"].getvalue():
-            print self._output_data["stdout"].getvalue()
-        if self._output_data["stderr"].getvalue():
-            print >> sys.stderr, self._output_data["stderr"].getvalue()
-            
-##############################
-## PmOutputHandler
-##############################
-class PmOutputHandler(output.CementOutputHandler):
-    class Meta:
-        label = 'pmout'
-
-    def render(self, data, template = None):
-        if data["stdout"].getvalue():
-            print >> sys.stdout, data["stdout"].getvalue()
-        if data["stderr"].getvalue():
-            print >> sys.stderr, data["stderr"].getvalue()
-            

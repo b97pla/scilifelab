@@ -58,7 +58,7 @@ class DistributedCommandHandler(command.CommandHandler):
             # # TODO: job name is always (null), must fix slurm_drmaa C library and its
             # # custom parsing (substitute "slurmdrmaa_parse_native"
             # # for GNU GetOpt on slurm_drmaa/util.c)
-            jt.job_name = jobname
+            jt.job_name = self.app.pargs.jobname
             jt.nativeSpecification = "-A {} -p {} -t {}".format(self.app.pargs.job_account, self.app.pargs.partition, self.app.pargs.time)
 
             jobid = s.runJob(jt)
@@ -97,6 +97,8 @@ def add_shared_distributed_options(app):
     """
     app.args.add_argument('-A', '--job_account', type=str,
                           action='store', help='job account', default=None)
+    app.args.add_argument('--jobname', type=str,
+                          action='store', help='job name', default="pm_distributed")
     app.args.add_argument('-t', '--time',
                           action='store', help='time limit', default="00:10:00")
     app.args.add_argument('--partition', type=str,

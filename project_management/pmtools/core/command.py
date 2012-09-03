@@ -88,3 +88,17 @@ class CommandHandler(handler.CementBaseHandler):
             return
         self.app.log.info(message)
         return func(*args, **kw)
+
+    def safe_makedir(self, dname):
+        """Make a directory if it doesn't exist"""
+        def runpipe():
+            if not os.path.exists(dname):
+                try:
+                    os.makedirs(dname)
+                except OSError:
+                    if not os.path.isdir(dname):
+                        raise
+            else:
+                self.app.log.info("Directory %s already exists" % dname)
+            return dname
+        return self.dry("Make directory %s" % dname, runpipe)

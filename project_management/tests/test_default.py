@@ -13,7 +13,18 @@ config_defaults['config']['ignore'] = ["slurm*", "tmp*"]
 config_defaults['log']['level']  = "INFO"
 config_defaults['log']['file']  = os.path.join(os.path.abspath(os.getcwd()), "data", "log", "pm.log")
 
-## Function for generating (touching) 
+
+def safe_makedir(dname):
+    """Make directory"""
+    if not os.path.exists(dname):
+        try:
+            os.makedirs(dname)
+        except OSError:
+            if not os.path.isdir(dname):
+                raise
+    else:
+        print "Directory %s already exists" % dname
+    return dname
 
 
 ## Output handler for tests

@@ -48,7 +48,7 @@ import re
 
 from cement.core import controller
 from pmtools import AbstractBaseController
-from pmtools.utils.misc import query_yes_no
+from pmtools.utils.misc import query_yes_no, filtered_walk
 
 ## Main project controller
 class ProjectController(AbstractBaseController):
@@ -69,6 +69,9 @@ class ProjectController(AbstractBaseController):
             (['-F', '--flowcellid'], dict(help="project flowcell id", action="store")),
             ]
         flowcelldir = None
+        compress_opt = "-v"
+        compress_prog = "gzip"
+        compress_suffix = ".gz"
 
     ## default
     @controller.expose(hide=True)
@@ -132,34 +135,56 @@ class ProjectController(AbstractBaseController):
     def clean(self):
         self._not_implemented()
 
+    def _set_compress_plist(self):
+        ## Set pattern for compress operations
+        plist = []
+        if self.pargs.fastq:
+            plist += [".fastq", "fastq.txt", ".fq"]
+        if self.pargs.pileup:
+            plist += [".pileup"]
+        return plist
+
+    def _compress(self, pattern, label="compress"):
+        if self.pargs.pbzip2:
+            self._meta.compress_prog = "pbzip2"
+        elif self.pargs.pigz:
+            self._meta.compress_prog = "pigz"
+
+        def compress_filter(f):
+            if not pattern:
+                return
+            return re.search(pattern, f) != None
+        
+        flist = filtered_walk(os.path.join(self.config.get("project", "root"), self.pargs.projectid), compress_filter)
+        if len(flist) > 0 and not query_yes_no("Going to {} {} files ({}...). Are you sure you want to continue?".format(label, len(flist), ",".join([os.path.basename(x) for x in flist[0:10]])), force=self.pargs.force):
+            sys.exit()
+        for f in flist:
+            self.log.info("{}ing {}".format(label, f))
+            self.app.cmd.command([self._meta.compress_prog, self._meta.compress_opt, "%s" % f], label, ignore_error=True)
+
+    ## decompress
+    @controller.expose(help="Decompress files")
+    def decompress(self):
+        """Decompress files"""
+        self._assert_project("Not running decompress function on project root directory")
+        self._meta.compress_opt = "-dv"
+        if self.pargs.pbzip2:
+            self._meta.compress_suffix = ".bz2"
+        pattern = "|".join(["{}{}$".format(x, self._meta.compress_suffix) for x in self._set_compress_plist()])
+        self._compress(pattern, label="decompress")
+        
     ## compress
     @controller.expose(help="Compress files")
     def compress(self):
         self._assert_project("Not running compress function on project root directory")
-        ## Set pattern for compress operations
-        plist = []
-        if self.pargs.fastq:
-            plist += [".fastq$", "fastq.txt$", ".fq$"]
-        if self.pargs.pileup:
-            plist += [".pileup$"]
-        pattern = "|".join(plist)
-
-        def compress_filter(f):
-            return re.search(pattern, f) != None
-        flist = []
-        for root, dirs, files in os.walk(os.path.join(self.config.get("project", "root"), self.pargs.projectid)):
-            flist = flist + [os.path.join(root, x) for x in filter(compress_filter, files)]
-        if not query_yes_no("Going to compress %s files. Are you sure you want to continue?" % len(flist)):
-            sys.exit()
-        for f in flist:
-            self.log.info("compressing {}".format(f))
-            self.app.cmd.command(["gzip",  "-v",  "%s" % f], "compress")
+        self._meta.compress_opt = "-v"
+        pattern = "|".join(["{}$".format(x) for x in self._set_compress_plist()])
+        self._compress(pattern)
 
     ## du
     @controller.expose(help="Calculate disk usage in intermediate and data directories")
     def du(self):
         self._not_implemented()
-
 
     ## deliver
     ##

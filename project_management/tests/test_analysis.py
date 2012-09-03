@@ -13,7 +13,7 @@ class PmAnalysisTest(PmTest):
         self.app = self.make_app(argv = ['analysis', 'ls'])
         handler.register(AnalysisController)
         self._run_app()
-        self.eq(self.app._output_data['stdout'], ['120829_SN0001_0001_AA001AAAXX\n120829_SN0001_0002_BB001BBBXX\n'])
+        self.eq(self.app._output_data['stdout'].getvalue(), '120829_SN0001_0001_AA001AAAXX\n120829_SN0001_0002_BB001BBBXX')
 
     def test_2_bcstats(self):
         self.app = self.make_app(argv = ['analysis','bcstats'])
