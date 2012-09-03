@@ -64,8 +64,7 @@ def send_db(server, db, data):
     '''
     couch = couchdb.Server(server)
     db = couch[db]
-    print data.encode("utf-8")
-    #db.save(data)
+    db.save(data)
     #with open("runsizes.log", "w") as fh:
     #	print "Saving data to %s" % fh
     #	fh.write(str(_to_unicode(data)))
