@@ -6,6 +6,7 @@ import yaml
 from cement.core import handler
 from test_default import PmTest
 from pmtools.lib.runinfo import *
+from pmtools.lib.flowcell import *
 
 runinfo = os.path.join(os.path.curdir, "data", "archive", "120829_SN0001_0001_AA001AAAXX", "run_info.yaml")
 
@@ -30,3 +31,13 @@ class PmRuninfoTest(PmTest):
         info = get_runinfo(runinfo, tab=True)
         res = find_files(info, "./data/analysis/120829_SN0001_0001_AA001AAAXX")
         print res
+
+class PmFlowcellTest(PmTest):
+    """Test flowcell object functionality"""
+    def test_1_get_flowcell(self):
+        """Read contents of runinfo file and generate flowcell object"""
+        fc = Flowcell(runinfo)
+        print fc
+        print fc.as_yaml()
+        newfc=fc.subset("sample_prj", "J.Doe_00_01")
+        print newfc

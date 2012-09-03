@@ -30,7 +30,6 @@ def get_runinfo(path, tab=True):
     else:
         return runinfo_yaml
 
-
 def _runinfo_to_tab(runinfo_yaml):
     """Convert yaml to tabular format"""
     return _yaml_to_tab(runinfo_yaml)

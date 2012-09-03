@@ -20,8 +20,7 @@ class PmAnalysisTest(PmTest):
         handler.register(AnalysisController)
         self._run_app()
 
-    def test_3_hsmetrics(self):
-        self.app = self.make_app(argv = ['analysis', 'hs_metrics'])
-        handler.register(AnalysisController)
-        self._run_app()
+    def test_3_deliver(self):
+        """Test default delivery to project directory"""
+        self.app = self.make_app(argv = ['analysis', 'deliver', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01'])
         

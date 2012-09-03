@@ -62,12 +62,8 @@ class ProjectController(AbstractBaseController):
             (['projectid'], dict(help="Scilife project id (e.g. j_doe_00_00)", default="", action="store", nargs="?")),
             (['--pbzip2'], dict(help="Use pbzip2 as compressing device", default=False, action="store_true")),
             (['--pigz'], dict(help="Use pigz as compressing device", default=False, action="store_true")),
-            (['-s', '--sbatch'], dict(help="Submit jobs to slurm", default=False, action="store_true")),
             (['-f', '--fastq'], dict(help="Workon fastq files", default=False, action="store_true")),
             (['-p', '--pileup'], dict(help="Workon pileup files", default=False, action="store_true")),
-            (['-A', '--uppmax-project'], dict(help="uppmax project id for use with sbatch", action="store")),
-            (['-t', '--sbatch-time'], dict(help="sbatch time limit", default="00:10:00", action="store")),
-            (['-N', '--node'], dict(help="run node job", default=False, action="store_true")),
             (['-g', '--git'], dict(help="Initialize git directory in repos and project gitdir", default=False, action="store_true")),
             (['-S', '--sampleid'], dict(help="project sample id", action="store")),
             (['-F', '--flowcellid'], dict(help="project flowcell id", action="store")),
@@ -143,7 +139,7 @@ class ProjectController(AbstractBaseController):
         ## Set pattern for compress operations
         plist = []
         if self.pargs.fastq:
-            plist += [".fastq$", ".fastq.txt$", ".fq$"]
+            plist += [".fastq$", "fastq.txt$", ".fq$"]
         if self.pargs.pileup:
             plist += [".pileup$"]
         pattern = "|".join(plist)

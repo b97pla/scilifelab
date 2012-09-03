@@ -42,3 +42,7 @@ class AnalysisController(AbstractBaseController):
     @controller.expose(help="List status of a run")
     def status(self):
         self._not_implemented()
+
+    @controller.expose(help="Deliver data")
+    def deliver(self):
+        self._not_implemented()
