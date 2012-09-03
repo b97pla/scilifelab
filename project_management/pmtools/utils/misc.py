@@ -2,18 +2,20 @@
 import sys
 
 ## yes or no: http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input
-def query_yes_no(question, default="yes"):
+def query_yes_no(question, default="yes", force=False):
     """Ask a yes/no question via raw_input() and return their answer.
     
     "question" is a string that is presented to the user.
     "default" is the presumed answer if the user just hits <Enter>.
     It must be "yes" (the default), "no" or None (meaning
-    an answer is required of the user).
+    an answer is required of the user). The force option simply
+    sets the answer to default.
     
     The "answer" return value is one of "yes" or "no".
     
     :param: question
     :param: default
+    :param: force
     :returns: yes or no
     """
     valid = {"yes":True,   "y":True,  "ye":True,
@@ -29,7 +31,10 @@ def query_yes_no(question, default="yes"):
 
     while True:
         sys.stdout.write(question + prompt)
-        choice = raw_input().lower()
+        if not force:
+            choice = raw_input().lower()
+        else:
+            choice = "yes"
         if default is not None and choice == '':
             return valid[default]
         elif choice in valid:

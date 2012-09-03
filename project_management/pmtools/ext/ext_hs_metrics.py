@@ -47,7 +47,7 @@ class HsMetricsController(AbstractBaseController):
         if not runinfo_tab:
             return
         flist = get_files(os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell), runinfo_tab, project=self.pargs.project)
-        if not query_yes_no("Going to run hs_metrics on {} files. Are you sure you want to continue?".format(len(flist))):
+        if not query_yes_no("Going to run hs_metrics on {} files. Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
             sys.exit()
         for f in flist:
             self.log.info("running CalculateHsMetrics on {}".format(f))
