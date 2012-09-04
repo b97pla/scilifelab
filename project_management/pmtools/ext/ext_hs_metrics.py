@@ -37,6 +37,7 @@ class HsMetricsController(AbstractBaseController):
         stacked_on = 'analysis'
         arguments = [
             (['-r', '--region_file'], dict(help="Region definition file", default=None)),
+            (['--input_file'], dict(help="Run on specific input file", default=None)),
             ]
 
     @controller.expose(help="Calculate hs metrics for samples")
@@ -49,11 +50,17 @@ class HsMetricsController(AbstractBaseController):
         if not fc:
             return
         flist = get_files(os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell), fc, project=self.pargs.project)
+        if self.pargs.input_file:
+            flist = [os.path.abspath(self.pargs.input_file)]
         if not query_yes_no("Going to run hs_metrics on {} files. Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
             sys.exit()
-        for f in flist:
+         for f in flist:
             self.log.info("running CalculateHsMetrics on {}".format(f))
-            out = self.app.cmd.command(["java -jar {} $PICARD_HOME/CalculateHsMetrics.jar INPUT={} TARGET_INTERVALS={} BAIT_INTERVALS={} OUTPUT={}".format(self.pargs.java_opts, f, self.pargs.region_file, self.pargs.region_file, f.replace(".bam", ".hs_metrics"))])
+            ### Issue with calling java from
+            ### subprocess:http://stackoverflow.com/questions/9795249/issues-with-wrapping-java-program-with-pythons-subprocess-module
+            ### Actually not an issue: command line arguments have to be done the right way
+            cl = ["java"] + ["-{}".format(self.pargs.java_opts)] +  ["-jar", "{}/CalculateHsMetrics.jar".format(os.getenv("PICARD_HOME"))] + ["INPUT={}".format(f)] + ["TARGET_INTERVALS={}".format(self.pargs.region_file)] + ["BAIT_INTERVALS={}".format(self.pargs.region_file)] +  ["OUTPUT={}".format(f.replace(".bam", ".hs_metrics"))] + ["VALIDATION_STRINGENCY=SILENT"]
+            out = self.app.cmd.command(cl)
             if out:
                 self.app._output_data["stdout"].write(out.rstrip())
 

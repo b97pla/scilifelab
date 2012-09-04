@@ -28,11 +28,11 @@ class ShCommandHandler(command.CommandHandler):
         def runpipe():
             (stdout, stderr, returncode) = shell.exec_cmd(cmd_args)
             if returncode and not ignore_error:
-                if capture:
-                    self.app.log.error(stderr)
-                raise Exception("Subprocess return code: {}".format(returncode))
+               if capture:
+                   self.app.log.error(stderr)
+               raise Exception("Subprocess return code: {}".format(returncode))
             if capture:
-                return stdout
+               return stdout
             # kwargs = { 'shell': False , 'cwd': cwd}
             # if capture:
             #     kwargs['stderr'] = subprocess.STDOUT
