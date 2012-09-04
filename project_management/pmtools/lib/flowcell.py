@@ -35,6 +35,8 @@ class Flowcell(object):
         return str(self.data)
 
     def __len__(self):
+        if not self.data:
+            return 0
         return len(self.data)
 
     def _read(self, infile):

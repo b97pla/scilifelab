@@ -43,7 +43,7 @@ class PmHsMetricsTest(PmTest):
         self.app = self.make_app(argv=['analysis', 'hs-metrics', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '-r', 'regionfile', '--force',  '-A', 'jobaccount', '--drmaa', '-n'], extensions=['pmtools.ext.ext_hs_metrics', 'pmtools.ext.ext_distributed'])
         handler.register(AnalysisController)
         self._run_app()
-        hsmetrics_str = "(DRY_RUN): java -jar $PICARD_HOME/CalculateHsMetrics.jar -I {}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_1-sort-dup.bam -TI regionfile -BI regionfile -O {}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics".format(self.app.config.get("analysis", "root"), self.app.config.get("analysis", "root"))
+        hsmetrics_str = "(DRY_RUN): java -jar -Xmx3g $PICARD_HOME/CalculateHsMetrics.jar INPUT={}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_1-sort-dup.bam TARGET_INTERVALS=regionfile BAIT_INTERVALS=regionfile OUTPUT={}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics".format(self.app.config.get("analysis", "root"), self.app.config.get("analysis", "root"))
         if not os.getenv("DRMAA_LIBRARY_PATH"):
             self.eq('', str(self.app._output_data['stderr'].getvalue().split("\n")[0]))
         else:
