@@ -2,7 +2,7 @@
 """Make delivery notes for a flowcell
 
 Usage:
-     fc_delivery_reports.py <flowcell id> 
+     fc_delivery_reports.py <flowcell id> <quality scale, must be 'phred33' or 'phred64'> 
                        [--archive_dir=<archive directory>
                         --analysis_dir=<analysis directory>]
 
@@ -122,7 +122,7 @@ lane_date_flowcell-ID_sample_barcode-index_1(2).fastq[.gz], where the 1 or 2 rep
 (forward) and the second (reverse) read in a paired-end run. Single
 end runs will have only the first read. The files only contain
 sequences that have passed Illumina's chastity filter. The quality scores in the fastq files
-are in the "Phred64" format, sometimes known as "Illumina 1.3+" format. If the files ends
+are in the ${qualscale} format. If the files ends
 with a .gz extension, they have been compressed with gzip prior to delivery and, if needed, can 
 be de-compressed with the command 'gzip -d FILENAME'.
 
@@ -178,8 +178,8 @@ ${errorrate}
 
 """
 
-def main(flowcell_id, archive_dir, analysis_dir, config_file):
-    print " ".join([flowcell_id, archive_dir, analysis_dir])
+def main(flowcell_id, qual_scale, archive_dir, analysis_dir, config_file):
+    if qual_scale not in ["phred64", "phred33"]: sys.exit("You must provide either 'phred64' or 'phred33' as the quality scale! Exiting ...")
     fp = os.path.join(archive_dir, flowcell_id, "run_info.yaml")
     with open(fp) as in_handle:
         run_info = yaml.load(in_handle)
@@ -222,6 +222,7 @@ def main(flowcell_id, archive_dir, analysis_dir, config_file):
             'analysis_dir' : analysis_dir,
             'flowcell' : flowcell_id,
             'config' : config,
+            'qual_scale': qual_scale,
             }
         d = generate_report(proj_conf)
         rstfile = "%s.rst" % (proj_file_tag)
@@ -359,6 +360,7 @@ def generate_report(proj_conf):
         'qc30plots': "",
         'errorrate': "",
         'yieldtable': "",
+        'qualscale': proj_conf['qual_scale'],
         }
 
     ## Latex option (no of floats per page)
@@ -385,6 +387,8 @@ def generate_report(proj_conf):
     except:
         pass
 
+    if len(proj_id) > 30: 
+        print "Project ID + customer reference too long: ", proj_id
     tab.add_rows([["Project id:", proj_id], 
                   ["Date:", fc_date],
                   ["Instrument ID:", instr_id],
@@ -680,8 +684,8 @@ def generate_report(proj_conf):
 
 if __name__ == "__main__":
     usage = """
-    fc_delivery_reports.py <flowcell id>
-                           [--archive_dir=<archive directory> 
+    fc_delivery_reports.py <flowcell id> <quality scale, 'phred33' or 'phred64'>
+                           [--config-file=<config file> --archive_dir=<archive directory> 
                             --analysis_dir=<analysis directory>]
 
     For more extensive help type fc_delivery_reports.py
@@ -694,7 +698,7 @@ if __name__ == "__main__":
     parser.add_option("--v1.5", dest="v1_5_fc", action="store_true", default=False)
     parser.add_option("-c", "--config-file", dest="config_file", default=None)
     (options, args) = parser.parse_args()
-    if len(args) < 1:
+    if len(args) < 2:
         print __doc__
         sys.exit()
     kwargs = dict(

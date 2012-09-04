@@ -138,7 +138,7 @@ for d in dirs_to_process:
 
     os.chdir(dirpath)
     bcname = d + ".bc_metrics"
-    #bcname = "bc.metrics"
+    #bcname = d + "_bc.metrics"
     lane = dirpath[0]
     print "LANE ", lane
     if not dry: logfile.write("LANE " + lane + "\n")
