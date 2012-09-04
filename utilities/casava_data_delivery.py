@@ -115,8 +115,9 @@ for direc in dirs_to_copy_from:
                 print "Could not create sample-level delivery directory!"
                 sys.exit(0)
 
-    phixfiltered_path = os.path.join(proj_base_dir, direc, "*", "nophix")
-    for fq in glob.glob(os.path.join(phixfiltered_path, "*fastq.txt*")):
+    #phixfiltered_path = os.path.join(proj_base_dir, direc, "*", "nophix")
+    phixfiltered_path = os.path.join(proj_base_dir, direc, "*")
+    for fq in glob.glob(os.path.join(phixfiltered_path, "*fastq*")):
         [path, fname] = os.path.split(fq)
         run_name = os.path.basename(os.path.split(os.path.split(fq)[0])[0])
         if not os.path.exists(os.path.join(sample_path, run_name)):
