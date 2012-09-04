@@ -115,8 +115,8 @@ for direc in dirs_to_copy_from:
                 print "Could not create sample-level delivery directory!"
                 sys.exit(0)
 
-    #phixfiltered_path = os.path.join(proj_base_dir, direc, "*", "nophix")
-    phixfiltered_path = os.path.join(proj_base_dir, direc, "*")
+    phixfiltered_path = os.path.join(proj_base_dir, direc, "*", "nophix")
+    #phixfiltered_path = os.path.join(proj_base_dir, direc, "*")
     for fq in glob.glob(os.path.join(phixfiltered_path, "*fastq*")):
         [path, fname] = os.path.split(fq)
         run_name = os.path.basename(os.path.split(os.path.split(fq)[0])[0])
@@ -124,7 +124,7 @@ for direc in dirs_to_copy_from:
             try:
                 os.mkdir(os.path.join(sample_path, run_name))
             except:
-                print "Could noy create run level directory!"
+                print "Could not create run level directory!"
                 sys.exit(0)
         sample = os.path.basename(sample_path)
         dest_file_name = fname.replace("_fastq.txt", ".fastq")
