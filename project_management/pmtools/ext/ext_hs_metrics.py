@@ -8,7 +8,7 @@ from pmtools import AbstractBaseController
 from pmtools.lib.runinfo import load_runinfo, subset_runinfo, runinfo_lanes, runinfo_barcodes
 from pmtools.utils.misc import query_yes_no
 
-## Auxiliary functions
+## Auxiliary functions - move to lib or utils
 def get_files(path, runinfo_tab, ext="sort-dup.bam", project=None, lane=None):
     """Get files from an analysis"""
     info = subset_runinfo(runinfo_tab, "sample_prj", project)

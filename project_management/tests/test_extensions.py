@@ -4,8 +4,22 @@ Test extensions
 
 import os
 from cement.core import handler
+from cement.utils import shell
 from pmtools.core.analysis import AnalysisController
 from test_default import PmTest
+
+class PmShellTest(PmTest):
+    def test_1_wait(self):
+        """Test that submitted shell jobs are run sequentially"""
+        # self.app  = self.make_app(argv=[], extensions=['pmtools.ext.ext_shell'])
+        # self._run_app()
+        # print self.app.cmd
+        print "running first sleep"
+        out = shell.exec_cmd(["sleep", "3"])
+        print "finishing first sleep"
+        print "running second sleep"
+        shell.exec_cmd(["sleep", "3"])
+        print "finishing second sleep"
 
 class PmHsMetricsTest(PmTest):
     def test_1_hsmetrics(self):
@@ -26,7 +40,7 @@ class PmHsMetricsTest(PmTest):
 
     def test_3_hsmetrics_drmaa(self):
         """Run hs metrics over drmaa"""
-        self.app = self.make_app(argv=['analysis', 'hs-metrics', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '-r', 'regionfile', '--force',  '-A', 'jobaccount', '--drmaa'], extensions=['pmtools.ext.ext_hs_metrics', 'pmtools.ext.ext_distributed'])
+        self.app = self.make_app(argv=['analysis', 'hs-metrics', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '-r', 'regionfile', '--force',  '-A', 'jobaccount', '--drmaa', '-n'], extensions=['pmtools.ext.ext_hs_metrics', 'pmtools.ext.ext_distributed'])
         handler.register(AnalysisController)
         self._run_app()
         hsmetrics_str = "(DRY_RUN): java -jar $PICARD_HOME/CalculateHsMetrics.jar -I {}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_1-sort-dup.bam -TI regionfile -BI regionfile -O {}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics".format(self.app.config.get("analysis", "root"), self.app.config.get("analysis", "root"))

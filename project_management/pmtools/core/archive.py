@@ -5,7 +5,6 @@ import yaml
 
 from cement.core import controller
 from pmtools import AbstractBaseController
-#from pmtools.lib.runinfo import get_runinfo, runinfo_projects, dump_runinfo
 from pmtools.lib.flowcell import *
 
 ## Main archive controller

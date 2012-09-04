@@ -23,7 +23,7 @@ class DistributedCommandHandler(command.CommandHandler):
 
         label = 'distributed'
         """The string identifier of this handler."""
-        
+
     def sbatch(self,  cmd_args, capture=True, ignore_error=False, cwd=None, **kw):
         """sbatch: write cmd_args to sbatch template and submit"""
         print "FIX ME: sbatch: write cmd_args to sbatch template and submit"
@@ -54,11 +54,7 @@ class DistributedCommandHandler(command.CommandHandler):
             jt = s.createJobTemplate()
             jt.remoteCommand = cmd_args[0]
             jt.args = cmd_args[1:]
-
-            # # TODO: job name is always (null), must fix slurm_drmaa C library and its
-            # # custom parsing (substitute "slurmdrmaa_parse_native"
-            # # for GNU GetOpt on slurm_drmaa/util.c)
-            jt.job_name = self.app.pargs.jobname
+            jt.jobName = self.app.pargs.jobname
             jt.nativeSpecification = "-A {} -p {} -t {}".format(self.app.pargs.job_account, self.app.pargs.partition, self.app.pargs.time)
 
             jobid = s.runJob(jt)

@@ -6,7 +6,7 @@ import sys
 import os
 from cement.core import controller
 from pmtools import AbstractBaseController
-from pmtools.lib.runinfo import get_runinfo, subset_runinfo
+from pmtools.lib.flowcell import Flowcell
 
 ## Main analysis controller
 class AnalysisController(AbstractBaseController):
