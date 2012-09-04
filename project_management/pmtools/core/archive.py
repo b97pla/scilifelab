@@ -5,7 +5,8 @@ import yaml
 
 from cement.core import controller
 from pmtools import AbstractBaseController
-from pmtools.lib.runinfo import get_runinfo, runinfo_projects, dump_runinfo
+#from pmtools.lib.runinfo import get_runinfo, runinfo_projects, dump_runinfo
+from pmtools.lib.flowcell import *
 
 ## Main archive controller
 class ArchiveController(AbstractBaseController):
@@ -22,7 +23,7 @@ class ArchiveController(AbstractBaseController):
         arguments = [
             (['flowcell'], dict(help="Flowcell id", nargs="?", default="default")),
             (['-p', '--project'], dict(help="Project id")),
-            (['-t', '--tab'], dict(action="store_true", default=False, help="list yaml as tab file")),
+            (['--as_yaml'], dict(action="store_true", default=False, help="list runinfo as yaml file")),
             (['-P', '--list-projects'], dict(action="store_true", default=False, help="list projects of flowcell")),
             ]
 
@@ -34,7 +35,6 @@ class ArchiveController(AbstractBaseController):
     def ls(self):
         return self._ls("archive", "root")
 
-
     @controller.expose(help="List runinfo contents")
     def runinfo(self):
         """List runinfo for a given flowcell"""
@@ -42,12 +42,13 @@ class ArchiveController(AbstractBaseController):
             self.app._output_data["stderr"].write("Please provide flowcell id")
             return
         assert self.config.get("archive", "root"), "archive directory not defined"
-        f = os.path.join(self.config.get("archive", "root"), self.pargs.flowcell, "run_info.yaml")
-        self.log.info("Opening file %s" %f)
-        runinfo = get_runinfo(f, self.pargs.tab)
+        fc = Flowcell(os.path.join(self.config.get("archive", "root"), self.pargs.flowcell, "run_info.yaml"))
+        self.log.info("Opening file {}".format(fc.filename))
         if self.pargs.list_projects:
-            runinfo = get_runinfo(f, tab=True)
-            self.app._output_data['stdout'].write("available projects for flowcell %s:\n\t" %self.pargs.flowcell + "\n\t".join(runinfo_projects(runinfo)))
+            self.app._output_data['stdout'].write("available projects for flowcell {}:\n\t".format(self.pargs.flowcell) + "\n\t".join(fc.projects()))
             return
-        self.app._output_data['stdout'].write(dump_runinfo(runinfo, self.pargs.tab))
+        if self.pargs.as_yaml:
+            self.app._output_data['stdout'].write(str(fc.as_yaml()))
+        else:            
+            self.app._output_data['stdout'].write(str(fc))
 

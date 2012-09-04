@@ -23,9 +23,10 @@ class Flowcell(object):
     lanelabels = ["lane", "description", "flowcell_id", "genome_build", "analysis"]
     mplabels = ["barcode_type", "barcode_id", "sample_prj", "name", "sequence"]
     header = lanelabels + mplabels
-    data = None
-    
+
     def __init__(self, infile=None):
+        self.filename = None
+        self.data = None
         if not infile:
             return None
         self.data = self._read(infile)
@@ -42,6 +43,7 @@ class Flowcell(object):
             return None
         with open(infile) as fh:
             runinfo_yaml = yaml.load(fh)
+        self.filename = infile
         return self._yaml_to_tab(runinfo_yaml)
     
     def as_yaml(self):
