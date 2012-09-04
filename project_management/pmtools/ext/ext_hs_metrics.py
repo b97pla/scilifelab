@@ -2,6 +2,7 @@
 hs_metrics extension
 """
 import os
+
 import glob
 from cement.core import backend, controller, handler
 from pmtools import AbstractBaseController
@@ -10,13 +11,13 @@ from pmtools.lib.flowcell import Flowcell
 from pmtools.utils.misc import query_yes_no
 
 ## Auxiliary functions - move to lib or utils
-def get_files(path, fc, ext="sort-dup.bam", project=None, lane=None):
+def get_files(path, fc, ftype, ext=".bam", project=None, lane=None):
     """Get files from an analysis"""
     info = fc.subset("sample_prj", project)
     files = []
     for l in info.lanes():
         for bc in info.barcodes(l):
-            glob_str = "{}/{}_*_*_{}-{}".format(path, l, bc, ext)
+            glob_str = "{}/{}_*_*_{}-{}{}".format(path, l, bc, ftype, ext)
             glob_res = glob.glob(glob_str)
             if glob_res:
                 files.append(glob_res[0])
@@ -37,7 +38,7 @@ class HsMetricsController(AbstractBaseController):
         stacked_on = 'analysis'
         arguments = [
             (['-r', '--region_file'], dict(help="Region definition file", default=None)),
-            (['--input_file'], dict(help="Run on specific input file", default=None)),
+            (['--file_type'], dict(help="File type glob", default="sort-dup")),
             ]
 
     @controller.expose(help="Calculate hs metrics for samples")
@@ -49,12 +50,12 @@ class HsMetricsController(AbstractBaseController):
         fc.load([os.path.join(x, self.pargs.flowcell) for x in [self.config.get("archive", "root"), self.config.get("analysis", "root")]])
         if not fc:
             return
-        flist = get_files(os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell), fc, project=self.pargs.project)
+        flist = get_files(os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell), fc, ftype=self.pargs.file_type, project=self.pargs.project)
         if self.pargs.input_file:
             flist = [os.path.abspath(self.pargs.input_file)]
         if not query_yes_no("Going to run hs_metrics on {} files. Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
-            sys.exit()
-         for f in flist:
+            return
+        for f in flist:
             self.log.info("running CalculateHsMetrics on {}".format(f))
             ### Issue with calling java from
             ### subprocess:http://stackoverflow.com/questions/9795249/issues-with-wrapping-java-program-with-pythons-subprocess-module

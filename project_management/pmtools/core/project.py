@@ -83,7 +83,7 @@ class ProjectController(AbstractBaseController):
     def ls(self):
         assert os.path.exists(os.path.join(self.config.get("project", "root"), self.pargs.projectid)), "no project directory %s"  % self.pargs.projectid
         if self.pargs.projectid=="":
-            out = self.sh(["ls", self.config.get("project", "root")])
+            out = self.app.cmd.command(["ls", self.config.get("project", "root")])
         else:
             self._not_implemented("list projectid contents: only use intermediate and data directories by default" )
         if out:
@@ -155,7 +155,11 @@ class ProjectController(AbstractBaseController):
                 return
             return re.search(pattern, f) != None
         
-        flist = filtered_walk(os.path.join(self.config.get("project", "root"), self.pargs.projectid), compress_filter)
+        if self.pargs.input_file:
+            flist = [self.pargs.input_file]
+        else:
+            flist = filtered_walk(os.path.join(self.config.get("project", "root"), self.pargs.projectid), compress_filter)
+        
         if len(flist) > 0 and not query_yes_no("Going to {} {} files ({}...). Are you sure you want to continue?".format(label, len(flist), ",".join([os.path.basename(x) for x in flist[0:10]])), force=self.pargs.force):
             sys.exit()
         for f in flist:

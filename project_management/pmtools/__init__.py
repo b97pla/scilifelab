@@ -47,6 +47,7 @@ class AbstractBaseController(controller.CementBaseController):
         self._meta.arguments.append( (['-n', '--dry_run'], dict(help="dry_run - don't actually do anything", action="store_true", default=False)) )
         self._meta.arguments.append((['--force'], dict(help="force execution", action="store_true", default=False)))
         self._meta.arguments.append((['--java_opts'], dict(help="java options", action="store", default="Xmx3g")))
+        self._meta.arguments.append((['--input_file'], dict(help="Run on specific input file", default=None)))
         super(AbstractBaseController, self)._setup(base_app)
 
         ## Sometimes read as string, sometimes as list...
