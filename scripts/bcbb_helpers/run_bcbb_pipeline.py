@@ -13,6 +13,7 @@ import argparse
 import bcbio.solexa.flowcell
 import bcbio.solexa.samplesheet
 from bcbio.pipeline.config_loader import load_config
+import scripts.bcbb_helpers.report_to_gdocs as report
 
 # The directory where CASAVA has written the demuxed output
 CASAVA_OUTPUT_DIR = "Unaligned"
@@ -382,6 +383,13 @@ def has_casava_output(fc_dir):
         pass
     return False
 
+def report_to_gdocs(fc_dir, post_process_config_file):
+    # Rename any existing run_info.yaml as it will interfere with gdocs upload
+    run_info = os.path.join(fc_dir, "run_info.yaml")
+    if os.path.exists(run_info):
+        os.rename(run_info, "{}.bak".format(run_info))
+    report.main(os.path.basename(os.path.abspath(fc_dir)), post_process_config_file)
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Wrapper script for bcbb pipeline. If given a .yaml configuration file, "\
@@ -397,6 +405,9 @@ if __name__ == "__main__":
     parser.add_argument("-r", "--only-run", dest="only_run", action="store_true", default=False, help="Don't setup the analysis directory, just start the pipeline")
     parser.add_argument("-s", "--only-setup", dest="only_setup", action="store_true", default=False, help="Setup the analysis directory but don't start the pipeline")
     parser.add_argument("-i", "--ignore-casava", dest="ignore_casava", action="store_true", default=False, help="Ignore any Casava 1.8+ file structure and just assume the pre-casava pipeline setup")
+    parser.add_argument("-g", "--no-google-report", dest="no_google_report", action="store_true", default=False, help="Don't upload any demultiplex statistics to Google Docs")
     args = parser.parse_args()
         
     main(args.config,args.fcdir,args.custom_config,args.only_run,args.only_setup,args.ignore_casava)
+    if not args.no_google_report:
+        report_to_gdocs(args.fcdir, args.config)

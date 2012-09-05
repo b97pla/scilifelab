@@ -31,9 +31,10 @@ def main(run_id, config_file, run_info_file=None, dryrun=False):
     else:
         archive_dir = os.getcwd()
     
+    analysis_dir = None
     if "base_dir" in analysis_cfg:
         analysis_dir = os.path.join(analysis_cfg["base_dir"], run_id)
-    else:
+    if analysis_dir is None or not os.path.exists(analysis_dir):
         analysis_dir = tempfile.mkdtemp()
         
     dirs = {"work": os.path.normpath(analysis_dir),
