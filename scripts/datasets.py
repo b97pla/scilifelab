@@ -121,7 +121,8 @@ def get_formatted_data():
 
 
 def get_dirs_with_sizes_and_dates(\
-    log_file="/Users/valentinesvensson/Documents/sizegraphing/datasets_sizes.log"):
+    log_file="/Users/valentinesvensson/Documents/sizegraphing/datasets_sizes.log",
+    seen_before=None):
     """Returns a list of dicts as we want them in the status data base.
     """
     # This of course need to be pointed to wherever the log file is available.

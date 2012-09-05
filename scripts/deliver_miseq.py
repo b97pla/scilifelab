@@ -264,7 +264,7 @@ def _create_destination(destination, dryrun):
 def _deliver_files(files,destination, dryrun):
     try:
         cl = ["rsync",
-              "-craz"]
+              "-cra"]
         cl.extend(files)
         cl.append(destination)
         cl = [str(i) for i in cl]
