@@ -8,7 +8,7 @@ import yaml
 import subprocess
 import copy
 import tempfile
-from optparse import OptionParser
+import argparse
 
 import bcbio.solexa.flowcell
 import bcbio.solexa.samplesheet
@@ -29,7 +29,7 @@ FC_SPECIFIC_AMPQ = True
 
 
 def main(post_process_config_file, fc_dir, run_info_file=None, only_run=False, only_setup=False, ignore_casava=False):
- 
+    
     run_arguments = [[os.getcwd(),post_process_config_file,fc_dir,run_info_file]]
     if has_casava_output(fc_dir) and not ignore_casava:
         if not only_run:
@@ -376,18 +376,19 @@ def has_casava_output(fc_dir):
 
 if __name__ == "__main__":
 
-    parser = OptionParser()
-    parser.add_option("-r", "--only-run", dest="only_run", action="store_true", default=False)
-    parser.add_option("-s", "--only-setup", dest="only_setup", action="store_true", default=False)
-    parser.add_option("-i", "--ignore-casava", dest="ignore_casava", action="store_true", default=False)
-    options, args = parser.parse_args()
-    
-    if len(args) < 2:
-        print __doc__
-        sys.exit()
-    
-    run_info_file = None
-    if len(args) > 2:
-        run_info_file = args[2]
+    parser = argparse.ArgumentParser(description="Wrapper script for bcbb pipeline. If given a .yaml configuration file, "\
+                                     "a run folder containing the sequence data from an illumina run and, optionally, "\
+                                     "a custom yaml file with options that should override what is specified in the "\
+                                     "config and samplesheet, the script will copy the relevant files from [store_dir] "\
+                                     "to [base_dir] and submit the automated_initial_analysis.py pipeline script for each "\
+                                     "sample to the cluster platform specified in the configuration.")
+
+    parser.add_argument("config", action="store", default=None, help="Path to the .yaml pipeline configuration file")
+    parser.add_argument("fcdir", action="store", default=None, help="Path to the archive run folder")
+    parser.add_argument("custom_config", action="store", default=None, help="Path to a custom configuration file with lane or sample specific options that will override the main configuration", nargs="?")
+    parser.add_argument("-r", "--only-run", dest="only_run", action="store_true", default=False, help="Don't setup the analysis directory, just start the pipeline")
+    parser.add_argument("-s", "--only-setup", dest="only_setup", action="store_true", default=False, help="Setup the analysis directory but don't start the pipeline")
+    parser.add_argument("-i", "--ignore-casava", dest="ignore_casava", action="store_true", default=False, help="Ignore any Casava 1.8+ file structure and just assume the pre-casava pipeline setup")
+    args = parser.parse_args()
         
-    main(args[0],args[1],run_info_file,options.only_run,options.only_setup,options.ignore_casava)
+    main(args.config,args.fcdir,args.custom_config,args.only_run,args.only_setup,args.ignore_casava)
