@@ -90,7 +90,7 @@ def main():
     parser.add_argument("--db", dest='db', action='store', default="tests",
                         help="CouchDB database name, defaults to 'tests'")
 
-    parser.add_argument("--dry-run", action='store_true', default=False,
+    parser.add_argument("--dry-run", dest='dry_run', action='store_true', default=False,
                         help="Do not submit the resulting hash to CouchDB")
 
     args = parser.parse_args()
@@ -106,7 +106,9 @@ def main():
         else:
             dirsizes = parse_dirsizes(r, dirsizes)
 
-    if not args.dry_run:
+    if args.dry_run:
+        print(dirsizes)
+    else:
         send_db(args.server, args.db, dirsizes)
 
 
