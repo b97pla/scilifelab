@@ -51,4 +51,6 @@ class AnalysisController(AbstractBaseController):
         fc.load([os.path.join(x, self.pargs.flowcell) for x in [self.config.get("archive", "root"), self.config.get("analysis", "root")]])
         if not fc:
             return
+        flist = get_files(os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell), fc, ftype=self.pargs.file_type, project=self.pargs.project)
+
         
