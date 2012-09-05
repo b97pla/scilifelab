@@ -152,7 +152,7 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
        be passed to the run_analysis method for execution
     """
     config = load_config(post_process_config_file)
-    analysis_dir = config["analysis"]["base_dir"]
+    analysis_dir = os.path.abspath(config["analysis"]["base_dir"])
     assert os.path.exists(fc_dir), "ERROR: Flowcell directory %s does not exist" % fc_dir
     assert os.path.exists(analysis_dir), "ERROR: Analysis top directory %s does not exist" % analysis_dir
     
@@ -176,7 +176,7 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
     # Iterate over the projects in the flowcell directory
     for project in fc_dir_structure.get('projects',[]):
         # Create a project directory if it doesn't already exist
-        project_name = project['project_name']
+        project_name = project['project_name'].replace('__','.')
         project_dir = os.path.join(analysis_dir,project_name)
         if not os.path.exists(project_dir):
             os.mkdir(project_dir,0770)
@@ -184,7 +184,7 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
         # Iterate over the samples in the project
         for sample_no, sample in enumerate(project.get('samples',[])):
             # Create a directory for the sample if it doesn't already exist
-            sample_name = sample['sample_name']
+            sample_name = sample['sample_name'].replace('__','.')
             sample_dir = os.path.join(project_dir,sample_name)
             if not os.path.exists(sample_dir):
                 os.mkdir(sample_dir,0770)
@@ -206,14 +206,14 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
             for lane in sample_config:
                 if 'multiplex' in lane:
                     for sample in lane['multiplex']:
-                        sample['files'] = [os.path.join(os.path.abspath(dst_sample_dir),os.path.basename(f)) for f in sample_files if f.find("_%s_L00%d_" % (sample['sequence'],int(lane['lane']))) >= 0]
+                        sample['files'] = [os.path.basename(f) for f in sample_files if f.find("_%s_L00%d_" % (sample['sequence'],int(lane['lane']))) >= 0]
                 else:
-                    lane['files'] = [os.path.join(os.path.abspath(dst_sample_dir),os.path.basename(f)) for f in sample_files if f.find("_L00%d_" % int(lane['lane'])) >= 0]
+                    lane['files'] = [os.path.basename(f) for f in sample_files if f.find("_L00%d_" % int(lane['lane'])) >= 0]
                     
             sample_config = override_with_custom_config(sample_config,custom_config)
             
             arguments = _setup_config_files(dst_sample_dir,sample_config,post_process_config_file,fc_dir_structure['fc_dir'],sample_name,fc_date,fc_name)
-            sample_run_arguments.append([arguments[1],arguments[0],arguments[2],arguments[3]])
+            sample_run_arguments.append([arguments[1],arguments[0],arguments[1],arguments[3]])
         
     return sample_run_arguments
 
@@ -256,10 +256,10 @@ def override_with_custom_config(org_config, custom_config):
                 item[key] = val
                 
             for sample in item.get('multiplex',[]):
-                if 'sample_prj' not in sample or 'name' not in sample:
+                if 'sequence' not in sample:
                     continue
                 for custom_sample in custom_item.get('multiplex',[]):
-                    if sample['sample_prj'] == custom_sample.get('sample_prj',"") and sample['name'] == custom_sample.get('name',""):
+                    if sample['sequence'] == custom_sample.get('sequence',""):
                         for key, val in custom_sample.items():
                             sample[key] = val
                         break
@@ -290,7 +290,7 @@ def _setup_config_files(dst_dir,configs,post_process_config_file,fc_dir,sample_n
     if 'distributed' in local_post_process and 'platform_args' in local_post_process['distributed']:
         slurm_out = "%s-bcbb.log" % sample_name
         local_post_process['distributed']['platform_args'] = "%s -J %s -o %s -D %s" % (local_post_process['distributed']['platform_args'], sample_name, slurm_out, dst_dir)
-           
+            
     local_post_process_file = os.path.join(dst_dir,"%s-post_process.yaml" % sample_name)
     with open(local_post_process_file,'w') as fh:
         fh.write(yaml.safe_dump(local_post_process, default_flow_style=False, allow_unicode=True, width=1000))
@@ -298,7 +298,7 @@ def _setup_config_files(dst_dir,configs,post_process_config_file,fc_dir,sample_n
     # Write the command for running the pipeline with the configuration files
     run_command_file = os.path.join(dst_dir,"%s-bcbb-command.txt" % sample_name)
     with open(run_command_file,"w") as fh:
-        fh.write(" ".join([os.path.basename(__file__),"--only-run",os.path.basename(local_post_process_file), fc_dir, os.path.basename(config_file)])) 
+        fh.write(" ".join([os.path.basename(__file__),"--only-run",os.path.basename(local_post_process_file), os.path.join("..",os.path.basename(dst_dir)), os.path.basename(config_file)])) 
         fh.write("\n")   
     
     return [os.path.basename(local_post_process_file), dst_dir, fc_dir, os.path.basename(config_file)]
