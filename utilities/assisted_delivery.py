@@ -137,7 +137,9 @@ for d in dirs_to_process:
         sys.exit(0)
 
     os.chdir(dirpath)
-    bcname = d + ".bc_metrics"
+    bcname = d + "_bc.metrics"
+    if not os.path.exists(bcname):
+	bcname = d + ".bc_metrics"
     #bcname = "bc.metrics"
     lane = dirpath[0]
     print "LANE ", lane
@@ -197,7 +199,14 @@ for d in dirs_to_process:
     # print os.listdir(".")
     files_to_copy = []
 
-    for fastq_file in glob.glob("*fastq.txt"):
+    for fastq_file in (glob.glob("*fastq.txt") + glob.glob("*fastq.txt.gz")):
+        # Skip if this is a non-compressed file and there exists a compressed version
+        if os.path.exists(fastq_file + ".gz"):
+           continue
+        ext = ""
+        if os.path.splitext(fastq_file)[1] == ".gz": 
+            ext = os.path.splitext(fastq_file)[1]
+        
         if lane_info.has_key('multiplex'):
             new_file_name = ''
             if 'unmatched' in fastq_file: continue
@@ -206,11 +215,11 @@ for d in dirs_to_process:
             #[lane, date, run_id, bcbb_bc, pe_read, dummy] = fastq_file.split("_")
             if sample_id_and_idx.has_key(int(bcbb_bc)):
                 customer_sample_id = sample_id_and_idx[int(bcbb_bc)]
-                new_file_name = lane + "_" + date + "_" + run_id + "_" + customer_sample_id.replace("/", "_") + "_" + pe_read + ".fastq"   
+                new_file_name = lane + "_" + date + "_" + run_id + "_" + customer_sample_id.replace("/", "_") + "_" + pe_read + ".fastq" + ext  
         else:
             [lane, date, run_id, nophix, name, pe_read,dummy] = fastq_file.split("_")
             #[lane, date, run_id, name, pe_read,dummy] = fastq_file.split("_")
-            new_file_name = lane + "_" + date + "_" + run_id + "_" + lane_sample + "_" + pe_read + ".fastq"   
+            new_file_name = lane + "_" + date + "_" + run_id + "_" + lane_sample + "_" + pe_read + ".fastq" + ext   
        #  print "Preparing to copy file", fastq_file, "as ", new_file_name
         if new_file_name != '': files_to_copy.append([fastq_file, new_file_name])
 

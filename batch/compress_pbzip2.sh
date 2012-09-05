@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH -p node
 #SBATCH -N 1
-#SBATCH -t 10:00:00
+#SBATCH -t 4:00:00
 #SBATCH -J pbzip2
 #SBATCH -A a2010002
-#SBATCH --mail-user=per.unneberg@scilifelab.se
+#SBATCH --mail-user= PUT EMAIL HERE
 #SBATCH --mail-type=ALL
 
 # Compress everything:
