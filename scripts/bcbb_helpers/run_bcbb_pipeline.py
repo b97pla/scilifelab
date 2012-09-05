@@ -13,7 +13,7 @@ import argparse
 import bcbio.solexa.flowcell
 import bcbio.solexa.samplesheet
 from bcbio.pipeline.config_loader import load_config
-import scripts.bcbb_helpers.report_to_gdocs as report
+import scilifelab.scripts.bcbb_helpers.report_to_gdocs as report
 
 # The directory where CASAVA has written the demuxed output
 CASAVA_OUTPUT_DIR = "Unaligned"
