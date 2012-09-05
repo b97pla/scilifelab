@@ -4,7 +4,7 @@
 #SBATCH -t 10:00:00
 #SBATCH -J pbzip2
 #SBATCH -A a2010002
-#SBATCH --mail-user=roman.valls.guimera@scilifelab.se
+#SBATCH --mail-user=per.unneberg@scilifelab.se
 #SBATCH --mail-type=ALL
 
 # Compress everything:
@@ -17,7 +17,8 @@ function usage {
     echo "Output: file.bz2 if it's a single file or dir.tar.bz2, -d for decompressing"
 }
 
-if [ ! -e "$1" ]; then
+
+if [ $# == 0 ]; then
 	usage && exit
 fi
 
