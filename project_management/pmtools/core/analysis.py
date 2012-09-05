@@ -45,4 +45,10 @@ class AnalysisController(AbstractBaseController):
 
     @controller.expose(help="Deliver data")
     def deliver(self):
-        self._not_implemented()
+        if not self._check_pargs(["flowcell", "project"]):
+            return
+        fc = Flowcell()
+        fc.load([os.path.join(x, self.pargs.flowcell) for x in [self.config.get("archive", "root"), self.config.get("analysis", "root")]])
+        if not fc:
+            return
+        

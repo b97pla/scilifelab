@@ -10,6 +10,7 @@ from test_default import PmTest
 from pmtools.lib.flowcell import *
 
 flowcell = "120829_SN0001_0001_AA001AAAXX"
+fc_dir = os.path.join(os.path.curdir, "data", "analysis", flowcell)
 runinfo = os.path.join(os.path.curdir, "data", "archive", flowcell, "run_info.yaml")
 
 class PmFlowcellTest(PmTest):
@@ -22,6 +23,9 @@ class PmFlowcellTest(PmTest):
         self.eq(len(newfc), 7)
         self.eq(fc.projects(), ['J.Doe_00_01', 'J.Doe_00_02'])
         self.eq(newfc.projects(), ['J.Doe_00_01'])
+        self.eq(fc.path, os.path.abspath(os.path.dirname(runinfo)))
+        self.eq(fc.filename, os.path.abspath(runinfo))
+
         
     def test_2_load_flowcell(self):
         """Create object and load run information"""
@@ -31,6 +35,8 @@ class PmFlowcellTest(PmTest):
         fc.load([os.path.join(self.app.config.get("analysis", "root"), flowcell),
                  os.path.join(self.app.config.get("archive", "root"), flowcell)])
         self.eq(len(fc), 11)
+        self.eq(fc.path, os.path.join(self.app.config.get("archive", "root"), flowcell))
+        self.eq(fc.filename, os.path.join(self.app.config.get("archive", "root"), flowcell, "run_info.yaml"))
 
     def test_3_getters(self):
         """Test getters"""
@@ -56,3 +62,8 @@ class PmFlowcellTest(PmTest):
         res = re.search(glob_str)
         print res
                 
+    def test_6_get_files(self):
+        """Test getting files"""
+        fc = Flowcell(runinfo)
+        #fc.get_files(fc_dir)
+        fc.get_files(fc_dir, project="J.Doe_00_01")

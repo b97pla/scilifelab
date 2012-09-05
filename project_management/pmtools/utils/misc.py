@@ -55,10 +55,12 @@ def walk(rootdir):
 def filtered_walk(rootdir, filter_fn):
     """Perform a filtered directory walk.
 
-    :param: rootdir - root directory
-    :param: filter_fn - filtering function of class <re>
+    :param rootdir: - root directory
+    :param filter_fn: - filtering function
     """
     flist = []
     for root, dirs, files in os.walk(rootdir):
+        print files
         flist = flist + [os.path.join(root, x) for x in filter(filter_fn, files)]
     return flist
+

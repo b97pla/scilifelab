@@ -10,7 +10,7 @@ import json
 import csv
 import glob
 from cStringIO import StringIO
-
+from pmtools.utils.misc import filtered_walk
 
 ## FIX ME: what should be returned from object functions, and what
 ## should be done behind the scenes?
@@ -27,12 +27,16 @@ class Flowcell(object):
     def __init__(self, infile=None):
         self.filename = None
         self.data = None
+        #self.path = None
         if not infile:
             return None
         self.data = self._read(infile)
 
     def __str__(self):
-        return str(self.data)
+        fh = StringIO()
+        w = csv.writer(fh, delimiter="\t")
+        w.writerows(self.data)
+        return fh.getvalue()
 
     def __len__(self):
         if not self.data:
@@ -45,7 +49,7 @@ class Flowcell(object):
             return None
         with open(infile) as fh:
             runinfo_yaml = yaml.load(fh)
-        self.filename = infile
+        self.filename = os.path.abspath(infile)
         return self._yaml_to_tab(runinfo_yaml)
     
     def as_yaml(self):
@@ -82,6 +86,10 @@ class Flowcell(object):
         i = self.header.index(label)
         return [row[i] for row in self.data]
 
+    # def set_path(self, path):
+    #     """Set flowcell path"""
+        
+
     def projects(self):
         """List flowcell projects"""
         return list(set(self._column("sample_prj")))
@@ -114,6 +122,8 @@ class Flowcell(object):
         vals = list(self._column(column))
         i = [j for j in range(0, len(vals)) if vals[j]==query]
         pruned_fc.data = [self.data[j] for j in i]
+        #pruned_fc.path = self.path
+        pruned_fc.filename = self.filename.replace(".yaml", "-pruned.yaml")
         return pruned_fc
 
     def load(self, paths, runinfo="run_info.yaml"):
@@ -122,6 +132,8 @@ class Flowcell(object):
         :param: paths - one or several paths to look in
         """
         for p in paths:
+            if not os.path.exists(p):
+                next
             data = self._read(os.path.join(p, runinfo))
             if not data is None:
                 self.data = data
@@ -135,7 +147,7 @@ class Flowcell(object):
         """Return glob prefix regular expression strings"""
         glob_pfx = []
         for row in self.data:
-            pattern = "{}_[0-9]+_?{}(_nophix)?_{}-*{}".format(row[0], row[2], row[6], ext)
+            pattern = "{}_[0-9]+_.?{}(_nophix)?_{}*{}".format(row[0], row[2], row[6], ext)
             glob_pfx.append(pattern)
         return glob_pfx
         
@@ -143,8 +155,26 @@ class Flowcell(object):
         """Return glob prefix regular expressions."""
         glob_pfx = []
         for row in self.data:
-            pattern = re.compile("{}_[0-9]+_?{}(_nophix)?_{}-*{}".format(row[0], row[2], row[6], ext))
+            pattern = re.compile("{}_[0-9]+_.?{}(_nophix)?_{}-*{}".format(row[0], row[2], row[6], ext))
             glob_pfx.append(pattern)
         return glob_pfx
 
+    ### FIXME: patterns should be set in bcbb_extension
+    def get_files(self, path, ftype="", ext=".bam", project=None, lane=None):
+        """Get files with a given pattern"""
+        if project:
+            fc = self.subset("sample_prj", project)
+        elif lane:
+            pass
+        else:
+            fc = self
+        print len(fc)
+        pattern = "|".join(fc.glob_pfx_str())
+        def file_filter(f):
+            if not pattern:
+                return
+            return re.search(pattern, f) != None
+        flist = filtered_walk(path, file_filter)
+        return flist
         
+            

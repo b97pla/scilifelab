@@ -38,6 +38,7 @@ class HsMetricsController(AbstractBaseController):
         stacked_on = 'analysis'
         arguments = [
             (['-r', '--region_file'], dict(help="Region definition file", default=None)),
+            ## FIX ME: This should be called bcbb_file_type and be loaded via an extension
             (['--file_type'], dict(help="File type glob", default="sort-dup")),
             ]
 
