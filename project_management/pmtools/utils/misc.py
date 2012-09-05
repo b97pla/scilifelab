@@ -60,7 +60,6 @@ def filtered_walk(rootdir, filter_fn):
     """
     flist = []
     for root, dirs, files in os.walk(rootdir):
-        print files
         flist = flist + [os.path.join(root, x) for x in filter(filter_fn, files)]
     return flist
 

@@ -168,7 +168,6 @@ class Flowcell(object):
             pass
         else:
             fc = self
-        print len(fc)
         pattern = "|".join(fc.glob_pfx_str())
         def file_filter(f):
             if not pattern:
