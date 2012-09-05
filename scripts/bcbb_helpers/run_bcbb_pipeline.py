@@ -176,7 +176,7 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
     # Iterate over the projects in the flowcell directory
     for project in fc_dir_structure.get('projects',[]):
         # Create a project directory if it doesn't already exist
-        project_name = project['project_name']
+        project_name = project['project_name'].replace('__','.')
         project_dir = os.path.join(analysis_dir,project_name)
         if not os.path.exists(project_dir):
             os.mkdir(project_dir,0770)
@@ -184,7 +184,7 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
         # Iterate over the samples in the project
         for sample_no, sample in enumerate(project.get('samples',[])):
             # Create a directory for the sample if it doesn't already exist
-            sample_name = sample['sample_name']
+            sample_name = sample['sample_name'].replace('__','.')
             sample_dir = os.path.join(project_dir,sample_name)
             if not os.path.exists(sample_dir):
                 os.mkdir(sample_dir,0770)
@@ -256,10 +256,10 @@ def override_with_custom_config(org_config, custom_config):
                 item[key] = val
                 
             for sample in item.get('multiplex',[]):
-                if 'sample_prj' not in sample or 'name' not in sample:
+                if 'sequence' not in sample:
                     continue
                 for custom_sample in custom_item.get('multiplex',[]):
-                    if sample['sample_prj'] == custom_sample.get('sample_prj',"") and sample['name'] == custom_sample.get('name',""):
+                    if sample['sequence'] == custom_sample.get('sequence',""):
                         for key, val in custom_sample.items():
                             sample[key] = val
                         break
