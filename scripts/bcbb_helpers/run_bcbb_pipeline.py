@@ -27,7 +27,6 @@ PROCESS_YAML = True
 # If True, will assign the distributed master process and workers to a separate RabbitMQ queue for each flowcell 
 FC_SPECIFIC_AMPQ = True
 
-
 def main(post_process_config_file, fc_dir, run_info_file=None, only_run=False, only_setup=False, ignore_casava=False):
     
     run_arguments = [[os.getcwd(),post_process_config_file,fc_dir,run_info_file]]
@@ -313,9 +312,18 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet):
         config = yaml.load(fh)
     
     # Replace the default analysis
+    ## TODO: This is an ugly hack, should be replaced by a custom config 
     for lane in config:
-        lane['analysis'] = 'Align_standard'
-    
+        if lane.get('genome_build','') == 'hg19':
+            lane['analysis'] = 'Align_standard_seqcap'
+        else:
+            lane['analysis'] = 'Align_standard'
+        for plex in lane.get('multiplex',[]):
+            if plex.get('genome_build','') == 'hg19':
+                plex['analysis'] = 'Align_standard_seqcap'
+            else:
+                plex['analysis'] = 'Align_standard'
+                
     # Remove the yaml file, we will write a new one later
     os.remove(yaml_file)
     
