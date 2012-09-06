@@ -43,7 +43,7 @@ interactive = opts.interactive
 dry = opts.dry
 deliver_all_fcs = opts.deliver_all_fcs
 
-print "DEBUG: Base path: ", base_path
+# print "DEBUG: Base path: ", base_path
 
 #projid = sys.argv[1].lower()
 projid = sys.argv[1]
@@ -124,17 +124,21 @@ for sample_dir in dirs_to_copy_from:
         phixfiltered_path = os.path.join(proj_base_dir, sample_dir, "*", "nophix")
     for fq in glob.glob(os.path.join(phixfiltered_path, "*fastq*")):
         [path, fname] = os.path.split(fq)
+        run_dir = os.path.split(os.path.split(fq)[0])[0]
+        # print "DEBUG: Run dir = ", run_dir
         run_name = os.path.basename(os.path.split(os.path.split(fq)[0])[0])
-        if not os.path.exists(os.path.join(sample_path, run_name)):
-            try:
-                os.mkdir(os.path.join(sample_path, run_name))
-            except:
-                print "Could not create run level directory!"
-                print os.path.join(sample_path, run_name)
-                sys.exit(0)
+        if not dry:
+            if not os.path.exists(os.path.join(sample_path, run_name)):
+                try:
+                    os.mkdir(os.path.join(sample_path, run_name))
+                except:
+                    print "Could not create run level directory!"
+                    print os.path.join(sample_path, run_name)
+                    sys.exit(0)
         sample = os.path.basename(sample_path)
-        dest_file_name = fname.replace("_fastq.txt", ".fastq")
-        dest_file_name = dest_file_name.replace("_nophix_", "_" + sample + "_")
+        print fname
+        [lane, date, fcid, bcbb_id, nophix, read, dummy] = fname.split('_') # e.g. 4_120821_BC118PACXX_1_nophix_2_fastq.txt
+        dest_file_name = lane + "_" + date + "_" + fcid + "_" + sample + "_" + read + ".fastq" 
         dest = os.path.join(sample_path, run_name, dest_file_name)
         print "Will copy (rsync) ", fq, "to ", dest 
         if not dry: 
