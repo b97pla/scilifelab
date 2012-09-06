@@ -50,6 +50,11 @@ projid = sys.argv[1]
 fcid = sys.argv[2]
 uppmaxproj = sys.argv[3]
 
+fcid_comp = fcid.split('_')
+if len(fcid_comp) > 2:
+    fcid = fcid_comp[0] + '_' + fcid_comp[-1]
+    print "FCID format too long, trying ", fcid
+
 dt = datetime.now()
 time_str  = str(dt.year) + "_" + str(dt.month) + "_" + str(dt.day) + "_" + str(dt.hour) + "_" + str(dt.minute) + "_" + str(dt.second)
 
@@ -122,6 +127,9 @@ for sample_dir in dirs_to_copy_from:
         phixfiltered_path = os.path.join(proj_base_dir, sample_dir, fcid, "nophix")
     else:
         phixfiltered_path = os.path.join(proj_base_dir, sample_dir, "*", "nophix")
+
+    print "DEBUG: phixfiltered_path = ", phixfiltered_path
+
     for fq in glob.glob(os.path.join(phixfiltered_path, "*fastq*")):
         [path, fname] = os.path.split(fq)
         run_dir = os.path.split(os.path.split(fq)[0])[0]
