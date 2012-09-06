@@ -21,6 +21,7 @@ class AnalysisController(AbstractBaseController):
             (['-p', '--project'], dict(help="Project id")),
             (['-l', '--lane'], dict(help="Lane id")),
             (['-b', '--barcode_id'], dict(help="Barcode id")),
+            (['--file_type'], dict(help="file type for globbing", default="")),
             ]
 
     @controller.expose(hide=True)
@@ -51,6 +52,9 @@ class AnalysisController(AbstractBaseController):
         fc.load([os.path.join(x, self.pargs.flowcell) for x in [self.config.get("archive", "root"), self.config.get("analysis", "root")]])
         if not fc:
             return
-        flist = get_files(os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell), fc, ftype=self.pargs.file_type, project=self.pargs.project)
-
+        flist = fc.get_files(os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell), ftype=self.pargs.file_type, project=self.pargs.project)
+        ## FIX ME: Here I'm assuming well-behaved project names
+        outdir = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data", self.pargs.flowcell))
+        
+        print "outdir: " + outdir
         

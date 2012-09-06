@@ -23,7 +23,7 @@ class PmFlowcellTest(PmTest):
         self.eq(len(newfc), 7)
         self.eq(fc.projects(), ['J.Doe_00_01', 'J.Doe_00_02'])
         self.eq(newfc.projects(), ['J.Doe_00_01'])
-        self.eq(fc.path, os.path.abspath(os.path.dirname(runinfo)))
+        self.eq(os.path.dirname(fc.filename), os.path.abspath(os.path.dirname(runinfo)))
         self.eq(fc.filename, os.path.abspath(runinfo))
 
         
@@ -35,7 +35,7 @@ class PmFlowcellTest(PmTest):
         fc.load([os.path.join(self.app.config.get("analysis", "root"), flowcell),
                  os.path.join(self.app.config.get("archive", "root"), flowcell)])
         self.eq(len(fc), 11)
-        self.eq(fc.path, os.path.join(self.app.config.get("archive", "root"), flowcell))
+        self.eq(os.path.dirname(fc.filename), os.path.join(self.app.config.get("archive", "root"), flowcell))
         self.eq(fc.filename, os.path.join(self.app.config.get("archive", "root"), flowcell, "run_info.yaml"))
 
     def test_3_getters(self):
@@ -55,15 +55,16 @@ class PmFlowcellTest(PmTest):
         """Test construction of glob prefixes"""
         fc = Flowcell(runinfo)
         glob_pfx_str = fc.glob_pfx_str()
+        print glob_pfx_str
         self.app = self.make_app(argv = [])
         self.app.setup()
         glob_str = os.path.join(self.app.config.get("analysis", "root"), flowcell, glob_pfx_str[0])
         print glob_str
-        res = re.search(glob_str)
-        print res
                 
     def test_6_get_files(self):
         """Test getting files"""
         fc = Flowcell(runinfo)
-        #fc.get_files(fc_dir)
-        fc.get_files(fc_dir, project="J.Doe_00_01")
+        fc.get_files(fc_dir)
+        flist = fc.get_files(fc_dir, project="J.Doe_00_01")
+        f_list_test = set([os.path.basename(x)[0] for x in flist])
+        self.eq("1",  "".join(f_list_test))
