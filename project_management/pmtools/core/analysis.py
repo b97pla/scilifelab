@@ -57,5 +57,5 @@ class AnalysisController(AbstractBaseController):
         ## FIX ME: Here I'm assuming well-behaved project names
         outdir = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data", self.pargs.flowcell))
         tmp = [classify_bcbb_files(x) for x in flist]
-        
+        print tmp
         
