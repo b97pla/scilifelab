@@ -11,6 +11,7 @@ setup(name = "scilifelab",
       scripts = ['scripts/project_management.py',
                  'scripts/runsizes.py',
                  'scripts/bcbb_helpers/run_bcbb_pipeline.py',
+                 'scripts/bcbb_helpers/report_to_gdocs.py',
                  'scripts/bcbb_helpers/process_run_info.py'],
       install_requires = [
           "bcbio-nextgen >= 0.2",
