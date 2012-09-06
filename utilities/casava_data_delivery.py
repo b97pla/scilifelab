@@ -145,8 +145,8 @@ for sample_dir in dirs_to_copy_from:
                     sys.exit(0)
         sample = os.path.basename(sample_path)
         print fname
-        [lane, date, fcid, bcbb_id, nophix, read, dummy] = fname.split('_') # e.g. 4_120821_BC118PACXX_1_nophix_2_fastq.txt
-        dest_file_name = lane + "_" + date + "_" + fcid + "_" + sample + "_" + read + ".fastq" 
+        [lane, date, fc_id, bcbb_id, nophix, read, dummy] = fname.split('_') # e.g. 4_120821_BC118PACXX_1_nophix_2_fastq.txt
+        dest_file_name = lane + "_" + date + "_" + fc_id + "_" + sample + "_" + read + ".fastq" 
         dest = os.path.join(sample_path, run_name, dest_file_name)
         print "Will copy (rsync) ", fq, "to ", dest 
         if not dry: 
