@@ -7,6 +7,7 @@ import os
 from cement.core import controller
 from pmtools import AbstractBaseController
 from pmtools.lib.flowcell import Flowcell
+from pmtools.utils.misc import classify_bcbb_files
 
 ## Main analysis controller
 class AnalysisController(AbstractBaseController):
@@ -55,6 +56,6 @@ class AnalysisController(AbstractBaseController):
         flist = fc.get_files(os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell), ftype=self.pargs.file_type, project=self.pargs.project)
         ## FIX ME: Here I'm assuming well-behaved project names
         outdir = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data", self.pargs.flowcell))
+        tmp = [classify_bcbb_files(x) for x in flist]
         
-        print "outdir: " + outdir
         

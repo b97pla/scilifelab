@@ -143,6 +143,16 @@ class Flowcell(object):
         else:
             return data
 
+
+    def glob_pfx_dict(self, ext=""):
+        """Return glob prefix regular expression strings as a dict"""
+        glob_pfx = dict()
+        for row in self.data:
+            sample = "{}_{}".forma(row[0], row[2])
+            pattern = "{}_[0-9]+_.?{}(_nophix)?_{}*{}".format(row[0], row[2], row[6], ext)
+            glob_pfx[sample] = pattern
+        return glob_pfx
+
     def glob_pfx_str(self, ext=""):
         """Return glob prefix regular expression strings"""
         glob_pfx = []
@@ -176,4 +186,5 @@ class Flowcell(object):
         flist = filtered_walk(path, file_filter)
         return flist
         
-            
+
+
