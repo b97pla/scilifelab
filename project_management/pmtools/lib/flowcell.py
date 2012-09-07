@@ -38,6 +38,9 @@ class Flowcell(object):
         w.writerows(self.data)
         return fh.getvalue()
 
+    def dict(self):
+        return {"{}_{}".format(row[0], row[6]):[] for row in self.data}
+        
     def __len__(self):
         if not self.data:
             return 0
@@ -148,7 +151,7 @@ class Flowcell(object):
         """Return glob prefix regular expression strings as a dict"""
         glob_pfx = dict()
         for row in self.data:
-            sample = "{}_{}".forma(row[0], row[2])
+            sample = "{}_{}".format(row[0], row[2])
             pattern = "{}_[0-9]+_.?{}(_nophix)?_{}*{}".format(row[0], row[2], row[6], ext)
             glob_pfx[sample] = pattern
         return glob_pfx

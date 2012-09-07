@@ -76,6 +76,6 @@ def group_bcbb_files(f, re_str="^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_?([0-9]+
     m = re.search(re_str, os.path.basename(f))
     if m:
         if m.group(3):
-            return dict("{}_{}".format(m.group(1), m.group(3)) = f)
+            return "{}_{}".format(m.group(1), m.group(3))
         else:
             return "{}".format(m.group(1))

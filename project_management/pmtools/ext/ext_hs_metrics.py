@@ -37,9 +37,9 @@ class HsMetricsController(AbstractBaseController):
         description = 'Extension for running hs_metrics'
         stacked_on = 'analysis'
         arguments = [
-            (['-r', '--region_file'], dict(help="Region definition file", default=None)),
+            (['--region_file'], dict(help="Region definition file", default=None)),
             ## FIX ME: This should be called bcbb_file_type and be loaded via an extension
-            (['--file_type'], dict(help="File type glob", default="sort-dup")),
+            (['--hs_file_type'], dict(help="File type glob", default="sort-dup")),
             ]
 
     @controller.expose(help="Calculate hs metrics for samples")
@@ -51,7 +51,7 @@ class HsMetricsController(AbstractBaseController):
         fc.load([os.path.join(x, self.pargs.flowcell) for x in [self.config.get("archive", "root"), self.config.get("analysis", "root")]])
         if not fc:
             return
-        flist = get_files(os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell), fc, ftype=self.pargs.file_type, project=self.pargs.project)
+        flist = get_files(os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell), fc, ftype=self.pargs.hs_file_type, project=self.pargs.project)
         if self.pargs.input_file:
             flist = [os.path.abspath(self.pargs.input_file)]
         if not query_yes_no("Going to run hs_metrics on {} files. Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
