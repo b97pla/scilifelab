@@ -64,7 +64,7 @@ def filtered_walk(rootdir, filter_fn):
         flist = flist + [os.path.join(root, x) for x in filter(filter_fn, files)]
     return flist
 
-def group_bcbb_files(f, re_str="^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_?([0-9]+)?"):
+def group_bcbb_files(f, re_str="^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_?([0-9]+)?_?([0-9]+)?"):
     """Given a file name and a regexp, return a dictionary where the
     keys are the concatenate matches (lane_barcode or lane)
     
@@ -75,7 +75,9 @@ def group_bcbb_files(f, re_str="^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_?([0-9]+
     """
     m = re.search(re_str, os.path.basename(f))
     if m:
-        if m.group(3):
+        if m.group(3) and m.group(4):
             return "{}_{}".format(m.group(1), m.group(3))
         else:
             return "{}".format(m.group(1))
+
+    

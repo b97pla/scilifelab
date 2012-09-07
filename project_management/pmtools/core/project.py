@@ -63,7 +63,7 @@ class ProjectController(AbstractBaseController):
             (['--pbzip2'], dict(help="Use pbzip2 as compressing device", default=False, action="store_true")),
             (['--pigz'], dict(help="Use pigz as compressing device", default=False, action="store_true")),
             (['-f', '--fastq'], dict(help="Workon fastq files", default=False, action="store_true")),
-            (['-p', '--pileup'], dict(help="Workon pileup files", default=False, action="store_true")),
+            (['-p','--pileup'], dict(help="Workon pileup files", default=False, action="store_true")),
             (['-g', '--git'], dict(help="Initialize git directory in repos and project gitdir", default=False, action="store_true")),
             (['-S', '--sampleid'], dict(help="project sample id", action="store")),
             (['-F', '--flowcellid'], dict(help="project flowcell id", action="store")),
@@ -73,16 +73,35 @@ class ProjectController(AbstractBaseController):
         compress_opt = "-v"
         compress_prog = "gzip"
         compress_suffix = ".gz"
-        project_root = None
+        project_root = ""
+        file_pat = []
 
-    ## Setup function
-    def _setup(self, app_obj):
-        super(ProjectController, self)._setup(app_obj)
-        if '--finished' in self.app.argv:
+    ## FIX ME: would like there to be a hook for this
+    def _post_dispatch(self):
+        # setup project search space
+        if self.app.pargs.finished:
             self._meta.project_root = self.app.config.get("project", "finished")
         else:
             self._meta.project_root = self.app.config.get("project", "root")
+        self._assert_project()
+        ## Setup file patterns to use with ls and compress
+        if self.pargs.fastq:
+            self._meta.file_pat += [".fastq", "fastq.txt", ".fq"]
+        if self.pargs.pileup:
+            self._meta.file_pat += [".pileup"]
 
+        ## Setup zip program
+        if self.pargs.pbzip2:
+            self._meta.compress_prog = "pbzip2"
+        elif self.pargs.pigz:
+            self._meta.compress_prog = "pigz"
+
+    ## utility functions
+    def _assert_project(self, msg="No project defined: please supply a valid project name"):
+        assert os.path.exists(os.path.join(self._meta.project_root, self.pargs.projectid)), "no project directory %s"  % self.pargs.projectid
+        if self.pargs.projectid=="":
+            self.log.warn(msg)
+    
     ## default
     @controller.expose(hide=True)
     def default(self):
@@ -91,15 +110,18 @@ class ProjectController(AbstractBaseController):
     ## ls
     @controller.expose(help="List project folder")
     def ls(self):
-        self._assert_project()
-        ##assert os.path.exists(os.path.join(self.config.get("project", "root"), self.pargs.projectid)), "no project directory %s"  % self.pargs.projectid
-        out = None
+        self._post_dispatch()
         if self.pargs.projectid=="":
-            out = self.app.cmd.command(["ls", self._meta.project_root])
+            self._ls(self._meta.project_root, filter=True)
         else:
-            self._not_implemented("list projectid contents: only use intermediate and data directories by default" )
-        if out:
-            print "\n".join(self._filtered_ls(out.splitlines()))
+            pattern = "|".join(["{}$".format(x) for x in self._meta.file_pat])
+            def file_filter(f):
+                if not pattern:
+                    return
+                return re.search(pattern, f) != None
+            flist = filtered_walk(os.path.join(self._meta.project_root, self.pargs.projectid), file_filter)
+            if flist:
+                self.app._output_data["stdout"].write("\n".join(flist))
 
     ## init
     @controller.expose(help="Initalize project folder")
@@ -122,11 +144,6 @@ class ProjectController(AbstractBaseController):
             self.sh(["cd", dirs['repos'], "&& git init --bare"])
             self.sh(["cd", dirs['gitdir'], "&& git init && git remote add origin", dirs['repos']])
 
-    ## utility functions
-    def _assert_project(self, msg="No project defined: please supply a valid project name"):
-        assert os.path.exists(os.path.join(self._meta.project_root, self.pargs.projectid)), "no project directory %s"  % self.pargs.projectid
-        if self.pargs.projectid=="":
-            self.log.warn(msg)
 
     def _flowcells(self):
         self._meta.flowcelldir = os.path.join(self._meta.project_root, self.pargs.projectid, "nobackup", "data")
@@ -147,26 +164,12 @@ class ProjectController(AbstractBaseController):
     def clean(self):
         self._not_implemented()
 
-    def _set_compress_plist(self):
-        ## Set pattern for compress operations
-        plist = []
-        if self.pargs.fastq:
-            plist += [".fastq", "fastq.txt", ".fq"]
-        if self.pargs.pileup:
-            plist += [".pileup"]
-        return plist
-
     def _compress(self, pattern, label="compress"):
-        if self.pargs.pbzip2:
-            self._meta.compress_prog = "pbzip2"
-        elif self.pargs.pigz:
-            self._meta.compress_prog = "pigz"
-
         def compress_filter(f):
             if not pattern:
                 return
             return re.search(pattern, f) != None
-        
+
         if self.pargs.input_file:
             flist = [self.pargs.input_file]
         else:
@@ -182,33 +185,39 @@ class ProjectController(AbstractBaseController):
     @controller.expose(help="Decompress files")
     def decompress(self):
         """Decompress files"""
+        self._post_dispatch()
         self._assert_project("Not running decompress function on project root directory")
         self._meta.compress_opt = "-dv"
         if self.pargs.pbzip2:
             self._meta.compress_suffix = ".bz2"
-        pattern = "|".join(["{}{}$".format(x, self._meta.compress_suffix) for x in self._set_compress_plist()])
+        pattern = "|".join(["{}{}$".format(x, self._meta.compress_suffix) for x in self._meta.file_pat])
         self._compress(pattern, label="decompress")
         
     ## compress
     @controller.expose(help="Compress files")
     def compress(self):
+        self._post_dispatch()
         self._assert_project("Not running compress function on project root directory")
         self._meta.compress_opt = "-v"
-        pattern = "|".join(["{}$".format(x) for x in self._set_compress_plist()])
+        pattern = "|".join(["{}$".format(x) for x in self._meta.file_pat])
         self._compress(pattern)
 
     ## du
     @controller.expose(help="Calculate disk usage in intermediate and data directories")
     def du(self):
-        self._not_implemented()
-
+        self._post_dispatch()
+        self._assert_project("Not running du function on project root directory")
+        out = self.app.cmd.command(["du", "-hs", "{}".format(os.path.join(self._meta.project_root, self.pargs.projectid))])
+        if out:
+            self.app._output_data["stdout"].write(out.rstrip())
+        
     ## deliver
     ##
     ## NOTE: this is a temporary workaround for cases where data has
     ## been removed from analysis directory
     @controller.expose(help="Deliver project data")
     def deliver(self):
-        self._assert_project()
+        self._post_dispatch()
         if not self.pargs.flowcellid:
             self.log.warn("No flowcellid provided. Please provide a flowcellid from which to deliver. Available options are:\n\t{}".format("\n\t".join(self._flowcells())))
             return

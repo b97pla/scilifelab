@@ -32,7 +32,7 @@ class ArchiveController(AbstractBaseController):
 
     @controller.expose(help="List contents")
     def ls(self):
-        return self._ls("archive", "root")
+        return self._ls(self.app.config.get("archive", "root"))
 
     @controller.expose(help="List runinfo contents")
     def runinfo(self):

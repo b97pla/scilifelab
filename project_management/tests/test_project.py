@@ -58,7 +58,7 @@ class ProjectTest(PmTest):
 
     def test_3_compress(self):
         """Test compression of project data"""
-        self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '--fastq', '--force'])
+        self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '-f', '--force'])
         handler.register(ProjectController)
         self._run_app()
 

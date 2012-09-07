@@ -65,10 +65,11 @@ class AbstractBaseController(controller.CementBaseController):
             return self.reignore.match(line) == None
         return filter(ignore, out)
 
-    def _ls(self, section, label):
-        """List contents of path in config section label"""
-        self._assert_config(section, label)
-        out = self.app.cmd.command(["ls", self.config.get(section, label)])
+    def _ls(self, path, filter=False):
+        """List contents of path"""
+        out = self.app.cmd.command(["ls", path])
+        if filter:
+            out = self._filtered_ls(out)
         if out:
             self.app._output_data["stdout"].write(out.rstrip())
 
