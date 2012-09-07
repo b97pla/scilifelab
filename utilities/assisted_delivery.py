@@ -137,15 +137,9 @@ for d in dirs_to_process:
         sys.exit(0)
 
     os.chdir(dirpath)
-<<<<<<< HEAD
-    bcname = d + ".bc_metrics"
-    #bcname = d + "_bc.metrics"
-=======
     bcname = d + "_bc.metrics"
     if not os.path.exists(bcname):
 	bcname = d + ".bc_metrics"
-    #bcname = "bc.metrics"
->>>>>>> 4c5a623e150c3d7904a3692aa956694572ff11a2
     lane = dirpath[0]
     print "LANE ", lane
     if not dry: logfile.write("LANE " + lane + "\n")
