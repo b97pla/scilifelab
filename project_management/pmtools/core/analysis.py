@@ -22,7 +22,7 @@ class AnalysisController(AbstractBaseController):
             (['-p', '--project'], dict(help="Project id")),
             (['-l', '--lane'], dict(help="Lane id")),
             (['-b', '--barcode_id'], dict(help="Barcode id")),
-            (['--pre_casava'], dict(help="Use pre-casava directory structure")),
+            (['--pre_casava'], dict(help="Use pre-casava directory structure", action="store_true", default=False)),
             ]
 
     @controller.expose(hide=True)

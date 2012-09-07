@@ -20,8 +20,8 @@ class PmAnalysisTest(PmTest):
         handler.register(AnalysisController)
         self._run_app()
 
-    def test_3_deliver(self):
-        """Test default delivery to project directory"""
+    def test_3_casava_deliver(self):
+        """Test casava delivery to project directory"""
         # self.app = self.make_app(argv = ['analysis', 'deliver', '120829_SN0001_0001_AA001AAAXX'])
         # handler.register(AnalysisController)
         # self._run_app()
@@ -31,11 +31,11 @@ class PmAnalysisTest(PmTest):
 
         #self.eq(" ".join(self.app._output_data['stdout'].getvalue().split()[0:12]), "1 Lane 1, J.Doe_00_01 A001AAAXX unknown Align_illumina SampleSheet 1 J.Doe_00_01 P1_101F_index1 ATCACG")
 
-    def test(self):
-        """Test default delivery to project directory"""
+    def test_4_pre_casava_delivery(self):
+        """Test pre_casava delivery to project directory"""
         # self.app = self.make_app(argv = ['analysis', 'deliver', '120829_SN0001_0001_AA001AAAXX'])
         # handler.register(AnalysisController)
         # self._run_app()
-        self.app = self.make_app(argv = ['analysis', 'deliver', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01'])
+        self.app = self.make_app(argv = ['analysis', 'deliver', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '--pre_casava'])
         handler.register(AnalysisController)
         self._run_app()
