@@ -67,11 +67,21 @@ class ProjectController(AbstractBaseController):
             (['-g', '--git'], dict(help="Initialize git directory in repos and project gitdir", default=False, action="store_true")),
             (['-S', '--sampleid'], dict(help="project sample id", action="store")),
             (['-F', '--flowcellid'], dict(help="project flowcell id", action="store")),
+            (['--finished'], dict(help="include finished project listing", action="store_true", default=False)),
             ]
         flowcelldir = None
         compress_opt = "-v"
         compress_prog = "gzip"
         compress_suffix = ".gz"
+        project_root = None
+
+    ## Setup function
+    def _setup(self, app_obj):
+        super(ProjectController, self)._setup(app_obj)
+        if '--finished' in self.app.argv:
+            self._meta.project_root = self.app.config.get("project", "finished")
+        else:
+            self._meta.project_root = self.app.config.get("project", "root")
 
     ## default
     @controller.expose(hide=True)
@@ -81,9 +91,11 @@ class ProjectController(AbstractBaseController):
     ## ls
     @controller.expose(help="List project folder")
     def ls(self):
-        assert os.path.exists(os.path.join(self.config.get("project", "root"), self.pargs.projectid)), "no project directory %s"  % self.pargs.projectid
+        self._assert_project()
+        ##assert os.path.exists(os.path.join(self.config.get("project", "root"), self.pargs.projectid)), "no project directory %s"  % self.pargs.projectid
+        out = None
         if self.pargs.projectid=="":
-            out = self.app.cmd.command(["ls", self.config.get("project", "root")])
+            out = self.app.cmd.command(["ls", self._meta.project_root])
         else:
             self._not_implemented("list projectid contents: only use intermediate and data directories by default" )
         if out:
@@ -98,13 +110,13 @@ class ProjectController(AbstractBaseController):
         ## Create directory structure
         dirs = ["%s_git" % self.pargs.projectid, "data", "intermediate"]
         gitdirs = ["config", "sbatch", "doc", "lib"] 
-        [self.safe_makedir(os.path.join(self.config.get("project", "root"), self.pargs.projectid, x)) for x in dirs]
-        [self.safe_makedir(os.path.join(self.config.get("project", "root"), self.pargs.projectid, dirs[0], x)) for x in gitdirs]
+        [self.safe_makedir(os.path.join(self._meta.project_root, self.pargs.projectid, x)) for x in dirs]
+        [self.safe_makedir(os.path.join(self._meta.project_root, self.pargs.projectid, dirs[0], x)) for x in gitdirs]
         ## Initialize git if repos defined and flag set
         if self.config.get("project", "repos") and self.pargs.git:
             dirs = {
                 'repos':os.path.join(self.config.get("project", "repos"), "current", self.pargs.projectid),
-                'gitdir':os.path.join(self.config.get("project", "root"), self.pargs.projectid, "%s_git" % self.pargs.projectid)
+                'gitdir':os.path.join(self._meta.project_root, self.pargs.projectid, "%s_git" % self.pargs.projectid)
                     }
             self.safe_makedir(dirs['repos'])
             self.sh(["cd", dirs['repos'], "&& git init --bare"])
@@ -112,14 +124,14 @@ class ProjectController(AbstractBaseController):
 
     ## utility functions
     def _assert_project(self, msg="No project defined: please supply a valid project name"):
-        assert os.path.exists(os.path.join(self.config.get("project", "root"), self.pargs.projectid)), "no project directory %s"  % self.pargs.projectid
+        assert os.path.exists(os.path.join(self._meta.project_root, self.pargs.projectid)), "no project directory %s"  % self.pargs.projectid
         if self.pargs.projectid=="":
             self.log.warn(msg)
 
     def _flowcells(self):
-        self._meta.flowcelldir = os.path.join(self.config.get("project", "root"), self.pargs.projectid, "nobackup", "data")
+        self._meta.flowcelldir = os.path.join(self._meta.project_root, self.pargs.projectid, "nobackup", "data")
         if not os.path.exists(self._meta.flowcelldir):
-              self._meta.flowcelldir = os.path.join(self.config.get("project", "root"), self.pargs.projectid,"data")
+              self._meta.flowcelldir = os.path.join(self._meta.project_root, self.pargs.projectid,"data")
         if not os.path.exists(self._meta.flowcelldir):
             return []
         files = os.listdir(self._meta.flowcelldir)
@@ -158,7 +170,7 @@ class ProjectController(AbstractBaseController):
         if self.pargs.input_file:
             flist = [self.pargs.input_file]
         else:
-            flist = filtered_walk(os.path.join(self.config.get("project", "root"), self.pargs.projectid), compress_filter)
+            flist = filtered_walk(os.path.join(self._meta.project_root, self.pargs.projectid), compress_filter)
         
         if len(flist) > 0 and not query_yes_no("Going to {} {} files ({}...). Are you sure you want to continue?".format(label, len(flist), ",".join([os.path.basename(x) for x in flist[0:10]])), force=self.pargs.force):
             sys.exit()

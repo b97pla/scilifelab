@@ -27,8 +27,7 @@ class PmHsMetricsTest(PmTest):
         self.app = self.make_app(argv=['analysis', 'hs-metrics', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '--region_file', 'regionfile', '--force', '-n'], extensions=['pmtools.ext.ext_hs_metrics'])
         handler.register(AnalysisController)
         self._run_app()
-        hsmetrics_str = "(DRY_RUN): java -jar $PICARD_HOME/CalculateHsMetrics.jar -I {}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_1-sort-dup.bam -TI regionfile -BI regionfile -O {}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics".format(self.app.config.get("analysis", "root"), self.app.config.get("analysis", "root"))
-        hsmetrics_str = "(DRY_RUN): java -Xmx3g -jar None/CalculateHsMetrics.jar INPUT={}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_1-sort-dup.bam TARGET_INTERVALS=regionfile BAIT_INTERVALS=regionfile OUTPUT={}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics VALIDATION_STRINGENCY=SILENT".format(self.app.config.get("analysis", "root"), self.app.config.get("analysis", "root"))
+        hsmetrics_str = "(DRY_RUN): java -Xmx3g -jar {}/CalculateHsMetrics.jar INPUT={}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_1-sort-dup.bam TARGET_INTERVALS=regionfile BAIT_INTERVALS=regionfile OUTPUT={}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics VALIDATION_STRINGENCY=SILENT".format(os.getenv("PICARD_HOME"), self.app.config.get("analysis", "root"), self.app.config.get("analysis", "root"))
 
         self.eq(hsmetrics_str, str(self.app._output_data['stderr'].getvalue().split("\n")[0]))
 
@@ -45,5 +44,5 @@ class PmHsMetricsTest(PmTest):
         self.app = self.make_app(argv=['analysis', 'hs-metrics', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '--region_file', 'regionfile', '--force',  '-A', 'jobaccount', '--drmaa', '-n'], extensions=['pmtools.ext.ext_hs_metrics', 'pmtools.ext.ext_distributed'])
         handler.register(AnalysisController)
         self._run_app()
-        hsmetrics_str = "(DRY_RUN): java -Xmx3g -jar None/CalculateHsMetrics.jar INPUT={}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_1-sort-dup.bam TARGET_INTERVALS=regionfile BAIT_INTERVALS=regionfile OUTPUT={}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics VALIDATION_STRINGENCY=SILENT".format(self.app.config.get("analysis", "root"), self.app.config.get("analysis", "root"))
+        hsmetrics_str = "(DRY_RUN): java -Xmx3g -jar {}/CalculateHsMetrics.jar INPUT={}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_1-sort-dup.bam TARGET_INTERVALS=regionfile BAIT_INTERVALS=regionfile OUTPUT={}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics VALIDATION_STRINGENCY=SILENT".format(os.getenv("PICARD_HOME"), self.app.config.get("analysis", "root"), self.app.config.get("analysis", "root"))
         self.eq(hsmetrics_str, str(self.app._output_data['stderr'].getvalue().split("\n")[0]))

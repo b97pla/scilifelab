@@ -71,27 +71,27 @@ class ProjectTest(PmTest):
     def test_4_compress_distributed(self):
         """Test distributed compression of project data"""
         if os.getenv("DRMAA_LIBRARY_PATH"):
-            self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'a2010002', '-t', '00:01:00', '--partition', 'core'] , extensions=['pmtools.ext.ext_distributed'])
+            self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '-n'] , extensions=['pmtools.ext.ext_distributed'])
             handler.register(ProjectController)
             self._run_app()
 
     def test_4_decompress_distributed(self):
         """Test distributed compression of project data"""
         if os.getenv("DRMAA_LIBRARY_PATH"):
-            self.app = self.make_app(argv = ['project', 'decompress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'a2010002', '-t', '00:01:00', '--partition', 'core'] , extensions=['pmtools.ext.ext_distributed'])
+            self.app = self.make_app(argv = ['project', 'decompress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '-n'] , extensions=['pmtools.ext.ext_distributed'])
             handler.register(ProjectController)
             self._run_app()
 
     def test_5_compress_pbzip2_node(self):
         """Test distributed compression of project data with pbzip2"""
         if os.getenv("DRMAA_LIBRARY_PATH"):
-            self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'a2010002', '-t', '00:01:00', '--partition', 'core', '--pbzip2'] , extensions=['pmtools.ext.ext_distributed'])
+            self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '--pbzip2', '-n'] , extensions=['pmtools.ext.ext_distributed'])
             handler.register(ProjectController)
             self._run_app()
 
     def test_5_decompress_pbzip2_node(self):
         """Test distributed decompression of project data with pbzip2"""
         if os.getenv("DRMAA_LIBRARY_PATH"):
-            self.app = self.make_app(argv = ['project', 'decompress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'a2010002', '-t', '00:01:00', '--partition', 'core', '--pbzip2'] , extensions=['pmtools.ext.ext_distributed'])
+            self.app = self.make_app(argv = ['project', 'decompress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '--pbzip2', '-n'] , extensions=['pmtools.ext.ext_distributed'])
             handler.register(ProjectController)
             self._run_app()
