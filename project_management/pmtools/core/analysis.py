@@ -53,6 +53,7 @@ class AnalysisController(AbstractBaseController):
         fc = Flowcell()
         fc.load([os.path.join(x, self.pargs.flowcell) for x in [self.config.get("archive", "root"), self.config.get("analysis", "root")]])
         if not fc:
+            self.log.warn("No run information available for {}".format(self.pargs.flowcell))
             return
         indir = os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell)
         flist = fc.get_files(indir, ftype=self.pargs.file_type, project=self.pargs.project)
