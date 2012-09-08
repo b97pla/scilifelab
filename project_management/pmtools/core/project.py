@@ -83,7 +83,7 @@ class ProjectController(AbstractBaseController):
             self._meta.project_root = self.app.config.get("project", "finished")
         else:
             self._meta.project_root = self.app.config.get("project", "root")
-        self._assert_project()
+        assert os.path.exists(self._meta.project_root), "No such directory {}; check your project config".format(self._meta.project_root)
         ## Setup file patterns to use with ls and compress
         if self.pargs.fastq:
             self._meta.file_pat += [".fastq", "fastq.txt", ".fq"]
@@ -98,7 +98,7 @@ class ProjectController(AbstractBaseController):
 
     ## utility functions
     def _assert_project(self, msg="No project defined: please supply a valid project name"):
-        assert os.path.exists(os.path.join(self._meta.project_root, self.pargs.projectid)), "no project directory %s"  % self.pargs.projectid
+        assert os.path.exists(os.path.join(self._meta.project_root, self.pargs.projectid)), "no such project '{}' in project directory '{}'".format(self.pargs.projectid, self._meta.project_root)
         if self.pargs.projectid=="":
             self.log.warn(msg)
     
@@ -114,6 +114,7 @@ class ProjectController(AbstractBaseController):
         if self.pargs.projectid=="":
             self._ls(self._meta.project_root, filter=True)
         else:
+            self._assert_project()
             pattern = "|".join(["{}$".format(x) for x in self._meta.file_pat])
             def file_filter(f):
                 if not pattern:

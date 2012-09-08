@@ -40,26 +40,31 @@ from pmtools.utils.misc import filtered_walk, group_bcbb_files
 # fc_date: '120821'
 # fc_name: BC118PACXX
 
-
 class Flowcell(object):
-    """Class for handling (Illumina) flowcell info"""
-    lanelabels = ["lane", "description", "flowcell_id", "genome_build", "analysis"]
-    mplabels = ["barcode_type", "barcode_id", "sample_prj", "name", "sequence"]
-    header = lanelabels + mplabels
+    """Class for handling (Illumina) run information.
+
+    Run information is stored as a table."""
+    ## Run information
+    fc_name = None
+    fc_date = None
+    _keys = dict(lane = ['lane', 'lane_description', 'flowcell_id', 'lane_analysis', 'genome_build', 'lane_results'],
+                 mp = ['mp_analysis', 'barcode_id', 'barcode_type', 'sample_prj', 'name', 'sequence', 'files', 'genomes_filter_out', 'mp_description', 'mp_results'])
+    _labels = dict(lane = ['lane', 'description', 'flowcell_id', 'analysis', 'genome_build', 'results'],
+                   mp = ['analysis', 'barcode_id', 'barcode_type', 'sample_prj', 'name', 'sequence', 'files', 'genomes_filter_out', 'description', 'results'])
+    header = _labels['lane'] + _labels['mp']
 
     def __init__(self, infile=None):
         self.filename = None
         self.data = None
         self.data_dict = None
-        #self.path = None
         if not infile:
             return None
         self.data = self._read(infile)
 
     def __str__(self):
         fh = StringIO()
-        w = csv.writer(fh, delimiter="\t")
-        w.writerows(self.data)
+        w = csv.writer(fh, delimiter="\t", quoting=True)
+        w.writerows([self.header] + self.data)
         return fh.getvalue()
 
     def _init_dict(self):
@@ -89,26 +94,29 @@ class Flowcell(object):
         """Convert yaml to internal representation"""
         out = []
         for info in runinfo_yaml:
-            laneinfo = [info.get(x, None) for x in self.lanelabels]
+            laneinfo = [info.get(x) for x in self._labels['lane']]
             for mp in info.get("multiplex", None):
-                mpinfo = [mp.get(x, None) for x in self.mplabels]
+                mpinfo = [mp.get(x) for x in self._labels['mp']]
                 line = laneinfo + mpinfo
                 out.append(line)
         return out
-
+    
     def _tab_to_yaml(self):
         """Convert internal representation to yaml"""
         yaml_out = dict()
         for row in self.data:
-            (lane, description, flowcell_id, genome_build, analysis,
-             barcode_type, barcode_id, sample_prj, name, sequence) = row
-            if not yaml_out.has_key(lane):
-                yaml_out[lane] = dict(lane=lane, genome_build=genome_build, description=description,
-                                      analysis=analysis, flowcell_id=flowcell_id, multiplex=[])
-            yaml_out[lane]["multiplex"].append(dict(barcode_id=barcode_id, barcode_type=barcode_type, genome_build=genome_build,
-                                                    name=name, sample_prj=sample_prj, sequence=sequence))
+            h= self._keys['lane'] + self._keys['mp']
+            d= dict(zip(h, row))
+            if not yaml_out.has_key(d['lane']):
+                yaml_out[d['lane']] = dict((k.replace("lane_", ""), d[k]) for k in self._keys['lane'] if k in d and not d[k] is None)
+                yaml_out[d['lane']]["multiplex"] = []
+            d_mp = dict((k.replace("mp_", ""), d[k]) for k in self._keys['mp'] if k in d and not d[k] is None)
+            ## Fix description and analysis
+            d_mp["analysis"] = d_mp.get("analysis", yaml_out[d['lane']]["analysis"])
+            d_mp["description"] = d_mp.get("description", "{}_{}".format(str(d_mp.get("sample_prj", None)), str(d_mp.get("name", None))))
+            yaml_out[d['lane']]["multiplex"].append(d_mp)
         return yaml.dump(yaml_out.values())
-        
+    
     def _get_rows(self, i):
         return [row for row in self.data[i:]]
 

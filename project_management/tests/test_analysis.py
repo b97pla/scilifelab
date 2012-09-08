@@ -20,7 +20,7 @@ class PmAnalysisTest(PmTest):
         handler.register(AnalysisController)
         self._run_app()
 
-    def test_3_casava_deliver(self):
+    def test_3_casava_delivery(self):
         """Test casava delivery to project directory"""
         # self.app = self.make_app(argv = ['analysis', 'deliver', '120829_SN0001_0001_AA001AAAXX'])
         # handler.register(AnalysisController)

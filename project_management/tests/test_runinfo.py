@@ -18,6 +18,7 @@ class PmFlowcellTest(PmTest):
     def test_1_get_flowcell(self):
         """Read contents of runinfo file and generate flowcell object"""
         fc = Flowcell(runinfo)
+        print "\n", fc
         newfc=fc.subset("sample_prj", "J.Doe_00_01")
         self.eq(len(fc), 11)
         self.eq(len(newfc), 7)

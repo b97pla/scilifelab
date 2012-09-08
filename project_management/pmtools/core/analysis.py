@@ -4,6 +4,7 @@ Pm analysis module
 
 import sys
 import os
+import re
 from cement.core import controller
 from pmtools import AbstractBaseController
 from pmtools.lib.flowcell import Flowcell
@@ -31,7 +32,7 @@ class AnalysisController(AbstractBaseController):
 
     @controller.expose(help="List contents")
     def ls(self):
-        self._ls("analysis", "root")
+        self._ls(self.app.config.get("analysis", "root"))
 
     @controller.expose(help="List runinfo contents")
     def runinfo(self):
@@ -57,17 +58,20 @@ class AnalysisController(AbstractBaseController):
         flist = fc.get_files(indir, ftype=self.pargs.file_type, project=self.pargs.project)
         ## FIX ME: Here I'm assuming well-behaved project names
         fc_new = fc.collect_files(indir)
-        print fc_new.data_dict
+        outdir = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data"))
         if self.pargs.pre_casava:
             outdir = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data", self.pargs.flowcell))
-        else:
-            outdir = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data"))
+        
         for k,v in fc_new.data_dict.items():
-            print k
             outfiles =  v['files']
             for f in outfiles:
+                (pfx, bn) = (os.path.dirname(f), os.path.basename(f))
+                # if re.match("nophix", pfx):
+                #     continue
+                if pfx.find("barcode"):
+                    pfx = ""
                 if self.pargs.pre_casava:
-                    print os.path.join(outdir, f)
+                    print os.path.join(outdir, pfx, bn)
                 else:
                     print os.path.join(outdir, v['name'], self.pargs.flowcell, f)
                 
