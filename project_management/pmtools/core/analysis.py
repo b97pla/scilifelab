@@ -68,13 +68,12 @@ class AnalysisController(AbstractBaseController):
             if not self.pargs.pre_casava:
                 outdir = os.path.join(outdir_pfx, sample['name'], fc.fc_id())
                 fc_new = fc.subset("lane", sample['lane']).subset("name", sample['name'])
-                print fc_new.filename
-                print fc_new.fc_id()
                 tgts = [os.path.join(outdir, os.path.basename(src)) for src in sample['files']]
             else:
                 tgts = [src.replace(indir, outdir) for src in sample['files']]
             self.app.cmd.safe_makedir(outdir)
             fc_new.set_entry(key, 'files', tgts)
+            print fc_new.as_yaml()
 
         # for k,v in fc_new.data_dict.items():
         #     outfiles =  v['files']
