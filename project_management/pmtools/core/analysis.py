@@ -56,15 +56,26 @@ class AnalysisController(AbstractBaseController):
             self.log.warn("No run information available for {}".format(self.pargs.flowcell))
             return
         indir = os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell)
-        ## flist = fc.get_files(indir, ftype=self.pargs.file_type, project=self.pargs.project)
         ## FIX ME: Here I'm assuming well-behaved project names
-        fc_new = fc.collect_files(indir)
-        outdir = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data"))
+        ## collect files in project dir if casava structure
+        fc.collect_files(indir)
+        outdir_pfx = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data"))
         if self.pargs.pre_casava:
-            outdir = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data", self.pargs.flowcell))
-        print fc_new
-        print outdir
-        
+            outdir = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data", fc.fc_id()))
+            fc_new = fc
+        for sample in fc:
+            key = "{}_{}".format(sample['lane'], sample['barcode_id'])
+            if not self.pargs.pre_casava:
+                outdir = os.path.join(outdir_pfx, sample['name'], fc.fc_id())
+                fc_new = fc.subset("lane", sample['lane']).subset("name", sample['name'])
+                print fc_new.filename
+                print fc_new.fc_id()
+                tgts = [os.path.join(outdir, os.path.basename(src)) for src in sample['files']]
+            else:
+                tgts = [src.replace(indir, outdir) for src in sample['files']]
+            self.app.cmd.safe_makedir(outdir)
+            fc_new.set_entry(key, 'files', tgts)
+
         # for k,v in fc_new.data_dict.items():
         #     outfiles =  v['files']
         #     for f in outfiles:

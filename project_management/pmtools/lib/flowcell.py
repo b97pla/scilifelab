@@ -44,14 +44,22 @@ class Flowcell(object):
         self.data = None
         self.i = 0
         if not infile:
-            return None
+            return
         self.data = self._read(infile)
+        self._set_sample_dict()
 
+    def fc_id(self):
+        m = re.search("([0-9]+)_[A-Za-z0-9]+_[A-Za-z0-9]+_([A-Z0-9]+)", os.path.dirname(self.filename))
+        if m:
+            (self.fc_date, self.fc_name) = (m.group(1), m.group(2))
+        return "{}_{}".format(self.fc_date, self.fc_name)
+        
     def __iter__(self):
         return self
 
     def next(self):
         if self.i >= len(self.data):
+            self.i = 0
             raise StopIteration
         row = self.data[self.i]
         self.i = self.i + 1 
@@ -90,21 +98,27 @@ class Flowcell(object):
     def as_yaml(self):
         return self._tab_to_yaml()
 
+    def _set_sample_dict(self):
+        i = 0
+        self.samples = {}
+        for row in self.data:
+            d = dict(zip(self.header, row))
+            key = "{}_{}".format(d['lane'], d['barcode_id'])
+            self.samples[key] = i
+            i += 1
+            
     def _yaml_to_tab(self, runinfo_yaml):
         """Convert yaml to internal representation"""
         out = []
-        i=0
         for info in runinfo_yaml:
             self.lane_files[info.get('lane', None)] = []
-            laneinfo = [info.get(x) for x in self._labels['lane']]
+            laneinfo = [info.get(x) for x in self._keys['lane']]
             for mp in info.get("multiplex", None):
-                mpinfo = [mp.get(x) for x in self._labels['mp']]
+                mpinfo = [mp.get(x) for x in self._keys['mp']]
                 line = laneinfo + mpinfo
-                d = dict(zip(self.header, line))
-                key = "{}_{}".format(d['lane'], d['barcode_id'])
-                self.samples[key] = i
+                line[self.keys.index("files")] = []
+                line[self.keys.index("mp_results")] = []
                 out.append(line)
-                i += 1
         return out
     
     def _tab_to_yaml(self):
@@ -119,7 +133,7 @@ class Flowcell(object):
                 yaml_out[d['lane']] = dict((k.replace("lane_", ""), d[k]) for k in self._out_keys['lane'] if k in d and not d[k] is None)
                 yaml_out[d['lane']]["multiplex"] = []
             d_mp = dict((k.replace("mp_", ""), d[k]) for k in self._out_keys['mp'] if k in d and not d[k] is None)
-            ## Fix description, files and analysis
+            ## Fix description, results, files and analysis
             d_mp["analysis"] = d_mp.get("analysis", yaml_out[d['lane']].get("analysis", None))
             d_mp["description"] = d_mp.get("description", "{}_{}".format(str(d_mp.get("sample_prj", None)), str(d_mp.get("name", None))))
             if d_mp.get("files", None):
@@ -138,17 +152,14 @@ class Flowcell(object):
     def get_entry(self, key, label):
         return self.data[self.samples[key]][self.keys.index(label)]
 
+    def set_entry(self, key, label, value):
+        self.data[self.samples[key]][self.keys.index(label)] = value
+
     def append_to_entry(self, key, label, value):
         if not self.data[self.samples[key]][self.keys.index(label)]:
             self.data[self.samples[key]][self.keys.index(label)] = []
         self.data[self.samples[key]][self.keys.index(label)].append(value)
                 
-    def set_sample(self, key, sample):
-        self.data[self.samples[key]] = sample
-
-    def _get_rows(self, i):
-        return [row for row in self.data[i:]]
-
     def _column(self, label):
         i = self.keys.index(label)
         return [row[i] for row in self.data if not row[i] is None]
@@ -186,6 +197,7 @@ class Flowcell(object):
         i = [j for j in range(0, len(vals)) if vals[j]==query]
         pruned_fc.data = [self.data[j] for j in i]
         pruned_fc.filename = self.filename.replace(".yaml", "-pruned.yaml")
+        pruned_fc._set_sample_dict()
         return pruned_fc
 
     def load(self, paths, runinfo="run_info.yaml"):
@@ -199,6 +211,8 @@ class Flowcell(object):
             data = self._read(os.path.join(p, runinfo))
             if not data is None:
                 self.data = data
+                self.filename = os.path.join(p, runinfo)
+                self._set_sample_dict()
                 break
         if not data:
             return None
@@ -276,6 +290,3 @@ class Flowcell(object):
         for f in flist:
             self.classify_file(f)
         return fc
-    
-
-        

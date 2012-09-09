@@ -1,4 +1,5 @@
 """command"""
+import os
 import sys
 
 from cement.core import interface, handler

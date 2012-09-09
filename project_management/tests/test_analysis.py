@@ -39,3 +39,4 @@ class PmAnalysisTest(PmTest):
         self.app = self.make_app(argv = ['analysis', 'deliver', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '--pre_casava'])
         handler.register(AnalysisController)
         self._run_app()
+        
