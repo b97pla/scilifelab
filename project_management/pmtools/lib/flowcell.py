@@ -25,14 +25,14 @@ class Flowcell(object):
     ## Run information
     fc_name = None
     fc_date = None
-    _keys = dict(lane = ['lane', 'lane_description', 'flowcell_id', 'lane_analysis', 'genome_build', 'lane_results'],
+    _keys = dict(lane = ['lane', 'lane_description', 'flowcell_id', 'lane_analysis', 'genome_build'],
                  mp = ['mp_analysis', 'barcode_id', 'barcode_type', 'sample_prj', 'name', 'sequence', 'files', 'genomes_filter_out', 'mp_description', 'mp_results'])
-    _labels = dict(lane = ['lane', 'description', 'flowcell_id', 'analysis', 'genome_build', 'results'],
+    _labels = dict(lane = ['lane', 'description', 'flowcell_id', 'analysis', 'genome_build'],
                    mp = ['analysis', 'barcode_id', 'barcode_type', 'sample_prj', 'name', 'sequence', 'files', 'genomes_filter_out', 'description', 'results'])
     header = _labels['lane'] + _labels['mp']
     keys = _keys['lane'] + _keys['mp']
     samples = dict()
-    lane_results = dict()
+    lane_files = dict()
 
     _out_keys = dict(lane= ['lane', 'lane_description', 'flowcell_id', 'lane_analysis', 'genome_build'],
                      mp = ['mp_analysis', 'barcode_id', 'barcode_type', 'sample_prj', 'name', 'sequence', 'files', 'genomes_filter_out', 'mp_description'])
@@ -95,7 +95,7 @@ class Flowcell(object):
         out = []
         i=0
         for info in runinfo_yaml:
-            self.lane_results[info.get('lane', None)] = []
+            self.lane_files[info.get('lane', None)] = []
             laneinfo = [info.get(x) for x in self._labels['lane']]
             for mp in info.get("multiplex", None):
                 mpinfo = [mp.get(x) for x in self._labels['mp']]
@@ -105,10 +105,6 @@ class Flowcell(object):
                 self.samples[key] = i
                 out.append(line)
                 i += 1
-            key = "{}_unmatched".format(d['lane'])
-            self.samples[key] = i
-            out.append([None for x in line])
-            i += 1
         return out
     
     def _tab_to_yaml(self):
@@ -154,8 +150,8 @@ class Flowcell(object):
         return [row for row in self.data[i:]]
 
     def _column(self, label):
-        i = self.header.index(label)
-        return [row[i] for row in self.data]
+        i = self.keys.index(label)
+        return [row[i] for row in self.data if not row[i] is None]
 
     def projects(self):
         """List flowcell projects"""
@@ -250,6 +246,9 @@ class Flowcell(object):
                 lane = m_sample.group(5)
                 sample = m_sample.group(7)
             key = "{}_{}".format(lane, sample)
+            if sample == "unmatched":
+                self.lane_files[lane].append(os.path.abspath(f))
+                return
             if f.find("fastq") > 0:
                 self.append_to_entry(key, "files", os.path.abspath(f))
             else:
@@ -257,10 +256,10 @@ class Flowcell(object):
         elif m_lane:
             lane = m_lane.group(1)
             sample = None
-            self.lane_results[lane].append(os.path.abspath(f))
+            self.lane_files[lane].append(os.path.abspath(f))
         else:
-            return False
-        return True
+            return 
+        return
 
     def collect_files(self, path, project=None):
         """Collect files for a given project"""

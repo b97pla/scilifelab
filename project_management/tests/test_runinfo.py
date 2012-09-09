@@ -71,5 +71,6 @@ class PmFlowcellTest(PmTest):
         print fc_new.as_yaml()
         print fc_new
         print fc
+        print fc.lane_files
         #f_list_test = set([os.path.basename(x)[0] for x in flist])
         #self.eq("1",  "".join(f_list_test))
