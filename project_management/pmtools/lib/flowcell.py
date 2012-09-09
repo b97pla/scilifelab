@@ -25,19 +25,21 @@ class Flowcell(object):
     ## Run information
     fc_name = None
     fc_date = None
+    ## Unique column names
     _keys = dict(lane = ['lane', 'lane_description', 'flowcell_id', 'lane_analysis', 'genome_build'],
-                 mp = ['mp_analysis', 'barcode_id', 'barcode_type', 'sample_prj', 'name', 'sequence', 'files', 'genomes_filter_out', 'mp_description', 'mp_results'])
-    _labels = dict(lane = ['lane', 'description', 'flowcell_id', 'analysis', 'genome_build'],
-                   mp = ['analysis', 'barcode_id', 'barcode_type', 'sample_prj', 'name', 'sequence', 'files', 'genomes_filter_out', 'description', 'results'])
-    header = _labels['lane'] + _labels['mp']
+                 mp = ['mp_analysis', 'barcode_id', 'barcode_type', 'sample_prj', 'name', 'sequence', 'files', 'genomes_filter_out', 'mp_description', 'results'])
     keys = _keys['lane'] + _keys['mp']
-    samples = dict()
-    lane_files = dict()
-
-    _out_keys = dict(lane= ['lane', 'lane_description', 'flowcell_id', 'lane_analysis', 'genome_build'],
-                     mp = ['mp_analysis', 'barcode_id', 'barcode_type', 'sample_prj', 'name', 'sequence', 'files', 'genomes_filter_out', 'mp_description'])
     
-    _out_columns = ['lane', 'lane_description', 'flowcell_id', 'lane_analysis', 'genome_build', 'barcode_id', 'barcode_type', 'sample_prj', 'name', 'sequence', 'genomes_filter_out']
+    ## sample keys
+    samples = dict()
+    ## lane files
+    lane_files = dict()
+    
+    # keys to be printed for yaml output
+    _out_yaml_keys = dict(lane= ['lane', 'lane_description', 'flowcell_id', 'lane_analysis', 'genome_build'],
+                     mp = ['mp_analysis', 'barcode_id', 'barcode_type', 'sample_prj', 'name', 'sequence', 'files', 'genomes_filter_out', 'mp_description'])
+    ## keys to write for table
+    _out_table_columns = ['lane', 'lane_description', 'flowcell_id', 'lane_analysis', 'genome_build', 'barcode_id', 'barcode_type', 'sample_prj', 'name', 'sequence', 'genomes_filter_out']
 
     def __init__(self, infile=None):
         self.filename = None
@@ -77,8 +79,8 @@ class Flowcell(object):
             d = dict(zip(h, row))
             if not d.get("barcode_id", None):
                 continue
-            tab_out.append([d[k] for k in self._out_columns])
-        w.writerows([self._out_columns] + tab_out)
+            tab_out.append([d[k] for k in self._out_table_columns])
+        w.writerows([self._out_table_columns] + tab_out)
         return fh.getvalue()
 
     def __len__(self):
@@ -102,7 +104,7 @@ class Flowcell(object):
         i = 0
         self.samples = {}
         for row in self.data:
-            d = dict(zip(self.header, row))
+            d = dict(zip(self.keys, row))
             key = "{}_{}".format(d['lane'], d['barcode_id'])
             self.samples[key] = i
             i += 1
@@ -112,12 +114,12 @@ class Flowcell(object):
         out = []
         for info in runinfo_yaml:
             self.lane_files[info.get('lane', None)] = []
-            laneinfo = [info.get(x) for x in self._keys['lane']]
+            laneinfo = [info.get(x.replace("lane_", "")) for x in self._keys['lane']]
             for mp in info.get("multiplex", None):
-                mpinfo = [mp.get(x) for x in self._keys['mp']]
+                mpinfo = [mp.get(x.replace("mp_", "")) for x in self._keys['mp']]
                 line = laneinfo + mpinfo
                 line[self.keys.index("files")] = []
-                line[self.keys.index("mp_results")] = []
+                line[self.keys.index("results")] = []
                 out.append(line)
         return out
     
@@ -125,14 +127,13 @@ class Flowcell(object):
         """Convert internal representation to yaml"""
         yaml_out = dict()
         for row in self.data:
-            h = self._keys['lane'] + self._keys['mp']
-            d = dict(zip(h, row))
+            d = dict(zip(self.keys, row))
             if not d.get("barcode_id", None):
                 continue
             if not yaml_out.has_key(d['lane']):
-                yaml_out[d['lane']] = dict((k.replace("lane_", ""), d[k]) for k in self._out_keys['lane'] if k in d and not d[k] is None)
+                yaml_out[d['lane']] = dict((k.replace("lane_", ""), d[k]) for k in self._out_yaml_keys['lane'] if k in d and not d[k] is None)
                 yaml_out[d['lane']]["multiplex"] = []
-            d_mp = dict((k.replace("mp_", ""), d[k]) for k in self._out_keys['mp'] if k in d and not d[k] is None)
+            d_mp = dict((k.replace("mp_", ""), d[k]) for k in self._out_yaml_keys['mp'] if k in d and not d[k] is None)
             ## Fix description, results, files and analysis
             d_mp["analysis"] = d_mp.get("analysis", yaml_out[d['lane']].get("analysis", None))
             d_mp["description"] = d_mp.get("description", "{}_{}".format(str(d_mp.get("sample_prj", None)), str(d_mp.get("name", None))))
@@ -198,6 +199,7 @@ class Flowcell(object):
         pruned_fc.data = [self.data[j] for j in i]
         pruned_fc.filename = self.filename.replace(".yaml", "-pruned.yaml")
         pruned_fc._set_sample_dict()
+        pruned_fc.lane_files = dict((x, self.lane_files[x]) for x in pruned_fc.lanes())
         return pruned_fc
 
     def load(self, paths, runinfo="run_info.yaml"):
@@ -266,7 +268,7 @@ class Flowcell(object):
             if f.find("fastq") > 0:
                 self.append_to_entry(key, "files", os.path.abspath(f))
             else:
-                self.append_to_entry(key, "mp_results", os.path.abspath(f))
+                self.append_to_entry(key, "results", os.path.abspath(f))
         elif m_lane:
             lane = m_lane.group(1)
             sample = None

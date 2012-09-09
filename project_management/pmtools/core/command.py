@@ -1,6 +1,7 @@
 """command"""
 import os
 import sys
+import shutil
 
 from cement.core import interface, handler
 
@@ -103,3 +104,17 @@ class CommandHandler(handler.CementBaseHandler):
                 self.app.log.info("Directory %s already exists" % dname)
             return dname
         return self.dry("Make directory %s" % dname, runpipe)
+
+    def transfer_file(self, src, tgt):
+        if self.app.pargs.move:
+            deliver_fn = shutil.move
+        else:
+            deliver_fn = shutil.copyfile
+        def runpipe():
+            if src is None:
+                return
+            if os.path.exists(tgt):
+                self.app.log.warn("{} already exists: not doing anything!".format(tgt))
+                return
+            deliver_fn(src, tgt)
+        return self.dry("{} file {} to {}".format(deliver_fn.__name__, src, tgt), runpipe) 

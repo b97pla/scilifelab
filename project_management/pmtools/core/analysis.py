@@ -65,15 +65,25 @@ class AnalysisController(AbstractBaseController):
             fc_new = fc
         for sample in fc:
             key = "{}_{}".format(sample['lane'], sample['barcode_id'])
+            sources = {"files":sample['files'], "results":sample['results']}
             if not self.pargs.pre_casava:
                 outdir = os.path.join(outdir_pfx, sample['name'], fc.fc_id())
                 fc_new = fc.subset("lane", sample['lane']).subset("name", sample['name'])
-                tgts = [os.path.join(outdir, os.path.basename(src)) for src in sample['files']]
+                targets = {"files": [os.path.join(outdir, os.path.basename(src)) for src in sources['files']],
+                           "results": [os.path.join(outdir, os.path.basename(src)) for src in sources['results']]}
+                fc_new.lane_files = dict((k, [os.path.join(outdir, os.path.basename(x)) for x in v]) for k,v in fc_new.lane_files.items())
             else:
-                tgts = [src.replace(indir, outdir) for src in sample['files']]
-            self.app.cmd.safe_makedir(outdir)
-            fc_new.set_entry(key, 'files', tgts)
-            print fc_new.as_yaml()
+                targets = {"files": [src.replace(indir, outdir) for src in sources['files']],
+                           "results": [src.replace(indir, outdir) for src in sources['results']]}
+                fc_new.lane_files = dict((k,[x.replace(indir, outdir) for x in v]) for k,v in fc_new.lane_files.items())
+            fc_new.set_entry(key, 'files', targets['files'])
+            fc_new.set_entry(key, 'results', targets['results'])
+
+            if not os.path.exists(outdir):
+                self.app.cmd.safe_makedir(outdir)
+            ## Copy sample files - currently not doing lane files
+            for src, tgt in zip(sources['files'] + sources['results'], targets['files'] + targets['results']):
+                self.app.cmd.transfer_file(src, tgt)
 
         # for k,v in fc_new.data_dict.items():
         #     outfiles =  v['files']

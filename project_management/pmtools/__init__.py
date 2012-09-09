@@ -49,6 +49,8 @@ class AbstractBaseController(controller.CementBaseController):
         self._meta.arguments.append((['--java_opts'], dict(help="java options", action="store", default="Xmx3g")))
         self._meta.arguments.append((['--input_file'], dict(help="Run on specific input file", default=None)))
         self._meta.arguments.append((['--file_type'], dict(help="file type for globbing", default="")))
+        self._meta.arguments.append((['--move'], dict(help="Transfer file with move", default=False, action="store_true")))
+        self._meta.arguments.append((['--copy'], dict(help="Transfer file with copy (default)", default=True, action="store_true")))
         super(AbstractBaseController, self)._setup(base_app)
 
         ## Sometimes read as string, sometimes as list...
