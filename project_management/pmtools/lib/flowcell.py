@@ -18,28 +18,6 @@ from pmtools.utils.misc import filtered_walk, group_bcbb_files
 ## FIX ME: make generic flowcell object, that then Illumina, MiSeq,
 ## SOLiD subclass from
 
-# details:
-# - analysis: Align_standard
-#   description: Lane 6, M.Uhlen_12_05
-#   flowcell_id: C118PACXX
-#   genome_build: rn4
-#   lane: '6'
-#   multiplex:
-#   - analysis: Align_standard
-#     barcode_id: 1
-#     barcode_type: SampleSheet
-#     description: M.Uhlen_12_05_P281_125F_index2
-#     files:
-#     - P281_125F_index2_CGATGT_L006_R1_001.fastq
-#     - P281_125F_index2_CGATGT_L006_R2_001.fastq
-#     genome_build: rn4
-#     genomes_filter_out: phix
-#     name: P281_125F_index2
-#     sample_prj: M.Uhlen_12_05
-#     sequence: CGATGT
-# fc_date: '120821'
-# fc_name: BC118PACXX
-
 class Flowcell(object):
     """Class for handling (Illumina) run information.
 
@@ -52,27 +30,49 @@ class Flowcell(object):
     _labels = dict(lane = ['lane', 'description', 'flowcell_id', 'analysis', 'genome_build', 'results'],
                    mp = ['analysis', 'barcode_id', 'barcode_type', 'sample_prj', 'name', 'sequence', 'files', 'genomes_filter_out', 'description', 'results'])
     header = _labels['lane'] + _labels['mp']
+    keys = _keys['lane'] + _keys['mp']
+    samples = dict()
+    lane_results = dict()
+
+    _out_keys = dict(lane= ['lane', 'lane_description', 'flowcell_id', 'lane_analysis', 'genome_build'],
+                     mp = ['mp_analysis', 'barcode_id', 'barcode_type', 'sample_prj', 'name', 'sequence', 'files', 'genomes_filter_out', 'mp_description'])
+    
+    _out_columns = ['lane', 'lane_description', 'flowcell_id', 'lane_analysis', 'genome_build', 'barcode_id', 'barcode_type', 'sample_prj', 'name', 'sequence', 'genomes_filter_out']
 
     def __init__(self, infile=None):
         self.filename = None
         self.data = None
-        self.data_dict = None
+        self.i = 0
         if not infile:
             return None
         self.data = self._read(infile)
 
+    def __iter__(self):
+        return self
+
+    def next(self):
+        if self.i >= len(self.data):
+            raise StopIteration
+        row = self.data[self.i]
+        self.i = self.i + 1 
+        return dict(zip(self.keys, row))
+
+    def __repr__(self):
+        return "Flowcell(filename={})".format(self.filename)
+
     def __str__(self):
         fh = StringIO()
         w = csv.writer(fh, delimiter="\t", quoting=True)
-        w.writerows([self.header] + self.data)
+        tab_out = []
+        for row in self.data:
+            h = self._keys['lane'] + self._keys['mp']
+            d = dict(zip(h, row))
+            if not d.get("barcode_id", None):
+                continue
+            tab_out.append([d[k] for k in self._out_columns])
+        w.writerows([self._out_columns] + tab_out)
         return fh.getvalue()
 
-    def _init_dict(self):
-        d = {"{}_{}".format(row[0], row[6]):{"name":row[8], "files":[]} for row in self.data}#, "{}".format(row[0])}
-        d2 = {"{}".format(l):{"name":str(l),"files":[]} for l in self.lanes()}
-        d.update(d2)
-        self.data_dict = d
-        
     def __len__(self):
         if not self.data:
             return 0
@@ -93,40 +93,69 @@ class Flowcell(object):
     def _yaml_to_tab(self, runinfo_yaml):
         """Convert yaml to internal representation"""
         out = []
+        i=0
         for info in runinfo_yaml:
+            self.lane_results[info.get('lane', None)] = []
             laneinfo = [info.get(x) for x in self._labels['lane']]
             for mp in info.get("multiplex", None):
                 mpinfo = [mp.get(x) for x in self._labels['mp']]
                 line = laneinfo + mpinfo
+                d = dict(zip(self.header, line))
+                key = "{}_{}".format(d['lane'], d['barcode_id'])
+                self.samples[key] = i
                 out.append(line)
+                i += 1
+            key = "{}_unmatched".format(d['lane'])
+            self.samples[key] = i
+            out.append([None for x in line])
+            i += 1
         return out
     
     def _tab_to_yaml(self):
         """Convert internal representation to yaml"""
         yaml_out = dict()
         for row in self.data:
-            h= self._keys['lane'] + self._keys['mp']
-            d= dict(zip(h, row))
+            h = self._keys['lane'] + self._keys['mp']
+            d = dict(zip(h, row))
+            if not d.get("barcode_id", None):
+                continue
             if not yaml_out.has_key(d['lane']):
-                yaml_out[d['lane']] = dict((k.replace("lane_", ""), d[k]) for k in self._keys['lane'] if k in d and not d[k] is None)
+                yaml_out[d['lane']] = dict((k.replace("lane_", ""), d[k]) for k in self._out_keys['lane'] if k in d and not d[k] is None)
                 yaml_out[d['lane']]["multiplex"] = []
-            d_mp = dict((k.replace("mp_", ""), d[k]) for k in self._keys['mp'] if k in d and not d[k] is None)
-            ## Fix description and analysis
-            d_mp["analysis"] = d_mp.get("analysis", yaml_out[d['lane']]["analysis"])
+            d_mp = dict((k.replace("mp_", ""), d[k]) for k in self._out_keys['mp'] if k in d and not d[k] is None)
+            ## Fix description, files and analysis
+            d_mp["analysis"] = d_mp.get("analysis", yaml_out[d['lane']].get("analysis", None))
             d_mp["description"] = d_mp.get("description", "{}_{}".format(str(d_mp.get("sample_prj", None)), str(d_mp.get("name", None))))
+            if d_mp.get("files", None):
+                d_mp["files"] = list(set(d_mp["files"]))
             yaml_out[d['lane']]["multiplex"].append(d_mp)
-        return yaml.dump(yaml_out.values())
+        yaml_out_final = dict(details=yaml_out.values())
+        if self.fc_name:
+            yaml_out_final['fc_name'] = self.fc_name
+        if self.fc_date:
+            yaml_out_final['fc_date'] = self.fc_date
+        return yaml.dump(yaml_out_final)
     
+    def get_sample(self, key):
+        return self.data[self.samples[key]]
+
+    def get_entry(self, key, label):
+        return self.data[self.samples[key]][self.keys.index(label)]
+
+    def append_to_entry(self, key, label, value):
+        if not self.data[self.samples[key]][self.keys.index(label)]:
+            self.data[self.samples[key]][self.keys.index(label)] = []
+        self.data[self.samples[key]][self.keys.index(label)].append(value)
+                
+    def set_sample(self, key, sample):
+        self.data[self.samples[key]] = sample
+
     def _get_rows(self, i):
         return [row for row in self.data[i:]]
 
     def _column(self, label):
         i = self.header.index(label)
         return [row[i] for row in self.data]
-
-    # def set_path(self, path):
-    #     """Set flowcell path"""
-        
 
     def projects(self):
         """List flowcell projects"""
@@ -160,7 +189,6 @@ class Flowcell(object):
         vals = list(self._column(column))
         i = [j for j in range(0, len(vals)) if vals[j]==query]
         pruned_fc.data = [self.data[j] for j in i]
-        #pruned_fc.path = self.path
         pruned_fc.filename = self.filename.replace(".yaml", "-pruned.yaml")
         return pruned_fc
 
@@ -184,47 +212,55 @@ class Flowcell(object):
     def glob_pfx_dict(self, ext="", sample=True):
         """Return glob sample prefix regular expression strings as a dict"""
         glob_pfx = dict()
-        for row in self.data:
+        for smp in self:
             if sample:
-                re_str = "{}_{}".format(row[0], row[2])
+                re_str = "{}_{}".format(smp['lane'], smp['barcode_id'])
             else:
-                re_str = "{}".format(row[0])
-            pattern = "{}_[0-9]+_.?{}(_nophix)?_{}*{}".format(row[0], row[2], row[6], ext)
+                re_str = "{}".format(smp['lane'])
+            pattern = "{}_[0-9]+_.?{}(_nophix)?_{}*{}".format(smp['lane'], smp['flowcell_id'], smp['barcode_id'], ext)
             glob_pfx[sample] = pattern
         return glob_pfx
 
     def glob_pfx_str(self, ext=""):
         """Return glob prefix regular expression strings"""
         glob_pfx = []
-        for row in self.data:
-            pattern = "{}_[0-9]+_.?{}(_nophix)?_{}*{}".format(row[0], row[2], row[6], ext)
+        for sample in self:
+            pattern = "{}_[0-9]+_.?{}(_nophix)?_{}*{}".format(sample['lane'], sample['flowcell_id'], sample['barcode_id'], ext)
             glob_pfx.append(pattern)
         return glob_pfx
         
     def glob_pfx_re(self, ext=""):
         """Return glob prefix regular expressions."""
         glob_pfx = []
-        for row in self.data:
-            pattern = re.compile("{}_[0-9]+_.?{}(_nophix)?_{}-*{}".format(row[0], row[2], row[6], ext))
+        for sample in self:
+            pattern = re.compile("{}_[0-9]+_.?{}(_nophix)?_{}-*{}".format(sample['lane'], sample['flowcell_id'], sample['barcode_id'], ext))
             glob_pfx.append(pattern)
         return glob_pfx
 
-    ### FIXME: patterns should be set in bcbb_extension
-    def get_files(self, path, ftype="", ext=".bam", project=None, lane=None):
-        """Get files with a given pattern"""
-        if project:
-            fc = self.subset("sample_prj", project)
-        elif lane:
-            pass
+    def classify_file(self, f):
+        re_lane = re.compile('^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?\.*')
+        re_sample = re.compile('^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_([0-9]+|unmatched)_([0-9]+)_fastq.txt.*|^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_([0-9]+)-[a-z].*')
+        m_sample = re_sample.search(os.path.basename(f))
+        m_lane = re_lane.search(os.path.basename(f))
+        if m_sample:
+            if m_sample.group(1):
+                lane = m_sample.group(1)
+                sample = m_sample.group(3)
+            else:
+                lane = m_sample.group(5)
+                sample = m_sample.group(7)
+            key = "{}_{}".format(lane, sample)
+            if f.find("fastq") > 0:
+                self.append_to_entry(key, "files", os.path.abspath(f))
+            else:
+                self.append_to_entry(key, "mp_results", os.path.abspath(f))
+        elif m_lane:
+            lane = m_lane.group(1)
+            sample = None
+            self.lane_results[lane].append(os.path.abspath(f))
         else:
-            fc = self
-        pattern = "|".join(fc.glob_pfx_str())
-        def file_filter(f):
-            if not pattern:
-                return
-            return re.search(pattern, f) != None
-        flist = filtered_walk(path, file_filter)
-        return flist
+            return False
+        return True
 
     def collect_files(self, path, project=None):
         """Collect files for a given project"""
@@ -232,15 +268,14 @@ class Flowcell(object):
             fc = self.subset("sample_prj", project)
         else:
             fc = self
-        if fc.data_dict is None:
-            fc._init_dict()
         pattern = "|".join(fc.glob_pfx_str())
         def file_filter(f):
             if not pattern:
                 return
             return re.search(pattern, f) != None
         flist = filtered_walk(path, file_filter)
-        [fc.data_dict[group_bcbb_files(x)]["files"].append(x.replace(path, "").lstrip("/")) for x in flist]
+        for f in flist:
+            self.classify_file(f)
         return fc
     
 

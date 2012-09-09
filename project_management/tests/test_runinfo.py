@@ -62,10 +62,14 @@ class PmFlowcellTest(PmTest):
         glob_str = os.path.join(self.app.config.get("analysis", "root"), flowcell, glob_pfx_str[0])
         print glob_str
                 
-    def test_6_get_files(self):
+    def test_6_collect_files(self):
         """Test getting files"""
         fc = Flowcell(runinfo)
-        fc.get_files(fc_dir)
-        flist = fc.get_files(fc_dir, project="J.Doe_00_01")
-        f_list_test = set([os.path.basename(x)[0] for x in flist])
-        self.eq("1",  "".join(f_list_test))
+        fc.collect_files(fc_dir)
+        print fc.as_yaml()
+        fc_new = fc.collect_files(fc_dir, project="J.Doe_00_01")
+        print fc_new.as_yaml()
+        print fc_new
+        print fc
+        #f_list_test = set([os.path.basename(x)[0] for x in flist])
+        #self.eq("1",  "".join(f_list_test))
