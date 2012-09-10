@@ -8,7 +8,6 @@ import re
 from cement.core import controller
 from pmtools import AbstractBaseController
 from pmtools.lib.flowcell import Flowcell
-from pmtools.utils.misc import group_bcbb_files
 
 ## Main analysis controller
 class AnalysisController(AbstractBaseController):
@@ -75,26 +74,16 @@ class AnalysisController(AbstractBaseController):
             else:
                 targets = {"files": [src.replace(indir, outdir) for src in sources['files']],
                            "results": [src.replace(indir, outdir) for src in sources['results']]}
-                fc_new.lane_files = dict((k,[x.replace(indir, outdir) for x in v]) for k,v in fc_new.lane_files.items())
+
             fc_new.set_entry(key, 'files', targets['files'])
             fc_new.set_entry(key, 'results', targets['results'])
-
             if not os.path.exists(outdir):
                 self.app.cmd.safe_makedir(outdir)
             ## Copy sample files - currently not doing lane files
             for src, tgt in zip(sources['files'] + sources['results'], targets['files'] + targets['results']):
+                if not os.path.exists(os.path.dirname(tgt)):
+                    self.app.cmd.safe_makedir(os.path.dirname(tgt))
                 self.app.cmd.transfer_file(src, tgt)
-
-        # for k,v in fc_new.data_dict.items():
-        #     outfiles =  v['files']
-        #     for f in outfiles:
-        #         (pfx, bn) = (os.path.dirname(f), os.path.basename(f))
-        #         # if re.match("nophix", pfx):
-        #         #     continue
-        #         if pfx.find("barcode"):
-        #             pfx = ""
-        #         if self.pargs.pre_casava:
-        #             print os.path.join(outdir, pfx, bn)
-        #         else:
-        #             print os.path.join(outdir, v['name'], self.pargs.flowcell, f)
-                
+        ## Fix lane_files for pre_casava output
+        if self.pargs.pre_casava:
+            fc_new.lane_files = dict((k,[x.replace(indir, outdir) for x in v]) for k,v in fc_new.lane_files.items())

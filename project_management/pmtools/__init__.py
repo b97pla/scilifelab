@@ -79,6 +79,7 @@ class AbstractBaseController(controller.CementBaseController):
         self.log.warn("FIXME: Not implemented yet")
         if msg != None:
             self.log.warn(msg)
+        raise NotImplementedError
 
     def _obsolete(self, msg):
         self.log.warn("This function is obsolete.")

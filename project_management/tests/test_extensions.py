@@ -11,9 +11,6 @@ from test_default import PmTest
 class PmShellTest(PmTest):
     def test_1_wait(self):
         """Test that submitted shell jobs are run sequentially"""
-        # self.app  = self.make_app(argv=[], extensions=['pmtools.ext.ext_shell'])
-        # self._run_app()
-        # print self.app.cmd
         print "running first sleep"
         out = shell.exec_cmd(["sleep", "3"])
         print "finishing first sleep"

@@ -45,7 +45,6 @@ def query_yes_no(question, default="yes", force=False):
             sys.stdout.write("Please respond with 'yes' or 'no' "\
                                  "(or 'y' or 'n').\n")
 
-
 def walk(rootdir):
     """Perform a directory walk"""
     flist = []
@@ -63,30 +62,3 @@ def filtered_walk(rootdir, filter_fn):
     for root, dirs, files in os.walk(rootdir):
         flist = flist + [os.path.join(root, x) for x in filter(filter_fn, files)]
     return flist
-
-## Files 
-## Sample:
-## 1_120829_AA001AAAXX_nophix_1-sort-dup.align_metrics 
-## 1_120829_AA001AAAXX_nophix_8_2_fastq.txt
-## 1_120829_AA001AAAXX_nophix_unmatched_1_fastq.txt
-## lane
-## 1_120829_AA001AAAXX_nophix.filter_metrics
-## 1_120829_AA001AAAXX_nophix_1_fastq.txt
-def group_bcbb_files(f, re_str="^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_?([0-9]+)?_?([0-9]+)?"):
-#def group_bcbb_files(f, re_str="^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_?([0-9]+)?"):
-    """Given a file name and a regexp, return a dictionary where the
-    keys are the concatenate matches (lane_barcode or lane)
-    
-    :param f: - file name
-    :param re_str: regular expression
-
-    :returns k: key
-    """
-    m = re.search(re_str, os.path.basename(f))
-    if m:
-        if m.group(3) and m.group(4):
-            return "{}_{}".format(m.group(1), m.group(3))
-        else:
-            return "{}".format(m.group(1))
-
-    

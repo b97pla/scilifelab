@@ -10,7 +10,7 @@ import json
 import csv
 import glob
 from cStringIO import StringIO
-from pmtools.utils.misc import filtered_walk, group_bcbb_files
+from pmtools.utils.misc import filtered_walk
 
 ## FIX ME: what should be returned from object functions, and what
 ## should be done behind the scenes?
