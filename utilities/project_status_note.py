@@ -94,8 +94,8 @@ def make_note(parameters):
         else:
             story.append(Paragraph(paragraph.format(**parameters), p))
         if headline == 'Samples': 
-            data= parameters['sample_table']
-            t=Table(data,5*[1.5*inch], len(data)*[0.25*inch])
+            data = parameters['sample_table']
+            t=Table(data,5*[1.25*inch], len(data)*[0.25*inch])
             t.setStyle(TableStyle([('ALIGN',(1,1),(-2,-2),'RIGHT'),
                        ('VALIGN',(0,0),(0,-1),'TOP'),
                        ('ALIGN',(0,-1),(-1,-1),'CENTER'),
@@ -150,6 +150,7 @@ def make_status_note(prj="", opts=None):
     res = qc.query(up_map_fun)
     for r in res:
         if r['key']['Project_id'] == prj:
+            print "DEBUG: ProjectSummary doc: (you can paste this ID into the CouchDB web interface)", r['id']
             doc = r['key']
     if not doc: 
         print "Could not find project summary for " + prj
@@ -177,7 +178,7 @@ def make_status_note(prj="", opts=None):
         
         # A table of samples, # ordered reads, # sequenced, OK / not OK
         sample_table = []
-        sample_table.append(['ScilifeID', 'CustomerID', 'NumberSequenced', 'NumberOrdered', 'Status'])
+        sample_table.append(['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status'])
         slist = doc['Samples']
         
         for s in sorted(slist.keys(), cmp=custom_sort):
@@ -186,13 +187,24 @@ def make_status_note(prj="", opts=None):
             else: row.append("N/A")
             if slist[s].has_key('customer_name'): row.append(slist[s]['customer_name'])
             else: row.append("N/A")
-            if slist[s].has_key('M_reads_sequenced'): row.append(slist[s]['M_reads_sequenced'])
-            else: row.append("N/A")
+            if slist[s].has_key('SampleQCMetrics'):
+                # Fetch SampleQCMetrics doc(s) corresponding to sample
+                ind_seqs = set()
+                sq_metrics = slist[s]['SampleQCMetrics'] 
+                for sdoc in sq_metrics:
+                    print "DEBUG: SampleQCMetrics doc: ", sdoc
+                    res_ = qc[sdoc]
+                    ind_seqs.add(res_['sequence'])
+                row.append(','.join(list(ind_seqs)))
+            else:
+                row.append("N/A")
             if doc.has_key('min_M_reads_per_sample_ordered'): 
                     try: 
                         row.append( round(float(doc['min_M_reads_per_sample_ordered']),2))
                     except:
                         row.append("N/A")
+            else: row.append("N/A")
+            if slist[s].has_key('M_reads_sequenced'): row.append(slist[s]['M_reads_sequenced'])
             else: row.append("N/A")
             status = 'N/A'
             # Check for status of sample.

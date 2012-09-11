@@ -222,6 +222,8 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                         parameters['rounded_read_count'] = str(rounded_amnt)
                     except:
                         parameters['rounded_read_count'] = 'N/A'
+                    # Barcode sequence
+                    print "DEBUG: Barcode sequence: ", obj['barcode']    
                     # Lane
                     lane = obj['lane']
                     # Average PhiX error rate and QV>30 (latter not implemented yet)
