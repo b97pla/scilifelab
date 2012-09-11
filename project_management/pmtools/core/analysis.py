@@ -88,7 +88,7 @@ class AnalysisController(AbstractBaseController):
             ## Copy sample files - currently not doing lane files
             self._transfer_files(sources, targets)
         with open(os.path.join(dirs["data"], "project_run_info.yaml"), "w") as yaml_out:
-            yaml_out.write(fc_new.as_yaml())
+            self.app.cmd.write(yaml_out, fc_new.as_yaml())
 
     def _from_pre_casava_structure(self):
         if not self._check_pargs(["project", "flowcell"]):

@@ -118,3 +118,13 @@ class CommandHandler(handler.CementBaseHandler):
                 return
             deliver_fn(src, tgt)
         return self.dry("{} file {} to {}".format(deliver_fn.__name__, src, tgt), runpipe) 
+
+    def write(self, fh, data):
+        def runpipe():
+            if data is None:
+                return
+            if not isinstance(fh, file):
+                self.app.log.warn("Expected <type 'file'>: got {}".format(type(fh)))
+                return
+            fh.write(data)
+        return self.dry("writing data to file", runpipe)

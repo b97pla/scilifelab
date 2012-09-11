@@ -1,10 +1,6 @@
 """
 ext_qc.py
 """
-"""
-qc_plugin.py
-"""
-
 import os
 import re
 import csv
@@ -93,7 +89,6 @@ class QCMetricsController(AbstractBaseController):
         fcobj = FlowcellQCMetrics(**fc_kw)
         fcobj.parse_illumina_metrics(fullRTA=False)
         qc_objects.append(fcobj)
-
         return qc_objects
 
     ## FIX ME: no way to do dry run

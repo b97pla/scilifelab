@@ -9,6 +9,7 @@ import yaml
 import json
 import csv
 import glob
+import copy
 from cStringIO import StringIO
 from pmtools.utils.misc import filtered_walk
 
@@ -192,6 +193,17 @@ class Flowcell(object):
         """Map barcode name to id"""
         return dict(zip(self.names(lane), self.barcodes(lane)))
 
+    def fc_with_unique_lanes(self):
+        """Transform flowcell to one with unique lane numbers"""
+        new_fc = copy.deepcopy(self)
+        new_fc.filename = self.filename.replace(".yaml", "-unique-lane.yaml")
+        lane_index = new_fc.keys.index("lane")
+        lane = 1
+        for j in range(0, len(new_fc.data)):
+            new_fc.data[j][lane_index] = str(lane)
+            lane = lane + 1
+        return new_fc
+            
     def subset(self, column, query):
         """Subset runinfo. Returns new flowcell object."""
         pruned_fc = Flowcell()
