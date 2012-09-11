@@ -51,8 +51,10 @@ def walk(rootdir):
     for root, dirs, files in os.walk(rootdir):
         flist = flist + [os.path.join(root, x) for x in files]
     return flist
-            
-def filtered_walk(rootdir, filter_fn):
+
+## FIXME: include parameter exclude_dirs to exclude directories (e.g.
+## *-split, tmp, tx) so speed increases? exclude_dirs=None):
+def filtered_walk(rootdir, filter_fn): 
     """Perform a filtered directory walk.
 
     :param rootdir: - root directory
@@ -60,5 +62,7 @@ def filtered_walk(rootdir, filter_fn):
     """
     flist = []
     for root, dirs, files in os.walk(rootdir):
+        # if exclude_dirs and re.search(exclude_dirs, root):
+        #     continue
         flist = flist + [os.path.join(root, x) for x in filter(filter_fn, files)]
     return flist

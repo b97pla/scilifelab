@@ -179,7 +179,9 @@ class ProjectController(AbstractBaseController):
             flist = [self.pargs.input_file]
         else:
             flist = filtered_walk(os.path.join(self._meta.project_root, self.pargs.projectid), compress_filter)
-        
+
+        if len(flist) == 0:
+            self.app.log.info("No files matching pattern {} found".format(pattern))
         if len(flist) > 0 and not query_yes_no("Going to {} {} files ({}...). Are you sure you want to continue?".format(label, len(flist), ",".join([os.path.basename(x) for x in flist[0:10]])), force=self.pargs.force):
             sys.exit()
         for f in flist:

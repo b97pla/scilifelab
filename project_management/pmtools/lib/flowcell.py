@@ -43,6 +43,7 @@ class Flowcell(object):
 
     def __init__(self, infile=None):
         self.filename = None
+        self.path = None
         self.data = None
         self.i = 0
         if not infile:
@@ -291,4 +292,5 @@ class Flowcell(object):
         flist = filtered_walk(path, file_filter)
         for f in flist:
             self.classify_file(f)
+        fc.path = path
         return fc
