@@ -6,7 +6,6 @@ import os
 import glob
 from cement.core import backend, controller, handler
 from pmtools import AbstractBaseController
-#from pmtools.lib.runinfo import load_runinfo, subset_runinfo, runinfo_lanes, runinfo_barcodes
 from pmtools.lib.flowcell import Flowcell
 from pmtools.utils.misc import query_yes_no
 

@@ -11,16 +11,21 @@ from pmtools.core.analysis import AnalysisController
 from pmtools.core.deliver import DeliveryController
 
 CONFIGFILE=os.path.join(os.getenv("HOME"), ".pm", "pm.conf")
+PLUGINDIR=os.path.join(os.getenv("HOME"), ".pm", "plugins")
+PLUGINCONFIGDIR=os.path.join(os.getenv("HOME"), ".pm", "plugins.d")
 
 app = PmApp('pm', 
-            base_controller=PmController, 
+            base_controller = PmController, 
             config_defaults = config_defaults,
-            output_handler=PmOutputHandler, 
-            config_files=[CONFIGFILE], 
-            extensions=['json',
-                        'pmtools.ext.ext_distributed',                        
-                        'pmtools.ext.ext_bcbb',                        
-                        'pmtools.ext.ext_hs_metrics']
+            output_handler = PmOutputHandler, 
+            config_files = [CONFIGFILE], 
+            extensions = ['json',
+                          'pmtools.ext.ext_distributed',                        
+                          'pmtools.ext.ext_bcbb',                        
+                          'pmtools.ext.ext_hs_metrics',
+                          'pmtools.ext.ext_qc'],
+            plugin_dir = PLUGINDIR,
+            plugin_config_dir = PLUGINCONFIGDIR,
             )
 
 try:
