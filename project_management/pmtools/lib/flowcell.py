@@ -26,6 +26,7 @@ class Flowcell(object):
     ## Run information
     fc_name = None
     fc_date = None
+    unique_lanes = False
     ## Unique column names
     _keys = dict(lane = ['lane', 'lane_description', 'flowcell_id', 'lane_analysis', 'genome_build'],
                  mp = ['mp_analysis', 'barcode_id', 'barcode_type', 'sample_prj', 'name', 'sequence', 'files', 'genomes_filter_out', 'mp_description', 'results'])
@@ -134,14 +135,18 @@ class Flowcell(object):
                 continue
             if not yaml_out.has_key(d['lane']):
                 yaml_out[d['lane']] = dict((k.replace("lane_", ""), d[k]) for k in self._out_yaml_keys['lane'] if k in d and not d[k] is None)
-                yaml_out[d['lane']]["multiplex"] = []
+                if not self.unique_lanes:
+                    yaml_out[d['lane']]["multiplex"] = []
             d_mp = dict((k.replace("mp_", ""), d[k]) for k in self._out_yaml_keys['mp'] if k in d and not d[k] is None)
             ## Fix description, results, files and analysis
             d_mp["analysis"] = d_mp.get("analysis", yaml_out[d['lane']].get("analysis", None))
             d_mp["description"] = d_mp.get("description", "{}_{}".format(str(d_mp.get("sample_prj", None)), str(d_mp.get("name", None))))
             if d_mp.get("files", None):
                 d_mp["files"] = list(set(d_mp["files"]))
-            yaml_out[d['lane']]["multiplex"].append(d_mp)
+            if not self.unique_lanes:
+                yaml_out[d['lane']]["multiplex"].append(d_mp)
+            else:
+                yaml_out[d['lane']]['description'] = d_mp['description']
         yaml_out_final = dict(details=yaml_out.values())
         if self.fc_name:
             yaml_out_final['fc_name'] = self.fc_name
@@ -202,6 +207,7 @@ class Flowcell(object):
         for j in range(0, len(new_fc.data)):
             new_fc.data[j][lane_index] = str(lane)
             lane = lane + 1
+        new_fc.unique_lanes = True
         return new_fc
             
     def subset(self, column, query):
