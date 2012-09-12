@@ -60,3 +60,10 @@ class PmAnalysisTest(PmTest):
         self.eq(runinfo_yaml['details'][0]['multiplex'][0]['files'], [os.path.join(delivery_dir,"120829_AA001AAAXX", "1_120829_AA001AAAXX_barcode", os.path.basename(x)) for x in ['1_120829_AA001AAAXX_nophix_1_2_fastq.txt','1_120829_AA001AAAXX_nophix_1_1_fastq.txt']])
             
         
+
+    def test_5_quiet(self):
+        """Test pre_casava delivery to project directory with quiet flag"""
+        self.app = self.make_app(argv = ['analysis', 'deliver', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '--from_pre_casava', '--to_pre_casava', '--quiet'])
+        handler.register(AnalysisController)
+        self._run_app()
+

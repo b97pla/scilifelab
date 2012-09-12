@@ -127,4 +127,4 @@ class CommandHandler(handler.CementBaseHandler):
                 self.app.log.warn("Expected <type 'file'>: got {}".format(type(fh)))
                 return
             fh.write(data)
-        return self.dry("writing data to file", runpipe)
+        return self.dry("writing data to file {}".format(fh.name), runpipe)
