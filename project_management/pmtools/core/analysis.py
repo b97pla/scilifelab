@@ -70,6 +70,9 @@ class AnalysisController(AbstractBaseController):
             fc_new.set_entry(key, 'results', targets['results'])
             ## Copy sample files - currently not doing lane files
             self._transfer_files(sources, targets)
+            with open(os.path.join(dirs["data"], "{}-bcbb-config.yaml".format(sample['name'])), "w") as yaml_out:
+                self.app.cmd.write(yaml_out, fc_new.as_yaml())
+
 
     def _to_pre_casava_structure(self, fc):
         dirs = {"data":os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data", fc.fc_id())),

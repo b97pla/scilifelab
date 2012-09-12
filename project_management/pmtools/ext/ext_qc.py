@@ -81,6 +81,7 @@ class QCMetricsController(AbstractBaseController):
             obj = SampleQCMetrics(**sample_kw)
             obj.read_picard_metrics()
             obj.parse_fastq_screen()
+            obj.parse_bc_metrics()
             obj.read_fastqc_metrics()
             qc_objects.append(obj)
             
