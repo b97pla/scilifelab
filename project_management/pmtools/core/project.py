@@ -64,6 +64,7 @@ class ProjectController(AbstractBaseController):
             (['--pigz'], dict(help="Use pigz as compressing device", default=False, action="store_true")),
             (['-f', '--fastq'], dict(help="Workon fastq files", default=False, action="store_true")),
             (['-p','--pileup'], dict(help="Workon pileup files", default=False, action="store_true")),
+            ([,'--txt'], dict(help="Workon txt files", default=False, action="store_true")),
             (['-g', '--git'], dict(help="Initialize git directory in repos and project gitdir", default=False, action="store_true")),
             (['-S', '--sampleid'], dict(help="project sample id", action="store")),
             (['-F', '--flowcellid'], dict(help="project flowcell id", action="store")),
@@ -93,6 +94,8 @@ class ProjectController(AbstractBaseController):
             self._meta.file_pat += [".fastq", "fastq.txt", ".fq"]
         if self.pargs.pileup:
             self._meta.file_pat += [".pileup"]
+        if self.pargs.txt:
+            self._meta.file_pat += [".txt"]
 
         ## Setup zip program
         if self.pargs.pbzip2:
