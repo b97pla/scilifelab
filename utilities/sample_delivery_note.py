@@ -164,15 +164,19 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                 avail_proj.add(obj['sample_prj'])
             if obj['sample_prj'] == prj and obj['flowcell'] == fc: # We have the correct flow cell and project ID
                 found_proj_for_fc = True
-                
+                print "SampleQCMetrics document ID: ", r['id']
+
+                if found_fc: print "DEBUG: Found flow cell document"
+                if found_proj_for_fc: print "DEBUG: Found project"
+
                 try:
                     
                     # Now we fill in the parameters dictionary for generating the report
                     
                     # Project ID
                     parameters['project_name'] = obj['sample_prj']
-                    
-                    # Customer reference
+
+                    # Customer reference (can be manually provided by user)
                     if (opts.customer_ref): parameters['customer_reference'] = opts.customer_ref
                     else:
                         customer_ref = "no customer reference given"
@@ -189,7 +193,7 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                             if prj == r['key']['Project_id']:
                                 uppnex = r['key']['Uppnex_id']
                                 parameters['uppnex_project_id'] = uppnex
-                    
+                   
                     # Start date
                     parameters['start_date'] = obj['date']
 
@@ -222,8 +226,8 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                         parameters['rounded_read_count'] = str(rounded_amnt)
                     except:
                         parameters['rounded_read_count'] = 'N/A'
-                    # Barcode sequence
-                    print "DEBUG: Barcode sequence: ", obj['barcode']    
+
+                    # print "DEBUG: ", parameters
                     # Lane
                     lane = obj['lane']
                     # Average PhiX error rate and QV>30 (latter not implemented yet)
@@ -234,12 +238,20 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                         full_fc_name = r['key']['name']
                         short_fc_name = full_fc_name.split("_")[-1]
                         if short_fc_name == fc:
+                            print "FlowCellQCMetrics ID: ", r['id']
+                            print "DEBUG: Found FlowCellQCMetrics document corresponding to SampleQCMetrics flowcell (whew)"
                             phix_r1 = float(r['key']['metrics']['illumina']['Summary']['read1'][lane]['ErrRatePhiX'])
                             phix_r2 = float(r['key']['metrics']['illumina']['Summary']['read3'][lane]['ErrRatePhiX'])
                             phix_avg = (phix_r1 + phix_r2)/2
                     parameters['phix_error_rate'] = str(phix_avg)
+                    # print "DEBUG: ", parameters
                     # Average QV 
-                    avg_qv = calc_avg_qv(obj['metrics']['fastqc']['stats']['Per sequence quality scores']['Count'])
+                    # print "DEBUG: ", obj['metrics']['fastqc']
+                    avg_qv = "N/A"
+                    try:
+                        avg_qv = calc_avg_qv(obj['metrics']['fastqc']['stats']['Per sequence quality scores']['Count'])
+                    except:
+                        pass
                     parameters['avg_quality_score'] = str(avg_qv)
                 except:
                     sys.exit("Could not fetch all info from StatusDB")

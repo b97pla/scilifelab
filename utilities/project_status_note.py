@@ -194,10 +194,14 @@ def make_status_note(prj="", opts=None):
                 for sdoc in sq_metrics:
                     print "DEBUG: SampleQCMetrics doc: ", sdoc
                     res_ = qc[sdoc]
-                    ind_seqs.add(res_['sequence'])
-                row.append(','.join(list(ind_seqs)))
+                    if res_['sequence']:
+                        ind_seqs.add(res_['sequence'])
+                        row.append(','.join(list(ind_seqs)))
+                    else:
+                        row.append("N/A")
             else:
                 row.append("N/A")
+            
             if doc.has_key('min_M_reads_per_sample_ordered'): 
                     try: 
                         row.append( round(float(doc['min_M_reads_per_sample_ordered']),2))
