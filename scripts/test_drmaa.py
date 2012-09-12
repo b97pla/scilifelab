@@ -23,12 +23,15 @@ def main():
 	print 'Version ' + str(s.version)
 
 	jt = s.createJobTemplate()
+	jt.jobName = "GalaxyJob"
 	jt.remoteCommand = 'echo'
 	jt.args = ['foo']
-	jt.nativeSpecification = "-A a2010002 -p devel -t 00:00:05 -J GalaxyJob"
+	jt.nativeSpecification = "-A a2010002 -p devel -t 00:00:05"
 	jt.workingDirectory = drmaa.JobTemplate.HOME_DIRECTORY
 	jt.outputPath = ":"+drmaa.JobTemplate.HOME_DIRECTORY+'/job_stdout.out'
 	jt.joinFiles=True # Joins stdout & stderr together
+	jt.email=["roman@scilifelab.se"]
+	jt.blockEmail=1
 
 	jobid = s.runJob(jt)
 	print 'Your job has been submitted with id ' + jobid
