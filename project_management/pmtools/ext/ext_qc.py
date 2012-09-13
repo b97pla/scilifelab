@@ -27,6 +27,8 @@ class QCMetricsController(AbstractBaseController):
             (['--port'], dict(help="Database port. Default 5984", nargs="?", default="5984")),
             (['--dbname'], dict(help="Database name", default="qc")),
             (['--pre_casava'], dict(help="Toggle casava structure", default=False, action="store_true")),
+            (['--project'], dict(help="Project id", default=None, action="store", type=str)),
+            (['--sample'], dict(help="Sample id", default=None, action="store", type=str)),
             ]
 
     @controller.expose(hide=True)
@@ -65,6 +67,11 @@ class QCMetricsController(AbstractBaseController):
 
         for sample in runinfo[1:]:
             d = dict(zip(runinfo[0], sample))
+            if self.app.pargs.project and self.app.pargs.project != d['SampleProject']:
+                continue
+            if self.app.pargs.sample and self.app.pargs.sample != d['SampleID']:
+                continue
+                
             sampledir = os.path.join(os.path.abspath(self.pargs.qc_root), d['SampleProject'].replace("__", "."), d['SampleID'])
             if not os.path.exists(sampledir):
                 self.app.log.warn("No such sample directory: {}".format(sampledir))
@@ -136,7 +143,9 @@ class QCMetricsController(AbstractBaseController):
         db=couch['qc']
 
         for obj in qc_objects:
-            self._save_obj(db, obj, statusdb_url)
-
+            if self.app.pargs.debug:
+                self.log.info(obj)
+            else:
+                self._save_obj(db, obj, statusdb_url)
 def load():
     handler.register(QCMetricsController)
