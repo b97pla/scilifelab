@@ -64,40 +64,41 @@ def submit_batch(infiles, outdir, bashscript, sbatch_cmd, batchno):
     os.chmod(sbatchfile,0770)
     
     print subprocess.check_output(sbatch_cmd + ["-o", "{}.out".format(os.path.splitext(os.path.basename(sbatchfile))[0]), sbatchfile]) 
-        
+          
 def run_script():
     """Return a bash script (as a text string) that will run fastq_screen"""
        
-    return "#! /bin/sh\n" \
-    "F1=$1\n" \
-    "F2=$2\n" \
-    "OUTDIR=`dirname $F1`\"/../fastq_screen\"\n" \
-    "mkdir -p $OUTDIR\n" \
-    "if [ ${F1##*.} == \"gz\" ]\n" \
-    "then\n" \
-    "  F1=${F1/.gz/}\n" \
-    "  gzip -c -d ${F1}.gz > $F1 &\n" \
-    "fi\n" \
-    "if [ ${F2##*.} == \"gz\" ]\n" \
-    "then\n" \
-    "  F2=${F2/.gz/}\n" \
-    "  gzip -c -d ${F2}.gz > $F2 &\n" \
-    "fi\n" \
-    "wait\n" \
-    "fastq_screen --subset 2000000 --outdir $OUTDIR --multilib $F1 --paired $F2\n" \
-    "if [ -e ${F1}.gz ]\n" \
-    "then\n" \
-    "  rm $F1\n" \
-    "else\n" \
-    "  gzip $F1 &\n" \
-    "fi\n" \
-    "if [ -e ${F2}.gz ]\n" \
-    "then\n" \
-    "  rm $F2\n" \
-    "else\n" \
-    "  gzip $F2 &\n" \
-    "fi\n" \
-    "wait\n"
+    return """#! /bin/sh
+F1=$1
+F2=$2
+OUTDIR=`dirname $F1`\"/../fastq_screen\"
+mkdir -p $OUTDIR
+if [ ${F1##*.} == \"gz\" ]
+then
+  F1=${F1/.gz/}
+  gzip -c -d ${F1}.gz > $F1 &
+fi
+if [ ${F2##*.} == \"gz\" ]
+then
+  F2=${F2/.gz/}
+  gzip -c -d ${F2}.gz > $F2 &
+fi
+wait
+fastq_screen --subset 2000000 --outdir $OUTDIR --multilib $F1 --paired $F2
+if [ -e ${F1}.gz ]
+then
+  rm $F1
+else
+  gzip $F1 &
+fi
+if [ -e ${F2}.gz ]
+then
+  rm $F2
+else
+  gzip $F2 &
+fi
+wait
+"""
     
 def main():
     
