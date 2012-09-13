@@ -64,6 +64,27 @@ def submit_batch(infiles, outdir, bashscript, sbatch_cmd, batchno):
     os.chmod(sbatchfile,0770)
     
     print subprocess.check_output(sbatch_cmd + ["-o", "{}.out".format(os.path.splitext(os.path.basename(sbatchfile))[0]), sbatchfile]) 
+  
+def _submit_through_drmaa():
+    """FIXME: Should use drmaa for submitting to slurm. 
+    Not sure how to handle multiple parallell jobs on the same node though
+    """  
+    import drmaa
+    s = drmaa.Session()
+    s.initialize()
+    jt = s.createJobTemplate()
+    jt.jobName = jobname
+    jt.remoteCommand = "&\n".join(commands)
+    jt.args = ['foo']
+    jt.nativeSpecification = "-A a2010002 -p devel -t 00:00:05"
+    jt.workingDirectory = drmaa.JobTemplate.HOME_DIRECTORY
+    jt.outputPath = ":"+drmaa.JobTemplate.HOME_DIRECTORY+'/job_stdout.out'
+    jt.joinFiles=True # Joins stdout & stderr together
+    jt.email=["roman@scilifelab.se"]
+
+    jobid = s.runJob(jt)
+    print 'Your job has been submitted with id ' + jobid
+    
           
 def run_script():
     """Return a bash script (as a text string) that will run fastq_screen"""
