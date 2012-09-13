@@ -81,6 +81,7 @@ class PmFlowcellTest(PmTest):
         #print fc.as_yaml()
         new_fc = fc.fc_with_unique_lanes()
         print fc.data
+        print fc.as_yaml()
         print new_fc.data
         print new_fc.as_yaml()
         #print fc.as_yaml()

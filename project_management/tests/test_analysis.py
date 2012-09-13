@@ -29,10 +29,10 @@ class PmAnalysisTest(PmTest):
         self._run_app()
         self.eq(self.app._output_data['stdout'].getvalue(), '120829_SN0001_0001_AA001AAAXX\n120829_SN0001_0002_BB001BBBXX')
 
-    def test_2_bcstats(self):
-        self.app = self.make_app(argv = ['analysis','bcstats'])
-        handler.register(AnalysisController)
-        self._run_app()
+    # def test_2_bcstats(self):
+    #     self.app = self.make_app(argv = ['analysis','bcstats'])
+    #     handler.register(AnalysisController)
+    #     self._run_app()
 
     def test_3_from_pre_to_casava_delivery(self):
         """Test casava delivery to project directory"""
@@ -40,9 +40,8 @@ class PmAnalysisTest(PmTest):
         handler.register(AnalysisController)
         self._run_app()
         res = shell.exec_cmd(["ls", "-1", os.path.join(delivery_dir, "P1_101F_index1", "120829_AA001AAAXX")])
-        self.eq(['1_120829_AA001AAAXX_nophix_1_1_fastq.txt', '1_120829_AA001AAAXX_nophix_1_2_fastq.txt', '1_120829_AA001AAAXX_nophix_1-sort.bam', '1_120829_AA001AAAXX_nophix_1-sort-dup.align_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.bam', '1_120829_AA001AAAXX_nophix_1-sort-dup.dup_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.insert_metrics'], res[0].split())
-        
-
+        self.eq(['1_120829_AA001AAAXX_nophix_1-sort-dup.align_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.bam', '1_120829_AA001AAAXX_nophix_1-sort-dup.dup_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.insert_metrics', '1_120829_AA001AAAXX_nophix_1-sort.bam', '1_120829_AA001AAAXX_nophix_1_1_fastq.txt', '1_120829_AA001AAAXX_nophix_1_2_fastq.txt', 'P1_101F_index1-bcbb-config.yaml'], res[0].split())
+    
     def test_4_from_pre_to_pre_casava_delivery(self):
         """Test pre_casava delivery to project directory"""
         self.app = self.make_app(argv = ['analysis', 'deliver', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '--from_pre_casava', '--to_pre_casava'])

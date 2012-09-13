@@ -70,8 +70,9 @@ class AnalysisController(AbstractBaseController):
             fc_new.set_entry(key, 'results', targets['results'])
             ## Copy sample files - currently not doing lane files
             self._transfer_files(sources, targets)
-            with open(os.path.join(dirs["data"], "{}-bcbb-config.yaml".format(sample['name'])), "w") as yaml_out:
-                self.app.cmd.write(yaml_out, fc_new.as_yaml())
+            self.app.cmd.write(os.path.join(dirs["data"], "{}-bcbb-config.yaml".format(sample['name'])), fc_new.as_yaml())
+            # with open(os.path.join(dirs["data"], "{}-bcbb-config.yaml".format(sample['name'])), "w") as yaml_out:
+            #     self.app.cmd.write(yaml_out, fc_new.as_yaml())
 
 
     def _to_pre_casava_structure(self, fc):
@@ -90,8 +91,10 @@ class AnalysisController(AbstractBaseController):
             ## fc_new.lane_files = dict((k,[x.replace(indir, outdir) for x in v]) for k,v in fc_new.lane_files.items())
             ## Copy sample files - currently not doing lane files
             self._transfer_files(sources, targets)
-        with open(os.path.join(dirs["data"], "project_run_info.yaml"), "w") as yaml_out:
-            self.app.cmd.write(yaml_out, fc_new.as_yaml())
+        self.app.cmd.write(os.path.join(dirs["data"], "project_run_info.yaml"), fc_new.as_yaml())
+
+        # with open(os.path.join(dirs["data"], "project_run_info.yaml"), "w") as yaml_out:
+        #     self.app.cmd.write(yaml_out, fc_new.as_yaml())
 
     def _from_pre_casava_structure(self):
         if not self._check_pargs(["project", "flowcell"]):

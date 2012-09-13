@@ -1,4 +1,7 @@
-"""command"""
+"""
+pmtools command core module.
+
+"""
 import os
 import sys
 import shutil
@@ -84,6 +87,13 @@ class CommandHandler(handler.CementBaseHandler):
     ## Taken from paver.easy
     ## FIXME: add time stamp (better: make DRY_RUN a log level that only prints to console, for instance by using the interface ILog)
     def dry(self, message, func, *args, **kw):
+        """Wrapper that runs a function (runpipe) if flag dry_run isn't set, otherwise returns function call as string
+
+        :param message: message describing function call
+        :param func: function to call
+        :param *args: positional arguments to pass to function
+        :param *kw: keyword arguments to pass to function
+        """
         if self.app.pargs.dry_run:
             ##print >> sys.stderr, "(DRY_RUN): " + message + "\n"
             self.app._output_data["stderr"].write("(DRY_RUN): " + message + "\n")
@@ -92,7 +102,10 @@ class CommandHandler(handler.CementBaseHandler):
         return func(*args, **kw)
 
     def safe_makedir(self, dname):
-        """Make a directory if it doesn't exist"""
+        """Make a directory if it doesn't exist.
+        
+        :param dname: directory to create
+        """
         def runpipe():
             if not os.path.exists(dname):
                 try:
@@ -106,6 +119,11 @@ class CommandHandler(handler.CementBaseHandler):
         return self.dry("Make directory %s" % dname, runpipe)
 
     def transfer_file(self, src, tgt):
+        """Wrapper for transferring files with move or copy operation.
+
+        :param src: source destination
+        :param tgt: target destination
+        """
         if self.app.pargs.move:
             deliver_fn = shutil.move
         else:
@@ -119,12 +137,15 @@ class CommandHandler(handler.CementBaseHandler):
             deliver_fn(src, tgt)
         return self.dry("{} file {} to {}".format(deliver_fn.__name__, src, tgt), runpipe) 
 
-    def write(self, fh, data):
+    def write(self, fn, data):
+        """Wrapper for writing data to a file.
+
+        :param fn: file name <str>
+        :param data: data structure to write as <str>
+        """
         def runpipe():
             if data is None:
                 return
-            if not isinstance(fh, file):
-                self.app.log.warn("Expected <type 'file'>: got {}".format(type(fh)))
-                return
-            fh.write(data)
-        return self.dry("writing data to file {}".format(fh.name), runpipe)
+            with open (fn, "w") as fh:
+                fh.write(data)
+        return self.dry("writing data to file {}".format(fn), runpipe)
