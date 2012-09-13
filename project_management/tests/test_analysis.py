@@ -49,7 +49,7 @@ class PmAnalysisTest(PmTest):
         self._run_app()
         ## Assert data output
         res = shell.exec_cmd(["ls", "-1", os.path.join(delivery_dir, "120829_AA001AAAXX", "1_120829_AA001AAAXX_barcode")])
-        self.eq(['1_120829_AA001AAAXX_nophix_10_1_fastq.txt', '1_120829_AA001AAAXX_nophix_10_2_fastq.txt', '1_120829_AA001AAAXX_nophix_1_1_fastq.txt', '1_120829_AA001AAAXX_nophix_12_1_fastq.txt'], res[0].split()[0:4])
+        self.eq(['1_120829_AA001AAAXX_nophix_10_1_fastq.txt', '1_120829_AA001AAAXX_nophix_10_2_fastq.txt', '1_120829_AA001AAAXX_nophix_12_1_fastq.txt', '1_120829_AA001AAAXX_nophix_12_2_fastq.txt'], res[0].split()[0:4])
         ## Assert intermediate delivery output 
         res = shell.exec_cmd(["ls", "-1", os.path.join(intermediate_delivery_dir, "120829_AA001AAAXX")])
         self.eq(['1_120829_AA001AAAXX_nophix_10-sort.bam', '1_120829_AA001AAAXX_nophix_10-sort-dup.align_metrics'], res[0].split()[0:2])

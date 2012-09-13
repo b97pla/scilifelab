@@ -77,7 +77,7 @@ class QCMetricsController(AbstractBaseController):
                 raise IOError
             with open(runinfo_yaml_file) as fh:
                 runinfo_yaml = yaml.load(fh)
-            sample_kw = dict(path=sample_fcdir, flowcell=fc_name, date=fc_date, lane=d['Lane'], barcode_name=d['SampleID'], sample_prj=d['SampleProject'].replace("__", "."), barcode_id=runinfo_yaml['details'][0]['multiplex'][0]['barcode_id'])
+            sample_kw = dict(path=sample_fcdir, flowcell=fc_name, date=fc_date, lane=d['Lane'], barcode_name=d['SampleID'], sample_prj=d['SampleProject'].replace("__", "."), barcode_id=runinfo_yaml['details'][0]['multiplex'][0]['barcode_id'], sequence=runinfo_yaml['details'][0]['multiplex'][0]['sequence'])
             obj = SampleQCMetrics(**sample_kw)
             obj.read_picard_metrics()
             obj.parse_fastq_screen()
