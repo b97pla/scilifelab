@@ -1,4 +1,7 @@
-"""misc"""
+"""
+Pm Misc Module
+
+"""
 import sys
 import os
 import re
@@ -15,9 +18,9 @@ def query_yes_no(question, default="yes", force=False):
     
     The "answer" return value is one of "yes" or "no".
     
-    :param: question
-    :param: default
-    :param: force
+    :param question:
+    :param default:
+    :param force:
     :returns: yes or no
     """
     valid = {"yes":True,   "y":True,  "ye":True,
@@ -46,7 +49,13 @@ def query_yes_no(question, default="yes", force=False):
                                  "(or 'y' or 'n').\n")
 
 def walk(rootdir):
-    """Perform a directory walk"""
+    """
+    Perform a directory walk
+    
+    :param rootdir: Root directory of search
+
+    :returns: List of files 
+    """
     flist = []
     for root, dirs, files in os.walk(rootdir):
         flist = flist + [os.path.join(root, x) for x in files]
@@ -57,8 +66,10 @@ def walk(rootdir):
 def filtered_walk(rootdir, filter_fn): 
     """Perform a filtered directory walk.
 
-    :param rootdir: - root directory
-    :param filter_fn: - filtering function
+    :param rootdir: Root directory
+    :param filter_fn: Filtering function that returns boolean
+
+    :returns: Filtered file list 
     """
     flist = []
     for root, dirs, files in os.walk(rootdir):
@@ -66,3 +77,24 @@ def filtered_walk(rootdir, filter_fn):
         #     continue
         flist = flist + [os.path.join(root, x) for x in filter(filter_fn, files)]
     return flist
+
+def filtered_output(pattern, data):
+    """
+    Filter output
+    
+    :param pattern: a list or string of patterns
+    :param data: a data list to filter
+
+    :returns: filtered output
+    """
+    ## Sometimes read as string, sometimes as list...
+    if type(pattern) == str:
+        re_obj = re.compile(pattern.replace("\n", "|"))
+    elif type(pattern) == list:
+        re_obj = re.compile("|".join(pattern))
+
+    def ignore(line):
+        return re_obj.match(line) == None
+    return filter(ignore, data)
+
+

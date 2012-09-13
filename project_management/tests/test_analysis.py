@@ -34,17 +34,17 @@ class PmAnalysisTest(PmTest):
     #     handler.register(AnalysisController)
     #     self._run_app()
 
-    def test_3_from_pre_to_casava_delivery(self):
-        """Test casava delivery to project directory"""
-        self.app = self.make_app(argv = ['analysis', 'deliver', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '--from_pre_casava'])
+    def test_3_from_pre_to_casava_transfer(self):
+        """Test casava transfer to project directory"""
+        self.app = self.make_app(argv = ['analysis', 'transfer', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '--from_pre_casava'])
         handler.register(AnalysisController)
         self._run_app()
         res = shell.exec_cmd(["ls", "-1", os.path.join(delivery_dir, "P1_101F_index1", "120829_AA001AAAXX")])
         self.eq(['1_120829_AA001AAAXX_nophix_1-sort-dup.align_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.bam', '1_120829_AA001AAAXX_nophix_1-sort-dup.dup_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.insert_metrics', '1_120829_AA001AAAXX_nophix_1-sort.bam', '1_120829_AA001AAAXX_nophix_1_1_fastq.txt', '1_120829_AA001AAAXX_nophix_1_2_fastq.txt', 'P1_101F_index1-bcbb-config.yaml'], res[0].split())
     
-    def test_4_from_pre_to_pre_casava_delivery(self):
-        """Test pre_casava delivery to project directory"""
-        self.app = self.make_app(argv = ['analysis', 'deliver', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '--from_pre_casava', '--to_pre_casava'])
+    def test_4_from_pre_to_pre_casava_transfer(self):
+        """Test pre_casava transfer to project directory"""
+        self.app = self.make_app(argv = ['analysis', 'transfer', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '--from_pre_casava', '--to_pre_casava'])
         handler.register(AnalysisController)
         self._run_app()
         ## Assert data output
@@ -52,20 +52,23 @@ class PmAnalysisTest(PmTest):
         self.eq(['1_120829_AA001AAAXX_nophix_10_1_fastq.txt', '1_120829_AA001AAAXX_nophix_10_2_fastq.txt', '1_120829_AA001AAAXX_nophix_12_1_fastq.txt', '1_120829_AA001AAAXX_nophix_12_2_fastq.txt'], res[0].split()[0:4])
         ## Assert intermediate delivery output 
         res = shell.exec_cmd(["ls", "-1", os.path.join(intermediate_delivery_dir, "120829_AA001AAAXX")])
-        self.eq(['1_120829_AA001AAAXX_nophix_10-sort.bam', '1_120829_AA001AAAXX_nophix_10-sort-dup.align_metrics'], res[0].split()[0:2])
-        self.eq(['1_120829_AA001AAAXX_nophix_8-sort-dup.hs_metrics','1_120829_AA001AAAXX_nophix_8-sort-dup.insert_metrics'], res[0].split()[-2:])
+        self.eq(['1_120829_AA001AAAXX_nophix_1-sort-dup.align_metrics','1_120829_AA001AAAXX_nophix_1-sort-dup.bam'], res[0].split()[0:2])
+        #self.eq(['1_120829_AA001AAAXX_nophix_10-sort.bam', '1_120829_AA001AAAXX_nophix_10-sort-dup.align_metrics'], res[0].split()[0:2])
+        self.eq(['1_120829_AA001AAAXX_nophix_8-sort-dup.insert_metrics','1_120829_AA001AAAXX_nophix_8-sort.bam'], res[0].split()[-2:])
+        #self.eq(['1_120829_AA001AAAXX_nophix_8-sort-dup.hs_metrics','1_120829_AA001AAAXX_nophix_8-sort-dup.insert_metrics'], res[0].split()[-2:])
+
         ## Assert pruned yaml file contents
         with open(os.path.join(delivery_dir, "120829_AA001AAAXX", "project_run_info.yaml")) as fh:
             runinfo_yaml = yaml.load(fh)
         self.eq(runinfo_yaml['details'][0]['multiplex'][0]['name'], 'P1_101F_index1')
         self.eq(runinfo_yaml['details'][0]['multiplex'][0]['description'], 'J.Doe_00_01_P1_101F_index1')
-        self.eq(runinfo_yaml['details'][0]['multiplex'][0]['files'], [os.path.join(delivery_dir,"120829_AA001AAAXX", "1_120829_AA001AAAXX_barcode", os.path.basename(x)) for x in ['1_120829_AA001AAAXX_nophix_1_2_fastq.txt','1_120829_AA001AAAXX_nophix_1_1_fastq.txt']])
+        self.eq(runinfo_yaml['details'][0]['multiplex'][0]['files'], [os.path.join(delivery_dir,"120829_AA001AAAXX", "1_120829_AA001AAAXX_barcode", os.path.basename(x)) for x in ['1_120829_AA001AAAXX_nophix_1_1_fastq.txt','1_120829_AA001AAAXX_nophix_1_2_fastq.txt']])
             
         
 
     def test_5_quiet(self):
         """Test pre_casava delivery to project directory with quiet flag"""
-        self.app = self.make_app(argv = ['analysis', 'deliver', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '--from_pre_casava', '--to_pre_casava', '--quiet'])
+        self.app = self.make_app(argv = ['analysis', 'transfer', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '--from_pre_casava', '--to_pre_casava', '--quiet'])
         handler.register(AnalysisController)
         self._run_app()
 

@@ -5,7 +5,7 @@ import os
 
 import glob
 from cement.core import backend, controller, handler
-from pmtools import AbstractBaseController
+from pmtools.core.controller import AbstractBaseController
 from pmtools.lib.flowcell import Flowcell
 from pmtools.utils.misc import query_yes_no
 

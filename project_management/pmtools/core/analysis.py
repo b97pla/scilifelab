@@ -6,11 +6,11 @@ import sys
 import os
 import re
 from cement.core import controller
-from pmtools import AbstractBaseController
+from pmtools.core.controller import AbstractExtendedBaseController
 from pmtools.lib.flowcell import Flowcell
 
 ## Main analysis controller
-class AnalysisController(AbstractBaseController):
+class AnalysisController(AbstractExtendedBaseController):
     """
     Functionality for analysis management.
     """
@@ -26,13 +26,14 @@ class AnalysisController(AbstractBaseController):
             (['--to_pre_casava'], dict(help="Use pre-casava directory structure for delivery", action="store_true", default=False)),
             ]
 
-    @controller.expose(hide=True)
-    def default(self):
-        print self._help_text
-
-    @controller.expose(help="List contents")
-    def ls(self):
-        self._ls(self.app.config.get("analysis", "root"))
+    def _process_args(self):
+        # Set root path for parent class
+        self._meta.root_path = self.app.config.get("analysis", "root")
+        assert os.path.exists(self._meta.root_path), "No such directory {}; check your analysis config".format(self._meta.root_path)
+        ## Set path_id for parent class
+        if self.pargs.flowcell:
+            self._meta.path_id = self.pargs.flowcell
+        super(AnalysisController, self)._process_args()
 
     @controller.expose(help="List runinfo contents")
     def runinfo(self):
@@ -45,7 +46,6 @@ class AnalysisController(AbstractBaseController):
     @controller.expose(help="List status of a run")
     def status(self):
         self._not_implemented()
-
 
     def _from_casava_structure(self):
         """Get information from casava structure"""
@@ -73,7 +73,6 @@ class AnalysisController(AbstractBaseController):
             self.app.cmd.write(os.path.join(dirs["data"], "{}-bcbb-config.yaml".format(sample['name'])), fc_new.as_yaml())
             # with open(os.path.join(dirs["data"], "{}-bcbb-config.yaml".format(sample['name'])), "w") as yaml_out:
             #     self.app.cmd.write(yaml_out, fc_new.as_yaml())
-
 
     def _to_pre_casava_structure(self, fc):
         dirs = {"data":os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data", fc.fc_id())),
@@ -122,8 +121,8 @@ class AnalysisController(AbstractBaseController):
             self.app.cmd.transfer_file(src, tgt)
 
 
-    @controller.expose(help="Deliver data")
-    def deliver(self):
+    @controller.expose(help="Transfer data")
+    def transfer(self):
         if not self.pargs.from_pre_casava and self.pargs.to_pre_casava:
             self.app.log.warn("not delivering from casava input to pre_casava output")
             return

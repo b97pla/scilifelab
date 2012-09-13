@@ -48,8 +48,8 @@ class ProjectTest(PmTest):
             if not m:
                 exit_code = shell.exec_cmd2(['touch', os.path.join(self.fastq_dir, f)])
 
-    def test_1_project_deliver(self):
-        self.app = self.make_app(argv = ['project', 'deliver'])
+    def test_1_project_transfer(self):
+        self.app = self.make_app(argv = ['project', 'transfer'])
         handler.register(ProjectController)
         self._run_app()
         
@@ -58,7 +58,7 @@ class ProjectTest(PmTest):
 
     def test_3_compress(self):
         """Test compression of project data"""
-        self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '-f', '--force'])
+        self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '--fastq', '--force'])
         handler.register(ProjectController)
         self._run_app()
 

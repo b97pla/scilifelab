@@ -1,14 +1,16 @@
-"""Pm archive module"""
+"""
+Pm Archive Module
+"""
 
 import os
 import yaml
 
 from cement.core import controller
-from pmtools import AbstractBaseController
+from pmtools.core.controller import AbstractExtendedBaseController
 from pmtools.lib.flowcell import *
 
 ## Main archive controller
-class ArchiveController(AbstractBaseController):
+class ArchiveController(AbstractExtendedBaseController):
     """
     Functionality for archive management.
 
@@ -20,24 +22,25 @@ class ArchiveController(AbstractBaseController):
         label = 'archive'
         description = 'Manage archive'
         arguments = [
-            (['flowcell'], dict(help="Flowcell id", nargs="?", default="default")),
+            (['flowcell'], dict(help="Flowcell id", nargs="?", default=None, action="store")),
             (['-p', '--project'], dict(help="Project id")),
             (['--as_yaml'], dict(action="store_true", default=False, help="list runinfo as yaml file")),
             (['-P', '--list-projects'], dict(action="store_true", default=False, help="list projects of flowcell")),
             ]
 
-    @controller.expose(hide=True)
-    def default(self):
-        print self._help_text
-
-    @controller.expose(help="List contents")
-    def ls(self):
-        return self._ls(self.app.config.get("archive", "root"))
+    def _process_args(self):
+        # Set root path for parent class
+        self._meta.root_path = self.app.config.get("archive", "root")
+        assert os.path.exists(self._meta.root_path), "No such directory {}; check your archive config".format(self._meta.root_path)
+        ## Set path_id for parent class
+        if self.pargs.flowcell:
+            self._meta.path_id = self.pargs.flowcell
+        super(ArchiveController, self)._process_args()
 
     @controller.expose(help="List runinfo contents")
     def runinfo(self):
         """List runinfo for a given flowcell"""
-        if self.pargs.flowcell is None or self.pargs.flowcell == "default":
+        if self.pargs.flowcell is None:
             self.app._output_data["stderr"].write("Please provide flowcell id")
             return
         assert self.config.get("archive", "root"), "archive directory not defined"

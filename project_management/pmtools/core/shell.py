@@ -33,18 +33,6 @@ class ShCommandHandler(command.CommandHandler):
                raise Exception("Subprocess return code: {}".format(returncode))
             if capture:
                return stdout
-            # kwargs = { 'shell': False , 'cwd': cwd}
-            # if capture:
-            #     kwargs['stderr'] = subprocess.STDOUT
-            #     kwargs['stdout'] = subprocess.PIPE
-            # p = subprocess.Popen(cmd, **kwargs)
-            # p_stdout = p.communicate()[0]
-            # if p.returncode and not ignore_error:
-            #     if capture:
-            #         self.app.log.error(p_stdout)
-            #     raise Exception("Subprocess return code: %d" % p.returncode)
-            # if capture:
-            #     return p_stdout
         return self.dry(cmd, runpipe)
             
         
