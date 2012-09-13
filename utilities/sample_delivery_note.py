@@ -35,7 +35,7 @@ paragraphs["UPPNEX project id"] = "{uppnex_project_id}"
 paragraphs["Flow cell id"] = "{FC_id}"
 
 paragraphs["Sequence data directory"] = \
-"/proj/{uppnex_project_id}/INBOX/{project_name}/{start_date}_{FC_id}"
+"/proj/{uppnex_project_id}/INBOX/{project_name}/{scilifelab_name}/{start_date}_{FC_id}"
 
 paragraphs["Sample"] = "{scilifelab_name} / {customer_name}." \
                        "Ordered amount: {ordered_amount} million paired reads."

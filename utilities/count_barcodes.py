@@ -98,7 +98,6 @@ if opts.old == True:
         if last_was_header: last_was_header = False
 
 else:
-    print "Specified CASAVA FASTQ file"
     for line in fh:
         if line[0:4] == "@HWI": # Header 
             bcode = line.strip().split(':')[-1]
