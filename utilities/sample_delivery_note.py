@@ -145,7 +145,7 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
     # Warning: ugliness ahead! :-)
     # Temp views for FlowcellQCMetrics and ProjectSummary while we wait for permanent ones
     fc_map_fun = '''function(doc) { if (doc.entity_type == "FlowcellQCMetrics") emit(doc, null);}'''                       
-    ps_map_fun = '''function(doc) { if (doc.entity_type == "ProjectSummary") emit(doc, null);}'''                       
+    ps_map_fun = '''function(doc) { if (doc.Entity_type == "ProjectSummary") emit(doc, null);}'''                       
     s_map_fun = '''function(doc) { if (doc.entity_type == "SampleQCMetrics") emit(doc, null);}'''                       
     
     parameters = {}
@@ -166,8 +166,8 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                 found_proj_for_fc = True
                 print "SampleQCMetrics document ID: ", r['id']
 
-                if found_fc: print "DEBUG: Found flow cell document"
-                if found_proj_for_fc: print "DEBUG: Found project"
+                #if found_fc: print "DEBUG: Found flow cell document"
+                #if found_proj_for_fc: print "DEBUG: Found project"
 
                 try:
                     
@@ -185,6 +185,7 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                         parameters['customer_reference'] = customer_ref
  
                     # Uppnex ID (can be manually provided by user)
+                    #print "Uppmax ID from command line: ", opts.uppnex_id
                     if (opts.uppnex_id): parameters['uppnex_project_id'] = opts.uppnex_id # User provided Uppnex ID
                     else:
                         uppnex = "NA"
@@ -198,13 +199,17 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                     parameters['start_date'] = obj['date']
 
                     # Ordered amount (can be manually provided by user)
-                    if (opts.ordered_million): parameters['ordered_amount'] = opts.ordered_million
+                    if (opts.ordered_million != "N/A"): 
+                        print "Using ordered amount from command-line"
+                        parameters['ordered_amount'] = opts.ordered_million
                     else:
-                        ordered_amnt = "N.A."
+                        print "Looking for ordered amount in ProjectSummary"
+                        ordered_amnt = "N/A"
                         results = qc.query(ps_map_fun)
                         for r in results:
                             if prj == r['key']['Project_id']:
-                                temp = r['key']['min_M_reads_per_sample_ordered']
+                                print "ProjectSummary document ID: ", r['id']
+                                temp = r['key']['Min_M_reads_per_sample_ordered']
                                 if len(temp) > 0 and temp != ' ':
                                     ordered_amnt = temp
                         parameters['ordered_amount'] = ordered_amnt
@@ -239,7 +244,7 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                         short_fc_name = full_fc_name.split("_")[-1]
                         if short_fc_name == fc:
                             print "FlowCellQCMetrics ID: ", r['id']
-                            print "DEBUG: Found FlowCellQCMetrics document corresponding to SampleQCMetrics flowcell (whew)"
+                            #print "DEBUG: Found FlowCellQCMetrics document corresponding to SampleQCMetrics flowcell (whew)"
                             phix_r1 = float(r['key']['metrics']['illumina']['Summary']['read1'][lane]['ErrRatePhiX'])
                             phix_r2 = float(r['key']['metrics']['illumina']['Summary']['read3'][lane]['ErrRatePhiX'])
                             phix_avg = (phix_r1 + phix_r2)/2
@@ -266,7 +271,7 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                         if float(parameters['rounded_read_count']) < float(parameters['ordered_amount']): success_message += "The yield may be lower than expected."
                 except:
                     print "Warning: Could not assess success of run."
-                    print obj['_id']
+                    #print obj['_id']
                     success_message = "Could not assess success or failure of run."
                 parameters['success'] = success_message
                 make_note(parameters)
@@ -309,8 +314,8 @@ The two first options are mandatory (kind of ... the program will just generate 
 
     parser = optparse.OptionParser()
     parser.add_option('-u', '--uppnex', action="store", dest="uppnex_id", default="", help="Manually insert UPPNEX ID into reports")
-    parser.add_option('-o', '--ordered-million-reads', action="store", dest="ordered_million", default="N.A.", help="Manually insert the ordered number of read pairs (in millions) into reports")
-    parser.add_option('-r', '--customer-reference', action="store", dest="customer_ref", default="N.A.", help="Manually insert customer reference (the customer's name for the project) into reports")
+    parser.add_option('-o', '--ordered-million-reads', action="store", dest="ordered_million", default="N/A", help="Manually insert the ordered number of read pairs (in millions) into reports")
+    parser.add_option('-r', '--customer-reference', action="store", dest="customer_ref", default="N/A", help="Manually insert customer reference (the customer's name for the project) into reports")
 
     (opts, args) = parser.parse_args()
 
