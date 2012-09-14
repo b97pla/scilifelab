@@ -30,7 +30,12 @@ class Batcher:
 def run_screen(run_folder, flowcell, sample, batchsize, projectid, timelimit, jobname, email, slurm_extra):
     
     assert os.path.exists(run_folder), "The supplied run folder {} does not exist".format(run_folder)
-    assert subprocess.check_call(["fastq_screen","-v"]) == 0, "fastq_screen could not be run properly, please check your environment"
+    retcode = 1
+    try:
+        retcode = subprocess.check_call(["fastq_screen","-v"])
+    except OSError:
+        pass
+    assert retcode == 0, "fastq_screen executable could not be run properly, please check your environment!"
     
     indirpattern = "{}/*{}/nophix".format(sample,flowcell)
     infilepattern = "*_1_fastq.txt*"
