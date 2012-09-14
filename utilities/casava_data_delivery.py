@@ -132,6 +132,7 @@ for sample_dir in dirs_to_copy_from:
 
     for fq in glob.glob(os.path.join(phixfiltered_path, "*fastq*")):
         [path, fname] = os.path.split(fq)
+        extension = os.path.splitext(fq)[1]
         run_dir = os.path.split(os.path.split(fq)[0])[0]
         # print "DEBUG: Run dir = ", run_dir
         run_name = os.path.basename(os.path.split(os.path.split(fq)[0])[0])
@@ -146,7 +147,9 @@ for sample_dir in dirs_to_copy_from:
         sample = os.path.basename(sample_path)
         print fname
         [lane, date, fc_id, bcbb_id, nophix, read, dummy] = fname.split('_') # e.g. 4_120821_BC118PACXX_1_nophix_2_fastq.txt
-        dest_file_name = lane + "_" + date + "_" + fc_id + "_" + sample + "_" + read + ".fastq" 
+        if extension == '.gz': newext = '.fastq.gz'
+        else: newext = '.fastq'
+        dest_file_name = lane + "_" + date + "_" + fc_id + "_" + sample + "_" + read + newext 
         dest = os.path.join(sample_path, run_name, dest_file_name)
         print "Will copy (rsync) ", fq, "to ", dest 
         if not dry: 

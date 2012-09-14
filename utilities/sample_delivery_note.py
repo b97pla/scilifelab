@@ -156,6 +156,8 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
     found_proj_for_fc = False
     results = qc.query(s_map_fun)
     avail_proj = set()
+    error_rates = {}
+    qvs = {}
     for r in results:
         obj = r['key']
         if obj.has_key('sample_prj'): 
@@ -200,10 +202,8 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
 
                     # Ordered amount (can be manually provided by user)
                     if (opts.ordered_million != "N/A"): 
-                        print "Using ordered amount from command-line"
                         parameters['ordered_amount'] = opts.ordered_million
                     else:
-                        print "Looking for ordered amount in ProjectSummary"
                         ordered_amnt = "N/A"
                         results = qc.query(ps_map_fun)
                         for r in results:
@@ -221,7 +221,18 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                     # Customer sample name
                     try:
                         cust_name = "no customer sample name given"
-                        if (obj['customer_sample_name']): cust_name = obj['customer_sample_name']
+                        if (obj['customer_sample_name']): 
+                            cust_name = obj['customer_sample_name']
+                        else:
+                            results = qc.query(ps_map_fun)
+                            for r in results: 
+                                if prj == r['key']['Project_id']:
+                                    slist = r['key']['Samples']
+                                    for s in slist.keys():
+                                        if slist[s].has_key('scilife_name'):
+                                            if slist[s]['scilife_name'] == "_".join(parameters['scilifelab_name'].split("_")[0:2]): # hacky
+                                                cust_name = slist[s]['customer_name']
+
                         parameters['customer_name'] = cust_name
                     except:
                         print "Failed to set customer sample name"
@@ -249,7 +260,7 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                             phix_r2 = float(r['key']['metrics']['illumina']['Summary']['read3'][lane]['ErrRatePhiX'])
                             phix_avg = (phix_r1 + phix_r2)/2
                     parameters['phix_error_rate'] = str(phix_avg)
-                    # print "DEBUG: ", parameters
+                    error_rates[parameters['scilifelab_name']] = parameters['phix_error_rate']
                     # Average QV 
                     # print "DEBUG: ", obj['metrics']['fastqc']
                     avg_qv = "N/A"
@@ -258,6 +269,7 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                     except:
                         pass
                     parameters['avg_quality_score'] = str(avg_qv)
+                    qvs[parameters['scilifelab_name']] = parameters['avg_quality_score']
                 except:
                     sys.exit("Could not fetch all info from StatusDB")
                 print "Making note for sample ", parameters['scilifelab_name'], " on flowcell ", parameters['FC_id'], " lane ", obj['lane']
@@ -275,6 +287,12 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                     success_message = "Could not assess success or failure of run."
                 parameters['success'] = success_message
                 make_note(parameters)
+
+    print "*** Quality stats ***"
+    print "Scilifelab ID\tPhiXError\tAvgQV"
+    for k in sorted(error_rates.keys()):
+        print k + "\t" + error_rates[k] + "\t" + qvs[k]
+
     if not found_fc:
         print "Could not find specified flow cell!"
         print "Available as FlowcellQCMetrics documents:"
