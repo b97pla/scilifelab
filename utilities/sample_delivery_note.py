@@ -202,10 +202,8 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
 
                     # Ordered amount (can be manually provided by user)
                     if (opts.ordered_million != "N/A"): 
-                        print "Using ordered amount from command-line"
                         parameters['ordered_amount'] = opts.ordered_million
                     else:
-                        print "Looking for ordered amount in ProjectSummary"
                         ordered_amnt = "N/A"
                         results = qc.query(ps_map_fun)
                         for r in results:
@@ -223,7 +221,18 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                     # Customer sample name
                     try:
                         cust_name = "no customer sample name given"
-                        if (obj['customer_sample_name']): cust_name = obj['customer_sample_name']
+                        if (obj['customer_sample_name']): 
+                            cust_name = obj['customer_sample_name']
+                        else:
+                            results = qc.query(ps_map_fun)
+                            for r in results: 
+                                if prj == r['key']['Project_id']:
+                                    slist = r['key']['Samples']
+                                    for s in slist.keys():
+                                        if slist[s].has_key('scilife_name'):
+                                            if slist[s]['scilife_name'] == "_".join(parameters['scilifelab_name'].split("_")[0:2]): # hacky
+                                                cust_name = slist[s]['customer_name']
+
                         parameters['customer_name'] = cust_name
                     except:
                         print "Failed to set customer sample name"
