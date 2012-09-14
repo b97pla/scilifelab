@@ -6,11 +6,11 @@ details:
   lane: '3'
   multiplex:
   - analysis: Align_illumina
-    barcode_id: 5
+    barcode_id: 2
     barcode_type: SampleSheet
-    description: J.Doe_00_03_P000_101
-    files: [./1_120829_AA001AAAXX_nophix_1_2_fastq.txt,
-    	    ./1_120829_AA001AAAXX_nophix_1_1_fastq.txt]
-    name: P000_101
+    description: J.Doe_00_03_P000_102
+    files: [./3_120914_BB002ABCXX_nophix_2_2_fastq.txt,
+    	    ./3_120914_BB002ABCXX_nophix_2_1_fastq.txt]
+    name: P000_102
     sample_prj: J.Doe_00_03
     sequence: ATCACG
