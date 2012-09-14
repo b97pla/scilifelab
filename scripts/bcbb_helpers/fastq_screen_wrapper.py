@@ -27,12 +27,12 @@ class Batcher:
     def batchno(self):
         return self._batchno
 
-def run_screen(run_folder, batchsize, projectid, timelimit, jobname, email, slurm_extra):
+def run_screen(run_folder, flowcell, sample, batchsize, projectid, timelimit, jobname, email, slurm_extra):
     
     assert os.path.exists(run_folder), "The supplied run folder {} does not exist".format(run_folder)
     assert subprocess.check_call(["fastq_screen","-v"]) == 0, "fastq_screen could not be run properly, please check your environment"
     
-    indirpattern = "*/*XX/nophix"
+    indirpattern = "{}/*{}/nophix".format(sample,flowcell)
     infilepattern = "*_1_fastq.txt*"
     
     outdir = run_folder
@@ -64,6 +64,27 @@ def submit_batch(infiles, outdir, bashscript, sbatch_cmd, batchno):
     os.chmod(sbatchfile,0770)
     
     print subprocess.check_output(sbatch_cmd + ["-o", "{}.out".format(os.path.splitext(os.path.basename(sbatchfile))[0]), sbatchfile]) 
+  
+def _submit_through_drmaa():
+    """FIXME: Should use drmaa for submitting to slurm. 
+    Not sure how to handle multiple parallell jobs on the same node though
+    """  
+    import drmaa
+    s = drmaa.Session()
+    s.initialize()
+    jt = s.createJobTemplate()
+    jt.jobName = jobname
+    jt.remoteCommand = "&\n".join(commands)
+    jt.args = ['foo']
+    jt.nativeSpecification = "-A a2010002 -p devel -t 00:00:05"
+    jt.workingDirectory = drmaa.JobTemplate.HOME_DIRECTORY
+    jt.outputPath = ":"+drmaa.JobTemplate.HOME_DIRECTORY+'/job_stdout.out'
+    jt.joinFiles=True # Joins stdout & stderr together
+    jt.email=["roman@scilifelab.se"]
+
+    jobid = s.runJob(jt)
+    print 'Your job has been submitted with id ' + jobid
+    
           
 def run_script():
     """Return a bash script (as a text string) that will run fastq_screen"""
@@ -123,11 +144,15 @@ def main():
                         help="email address for slurm reporting")
     parser.add_argument('--slurm_extra', action='store', default="", 
                         help="extra parameters to pass to sbatch")
+    parser.add_argument('-s','--sample', action='store', default="*", 
+                        help="Process only the specified sample. By default all samples are processed.")
+    parser.add_argument('-f','--flowcell', action='store', default="", 
+                        help="A flowcell identifier, e.g. D158KACXX, for which to run fastq_screen. By default all flowcells for a sample are processed.")
     parser.add_argument('run_folder', action='store', default=None, 
                         help="the full path to the run folder containing analysis output", nargs='+')
     
     args = parser.parse_args()
-    run_screen(os.path.abspath(args.run_folder[0]), args.batchsize, args.projectid, args.time, args.jobname, args.email, args.slurm_extra.split())
+    run_screen(os.path.abspath(args.run_folder[0]), args.flowcell, args.sample, args.batchsize, args.projectid, args.time, args.jobname, args.email, args.slurm_extra.split())
       
 if __name__ == "__main__":
     main()
@@ -236,20 +261,20 @@ class TestRunScreen(unittest.TestCase):
         """
         run_folder = os.path.join(self.testdir,"non-existing-folder")
         with self.assertRaises(AssertionError):
-            run_screen(run_folder, 0, "", "", "", "", "")
+            run_screen(run_folder, "2CXX", "1", 0, "", "", "", "", "")
             
     def test_failing_fastq_screen(self):
         """TestRunScreen: Test that failing call to fastq_screen raises error
         """
         subprocess.check_call = Mock(return_value=1)
         with self.assertRaises(AssertionError):
-            run_screen(self.testdir, 5, "", "", "", "", "")
+            run_screen(self.testdir, "2CXX", "1", 5, "", "", "", "", "")
             
     def test_bash_script_creation(self):
         """TestRunScreen: Test that bash script for running fastq_screen is created
         """
         subprocess.check_call = Mock(return_value=0)
-        run_screen(self.testdir, 5, "", "", "", "", "")
+        run_screen(self.testdir, "2CXX", "1", 5, "", "", "", "", "")
         bashscript = os.path.join(self.testdir,"run_fastq_screen.sh")
         self.assertTrue(os.path.exists(bashscript))
         
@@ -257,7 +282,8 @@ class TestRunScreen(unittest.TestCase):
         """TestRunScreen: Test that call to sbatch submission is correct
         """
         subprocess.check_call = Mock(return_value=0)
-        
+        raise Exception("Not implemented!")
+    
         folders = os.path.join(self.testdir,"1","2CXX","nophix")
         os.makedirs(folders)
         for i in range(2):
@@ -265,7 +291,7 @@ class TestRunScreen(unittest.TestCase):
             open(f,"w").close()
         
         # FIXME: Create mock object for submit_batch and check calling parameters
-        #run_screen(self.testdir, 5, "", "", "", "", "")
+        #run_screen(self.testdir, "2CXX", "1", 5, "", "", "", "", "")
         
         
         
