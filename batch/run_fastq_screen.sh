@@ -25,5 +25,5 @@ then
 fi
 
 #fastq_screen --outdir ${OUTDIR} --subset 2000000 --illumina --multilib $F1
-fastq_screen --outdir ${OUTDIR} --subset 2000000 --illumina --multilib $F1 --paired $F2
+fastq_screen --outdir ${OUTDIR} --subset 2000000 --multilib $F1 --paired $F2
 
