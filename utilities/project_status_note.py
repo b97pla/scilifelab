@@ -14,7 +14,7 @@ from types import *
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import Paragraph, SimpleDocTemplate
-# from reportlab.platypus import Image
+#from reportlab.platypus import Image
 # from reportlab.platypus import Spacer
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, inch
