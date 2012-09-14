@@ -94,8 +94,8 @@ def make_note(parameters):
         else:
             story.append(Paragraph(paragraph.format(**parameters), p))
         if headline == 'Samples': 
-            data= parameters['sample_table']
-            t=Table(data,5*[1.5*inch], len(data)*[0.25*inch])
+            data = parameters['sample_table']
+            t=Table(data,5*[1.25*inch], len(data)*[0.25*inch])
             t.setStyle(TableStyle([('ALIGN',(1,1),(-2,-2),'RIGHT'),
                        ('VALIGN',(0,0),(0,-1),'TOP'),
                        ('ALIGN',(0,-1),(-1,-1),'CENTER'),
@@ -150,6 +150,7 @@ def make_status_note(prj="", opts=None):
     res = qc.query(up_map_fun)
     for r in res:
         if r['key']['Project_id'] == prj:
+            print "DEBUG: ProjectSummary doc: (you can paste this ID into the CouchDB web interface)", r['id']
             doc = r['key']
     if not doc: 
         print "Could not find project summary for " + prj
@@ -177,37 +178,73 @@ def make_status_note(prj="", opts=None):
         
         # A table of samples, # ordered reads, # sequenced, OK / not OK
         sample_table = []
-        sample_table.append(['ScilifeID', 'CustomerID', 'NumberSequenced', 'NumberOrdered', 'Status'])
+        sample_table.append(['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status'])
         slist = doc['Samples']
         
-        for s in sorted(slist.keys(), cmp=custom_sort):
+        #for s in sorted(slist.keys(), cmp=custom_sort):
+        for s in sorted(slist.keys()):
             row = []
             if slist[s].has_key('scilife_name'): row.append( slist[s]['scilife_name'])
             else: row.append("N/A")
             if slist[s].has_key('customer_name'): row.append(slist[s]['customer_name'])
             else: row.append("N/A")
+            if slist[s].has_key('SampleQCMetrics'):
+                # Fetch SampleQCMetrics doc(s) corresponding to sample
+                ind_seqs = set()
+                sq_metrics = slist[s]['SampleQCMetrics'] 
+                for sdoc in sq_metrics:
+                    print "DEBUG: SampleQCMetrics doc: ", sdoc
+                    res_ = qc[sdoc]
+                    if res_['sequence']:
+                        ind_seqs.add(res_['sequence'])
+                if len(ind_seqs) > 0: 
+                    print "DEBUG: Barcode(s): ", ind_seqs
+                    row.append(','.join(list(ind_seqs)))
+                else: row.append('N/A')
+            else:
+                row.append('N/A')
+          
+            # Million reads sequenced
+            counts_from_sqcm = -1
             if slist[s].has_key('M_reads_sequenced'): row.append(slist[s]['M_reads_sequenced'])
-            else: row.append("N/A")
-            if doc.has_key('min_M_reads_per_sample_ordered'): 
+            elif slist[s].has_key('SampleQCMetrics'):
+                counts_from_sqcm = 0
+                sq_metrics = slist[s]['SampleQCMetrics']
+                for sdoc in sq_metrics:
+                    res_ = qc[sdoc]
+                    if res_['bc_count']:
+                        counts_from_sqcm += int(res_['bc_count'])
+                    else:
+                        sys.exit("Could not establish read counts for sample, ", res_['id'])
+                row.append(str(round(counts_from_sqcm / 1000000),1))
+            else: row.append('N/A')
+           
+            # Million reads ordered
+            if doc.has_key('Min_M_reads_per_sample_ordered'): 
                     try: 
-                        row.append( round(float(doc['min_M_reads_per_sample_ordered']),2))
+                        row.append( round(float(doc['Min_M_reads_per_sample_ordered']),2))
                     except:
                         row.append("N/A")
-            else: row.append("N/A")
-            status = 'N/A'
+            else: row.append(opts.ordered_million)
+           
+ 
             # Check for status of sample.
             # Test 1: Check if it has a status attribute
-            # Test 2: If not, check if it has an M_reads_sequenced attribute and a min_M_reads_per_sample_ordered attribute and compare those
+            # Test 2: If not, check if it has an M_reads_sequenced attribute and a Min_M_reads_per_sample_ordered attribute and compare those
             # Test 3: If not, check if there is a SampleQCMetrics attribute and go in and sum up all the reads (not implemented yet)
             if slist[s].has_key('status'): 
                 status = slist[s]['status']
-            elif slist[s].has_key('M_reads_sequenced') and doc.has_key('min_M_reads_per_sample_ordered'):
-                    if slist[s]['M_reads_sequenced'] >= doc['min_M_reads_per_sample_ordered']: status = "P"
+            elif slist[s].has_key('M_reads_sequenced') and doc.has_key('Min_M_reads_per_sample_ordered'):
+                    if slist[s]['M_reads_sequenced'] >= doc['Min_M_reads_per_sample_ordered']: status = "P"
                     else: status = "NP"
             else:
-                pass
-                #print "Couldn't determine status of sample ", s
-            if status != "P": all_passed = False
+                if doc.has_key('min_M_reads_per_sample_ordered'):
+                    if counts_from_sqcm >= 1000000 * doc['Min_M_reads_per_sample_ordered']: status = "P"
+                elif opts.ordered_million.isdigit():
+                    if counts_from_sqcm >= 1000000 * int(opts.ordered_million): status = "P"
+                else: status = "N/A"
+
+            if status == "NP": all_passed = False
             row.append(status)
             sample_table.append(row)
     except: 
@@ -241,8 +278,8 @@ The first option is mandatory. There are further flags you can use:
 
     parser = optparse.OptionParser()
     parser.add_option('-u', '--uppnex', action="store", dest="uppnex_id", default="", help="Manually insert UPPNEX ID into reports")
-    parser.add_option('-o', '--ordered-million-reads', action="store", dest="ordered_million", default="N.A.", help="Manually insert the ordered number of read pairs (in millions) into reports")
-    parser.add_option('-r', '--customer-reference', action="store", dest="customer_ref", default="N.A.", help="Manually insert customer reference (the customer's name for the project) into reports")
+    parser.add_option('-o', '--ordered-million-reads', action="store", dest="ordered_million", default="N/A", help="Manually insert the ordered number of read pairs (in millions) into reports")
+    parser.add_option('-r', '--customer-reference', action="store", dest="customer_ref", default="N/A", help="Manually insert customer reference (the customer's name for the project) into reports")
 
     (opts, args) = parser.parse_args()
 
