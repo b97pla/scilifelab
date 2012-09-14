@@ -10,7 +10,7 @@ details:
     barcode_type: SampleSheet
     description: J.Doe_00_03_P000_101
     files: [./3_120914_BB002ABCXX_nophix_5_2_fastq.txt,
-    	    ./3_120914_BB002ABCXX_nophix_5_1_fastq.txt]
+            ./3_120914_BB002ABCXX_nophix_5_1_fastq.txt]
     name: P000_101
     sample_prj: J.Doe_00_03
     sequence: ATCACG

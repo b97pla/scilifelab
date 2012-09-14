@@ -1,6 +1,6 @@
 details:
 - analysis: Align_illumina
-  description: Lane 1, J.Doe_00_01
+  description: Lane 5, J.Doe_00_03
   flowcell_id: B002ABCXX
   genome_build: unknown
   lane: '5'
@@ -9,8 +9,8 @@ details:
     barcode_id: 1
     barcode_type: SampleSheet
     description: J.Doe_00_01_P1_101F_index1
-    files: [5_120914_BB002ABCXX_nophix_1_2_fastq.txt,
-    	   5_120914_BB002ABCXX_nophix_1_1_fastq.txt]
+    files: [./5_120914_BB002ABCXX_nophix_1_2_fastq.txt,
+            ./5_120914_BB002ABCXX_nophix_1_1_fastq.txt]
     name: P000_104F_index1
-    sample_prj: J.Doe_00_01
+    sample_prj: J.Doe_00_03
     sequence: ATCACG
