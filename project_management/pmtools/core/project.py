@@ -147,7 +147,7 @@ class ProjectController(AbstractExtendedBaseController):
             return re.search(pattern, f) != None
         flist = filtered_walk(os.path.join(self._meta.project_root, self.pargs.project, "data"), bcbb_yaml_filter)
         if len(flist) == 0 and self.pargs.sample:
-            sys.app.log.info("No such sample {}".format(self.pargs.sample))
+            self.app.log.info("No such sample {}".format(self.pargs.sample))
         for f in flist:
             with open(f) as fh:
                 config = yaml.load(fh)
