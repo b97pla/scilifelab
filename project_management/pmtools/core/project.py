@@ -160,7 +160,7 @@ class ProjectController(AbstractExtendedBaseController):
             self.app.cmd.write(config_file, yaml.dump(config))
             ## Run automated_initial_analysis.py
             cur_dir = os.getcwd()
-            new_dir = os.path.abspath(os.path.dirname(f)))
+            new_dir = os.path.abspath(os.path.dirname(f))
             os.chdir(new_dir)
             self.app.cmd.command(['automated_initial_analysis.py', os.path.abspath(self.pargs.post_process), new_dir, config_file])
             os.chdir(cur_dir)
