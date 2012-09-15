@@ -160,12 +160,9 @@ class ProjectController(AbstractExtendedBaseController):
             self.app.cmd.write(config_file, yaml.dump(config))
             ## Run automated_initial_analysis.py
             cur_dir = os.getcwd()
-            try:
-                os.chdir(new_dir)
-                self.app.cmd.command(['automated_initial_analysis.py', os.path.abspath(self.pargs.post_process), os.path.abspath(os.path.dirname(f)), config_file])
-                yield
-            finally:
-                os.chdir(cur_dir)
+            os.chdir(new_dir)
+            self.app.cmd.command(['automated_initial_analysis.py', os.path.abspath(self.pargs.post_process), os.path.abspath(os.path.dirname(f)), config_file])
+            os.chdir(cur_dir)
 
 ## FIXME: analysis should be a separate controller that deals with
 ## best practice etc. The current analysis should be renamed to
