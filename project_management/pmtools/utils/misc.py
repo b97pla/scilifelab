@@ -5,6 +5,7 @@ Pm Misc Module
 import sys
 import os
 import re
+import contextlib
 
 ## yes or no: http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input
 def query_yes_no(question, default="yes", force=False):
@@ -97,4 +98,31 @@ def filtered_output(pattern, data):
         return re_obj.match(line) == None
     return filter(ignore, data)
 
+## From bcbb
+def safe_makedir(dname):
+    """Make a directory if it doesn't exist, handling concurrent race conditions.
+    """
+    if not os.path.exists(dname):
+        # we could get an error here if multiple processes are creating
+        # the directory at the same time. Grr, concurrency.
+        try:
+            os.makedirs(dname)
+        except OSError:
+            if not os.path.isdir(dname):
+                raise
+    return dname
 
+@contextlib.contextmanager
+def chdir(new_dir):
+    """Context manager to temporarily change to a new directory.
+
+    http://lucentbeing.com/blog/context-managers-and-the-with-statement-in-python/
+    """
+    cur_dir = os.getcwd()
+    # FIXME: currently assuming directory exists
+    safe_makedir(new_dir)
+    os.chdir(new_dir)
+    try:
+        yield
+    finally:
+        os.chdir(cur_dir)
