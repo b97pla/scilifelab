@@ -317,7 +317,7 @@ def main():
 
 Usage:
 
-python sample_delivery_note.py <flow cell ID (e g BC0HYUACXX)> <project ID (e g J.Lindberg_12_01>  
+python sample_delivery_note.py <project ID (e g J.Lindberg_12_01> <flow cell ID (e g BC0HYUACXX)> 
 
 The two first options are mandatory (kind of ... the program will just generate an example note if they are omitted). There are further flags you can use:
 
@@ -342,8 +342,8 @@ The two first options are mandatory (kind of ... the program will just generate 
         print usage
         make_example_note()
     else:
-        fc = sys.argv[1]
-        proj = sys.argv[2]
+        proj = sys.argv[1]
+        fc = sys.argv[2]
 
         if len(fc) > 10:
             fc = fc[-10:]

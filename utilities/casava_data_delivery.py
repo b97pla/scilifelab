@@ -7,7 +7,7 @@ from datetime import datetime
 import optparse
 
 def_casava_path = '/proj/a2010002/nobackup/illumina/'
-def_log_path = '/bubo/home/h9/mikaelh/delivery_logs/'
+def_log_path = '/proj/a2010002/private/delivery_logs' # '/bubo/home/h9/mikaelh/delivery_logs/'
 
 def fixProjName(pname):
     newname = pname[0].upper()
@@ -25,7 +25,7 @@ def fixProjName(pname):
     return newname
 
 if len(sys.argv) < 4:
-    print "USAGE: python " + sys.argv[0] + " <project ID> <flow cell ID, e g 120824_BD1915ACXX> <UPPMAX project> [-d Dry run -i Interactive -c <path to Casava dir> (optional)] [-l <path to log file dir [optional]>]"
+    print "USAGE: python " + sys.argv[0] + " <project ID> <flow cell ID, e g 120824_BD1915ACXX> <UPPMAX project> [-a Deliver all FCs -d Dry run -i Interactive -c <path to Casava dir> (optional)] [-l <path to log file dir [optional]>]"
     sys.exit(0)
 
 parser = optparse.OptionParser()
