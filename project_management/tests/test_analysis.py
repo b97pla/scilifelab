@@ -29,11 +29,6 @@ class PmAnalysisTest(PmTest):
         self._run_app()
         self.eq(self.app._output_data['stdout'].getvalue(), '120829_SN0001_0001_AA001AAAXX\n120829_SN0001_0002_BB001BBBXX')
 
-    # def test_2_bcstats(self):
-    #     self.app = self.make_app(argv = ['analysis','bcstats'])
-    #     handler.register(AnalysisController)
-    #     self._run_app()
-
     def test_3_from_pre_to_casava_transfer(self):
         """Test casava transfer to project directory"""
         self.app = self.make_app(argv = ['analysis', 'transfer', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '--from_pre_casava'])
@@ -53,10 +48,7 @@ class PmAnalysisTest(PmTest):
         ## Assert intermediate delivery output 
         res = shell.exec_cmd(["ls", "-1", os.path.join(intermediate_delivery_dir, "120829_AA001AAAXX")])
         self.eq(['1_120829_AA001AAAXX_nophix_1-sort-dup.align_metrics','1_120829_AA001AAAXX_nophix_1-sort-dup.bam'], res[0].split()[0:2])
-        #self.eq(['1_120829_AA001AAAXX_nophix_10-sort.bam', '1_120829_AA001AAAXX_nophix_10-sort-dup.align_metrics'], res[0].split()[0:2])
-        self.eq(['1_120829_AA001AAAXX_nophix_8-sort-dup.insert_metrics','1_120829_AA001AAAXX_nophix_8-sort.bam'], res[0].split()[-2:])
-        #self.eq(['1_120829_AA001AAAXX_nophix_8-sort-dup.hs_metrics','1_120829_AA001AAAXX_nophix_8-sort-dup.insert_metrics'], res[0].split()[-2:])
-
+        self.eq(['1_120829_AA001AAAXX_nophix_8-sort-dup.insert_metrics','1_120829_AA001AAAXX_nophix_8-sort.bam', 'alignments'], res[0].split()[-3:])
         ## Assert pruned yaml file contents
         with open(os.path.join(delivery_dir, "120829_AA001AAAXX", "project_run_info.yaml")) as fh:
             runinfo_yaml = yaml.load(fh)
