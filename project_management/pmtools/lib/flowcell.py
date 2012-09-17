@@ -301,7 +301,7 @@ class Flowcell(object):
             if sample == "unmatched":
                 self.lane_files[lane].append(os.path.abspath(f))
                 return
-            if f.find("fastq") > 0:
+            if f.find("fastq.txt") > 0:
                 self.append_to_entry(key, "files", os.path.abspath(f))
             else:
                 self.append_to_entry(key, "results", os.path.abspath(f))
