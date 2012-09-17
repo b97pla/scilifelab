@@ -63,16 +63,15 @@ class AnalysisController(AbstractExtendedBaseController):
                     "intermediate":os.path.abspath(os.path.join(outdir_pfx, sample['name'], fc.fc_id()))}
             self._make_output_dirs(dirs)
             fc_new = fc.subset("lane", sample['lane']).subset("name", sample['name'])
-            targets = {"files": [os.path.join(dirs["data"], os.path.basename(src)) for src in sources['files']],
-                       "results": [os.path.join(dirs["intermediate"], os.path.basename(src)) for src in sources['results']]}
+            targets = {"files": [src.replace(fc.path, dirs["data"]) for src in sources['files']],
+                       "results": [src.replace(fc.path, dirs["intermediate"]) for src in sources['results']]}
+
             fc_new.lane_files = dict((k, [os.path.join(outdir, os.path.basename(x)) for x in v]) for k,v in fc_new.lane_files.items())
             fc_new.set_entry(key, 'files', targets['files'])
             fc_new.set_entry(key, 'results', targets['results'])
             ## Copy sample files - currently not doing lane files
             self._transfer_files(sources, targets)
             self.app.cmd.write(os.path.join(dirs["data"], "{}-bcbb-config.yaml".format(sample['name'])), fc_new.as_yaml())
-            # with open(os.path.join(dirs["data"], "{}-bcbb-config.yaml".format(sample['name'])), "w") as yaml_out:
-            #     self.app.cmd.write(yaml_out, fc_new.as_yaml())
 
     def _to_pre_casava_structure(self, fc):
         dirs = {"data":os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data", fc.fc_id())),
@@ -106,9 +105,6 @@ class AnalysisController(AbstractExtendedBaseController):
             return
         fc_new = fc.subset("sample_prj", self.pargs.project)
         fc_new.collect_files(indir)        
-        print fc_new.data
-        print dir(fc_new)
-        sys.exit()
         return fc_new
 
     def _make_output_dirs(self, dirs):
