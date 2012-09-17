@@ -106,6 +106,9 @@ class AnalysisController(AbstractExtendedBaseController):
             return
         fc_new = fc.subset("sample_prj", self.pargs.project)
         fc_new.collect_files(indir)        
+        print fc_new.data
+        print dir(fc_new)
+        sys.exit()
         return fc_new
 
     def _make_output_dirs(self, dirs):

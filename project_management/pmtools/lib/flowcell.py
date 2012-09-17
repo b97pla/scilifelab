@@ -268,18 +268,45 @@ class Flowcell(object):
             glob_pfx.append(pattern)
         return glob_pfx
 
+    ## Lane objects
+    # 1_120829_AA001AAAXX_nophix.bc_metrics
+    # 1_120829_AA001AAAXX_nophix.filter_metrics
+    # 1_120829_AA001AAAXX_nophix_1_fastq.txt
+    ## Sample files
+    # 1_120829_AA001AAAXX_nophix_10.bam
+    # 1_120829_AA001AAAXX_nophix_10.sam
+    # 1_120829_AA001AAAXX_nophix_10_1.sai
+    # 1_120829_AA001AAAXX_nophix_10_2.sai
+    # 1_120829_AA001AAAXX_nophix_10_1_fastq.txt
+    # 1_120829_AA001AAAXX_nophix_1-sort-dup.align_metrics
+    # 1_120829_AA001AAAXX_nophix_1-sort-dup.bam	
+    # 1_120829_AA001AAAXX_nophix_1-sort-dup.dup_metrics
+    # 1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics
+    # 1_120829_AA001AAAXX_nophix_1-sort-dup.insert_metrics
+    # 1_120829_AA001AAAXX_nophix_1-sort.bam
     def classify_file(self, f):
-        re_lane = re.compile('^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?\.*')
-        re_sample = re.compile('^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_([0-9]+|unmatched)_([0-9]+)_fastq.txt.*|^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_([0-9]+)-[a-z].*')
+        lane_ext = ["fastq.txt", "bc_metrics", "filter_metrics"]
+        sapmle_ext = ["fastq.txt", "bam", "sam", "sai", "align_metrics", "dup_metrics", "hs_metrics", "insert_metrics"]
+        print "Classifying " + f
+        #re_lane = re.compile('^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?\.*')
+        re_lane = re.compile('^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?\.(filter|bc)_metrics|^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_[12]_fastq.txt')
+        re_sample = re.compile('^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_([0-9]+|unmatched)_([0-9]+)_fastq.txt.*|^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_([0-9]+)\.(bam|sam)|^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_([0-9]+|unmatched)_[1-2]\.sai|^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_([0-9]+|unmatched)_[12]-[a-z].*')
+        #re_sample = re.compile('^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_([0-9]+|unmatched)_([0-9]+)_fastq.txt.*|^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_([0-9]+)-[a-z].*')
         m_sample = re_sample.search(os.path.basename(f))
         m_lane = re_lane.search(os.path.basename(f))
+        if m_lane:
+            lane = m_lane.group(1)
+            sample = None
+            print lane
+            self.lane_files[lane].append(os.path.abspath(f))
+            return
+        re_sample = re.compile('^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_([0-9]+|unmatched).*')
+        m_sample = re_sample.search(os.path.basename(f))
         if m_sample:
-            if m_sample.group(1):
-                lane = m_sample.group(1)
-                sample = m_sample.group(3)
-            else:
-                lane = m_sample.group(5)
-                sample = m_sample.group(7)
+            print "Match"
+            print m_sample.groups()
+            lane = m_sample.group(1)
+            sample = m_sample.group(3)
             key = "{}_{}".format(lane, sample)
             if sample == "unmatched":
                 self.lane_files[lane].append(os.path.abspath(f))
@@ -288,10 +315,6 @@ class Flowcell(object):
                 self.append_to_entry(key, "files", os.path.abspath(f))
             else:
                 self.append_to_entry(key, "results", os.path.abspath(f))
-        elif m_lane:
-            lane = m_lane.group(1)
-            sample = None
-            self.lane_files[lane].append(os.path.abspath(f))
         else:
             return 
         return

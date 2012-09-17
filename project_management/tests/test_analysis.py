@@ -39,6 +39,7 @@ class PmAnalysisTest(PmTest):
         self.app = self.make_app(argv = ['analysis', 'transfer', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '--from_pre_casava'])
         handler.register(AnalysisController)
         self._run_app()
+
         res = shell.exec_cmd(["ls", "-1", os.path.join(delivery_dir, "P1_101F_index1", "120829_AA001AAAXX")])
         self.eq(['1_120829_AA001AAAXX_nophix_1-sort-dup.align_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.bam', '1_120829_AA001AAAXX_nophix_1-sort-dup.dup_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.insert_metrics', '1_120829_AA001AAAXX_nophix_1-sort.bam', '1_120829_AA001AAAXX_nophix_1_1_fastq.txt', '1_120829_AA001AAAXX_nophix_1_2_fastq.txt', 'P1_101F_index1-bcbb-config.yaml'], res[0].split())
     
