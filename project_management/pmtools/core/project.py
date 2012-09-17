@@ -68,6 +68,8 @@ class ProjectController(AbstractExtendedBaseController):
             (['--analysis_type'], dict(help="set analysis ", action="store", default=None, type=str)),
             (['--genome_build'], dict(help="genome build ", action="store", default="hg19", type=str)),
             (['--post_process'], dict(help="post process file", action="store", default=None, type=str)),
+            (['--intermediate'], dict(help="Work on intermediate data", default=False, action="store_true")),
+            (['--data'], dict(help="Work on data folder", default=False, action="store_true")),
             ]
         flowcelldir = None
 
@@ -77,12 +79,25 @@ class ProjectController(AbstractExtendedBaseController):
             self._meta.project_root = self.app.config.get("project", "finished")
         else:
             self._meta.project_root = self.app.config.get("project", "root")
+
         # Set root path for parent class
         self._meta.root_path = self._meta.project_root
         assert os.path.exists(self._meta.project_root), "No such directory {}; check your project config".format(self._meta.project_root)
         ## Set path_id for parent class
         if self.pargs.project:
             self._meta.path_id = self.pargs.project
+            # Add intermediate or data
+            if self.app.pargs.intermediate:
+                if os.path.exists(os.path.join(self._meta.project_root, "nobackup")):
+                    self._meta.path_id = os.path.join(self._meta.path_id, "nobackup", "intermediate")
+                else:
+                    self._meta.path_id = os.path.join(self._meta.path_id, "intermediate")
+            if self.app.pargs.data and not self.app.pargs.intermediate:
+                if os.path.exists(os.path.join(self._meta.project_root, "nobackup")):
+                    self._meta.path_id = os.path.join(self._meta.path_id, "nobackup", "data")
+                else:
+                    self._meta.path_id = os.path.join(self._meta.path_id, "data")
+
         super(ProjectController, self)._process_args()
 
     # ## utility functions

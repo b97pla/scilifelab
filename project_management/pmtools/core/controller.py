@@ -126,15 +126,19 @@ class AbstractExtendedBaseController(AbstractBaseController):
         self._meta.arguments.append((['--pbzip2'], dict(help="Use pbzip2 as compressing device", default=False, action="store_true")))
         self._meta.arguments.append((['--pigz'], dict(help="Use pigz as compressing device", default=False, action="store_true")))
         self._meta.arguments.append((['--fastq'], dict(help="Workon fastq files", default=False, action="store_true")))
+        self._meta.arguments.append((['--fastqbam'], dict(help="Workon fastq-fastq.bam files", default=False, action="store_true")))
         self._meta.arguments.append((['--pileup'], dict(help="Workon pileup files", default=False, action="store_true")))
         self._meta.arguments.append((['--txt'], dict(help="Workon txt files", default=False, action="store_true")))
         self._meta.arguments.append((['--move'], dict(help="Transfer file with move", default=False, action="store_true")))
         self._meta.arguments.append((['--copy'], dict(help="Transfer file with copy (default)", default=True, action="store_true")))
+        self._meta.arguments.append((['--rsync'], dict(help="Transfer file with rsync", default=False, action="store_true")))
         super(AbstractExtendedBaseController, self)._setup(base_app)
 
     def _process_args(self):
         if self.command in ["compress", "decompress", "clean"]:
-            print "In process args"
+            if not self._meta.path_id:
+                self.app.log.warn("not running {} on root directory".format(self.command))
+                return
         elif self.command in ["ls"]:
             pass
         else:
@@ -143,9 +147,11 @@ class AbstractExtendedBaseController(AbstractBaseController):
         if self.pargs.fastq:
             self._meta.file_pat += [".fastq", "fastq.txt", ".fq"]
         if self.pargs.pileup:
-            self._meta.file_pat += [".pileup"]
+            self._meta.file_pat += [".pileup", "-pileup"]
         if self.pargs.txt:
             self._meta.file_pat += [".txt"]
+        if self.pargs.fastqbam:
+            self._meta.file_pat += ["fastq-fastq.bam"]
 
         ## Setup zip program
         if self.pargs.pbzip2:
@@ -175,7 +181,21 @@ class AbstractExtendedBaseController(AbstractBaseController):
     ## clean
     @controller.expose(help="Remove files")
     def clean(self):
-        print self._meta.compress_prog
+        pattern = "|".join(["{}(.gz|.bz2)?$".format(x) for x in self._meta.file_pat])
+        def clean_filter(f):
+            if not pattern:
+                return
+            return re.search(pattern , f) != None
+
+        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), clean_filter)
+        if len(flist) == 0:
+            self.app.log.info("No files matching pattern {} found".format(pattern))
+            return
+        if len(flist) > 0 and not query_yes_no("Going to remove {} files ({}...). Are you sure you want to continue?".format(len(flist), ",".join([os.path.basename(x) for x in flist[0:10]])), force=self.pargs.force):
+            return
+        for f in flist:
+            self.app.log.info("removing {}".format(f))
+            self.app.cmd.safe_unlink(f)
 
     def _compress(self, pattern, label="compress"):
         def compress_filter(f):
@@ -190,6 +210,7 @@ class AbstractExtendedBaseController(AbstractBaseController):
 
         if len(flist) == 0:
             self.app.log.info("No files matching pattern {} found".format(pattern))
+            return
         if len(flist) > 0 and not query_yes_no("Going to {} {} files ({}...). Are you sure you want to continue?".format(label, len(flist), ",".join([os.path.basename(x) for x in flist[0:10]])), force=self.pargs.force):
             sys.exit()
         for f in flist:

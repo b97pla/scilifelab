@@ -149,3 +149,17 @@ class CommandHandler(handler.CementBaseHandler):
             with open (fn, "w") as fh:
                 fh.write(data)
         return self.dry("writing data to file {}".format(fn), runpipe)
+
+    def safe_unlink(self, fh):
+        """Wrapper for unlinking a file.
+
+        :param fh: file name
+        """
+        def runpipe():
+            if fh is None:
+                return
+            if not os.path.exists(fh):
+                self.app.log.warn("not going to remove non-existant file {}".format(fh))
+                return
+            os.unlink(fh)
+        return self.dry("removing file {}".format(fh), runpipe)
