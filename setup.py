@@ -20,6 +20,5 @@ setup(name = "scilifelab",
                           "couchdb >= 0.8",
                           "reportlab >= 2.5",
                           "mock",
-                          "unittest"
                           ])
 os.system("git rev-parse --short --verify HEAD > ~/.scilifelab_version")
