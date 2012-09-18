@@ -197,6 +197,13 @@ class BcbioRunController(AbstractBaseController):
                 config["details"][0]["analysis"] = self.pargs.analysis_type
             if config["details"][0]["genome_build"] == 'unknown':
                 config["details"][0]["genome_build"] = self.pargs.genome_build
+            ## Check if files exist: if they don't, then change the suffix
+            config["details"][0]["multiplex"][0]["files"].sort()
+            if not os.path.exists(config["details"][0]["multiplex"][0]["files"][0]):
+                if os.path.splitext(config["details"][0]["multiplex"][0]["files"][0])[1] == ".gz":
+                    config["details"][0]["multiplex"][0]["files"] = [x.replace(".gz", "") for x in config["details"][0]["multiplex"][0]["files"]]
+                else:
+                    config["details"][0]["multiplex"][0]["files"] = ["{}.gz".format(x) for x in config["details"][0]["multiplex"][0]["files"]]
             config_file = f.replace("-bcbb-config.yaml", "-pm-bcbb-analysis-config.yaml")
             self.app.cmd.write(config_file, yaml.dump(config))
             ## Run automated_initial_analysis.py
