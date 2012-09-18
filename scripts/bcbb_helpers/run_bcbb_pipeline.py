@@ -157,6 +157,7 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
     assert os.path.exists(analysis_dir), "ERROR: Analysis top directory %s does not exist" % analysis_dir
     
     # A list with the arguments to each run, when running by sample
+    project_run_arguments = []
     sample_run_arguments = []
     
     # Parse the flowcell dir
@@ -181,8 +182,30 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
         if not os.path.exists(project_dir):
             os.mkdir(project_dir,0770)
         
+        # Merge the samplesheets of the underlying samples
         src_project_dir = os.path.join(fc_dir_structure['fc_dir'],fc_dir_structure['data_dir'],project['project_dir'])
-        project_samplesheet = _merge_samplesheets(src_project_dir, project_dir, project.get('samples',[]))
+        samplesheets = []
+        for sample in project.get('samples',[]):
+            samplesheets.append(os.path.join(src_project_dir,sample['sample_dir'],sample['samplesheet']))            
+        project_samplesheet = _merge_samplesheets(samplesheets, os.path.join(project_dir,"SampleSheet.csv"))
+        
+        # Create a bcbb yaml config file from the samplesheet
+        project_config = bcbb_configuration_from_samplesheet(project_samplesheet)
+        # Extract the lane and barcode sequence from the sample files and add the paths to the config
+        sample_files = _map_sample_files(project.get('samples',[]))
+
+        # Add the sample files to the config
+        for lane in project_config:
+            lane_no = lane['lane']
+            if 'multiplex' in lane:
+                for sample in lane['multiplex']:
+                    sample = _link_sample_files(sample,lane_no,sample_files)
+            else:
+                lane = _link_sample_files(lane,lane_no,sample_files)
+                
+        project_config = override_with_custom_config(project_config,custom_config)
+        arguments = _setup_config_files(project_dir,project_config,post_process_config_file,fc_dir_structure['fc_dir'],project_name,fc_date,fc_name)
+        project_run_arguments.append([arguments[1],arguments[0],arguments[1],arguments[3]])
         
         # Iterate over the samples in the project
         for sample_no, sample in enumerate(project.get('samples',[])):
@@ -199,7 +222,7 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
             
             # rsync the source files to the sample directory
             src_sample_dir = os.path.join(src_project_dir,sample['sample_dir'])
-            sample_files = do_rsync([os.path.join(src_sample_dir,f) for f in (sample.get('files',[]) + sample.get('samplesheet',[]))],dst_sample_dir)
+            sample_files = do_rsync([os.path.join(src_sample_dir,f) for f in (sample.get('files',[]) + [sample.get('samplesheet',None)])],dst_sample_dir)
             
             # Generate a sample-specific configuration yaml structure
             samplesheet = os.path.join(src_sample_dir,sample['samplesheet'])
@@ -212,33 +235,63 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
                         sample['files'] = [os.path.basename(f) for f in sample_files if f.find("_%s_L00%d_" % (sample['sequence'],int(lane['lane']))) >= 0]
                 else:
                     lane['files'] = [os.path.basename(f) for f in sample_files if f.find("_L00%d_" % int(lane['lane'])) >= 0]
-                    
-            sample_config = override_with_custom_config(sample_config,custom_config)
+            
+            # Override the sample config with project-generated ids and custom config
+            sample_config = override_with_custom_config(sample_config,project_config)
             
             arguments = _setup_config_files(dst_sample_dir,sample_config,post_process_config_file,fc_dir_structure['fc_dir'],sample_name,fc_date,fc_name)
             sample_run_arguments.append([arguments[1],arguments[0],arguments[1],arguments[3]])
         
     return sample_run_arguments
 
-def _merge_samplesheets(src_project_dir, dst_project_dir, samples):
-    """Merge the samplesheets for a project's samples into one
-    """
-    # Parse the samplesheet content into a data structure
-    ssheet_data = {}
-    for sample in samples:
-        sample_ssheet = sample.get('samplesheet',None)
-        if sample_ssheet:
-            with open(sample_ssheet) as in_handle:
-                for row in in_handle:
-                    ssheet_data[row.split(",")] = 1
-    samplesheet = os.path.join(dst_project_dir, "SampleSheet.csv")
-    with open(samplesheet,"w") as out_handle:
-        for row in sorted(ssheet_data.keys(), key=lambda x: x[1]):
-            out_handle.write(",".join(row))
-            out_handle.write("\n")
+def _link_sample_files(item, lane_no, sample_files):
     
-    return samplesheet
-                    
+    key = ":".join([item['name'],item.get('sequence','NoIndex'),lane_no])
+    assert key in sample_files, "Could not match sample files for {}".format(key)
+    item['files'] = sample_files[key]
+    return item
+    
+def _map_sample_files(samples):
+    """Map the sample id, index sequence and lane to the corresponding sample files
+    """
+    sample_files = {}
+    for sample in samples:
+        assert 'files' in sample, "No sample files available for sample {}".format(sample['sample_name'].replace('__','.'))
+        fname = sample['files'][0]
+        pcs = _parse_sample_filename(fname)
+        assert len(pcs) == 5, "Could not determine index and lane from sample filename {}".format(fname)
+        sample_files[":".join([str(p) for p in pcs[0:2]])] = [os.path.join(sample['sample_dir'],fname) for fname in sample['files']]
+    return sample_files
+
+def _parse_sample_filename(fname):
+    """Extract the sample data that can be deduced from the sample filename
+    """
+    pattern = r"^(.+?)_(NoIndex|Undetermined|[ACGT\-]+)_L(\d+)_R(\d)_(\d+)\.fastq.*$"
+    m = re.match(pattern,fname)
+    pcs = []
+    for i in range(len(m.groups())):
+        try:
+            p = int(m.group(i+1))
+        except:
+            p = m.group(i+1)
+        pcs.append(p)
+    return pcs
+
+def _merge_samplesheets(samplesheets, merged_samplesheet):
+    """Merge several .csv samplesheets into one
+    """
+    data = {}
+    for samplesheet in samplesheets:
+        with open(samplesheet) as inh:
+            for row in inh:
+                row = row.strip()
+                data[row] = row.split(",")
+    
+    with open(merged_samplesheet,"w") as outh:
+        for row in sorted(data.values(), key=lambda x: x[1], reverse=True):
+            outh.write(",".join(row))
+            outh.write("\n")
+    return merged_samplesheet
     
 def _copy_basecall_stats(source_dir, destination_dir):
     """Copy relevant files from the Basecall_Stats_FCID directory
@@ -321,7 +374,7 @@ def _setup_config_files(dst_dir,configs,post_process_config_file,fc_dir,sample_n
     # Write the command for running the pipeline with the configuration files
     run_command_file = os.path.join(dst_dir,"%s-bcbb-command.txt" % sample_name)
     with open(run_command_file,"w") as fh:
-        fh.write(" ".join([os.path.basename(__file__),"--only-run",os.path.basename(local_post_process_file), os.path.join("..",os.path.basename(dst_dir)), os.path.basename(config_file)])) 
+        fh.write(" ".join([os.path.basename(__file__),"--only-run","--no-google-report",os.path.basename(local_post_process_file), os.path.join("..",os.path.basename(dst_dir)), os.path.basename(config_file)])) 
         fh.write("\n")   
     
     return [os.path.basename(local_post_process_file), dst_dir, fc_dir, os.path.basename(config_file)]
@@ -440,14 +493,16 @@ if __name__ == "__main__":
 import unittest
 import tempfile
 import random
-import date
+import datetime
 import shutil
+import string
+import mock
 import bcbio.utils as utils
 
 def generate_fc_barcode():
     """Generate a flowcell barcode on the format ABC123CXX
     """
-    return "".join(random.choice("{}{}CXX".format(string.ascii_lowercase,string.digits)) for i in xrange(6))
+    return "{}CXX".format("".join([random.choice("{}{}".format(string.ascii_uppercase,string.digits)) for i in xrange(6)]))
 
 def generate_run_id(fc_barcode=generate_fc_barcode()):
     """Generate a run identifier
@@ -463,7 +518,7 @@ def generate_project():
     """
     return "{}.{}_{}_{}".format(
         random.choice(string.ascii_uppercase),
-        "".join(random.choice(string.ascii_lowercase) for i in xrange(6)).capitalize(),
+        "".join([random.choice(string.ascii_lowercase) for i in xrange(6)]).capitalize(),
         random.randint(90,99), 
         random.randint(11,99))
 
@@ -476,30 +531,32 @@ def generate_sample(project_id=random.randint(500,999)):
                     ["","A","B","C","F"][random.randint(0,4)],
                     random.randint(1,24))
 
-def generate_sample_file(sample_name=generate_sample(), barcode=generate_barcode(), lane=random.randint(1,8), readno=1):
+def generate_barcode(len=6):
+    """Generate a nucleotide barcode
+    """
+    return "".join([random.choice("ACGT") for i in xrange(len)])
+
+def generate_sample_file(sample_name=generate_sample(), barcode=None, lane=random.randint(1,8), readno=1):
     """Generate a Casava 1.8+-style sample file name
     """
+    if barcode is None: 
+        barcode = generate_barcode()
     return "{}_{}_L00{}_R{}_001.fastq.gz".format(sample_name,
                                                 barcode,
                                                 lane,
                                                 readno)
 
-def generate_barcode(len=6):
-    """Generate a nucleotide barcode
-    """
-    return (random.choice("ACGT") for i in xrange(len))
-
-def generate_run_samplesheet(barcode=generate_bc_barcode(), dst_file=None):
+def generate_run_samplesheet(barcode=generate_fc_barcode(), dst_file=None):
     
     csv_data = []
     
     # Generate data for each lane
     for lane in range(1,9):
         # Create some projects
-        for i in range(3):
+        for i in range(2):
             project_name = generate_project()
             # Create some samples
-            for j in range(3):
+            for j in range(2):
                 sample_name = generate_sample()
                 # Append the generated data to the csv_data
                 csv_data.append([barcode,
@@ -513,6 +570,13 @@ def generate_run_samplesheet(barcode=generate_bc_barcode(), dst_file=None):
                                  'O',
                                  project_name])
     return _write_samplesheet(csv_data,dst_file)
+
+def _parse_samplesheet(samplesheet):
+    rows = []
+    with open(samplesheet) as inh:
+        for row in inh:
+            rows.append(row.strip().split(","))
+    return rows
 
 def _write_samplesheet(csv_data, dst_file=None):
     
@@ -528,26 +592,26 @@ def _write_samplesheet(csv_data, dst_file=None):
               "SampleProject"]
     
     if dst_file is None:
-        dst_file = tempfile.mkstemp(suffix=".csv", prefix="SampleSheet")
+        fh, dst_file = tempfile.mkstemp(suffix=".csv", prefix="SampleSheet")
+        os.close(fh)
     with open(dst_file,"w") as out_handle:
-        for row in (header + sorted(csv_data, key=lambda x: x[1])):
-            out_handle.write(",".join(row))
+        for row in ([header] + sorted(csv_data, key=lambda x: x[1])):
+            out_handle.write(",".join([str(item) for item in row]))
             out_handle.write("\n")
     return dst_file
         
 
-class CasavaStructureTest(unittest.TestCase):
-    """Test for the Casava file structure
+class CasavaStructureBuilder(unittest.TestCase):
+    """Builder for the Casava file structure
     """
     
-    @classmethod
-    def setUpClass(self):
+    def setUp(self):
         
         # Create the file structure in a temporary location
         self.test_archive_dir = tempfile.mkdtemp()
         
         # Create a flowcell id
-        barcode = generate_bc_barcode()
+        barcode = generate_fc_barcode()
         fcid = generate_run_id(fc_barcode=barcode)
         self.fc_dir = os.path.join(self.test_archive_dir,fcid)
         os.makedirs(self.fc_dir)
@@ -561,13 +625,13 @@ class CasavaStructureTest(unittest.TestCase):
             for row in in_handle:
                 if len(row) == 0 or row[0] == "#":
                     continue
-                csv_data = row.split(",")
+                csv_data = row.strip().split(",")
                 lane = 0
                 try:
                     lane = int(str(csv_data[1]))
                 except ValueError:
                     # This is most likely the header row
-                    pass
+                    continue
                 
                 sample_name = csv_data[2]
                 project_name = csv_data[9]
@@ -585,52 +649,97 @@ class CasavaStructureTest(unittest.TestCase):
                 os.makedirs(sample_folder)
                 utils.touch_file(sample_file_r1)
                 utils.touch_file(sample_file_r2)
-                sample_ssheet = _write_samplesheet(csv_data,sample_ssheet)
+                sample_ssheet = _write_samplesheet([csv_data],sample_ssheet)
                 
         # Create a Basecall_Stats_[FCID] folder and a Demultiplex_Stats.htm file
         bcall_dir = os.path.join(self.fc_dir,"Unaligned","Basecall_Stats_{}".format(barcode))
         os.mkdir(bcall_dir)
+        os.mkdir(os.path.join(bcall_dir,"Plots"))
+        os.mkdir(os.path.join(bcall_dir,"css"))
         utils.touch_file(os.path.join(bcall_dir,"Demultiplex_Stats.htm"))
     
-    @classmethod
-    def tearDownClass(self):
+    def tearDown(self):
         shutil.rmtree(self.test_archive_dir)
         
-    def test_has_casava_output(self):
+class CasavaStructureTest(CasavaStructureBuilder):
+    
+    def test_has_casava_output_true(self):
+        """Test that has_casava_output returns true
+        """
         self.assertTrue(has_casava_output(self.fc_dir))
+    
+    def test_has_casava_output_false(self):
+        """Test that has_casava_output returns false
+        """
+        # FIXME: How do we mock the implicit call to parse_casava_directory? The code below does not work..
+        #parse_casava_directory = mock.Mock(return_value={'projects': []})
+        #self.assertFalse(has_casava_output(self.fc_dir))
+        pass
             
-class RunInfoYamlTest(unittest.TestCase):
+class SamplesheetTest(CasavaStructureBuilder):
     
     def setUp(self):
-        """Set up a samplesheet to process
+         
+        CasavaStructureBuilder.setUp(self)
+        self.test_analysis_dir = tempfile.mkdtemp()
+        self.post_process_config_file = os.path.join(self.test_archive_dir,"test_post_process.yaml")
+        config = {
+                  'analysis': {
+                               'base_dir': self.test_analysis_dir,
+                               'store_dir': self.test_archive_dir
+                               },
+                  'galaxy_config': 'galaxy',
+                  'distributed': {
+                                  'platform_args': 'slurm'
+                                  }
+                  }
+        
+        with open(self.post_process_config_file,'w') as fh:
+            fh.write(yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, width=1000))
+            
+        setup_analysis_directory_structure(self.post_process_config_file,self.fc_dir,None)
+        
+        
+    def test_project_based_setup(self):
+        """Test the project based setup
         """
-        self.samplesheet = tempfile.mkstemp(suffix=".csv", prefix="SampleSheet")
-        content = []
-        
-        # Create a barcode
-        barcode = generate_barcode()
-        
-        # Create some projects
-        projects = [generate_project() for i in range(5)]
-        # Distribute projects and samples among the first 6 lanes
-        for lane in range(1,7):
-            # Pick a number of projects for each lane
-            for i in range(random.randint(0,len(projects))):
-                # Generate a number of samples for each project
+        self.assertTrue(os.path.exists(self.test_analysis_dir))
+    
+    def test__merge_samplesheets(self):
+        """Test the merging of the samplesheets
+        """ 
+        src_rows = _parse_samplesheet(generate_run_samplesheet())
+
+        # Write individual samplesheets for each row
+        samplesheets = []
+        for i in range(1,len(src_rows)):
+            fh, tfile = tempfile.mkstemp(dir=self.test_analysis_dir)
+            os.close(fh)
+            with open(tfile,"w") as outh:
+                # Write the header row to each samplesheet
+                outh.write("{}\n".format(",".join(src_rows[0])))
+                # Write a varying number of rows 
                 for j in range(random.randint(1,5)):
-                    row = [barcode,lane,generate_sample(),generate_barcode(),"","","",projects[i]]
-                    content.append(row)
-        # Append one non-demultiplexed lane with a project that has samples in a multiplexed lane
-        content.append([barcode,7,generate_sample(),"","","","",projects[0]])
-        # Append a non-demultiplexed lane with a project without any other samples
-        content.append([barcode,8,generate_sample(),"","","","",generate_project()]) 
+                    i += j
+                    if i < len(src_rows):
+                        outh.write("{}\n".format(",".join(src_rows[i])))
+            samplesheets.append(tfile)
         
-        # Write the content to the samplesheet
-        with open(self.samplesheet,"w") as out_handle:
-            for row in content:
-                out_handle.write(",".join(row))
-                out_handle.write("\n")
-                
-    def tearDown(self):
-        os.unlink(self.samplesheet)
+        # Merge the samplesheets
+        fh, tfile = tempfile.mkstemp(dir=self.test_analysis_dir)
+        os.close(fh)
+        merged_file = _merge_samplesheets(samplesheets,tfile)
+        merged_rows = _parse_samplesheet(merged_file)
+        for i,item in enumerate(merged_rows[0]):
+            self.assertEqual(item,src_rows[0][i])
+        src_rows.remove(merged_rows[0])
         
+        for i in range(1,len(merged_rows)):
+            self.assertTrue(merged_rows[i] in src_rows)
+            src_rows.remove(merged_rows[i])
+        
+        self.assertEqual(len(src_rows),0)
+        
+        
+        
+    
