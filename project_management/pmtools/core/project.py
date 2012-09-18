@@ -187,6 +187,8 @@ class BcbioRunController(AbstractBaseController):
             flist = [x for x in flist if self._sample_status(x)=="FAIL"]
         if len(flist) == 0 and self.pargs.sample:
             self.app.log.info("No such sample {}".format(self.pargs.sample))
+        if len(flist) > 0 and not query_yes_no("Going to start {} jobs... Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
+            return
         for f in flist:
             with open(f) as fh:
                 config = yaml.load(fh)
