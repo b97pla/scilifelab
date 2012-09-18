@@ -72,16 +72,12 @@ class PmFlowcellTest(PmTest):
         print fc_new
         print fc
         print fc.lane_files
-        #f_list_test = set([os.path.basename(x)[0] for x in flist])
-        #self.eq("1",  "".join(f_list_test))
 
     def test_7_unique_lanes(self):
         """Test that flowcell returns object with unique lanes"""
         fc = Flowcell(runinfo)
-        #print fc.as_yaml()
         new_fc = fc.fc_with_unique_lanes()
         print fc.data
         print fc.as_yaml()
         print new_fc.data
         print new_fc.as_yaml()
-        #print fc.as_yaml()

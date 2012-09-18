@@ -42,7 +42,6 @@ class ProjectTest(PmTest):
         self.app.setup()
         self.fastq_dir = os.path.join(self.app.config.get("project", "root"), "j_doe_00_01", "data", flowcell)
         safe_makedir(self.fastq_dir)
-        ## FIX ME: make safe_touch
         for f in self.COMPRESS_FILES:
             m = glob.glob("{}*".format(os.path.join(self.fastq_dir, f)))
             if not m:
