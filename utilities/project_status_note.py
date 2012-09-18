@@ -166,10 +166,11 @@ def make_status_note(prj="", opts=None):
         # Project ID
         parameters['project_name'] = doc['Project_id']
         # Customer reference
-        if (opts.customer_ref): parameters['customer_reference'] = opts.customer_ref
+        if (opts.customer_ref != "N/A"): parameters['customer_reference'] = opts.customer_ref
         else:
             customer_ref = "no customer reference given"
-            if obj['customer_prj']: customer_ref = obj['customer_prj']
+            if doc.has_key('Customer_reference'): 
+                if doc['Customer_reference']:customer_ref = doc['Customer_reference']
             parameters['customer_reference'] = customer_ref
         # Uppnex ID (can be manually provided by user)
         if (opts.uppnex_id): parameters['uppnex_project_id'] = opts.uppnex_id # User provided Uppnex ID
