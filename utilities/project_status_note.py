@@ -14,7 +14,7 @@ from types import *
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import Paragraph, SimpleDocTemplate
-# from reportlab.platypus import Image
+#from reportlab.platypus import Image
 # from reportlab.platypus import Spacer
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, inch
@@ -198,7 +198,7 @@ def make_status_note(prj="", opts=None):
                     if res_['sequence']:
                         ind_seqs.add(res_['sequence'])
                 if len(ind_seqs) > 0: 
-                    print "DEBUG: Barcode(s): ", ind_seqs
+                    # print "DEBUG: Barcode(s): ", ind_seqs
                     row.append(','.join(list(ind_seqs)))
                 else: row.append('N/A')
             else:

@@ -202,10 +202,8 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
 
                     # Ordered amount (can be manually provided by user)
                     if (opts.ordered_million != "N/A"): 
-                        print "Using ordered amount from command-line"
                         parameters['ordered_amount'] = opts.ordered_million
                     else:
-                        print "Looking for ordered amount in ProjectSummary"
                         ordered_amnt = "N/A"
                         results = qc.query(ps_map_fun)
                         for r in results:
@@ -223,7 +221,18 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                     # Customer sample name
                     try:
                         cust_name = "no customer sample name given"
-                        if (obj['customer_sample_name']): cust_name = obj['customer_sample_name']
+                        if (obj['customer_sample_name']): 
+                            cust_name = obj['customer_sample_name']
+                        else:
+                            results = qc.query(ps_map_fun)
+                            for r in results: 
+                                if prj == r['key']['Project_id']:
+                                    slist = r['key']['Samples']
+                                    for s in slist.keys():
+                                        if slist[s].has_key('scilife_name'):
+                                            if slist[s]['scilife_name'] == "_".join(parameters['scilifelab_name'].split("_")[0:2]): # hacky
+                                                cust_name = slist[s]['customer_name']
+
                         parameters['customer_name'] = cust_name
                     except:
                         print "Failed to set customer sample name"
@@ -308,7 +317,7 @@ def main():
 
 Usage:
 
-python sample_delivery_note.py <flow cell ID (e g BC0HYUACXX)> <project ID (e g J.Lindberg_12_01>  
+python sample_delivery_note.py <project ID (e g J.Lindberg_12_01> <flow cell ID (e g BC0HYUACXX)> 
 
 The two first options are mandatory (kind of ... the program will just generate an example note if they are omitted). There are further flags you can use:
 
@@ -333,8 +342,8 @@ The two first options are mandatory (kind of ... the program will just generate 
         print usage
         make_example_note()
     else:
-        fc = sys.argv[1]
-        proj = sys.argv[2]
+        proj = sys.argv[1]
+        fc = sys.argv[2]
 
         if len(fc) > 10:
             fc = fc[-10:]
