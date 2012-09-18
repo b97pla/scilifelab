@@ -119,8 +119,8 @@ class AbstractExtendedBaseController(AbstractBaseController):
         compress_prog = "gzip"
         compress_suffix = ".gz"
         file_pat = []
-        root_path = ""
-        path_id = ""
+        root_path = None
+        path_id = None
 
     def _setup(self, base_app):
         self._meta.arguments.append((['--pbzip2'], dict(help="Use pbzip2 as compressing device", default=False, action="store_true")))
@@ -135,15 +135,16 @@ class AbstractExtendedBaseController(AbstractBaseController):
         super(AbstractExtendedBaseController, self)._setup(base_app)
 
     def _process_args(self):
-        if self.command in ["compress", "decompress", "clean"]:
+        if self.command in ["compress", "decompress", "clean", "du"]:
             if not self._meta.path_id:
                 self.app.log.warn("not running {} on root directory".format(self.command))
-                return
+                sys.exit()
         elif self.command in ["ls"]:
-            pass
+            if not self._meta.path_id:
+                self._meta.path_id = ""
         else:
             pass
-        ## Setup file patterns to use with ls and compress
+        ## Setup file patterns to use
         if self.pargs.fastq:
             self._meta.file_pat += [".fastq", "fastq.txt", ".fq"]
         if self.pargs.pileup:
@@ -172,8 +173,6 @@ class AbstractExtendedBaseController(AbstractBaseController):
     ## du
     @controller.expose(help="Calculate disk usage")
     def du(self):
-        if not self._assert_project_id("Not running du function on project root directory"):
-            return
         out = self.app.cmd.command(["du", "-hs", "{}".format(os.path.join(self._meta.root_path, self._meta.path_id))])
         if out:
             self.app._output_data["stdout"].write(out.rstrip())

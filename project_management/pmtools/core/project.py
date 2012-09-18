@@ -48,7 +48,7 @@ import re
 import yaml
 
 from cement.core import controller, hook
-from pmtools.core.controller import AbstractExtendedBaseController
+from pmtools.core.controller import AbstractExtendedBaseController, AbstractBaseController
 from pmtools.utils.misc import query_yes_no, filtered_walk
 
 ## Main project controller
@@ -60,19 +60,17 @@ class ProjectController(AbstractExtendedBaseController):
         label = 'project'
         description = 'Manage projects'
         arguments = [
-            (['project'], dict(help="Scilife project id (e.g. j_doe_00_00)", default="", action="store", nargs="?")),
+            (['project'], dict(help="Scilife project id (e.g. j_doe_00_00)", default=None, action="store", nargs="?")),
             (['-g', '--git'], dict(help="Initialize git directory in repos and project gitdir", default=False, action="store_true")),
-            (['-S', '--sample'], dict(help="project sample id", action="store", default=None)),
-            (['-F', '--flowcell'], dict(help="project flowcell id", action="store", default=None)),
+            (['-S', '--sample'], dict(help="project sample id", action="store", default=None, type=str)),
+            (['-F', '--flowcell'], dict(help="project flowcell id", action="store", default=None, type=str)),
             (['--finished'], dict(help="include finished project listing", action="store_true", default=False)),
-            (['--analysis_type'], dict(help="set analysis ", action="store", default=None, type=str)),
-            (['--genome_build'], dict(help="genome build ", action="store", default="hg19", type=str)),
-            (['--post_process'], dict(help="post process file", action="store", default=None, type=str)),
             (['--intermediate'], dict(help="Work on intermediate data", default=False, action="store_true")),
             (['--data'], dict(help="Work on data folder", default=False, action="store_true")),
             ]
         flowcelldir = None
 
+    ## Remember: need to do argument processing here also for stacked controllers
     def _process_args(self):
         # setup project search space
         if self.app.pargs.finished:
@@ -97,16 +95,8 @@ class ProjectController(AbstractExtendedBaseController):
                     self._meta.path_id = os.path.join(self._meta.path_id, "nobackup", "data")
                 else:
                     self._meta.path_id = os.path.join(self._meta.path_id, "data")
-
         super(ProjectController, self)._process_args()
-
-    # ## utility functions
-    # def _assert_project_id(self, msg):
-    #     if not self.pargs.project:
-    #         self.log.warn(msg)
-    #         return False
-    #     return True
-
+ 
     ## init
     @controller.expose(help="Initalize project folder")
     def init(self):
@@ -129,12 +119,14 @@ class ProjectController(AbstractExtendedBaseController):
             self.sh(["cd", dirs['gitdir'], "&& git init && git remote add origin", dirs['repos']])
 
     def _flowcells(self):
-        self._meta.flowcelldir = os.path.join(self._meta.project_root, self.pargs.project, "nobackup", "data")
-        if not os.path.exists(self._meta.flowcelldir):
-              self._meta.flowcelldir = os.path.join(self._meta.project_root, self.pargs.project,"data")
-        if not os.path.exists(self._meta.flowcelldir):
-            return []
-        files = os.listdir(self._meta.flowcelldir)
+        files = []
+        if self.pargs.project:
+            self._meta.flowcelldir = os.path.join(self._meta.project_root, self.pargs.project, "nobackup", "data")
+            if not os.path.exists(self._meta.flowcelldir):
+                self._meta.flowcelldir = os.path.join(self._meta.project_root, self.pargs.project,"data")
+            if not os.path.exists(self._meta.flowcelldir):
+                return []
+            files = os.listdir(self._meta.flowcelldir)
         return files
 
     ## add
@@ -150,17 +142,49 @@ class ProjectController(AbstractExtendedBaseController):
             self.log.warn("No flowcellid provided. Please provide a flowcellid from which to deliver. Available options are:\n\t{}".format("\n\t".join(self._flowcells())))
             return
         
-    @controller.expose(help="run automated initial analysis on one or all samples in a project")
+
+class BcbioRunController(AbstractBaseController):
+    class Meta:
+        label = 'runbcbio'
+        description = 'Wrapper for bcbio analyses'
+        arguments = [
+            ## Also relies on the project argument from above
+            (['post_process'], dict(help="post process file", action="store", default=None, nargs="?", type=str)),
+            (['analysis_type'], dict(help="set analysis ", action="store", default=None, type=str, nargs="?")),
+            (['--genome_build'], dict(help="genome build ", action="store", default="hg19", type=str)),
+            (['--only_failed'], dict(help="only run on failed samples ", action="store_true", default=False)),
+            ]
+        stacked_on = 'project'
+
+    def _sample_status(self, x):
+        """Find the status of a sample.
+
+        Look for output files: currently only look for project-summary.csv"""
+        if os.path.exists(os.path.join(os.path.dirname(x), "project-summary.csv")):
+            return "PASS"
+        else:
+            return "FAIL"
+
+    @controller.expose(help="run automated initial analysis on samples in a project")
     def run(self):
-        if not self._check_pargs(["project", "post_process"]):
+        if not self._check_pargs(["project", "post_process", "analysis_type"]):
             return
         ## Gather sample yaml files
         pattern = "-bcbb-config.yaml$"
+        flist = []
         if self.pargs.sample:
-            pattern = "{}{}".format(self.pargs.sample, pattern)
+            if os.path.exists(self.pargs.sample):
+                with open(self.pargs.sample) as fh:
+                    flist = [x.rstrip() for x in fh.readlines()]
+            else:
+                pattern = "{}{}".format(self.pargs.sample, pattern)
         def bcbb_yaml_filter(f):
             return re.search(pattern, f) != None
-        flist = filtered_walk(os.path.join(self._meta.project_root, self.pargs.project, "data"), bcbb_yaml_filter)
+        if not flist:
+            flist = filtered_walk(os.path.join(self.app.controller._meta.project_root, self.pargs.project, "data"), bcbb_yaml_filter)
+        if self.pargs.only_failed:
+            status = {x:self._sample_status(x) for x in flist}
+            flist = [x for x in flist if self._sample_status(x)=="FAIL"]
         if len(flist) == 0 and self.pargs.sample:
             self.app.log.info("No such sample {}".format(self.pargs.sample))
         for f in flist:
@@ -180,6 +204,3 @@ class ProjectController(AbstractExtendedBaseController):
             self.app.cmd.command(['automated_initial_analysis.py', os.path.abspath(self.pargs.post_process), new_dir, config_file])
             os.chdir(cur_dir)
 
-## FIXME: analysis should be a separate controller that deals with
-## best practice etc. The current analysis should be renamed to
-## production.
