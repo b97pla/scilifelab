@@ -15,3 +15,4 @@ examples.
    archive
    analysis
    project
+   tutorial
