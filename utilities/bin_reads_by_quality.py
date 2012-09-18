@@ -37,7 +37,9 @@ def process_fastq(fastq_r1, fastq_r2, bins=[25,30], phred_offset=64):
     
     for r1 in fh_r1:
         r2 = fh_r2.next()
-        assert r2[0][0:-1] == r1[0][0:-1], "FATAL: Read identifiers differ for paired reads (%s and %s)" % (r1[0],r2[0])
+        r1h = r1[0].split()
+        r2h = r2[0].split()
+        assert r2h[0] == r1h[0] and r2h[1][1:] == r1h[1][1:], "FATAL: Read identifiers differ for paired reads (%s and %s)" % (r1[0],r2[0])
             
         bin = min(int(round(fastq_utils.avgQ(r1,phred_offset))),int(round(fastq_utils.avgQ(r2,phred_offset))))
         
