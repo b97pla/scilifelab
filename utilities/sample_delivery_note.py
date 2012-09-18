@@ -223,19 +223,25 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                         cust_name = "no customer sample name given"
                         if (obj['customer_sample_name']): 
                             cust_name = obj['customer_sample_name']
+                            print " DEBUG --- found customer sample name in SampleQCMetrics: ", cust_name
                         else:
+                            print " DEBUG --- found no customer sample name corresponding to SciLife ID ", parameters['scilifelab_name'], " in SampleQCMetrics; trying ProjectSummary document ..."
                             results = qc.query(ps_map_fun)
                             for r in results: 
                                 if prj == r['key']['Project_id']:
                                     slist = r['key']['Samples']
                                     for s in slist.keys():
+                                        without_index = "_".join(parameters['scilifelab_name'].split("_")[0:-1])
                                         if slist[s].has_key('scilife_name'):
-                                            if slist[s]['scilife_name'] == "_".join(parameters['scilifelab_name'].split("_")[0:2]): # hacky
-                                                cust_name = slist[s]['customer_name']
-
+                                            if slist[s]['scilife_name'] == without_index:
+                                                if slist[s].has_key('customer_name'): 
+                                                    cust_name = slist[s]['customer_name']
+                                                    print "Found customer sample name ", cust_name, " corresponding to ", slist[s]['scilife_name'], " or ", parameters['scilifelab_name']
+                                                else: print "WARNING: Did not find customer sample name corresponding to ", slist[s]['scilife_name']," in ProjectSummary document"
                         parameters['customer_name'] = cust_name
                     except:
                         print "Failed to set customer sample name"
+                    if cust_name == "no customer sample name given": print "WARNING: Could not set customer sample name for ", parameters['scilifelab_name']
                     # (Rounded) amount of read pairs, in millions
                     try:
                         rounded_amnt = round(float(obj['bc_count'])/1000000,1)
