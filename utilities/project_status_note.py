@@ -205,6 +205,7 @@ def make_status_note(prj="", opts=None):
                 row.append('N/A')
           
             # Million reads sequenced
+            
             counts_from_sqcm = -1
             if slist[s].has_key('M_reads_sequenced'): row.append(slist[s]['M_reads_sequenced'])
             elif slist[s].has_key('SampleQCMetrics'):
@@ -212,13 +213,17 @@ def make_status_note(prj="", opts=None):
                 sq_metrics = slist[s]['SampleQCMetrics']
                 for sdoc in sq_metrics:
                     res_ = qc[sdoc]
-                    if res_['bc_count']:
-                        counts_from_sqcm += int(res_['bc_count'])
+                    if res_.has_key('bc_count'):
+                        if res_['bc_count']:
+                            counts_from_sqcm += int(res_['bc_count'])
+                        else:
+                            sys.exit("Could not establish read counts for sample, ", res_['id'])
                     else:
-                        sys.exit("Could not establish read counts for sample, ", res_['id'])
-                row.append(str(round(counts_from_sqcm / 1000000),1))
+                        print "WARNING: No bc_count tag for sample ", slist[s]
+                row.append(str(round(counts_from_sqcm / 1000000,1)))
             else: row.append('N/A')
            
+
             # Million reads ordered
             if doc.has_key('Min_M_reads_per_sample_ordered'): 
                     try: 
