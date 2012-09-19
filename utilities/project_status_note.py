@@ -22,6 +22,9 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
  
 from reportlab.rl_config import defaultPageSize
 
+def filter_non_printable(str):
+  return ''.join([c for c in str if ord(c) > 31 or ord(c) == 9])
+
 styles = getSampleStyleSheet()
 p = styles['Normal']
 h1 = styles['Heading1']
@@ -48,7 +51,7 @@ paragraphs["Information"] = OrderedDict()
 paragraphs["Information"]["Naming conventions"] = \
 "The data is delivered in fastq format using Illumina 1.8 quality scores. " \
 "There will be one file for the forward reads and one file for the reverse " \
-"reads. More information on our naming conventions can be found here."
+"reads. More information on our naming conventions can be found at http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf."
 
 paragraphs["Information"]["Data access at UPPMAX"] = \
 "Data from the sequencing will be uploaded to the UPPNEX (UPPMAX Next " \
@@ -56,7 +59,7 @@ paragraphs["Information"]["Data access at UPPMAX"] = \
 "user can access it. If you have problems to access your data, please contact " \
 "SciLifeLab genomics_support@scilifelab.se. If you have questions regarding " \
 "UPPNEX, please contact support@uppmax.uu.se. Information on how to access your " \
-"data can be found here."
+"data can be found at http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf."
 
 paragraphs["Information"]["Acknowledgement"] = \
 "Please notify us when you publish using data produced at Science For Life " \
@@ -92,7 +95,11 @@ def make_note(parameters):
                 story.append(Paragraph(sub_headline, h4))
                 story.append(Paragraph(sub_paragraph, p))
         else:
-            story.append(Paragraph(paragraph.format(**parameters), p))
+            try:
+                story.append(Paragraph(paragraph.format(**parameters), p))
+            except:
+                print "Failed to make note. Value of parameters: ", parameters
+                sys.exit(0)
         if headline == 'Samples': 
             data = parameters['sample_table']
             t=Table(data,5*[1.25*inch], len(data)*[0.25*inch])
@@ -171,7 +178,8 @@ def make_status_note(prj="", opts=None):
             customer_ref = "no customer reference given"
             if doc.has_key('Customer_reference'): 
                 if doc['Customer_reference']:customer_ref = doc['Customer_reference']
-            parameters['customer_reference'] = customer_ref
+            parameters['customer_reference'] = filter_non_printable(customer_ref)
+        
         # Uppnex ID (can be manually provided by user)
         if (opts.uppnex_id): parameters['uppnex_project_id'] = opts.uppnex_id # User provided Uppnex ID
         else: parameters['uppnex_project_id'] = doc['Uppnex_id']
