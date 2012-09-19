@@ -88,11 +88,11 @@ def convert_human_readable_to_numbers(file_size):
     return file_size
 
 
-def get_formatted_data():
+def get_formatted_data(datasets_sizes_log_file):
     """Returns the data, processed a bit to be more regular.
     """
     # This of course need to be pointed to wherever the log file is available.
-    with open("/Users/valentinesvensson/Documents/sizegraphing/datasets_sizes.log") as data_f:
+    with open(datasets_sizes_log_file) as data_f:
         all_data = data_f.read()
 
     data_lines = all_data.splitlines()
@@ -120,13 +120,13 @@ def get_formatted_data():
     return data
 
 
-def get_dirs_with_sizes_and_dates(\
-    log_file="/Users/valentinesvensson/Documents/sizegraphing/datasets_sizes.log",
+def get_dirs_with_sizes_and_dates( \
+    datasets_sizes_log_file="/Users/valentinesvensson/Documents/sizegraphing/datasets_sizes.log", \
     seen_before=None):
     """Returns a list of dicts as we want them in the status data base.
     """
     # This of course need to be pointed to wherever the log file is available.
-    with open(log_file) as data_f:
+    with open(datasets_sizes_log_file) as data_f:
         all_data = data_f.read()
 
     data_lines = all_data.splitlines()
@@ -263,7 +263,6 @@ start_date=None, return_svg_data=False):
             project[1].append(project[1][0] + datetime.timedelta(days=i))
 
     # Plot
-
     fig = plt.figure()
     ax = fig.add_subplot(111)
     stack_heights = defaultdict(int)
@@ -273,10 +272,12 @@ start_date=None, return_svg_data=False):
     machines = set([])
     for group in sorted_data:
         machines.add(group[2])
+
     mc_val = dict(zip(machines, [float(i) / len(machines) for i in range(len(machines))]))
     if given_machine is not None:
         filtered_grouped_data = [group for group in sorted_data if group[2] == given_machine]
         sorted_data = filtered_grouped_data
+
     for i, group in enumerate(sorted_data):
         clr = cm.hsv(mc_val[group[2]])
         sizes = [s / bytes_per_gigabyte for s in group[0]]
@@ -295,6 +296,7 @@ start_date=None, return_svg_data=False):
     figure_title = 'Dataset sizes'
     if given_machine is not None:
         figure_title += ' - Machine ' + given_machine
+
     ax.set_title(figure_title)
 
     if plot_type == 'plot':
@@ -314,6 +316,7 @@ start_date=None, return_svg_data=False):
         fig.set_size_inches(10, 2)
         svg_data = get_svg_data(fig)
         return svg_data
+
     else:
         plt.show()
 
