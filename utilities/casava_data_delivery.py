@@ -24,8 +24,8 @@ def fixProjName(pname):
             postperiod = False
     return newname
 
-if len(sys.argv) < 3:
-    print "USAGE: python " + sys.argv[0] + " <project ID> <UPPMAX project> [-d Dry run -i Interactive -c <path to Casava dir> (optional)] [-l <path to log file dir [optional]>]"
+if len(sys.argv) < 4:
+    print "USAGE: python " + sys.argv[0] + " <project ID> <flow cell ID, e g 120824_BD1915ACXX> <UPPMAX project> [-d Dry run -i Interactive -c <path to Casava dir> (optional)] [-l <path to log file dir [optional]>]"
     sys.exit(0)
 
 parser = optparse.OptionParser()
@@ -33,6 +33,7 @@ parser.add_option('-c', '--casava-path', action="store", dest="caspath", default
 parser.add_option('-l', '--log-path', action="store", dest="logpath", default=def_log_path, help="Specify a path to a log file")
 parser.add_option('-i', '--interactive', action="store_true", dest="interactive", default=False, help="Interactively select samples to be delivered")
 parser.add_option('-d', '--dry-run', action="store_true", dest="dry", default=False, help="Dry run")
+parser.add_option('-a', '--deliver-all-fcs', action="store_true", dest="deliver_all_fcs", default=False, help="rsync samples from all flow cells")
 
 (opts, args) = parser.parse_args()
 
@@ -40,12 +41,19 @@ base_path = opts.caspath
 log_path = opts.logpath
 interactive = opts.interactive
 dry = opts.dry
+deliver_all_fcs = opts.deliver_all_fcs
 
-print "DEBUG: Base path: ", base_path
+# print "DEBUG: Base path: ", base_path
 
 #projid = sys.argv[1].lower()
 projid = sys.argv[1]
-uppmaxproj = sys.argv[2]
+fcid = sys.argv[2]
+uppmaxproj = sys.argv[3]
+
+fcid_comp = fcid.split('_')
+if len(fcid_comp) > 2:
+    fcid = fcid_comp[0] + '_' + fcid_comp[-1]
+    print "FCID format too long, trying ", fcid
 
 dt = datetime.now()
 time_str  = str(dt.year) + "_" + str(dt.month) + "_" + str(dt.day) + "_" + str(dt.hour) + "_" + str(dt.minute) + "_" + str(dt.second)
@@ -96,14 +104,14 @@ if not dry:
 
 skip_list = []
 if interactive:
-    for direc in dirs_to_copy_from:
-        print "Deliver sample ", direc, " ? (y/n)"
+    for sample_dir in dirs_to_copy_from:
+        print "Deliver sample ", sample_dir, " ? (y/n)"
         ans = raw_input()
-        if ans.lower() != 'y': skip_list.append(direc)
+        if ans.lower() != 'y': skip_list.append(sample_dir)
    
-for direc in dirs_to_copy_from:
-    if direc in skip_list: continue
-    sample_path = os.path.join(del_path_top, direc)
+for sample_dir in dirs_to_copy_from:
+    if sample_dir in skip_list: continue
+    sample_path = os.path.join(del_path_top, sample_dir)
     if not dry: 
         logfile.write("Creating sample-level delivery directory:" + sample_path + " (or leaving it in place if already present)\n")
         if os.path.exists(sample_path):
@@ -115,19 +123,30 @@ for direc in dirs_to_copy_from:
                 print "Could not create sample-level delivery directory!"
                 sys.exit(0)
 
-    phixfiltered_path = os.path.join(proj_base_dir, direc, "*", "nophix")
-    for fq in glob.glob(os.path.join(phixfiltered_path, "*fastq.txt*")):
+    if not deliver_all_fcs:            
+        phixfiltered_path = os.path.join(proj_base_dir, sample_dir, fcid, "nophix")
+    else:
+        phixfiltered_path = os.path.join(proj_base_dir, sample_dir, "*", "nophix")
+
+    print "DEBUG: phixfiltered_path = ", phixfiltered_path
+
+    for fq in glob.glob(os.path.join(phixfiltered_path, "*fastq*")):
         [path, fname] = os.path.split(fq)
+        run_dir = os.path.split(os.path.split(fq)[0])[0]
+        # print "DEBUG: Run dir = ", run_dir
         run_name = os.path.basename(os.path.split(os.path.split(fq)[0])[0])
-        if not os.path.exists(os.path.join(sample_path, run_name)):
-            try:
-                os.mkdir(os.path.join(sample_path, run_name))
-            except:
-                print "Could noy create run level directory!"
-                sys.exit(0)
+        if not dry:
+            if not os.path.exists(os.path.join(sample_path, run_name)):
+                try:
+                    os.mkdir(os.path.join(sample_path, run_name))
+                except:
+                    print "Could not create run level directory!"
+                    print os.path.join(sample_path, run_name)
+                    sys.exit(0)
         sample = os.path.basename(sample_path)
-        dest_file_name = fname.replace("_fastq.txt", ".fastq")
-        dest_file_name = dest_file_name.replace("_nophix_", "_" + sample + "_")
+        print fname
+        [lane, date, fc_id, bcbb_id, nophix, read, dummy] = fname.split('_') # e.g. 4_120821_BC118PACXX_1_nophix_2_fastq.txt
+        dest_file_name = lane + "_" + date + "_" + fc_id + "_" + sample + "_" + read + ".fastq" 
         dest = os.path.join(sample_path, run_name, dest_file_name)
         print "Will copy (rsync) ", fq, "to ", dest 
         if not dry: 

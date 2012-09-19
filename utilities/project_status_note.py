@@ -138,9 +138,9 @@ def make_example_note():
 
 def make_status_note(prj="", opts=None):
     # Temp views for FlowcellQCMetrics and ProjectSummary while we wait for permanent ones
-    fc_map_fun = '''function(doc) { if (doc.entity_type == "FlowcellQCMetrics") emit(doc, null);}'''                       
-    up_map_fun = '''function(doc) { if (doc.entity_type == "ProjectSummary") emit(doc, null);}'''                       
-    sa_map_fun = '''function(doc) { if (doc.entity_type == "SampleQCMetrics") emit(doc, null);}'''                       
+    fc_map_fun = '''function(doc) { if (doc.Entity_type == "FlowcellQCMetrics") emit(doc, null);}'''                       
+    up_map_fun = '''function(doc) { if (doc.Entity_type == "ProjectSummary") emit(doc, null);}'''                       
+    sa_map_fun = '''function(doc) { if (doc.Entity_type == "SampleQCMetrics") emit(doc, null);}'''                       
     parameters = {}
     phix_err_cutoff = 2.0
     couch = couchdb.Server("http://maggie.scilifelab.se:5984")
@@ -178,7 +178,7 @@ def make_status_note(prj="", opts=None):
         # A table of samples, # ordered reads, # sequenced, OK / not OK
         sample_table = []
         sample_table.append(['ScilifeID', 'CustomerID', 'NumberSequenced', 'NumberOrdered', 'Status'])
-        slist = doc['samples']
+        slist = doc['Samples']
         
         for s in sorted(slist.keys(), cmp=custom_sort):
             row = []

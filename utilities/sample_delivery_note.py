@@ -86,7 +86,6 @@ def formatted_page(canvas, doc):
     canvas.drawImage("sll_logo.gif", 2 * cm, defaultPageSize[1] - 2 * cm, 4 * cm, 1.25 * cm)
     canvas.restoreState()
 
-
 def make_note(parameters):
     """Builds a pdf note based on the passed dictionary of parameters.
     For the structure of the parameters, see the code of the function

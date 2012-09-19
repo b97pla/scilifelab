@@ -1,8 +1,6 @@
 #!/usr/bin/env python
-"""Setup file and install script SciLife python scripts.
-"""
 from setuptools import setup, find_packages
-import os
+import sys, os
 
 setup(name = "scilifelab",
       version = "0.1",
