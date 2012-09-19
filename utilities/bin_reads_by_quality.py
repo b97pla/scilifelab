@@ -2,16 +2,28 @@
 import os
 import sys
 import fastq_utils
+import argparse
 
 PHRED_OFFSET = 64
 
 def main():
-    args = sys.argv[1:]
     
-    if len(args) < 2:
-        return 1
+    parser = argparse.ArgumentParser(description="Filter reads from a pair of FastQ files based on the average quality."\
+                                     "If the average quality of one of the reads in the pair is below the given threshold, "\
+                                     "the pair is discarded. Output is a file named as INPUT.Q[T].[EXT], where T is the threshold "\
+                                     "and EXT is the file extension. Accepts uncompressed or gzip-compressed input files")
+
+    parser.add_argument('-T','--threshold', action='store', default=20, 
+                        help="if any read in the pair has an average quality below this threshold, the pair is discarded. Default is 20.")
+    parser.add_argument('-p','--phred', action='store', default=33, 
+                        help="the Phred quality score offset. Default is 33 (Sanger)")
+    parser.add_argument('fastq1', action='store', default=None, 
+                        help="the first sequence file of the pair")
+    parser.add_argument('fastq2', action='store', default=None, 
+                        help="the second sequence file of the pair")
     
-    process_fastq(args[0],args[1])
+    args = parser.parse_args()
+    process_fastq(args.fastq1, args.fastq2, [int(args.threshold)], int(args.phred))
 
 def print_average_quals(qualities):
     
@@ -23,7 +35,7 @@ def print_average_quals(qualities):
         avg_quality.insert(0,bin)
         print ",".join([str(i) for i in avg_quality])
         
-def process_fastq(fastq_r1, fastq_r2, bins=[25,30], phred_offset=64):
+def process_fastq(fastq_r1, fastq_r2, bins, phred_offset):
     
     fh_r1 = fastq_utils.FastQParser(fastq_r1)
     fh_r2 = fastq_utils.FastQParser(fastq_r2)
