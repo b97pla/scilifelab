@@ -20,6 +20,7 @@ setup(name = "scilifelab",
 	  "couchdb >= 0.8",
           "reportlab >= 2.5",
           "cement >= 2.0.2",
+          "mock"
       ],
       test_suite = 'nose.collector',
       #packages=find_packages(exclude=['tests']),

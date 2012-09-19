@@ -7,7 +7,7 @@ from datetime import datetime
 import optparse
 
 def_casava_path = '/proj/a2010002/nobackup/illumina/'
-def_log_path = '/bubo/home/h9/mikaelh/delivery_logs/'
+def_log_path = '/proj/a2010002/private/delivery_logs' # '/bubo/home/h9/mikaelh/delivery_logs/'
 
 def fixProjName(pname):
     newname = pname[0].upper()
@@ -25,7 +25,7 @@ def fixProjName(pname):
     return newname
 
 if len(sys.argv) < 4:
-    print "USAGE: python " + sys.argv[0] + " <project ID> <flow cell ID, e g 120824_BD1915ACXX> <UPPMAX project> [-d Dry run -i Interactive -c <path to Casava dir> (optional)] [-l <path to log file dir [optional]>]"
+    print "USAGE: python " + sys.argv[0] + " <project ID> <flow cell ID, e g 120824_BD1915ACXX> <UPPMAX project> [-a Deliver all FCs -d Dry run -i Interactive -c <path to Casava dir> (optional)] [-l <path to log file dir [optional]>]"
     sys.exit(0)
 
 parser = optparse.OptionParser()
@@ -132,6 +132,7 @@ for sample_dir in dirs_to_copy_from:
 
     for fq in glob.glob(os.path.join(phixfiltered_path, "*fastq*")):
         [path, fname] = os.path.split(fq)
+        extension = os.path.splitext(fq)[1]
         run_dir = os.path.split(os.path.split(fq)[0])[0]
         # print "DEBUG: Run dir = ", run_dir
         run_name = os.path.basename(os.path.split(os.path.split(fq)[0])[0])
@@ -146,7 +147,9 @@ for sample_dir in dirs_to_copy_from:
         sample = os.path.basename(sample_path)
         print fname
         [lane, date, fc_id, bcbb_id, nophix, read, dummy] = fname.split('_') # e.g. 4_120821_BC118PACXX_1_nophix_2_fastq.txt
-        dest_file_name = lane + "_" + date + "_" + fc_id + "_" + sample + "_" + read + ".fastq" 
+        if extension == '.gz': newext = '.fastq.gz'
+        else: newext = '.fastq'
+        dest_file_name = lane + "_" + date + "_" + fc_id + "_" + sample + "_" + read + newext 
         dest = os.path.join(sample_path, run_name, dest_file_name)
         print "Will copy (rsync) ", fq, "to ", dest 
         if not dry: 
