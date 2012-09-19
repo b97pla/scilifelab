@@ -11,12 +11,14 @@ setup(name = "scilifelab",
       scripts = ['scripts/project_management.py',
                  'scripts/runsizes.py',
                  'scripts/bcbb_helpers/run_bcbb_pipeline.py',
+                 'scripts/bcbb_helpers/report_to_gdocs.py',
                  'scripts/bcbb_helpers/process_run_info.py'],
       install_requires = [
-          "bcbio-nextgen >= 0.2",
-          "drmaa >= 0.5",
-	  "sphinx >= 1.1.3",
-	  "couchdb >= 0.8",
-          "reportlab >= 2.5",
-      ])
+                          "bcbio-nextgen >= 0.2",
+                          "drmaa >= 0.5",
+                          "sphinx >= 1.1.3",
+                          "couchdb >= 0.8",
+                          "reportlab >= 2.5",
+                          "mock",
+                          ])
 os.system("git rev-parse --short --verify HEAD > ~/.scilifelab_version")

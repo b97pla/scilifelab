@@ -7,7 +7,7 @@ from datetime import datetime
 import optparse
 
 def_casava_path = '/proj/a2010002/nobackup/illumina/'
-def_log_path = '/bubo/home/h9/mikaelh/delivery_logs/'
+def_log_path = '/proj/a2010002/private/delivery_logs' # '/bubo/home/h9/mikaelh/delivery_logs/'
 
 def fixProjName(pname):
     newname = pname[0].upper()
@@ -25,7 +25,7 @@ def fixProjName(pname):
     return newname
 
 if len(sys.argv) < 4:
-    print "USAGE: python " + sys.argv[0] + " <project ID> <flow cell ID, e g 120824_BD1915ACXX> <UPPMAX project> [-d Dry run -i Interactive -c <path to Casava dir> (optional)] [-l <path to log file dir [optional]>]"
+    print "USAGE: python " + sys.argv[0] + " <project ID> <flow cell ID, e g 120824_BD1915ACXX> <UPPMAX project> [-a Deliver all FCs -d Dry run -i Interactive -c <path to Casava dir> (optional)] [-l <path to log file dir [optional]>]"
     sys.exit(0)
 
 parser = optparse.OptionParser()
@@ -43,12 +43,17 @@ interactive = opts.interactive
 dry = opts.dry
 deliver_all_fcs = opts.deliver_all_fcs
 
-print "DEBUG: Base path: ", base_path
+# print "DEBUG: Base path: ", base_path
 
 #projid = sys.argv[1].lower()
 projid = sys.argv[1]
 fcid = sys.argv[2]
 uppmaxproj = sys.argv[3]
+
+fcid_comp = fcid.split('_')
+if len(fcid_comp) > 2:
+    fcid = fcid_comp[0] + '_' + fcid_comp[-1]
+    print "FCID format too long, trying ", fcid
 
 dt = datetime.now()
 time_str  = str(dt.year) + "_" + str(dt.month) + "_" + str(dt.day) + "_" + str(dt.hour) + "_" + str(dt.minute) + "_" + str(dt.second)
@@ -122,19 +127,29 @@ for sample_dir in dirs_to_copy_from:
         phixfiltered_path = os.path.join(proj_base_dir, sample_dir, fcid, "nophix")
     else:
         phixfiltered_path = os.path.join(proj_base_dir, sample_dir, "*", "nophix")
+
+    print "DEBUG: phixfiltered_path = ", phixfiltered_path
+
     for fq in glob.glob(os.path.join(phixfiltered_path, "*fastq*")):
         [path, fname] = os.path.split(fq)
+        extension = os.path.splitext(fq)[1]
+        run_dir = os.path.split(os.path.split(fq)[0])[0]
+        # print "DEBUG: Run dir = ", run_dir
         run_name = os.path.basename(os.path.split(os.path.split(fq)[0])[0])
-        if not os.path.exists(os.path.join(sample_path, run_name)):
-            try:
-                os.mkdir(os.path.join(sample_path, run_name))
-            except:
-                print "Could not create run level directory!"
-                print os.path.join(sample_path, run_name)
-                sys.exit(0)
+        if not dry:
+            if not os.path.exists(os.path.join(sample_path, run_name)):
+                try:
+                    os.mkdir(os.path.join(sample_path, run_name))
+                except:
+                    print "Could not create run level directory!"
+                    print os.path.join(sample_path, run_name)
+                    sys.exit(0)
         sample = os.path.basename(sample_path)
-        dest_file_name = fname.replace("_fastq.txt", ".fastq")
-        dest_file_name = dest_file_name.replace("_nophix_", "_" + sample + "_")
+        print fname
+        [lane, date, fc_id, bcbb_id, nophix, read, dummy] = fname.split('_') # e.g. 4_120821_BC118PACXX_1_nophix_2_fastq.txt
+        if extension == '.gz': newext = '.fastq.gz'
+        else: newext = '.fastq'
+        dest_file_name = lane + "_" + date + "_" + fc_id + "_" + sample + "_" + read + newext 
         dest = os.path.join(sample_path, run_name, dest_file_name)
         print "Will copy (rsync) ", fq, "to ", dest 
         if not dry: 

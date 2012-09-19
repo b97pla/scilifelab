@@ -8,11 +8,12 @@ import yaml
 import subprocess
 import copy
 import tempfile
-from optparse import OptionParser
+import argparse
 
 import bcbio.solexa.flowcell
 import bcbio.solexa.samplesheet
 from bcbio.pipeline.config_loader import load_config
+import scilifelab.scripts.bcbb_helpers.report_to_gdocs as report
 
 # The directory where CASAVA has written the demuxed output
 CASAVA_OUTPUT_DIR = "Unaligned"
@@ -27,9 +28,8 @@ PROCESS_YAML = True
 # If True, will assign the distributed master process and workers to a separate RabbitMQ queue for each flowcell 
 FC_SPECIFIC_AMPQ = True
 
-
 def main(post_process_config_file, fc_dir, run_info_file=None, only_run=False, only_setup=False, ignore_casava=False):
- 
+    
     run_arguments = [[os.getcwd(),post_process_config_file,fc_dir,run_info_file]]
     if has_casava_output(fc_dir) and not ignore_casava:
         if not only_run:
@@ -152,7 +152,7 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
        be passed to the run_analysis method for execution
     """
     config = load_config(post_process_config_file)
-    analysis_dir = config["analysis"]["base_dir"]
+    analysis_dir = os.path.abspath(config["analysis"]["base_dir"])
     assert os.path.exists(fc_dir), "ERROR: Flowcell directory %s does not exist" % fc_dir
     assert os.path.exists(analysis_dir), "ERROR: Analysis top directory %s does not exist" % analysis_dir
     
@@ -176,7 +176,7 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
     # Iterate over the projects in the flowcell directory
     for project in fc_dir_structure.get('projects',[]):
         # Create a project directory if it doesn't already exist
-        project_name = project['project_name']
+        project_name = project['project_name'].replace('__','.')
         project_dir = os.path.join(analysis_dir,project_name)
         if not os.path.exists(project_dir):
             os.mkdir(project_dir,0770)
@@ -184,7 +184,7 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
         # Iterate over the samples in the project
         for sample_no, sample in enumerate(project.get('samples',[])):
             # Create a directory for the sample if it doesn't already exist
-            sample_name = sample['sample_name']
+            sample_name = sample['sample_name'].replace('__','.')
             sample_dir = os.path.join(project_dir,sample_name)
             if not os.path.exists(sample_dir):
                 os.mkdir(sample_dir,0770)
@@ -206,14 +206,14 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
             for lane in sample_config:
                 if 'multiplex' in lane:
                     for sample in lane['multiplex']:
-                        sample['files'] = [os.path.join(os.path.abspath(dst_sample_dir),os.path.basename(f)) for f in sample_files if f.find("_%s_L00%d_" % (sample['sequence'],int(lane['lane']))) >= 0]
+                        sample['files'] = [os.path.basename(f) for f in sample_files if f.find("_%s_L00%d_" % (sample['sequence'],int(lane['lane']))) >= 0]
                 else:
-                    lane['files'] = [os.path.join(os.path.abspath(dst_sample_dir),os.path.basename(f)) for f in sample_files if f.find("_L00%d_" % int(lane['lane'])) >= 0]
+                    lane['files'] = [os.path.basename(f) for f in sample_files if f.find("_L00%d_" % int(lane['lane'])) >= 0]
                     
             sample_config = override_with_custom_config(sample_config,custom_config)
             
             arguments = _setup_config_files(dst_sample_dir,sample_config,post_process_config_file,fc_dir_structure['fc_dir'],sample_name,fc_date,fc_name)
-            sample_run_arguments.append([arguments[1],arguments[0],arguments[2],arguments[3]])
+            sample_run_arguments.append([arguments[1],arguments[0],arguments[1],arguments[3]])
         
     return sample_run_arguments
 
@@ -256,10 +256,10 @@ def override_with_custom_config(org_config, custom_config):
                 item[key] = val
                 
             for sample in item.get('multiplex',[]):
-                if 'sample_prj' not in sample or 'name' not in sample:
+                if 'sequence' not in sample:
                     continue
                 for custom_sample in custom_item.get('multiplex',[]):
-                    if sample['sample_prj'] == custom_sample.get('sample_prj',"") and sample['name'] == custom_sample.get('name',""):
+                    if sample['sequence'] == custom_sample.get('sequence',""):
                         for key, val in custom_sample.items():
                             sample[key] = val
                         break
@@ -290,7 +290,7 @@ def _setup_config_files(dst_dir,configs,post_process_config_file,fc_dir,sample_n
     if 'distributed' in local_post_process and 'platform_args' in local_post_process['distributed']:
         slurm_out = "%s-bcbb.log" % sample_name
         local_post_process['distributed']['platform_args'] = "%s -J %s -o %s -D %s" % (local_post_process['distributed']['platform_args'], sample_name, slurm_out, dst_dir)
-           
+            
     local_post_process_file = os.path.join(dst_dir,"%s-post_process.yaml" % sample_name)
     with open(local_post_process_file,'w') as fh:
         fh.write(yaml.safe_dump(local_post_process, default_flow_style=False, allow_unicode=True, width=1000))
@@ -298,7 +298,7 @@ def _setup_config_files(dst_dir,configs,post_process_config_file,fc_dir,sample_n
     # Write the command for running the pipeline with the configuration files
     run_command_file = os.path.join(dst_dir,"%s-bcbb-command.txt" % sample_name)
     with open(run_command_file,"w") as fh:
-        fh.write(" ".join([os.path.basename(__file__),"--only-run",os.path.basename(local_post_process_file), fc_dir, os.path.basename(config_file)])) 
+        fh.write(" ".join([os.path.basename(__file__),"--only-run",os.path.basename(local_post_process_file), os.path.join("..",os.path.basename(dst_dir)), os.path.basename(config_file)])) 
         fh.write("\n")   
     
     return [os.path.basename(local_post_process_file), dst_dir, fc_dir, os.path.basename(config_file)]
@@ -313,9 +313,18 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet):
         config = yaml.load(fh)
     
     # Replace the default analysis
+    ## TODO: This is an ugly hack, should be replaced by a custom config 
     for lane in config:
-        lane['analysis'] = 'Align_standard'
-    
+        if lane.get('genome_build','') == 'hg19':
+            lane['analysis'] = 'Align_standard_seqcap'
+        else:
+            lane['analysis'] = 'Align_standard'
+        for plex in lane.get('multiplex',[]):
+            if plex.get('genome_build','') == 'hg19':
+                plex['analysis'] = 'Align_standard_seqcap'
+            else:
+                plex['analysis'] = 'Align_standard'
+                
     # Remove the yaml file, we will write a new one later
     os.remove(yaml_file)
     
@@ -374,20 +383,31 @@ def has_casava_output(fc_dir):
         pass
     return False
 
+def report_to_gdocs(fc_dir, post_process_config_file):
+    # Rename any existing run_info.yaml as it will interfere with gdocs upload
+    run_info = os.path.join(fc_dir, "run_info.yaml")
+    if os.path.exists(run_info):
+        os.rename(run_info, "{}.bak".format(run_info))
+    report.main(os.path.basename(os.path.abspath(fc_dir)), post_process_config_file)
+
 if __name__ == "__main__":
 
-    parser = OptionParser()
-    parser.add_option("-r", "--only-run", dest="only_run", action="store_true", default=False)
-    parser.add_option("-s", "--only-setup", dest="only_setup", action="store_true", default=False)
-    parser.add_option("-i", "--ignore-casava", dest="ignore_casava", action="store_true", default=False)
-    options, args = parser.parse_args()
-    
-    if len(args) < 2:
-        print __doc__
-        sys.exit()
-    
-    run_info_file = None
-    if len(args) > 2:
-        run_info_file = args[2]
+    parser = argparse.ArgumentParser(description="Wrapper script for bcbb pipeline. If given a .yaml configuration file, "\
+                                     "a run folder containing the sequence data from an illumina run and, optionally, "\
+                                     "a custom yaml file with options that should override what is specified in the "\
+                                     "config and samplesheet, the script will copy the relevant files from [store_dir] "\
+                                     "to [base_dir] and submit the automated_initial_analysis.py pipeline script for each "\
+                                     "sample to the cluster platform specified in the configuration.")
+
+    parser.add_argument("config", action="store", default=None, help="Path to the .yaml pipeline configuration file")
+    parser.add_argument("fcdir", action="store", default=None, help="Path to the archive run folder")
+    parser.add_argument("custom_config", action="store", default=None, help="Path to a custom configuration file with lane or sample specific options that will override the main configuration", nargs="?")
+    parser.add_argument("-r", "--only-run", dest="only_run", action="store_true", default=False, help="Don't setup the analysis directory, just start the pipeline")
+    parser.add_argument("-s", "--only-setup", dest="only_setup", action="store_true", default=False, help="Setup the analysis directory but don't start the pipeline")
+    parser.add_argument("-i", "--ignore-casava", dest="ignore_casava", action="store_true", default=False, help="Ignore any Casava 1.8+ file structure and just assume the pre-casava pipeline setup")
+    parser.add_argument("-g", "--no-google-report", dest="no_google_report", action="store_true", default=False, help="Don't upload any demultiplex statistics to Google Docs")
+    args = parser.parse_args()
         
-    main(args[0],args[1],run_info_file,options.only_run,options.only_setup,options.ignore_casava)
+    main(args.config,args.fcdir,args.custom_config,args.only_run,args.only_setup,args.ignore_casava)
+    if not args.no_google_report:
+        report_to_gdocs(args.fcdir, args.config)
