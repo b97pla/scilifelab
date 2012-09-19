@@ -179,13 +179,19 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                     parameters['project_name'] = obj['sample_prj']
 
                     # Customer reference (can be manually provided by user)
-                    if (opts.customer_ref): parameters['customer_reference'] = opts.customer_ref
+                    if (opts.customer_ref != "N/A"): 
+                        parameters['customer_reference'] = opts.customer_ref
+                        print "DEBUG: Customer reference taken from command-line"
                     else:
+                        print "DEBUG: Looking for customer reference in ProjectSummary document"
                         customer_ref = "no customer reference given"
-                        if obj['customer_prj']:                  
-                            customer_ref = obj['customer_prj']
-                        parameters['customer_reference'] = customer_ref
- 
+                        results = qc.query(ps_map_fun)
+                        for r in results:
+                            if prj == r['key']['Project_id']:
+                                cust_ref = r['key']['Customer_reference']
+                                parameters['customer_reference'] = cust_ref
+                    print "Customer reference value: ", parameters['customer_reference']
+
                     # Uppnex ID (can be manually provided by user)
                     #print "Uppmax ID from command line: ", opts.uppnex_id
                     if (opts.uppnex_id): parameters['uppnex_project_id'] = opts.uppnex_id # User provided Uppnex ID
@@ -196,7 +202,7 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                             if prj == r['key']['Project_id']:
                                 uppnex = r['key']['Uppnex_id']
                                 parameters['uppnex_project_id'] = uppnex
-                   
+
                     # Start date
                     parameters['start_date'] = obj['date']
 
@@ -210,14 +216,16 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                             if prj == r['key']['Project_id']:
                                 print "ProjectSummary document ID: ", r['id']
                                 temp = r['key']['Min_M_reads_per_sample_ordered']
-                                if len(temp) > 0 and temp != ' ':
-                                    ordered_amnt = temp
+                                ordered_million = str(temp)
+                                if len(ordered_million) > 0 and ordered_million != ' ':
+                                    ordered_amnt = ordered_million
                         parameters['ordered_amount'] = ordered_amnt
-                    
+
                     # Flowcell ID
                     parameters['FC_id'] = obj['flowcell']
                     # Scilife sample name
                     parameters['scilifelab_name'] = obj['barcode_name']
+
                     # Customer sample name
                     try:
                         cust_name = "no customer sample name given"
@@ -249,6 +257,7 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                     except:
                         parameters['rounded_read_count'] = 'N/A'
 
+                    print "After customer sample name"
                     # print "DEBUG: ", parameters
                     # Lane
                     lane = obj['lane']
