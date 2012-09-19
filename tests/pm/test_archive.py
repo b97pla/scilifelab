@@ -5,10 +5,11 @@ import os
 import yaml
 from cement.core import handler
 from test_default import PmTest, PmTestOutputHandler
-from pmtools.core.archive import ArchiveController
-from pmtools.lib.flowcell import *
+from scilife.pm.core.archive import ArchiveController
+from scilife.pm.lib.flowcell import *
 
-runinfo = os.path.join(os.path.curdir, "data", "archive", "120829_SN0001_0001_AA001AAAXX", "run_info.yaml")
+filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+runinfo = os.path.join(filedir, "data", "archive", "120829_SN0001_0001_AA001AAAXX", "run_info.yaml")
 
 class PmArchiveTest(PmTest):
     OUTPUT_FILES = []

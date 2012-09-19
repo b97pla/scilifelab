@@ -8,11 +8,12 @@ import glob
 from cement.core import handler
 from cement.utils import shell
 from test_default import PmTest, safe_makedir
-from pmtools.core.project import ProjectController
+from scilife.pm.core.project import ProjectController
 
 flowcell = "120829_AA001AAAXX"
-intermediate = os.path.join(os.path.curdir, "data", "projects", "j_doe_00_02", "intermediate")
-data = os.path.join(os.path.curdir, "data", "projects", "j_doe_00_02", "data")
+filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+intermediate = os.path.join(filedir, "data", "projects", "j_doe_00_02", "intermediate")
+data = os.path.join(filedir, "data", "projects", "j_doe_00_02", "data")
 
 class CleanTest(PmTest):
     INPUT_FILES = {'P1_106F_index6' : [
@@ -122,7 +123,7 @@ class CleanTest(PmTest):
         self._run_app()
         after = glob.glob(os.path.join(intermediate, "120829_AA001AAAXX", "*"))
         diff = [os.path.basename(x) for x in list(set(before).difference(set(after)))]
-        self.eq(diff, ['1_120829_AA001AAAXX_nophix_12-sort-dup-target.pileup.gz', '1_120829_AA001AAAXX_nophix_12-sort-dup-target.pileup', '1_120829_AA001AAAXX_nophix_12-sort-dup-target.crisp_pileup.gz', '1_120829_AA001AAAXX_nophix_12-sort-dup-target.crisp_pileup', '1_120829_AA001AAAXX_nophix_10-sort-dup-target.crisp_pileup.gz', '1_120829_AA001AAAXX_nophix_10-sort-dup-target.crisp_pileup', '1_120829_AA001AAAXX_nophix_10-sort-dup-target.pileup', '1_120829_AA001AAAXX_nophix_10-sort-dup-target.pileup.gz'])
+        self.eq(set(diff), set(['1_120829_AA001AAAXX_nophix_12-sort-dup-target.pileup.gz', '1_120829_AA001AAAXX_nophix_12-sort-dup-target.pileup', '1_120829_AA001AAAXX_nophix_12-sort-dup-target.crisp_pileup.gz', '1_120829_AA001AAAXX_nophix_12-sort-dup-target.crisp_pileup', '1_120829_AA001AAAXX_nophix_10-sort-dup-target.crisp_pileup.gz', '1_120829_AA001AAAXX_nophix_10-sort-dup-target.crisp_pileup', '1_120829_AA001AAAXX_nophix_10-sort-dup-target.pileup', '1_120829_AA001AAAXX_nophix_10-sort-dup-target.pileup.gz']))
 
     def test_2_clean_fastqbam(self):
         before = glob.glob(os.path.join(data, "P1_106F_index6/120829_AA001AAAXX/alignments", "*"))
@@ -133,4 +134,4 @@ class CleanTest(PmTest):
         diff = len(before) - len(after)
         self.eq(diff, 2)
         diff = [os.path.basename(x) for x in list(set(before).difference(set(after)))]
-        self.eq(diff, ['1_120829_AA001AAAXX_nophix_10_1_fastq-fastq.bam', '1_120829_AA001AAAXX_nophix_10_2_fastq-fastq.bam'])
+        self.eq(set(diff), set(['1_120829_AA001AAAXX_nophix_10_1_fastq-fastq.bam', '1_120829_AA001AAAXX_nophix_10_2_fastq-fastq.bam']))

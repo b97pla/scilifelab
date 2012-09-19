@@ -5,7 +5,7 @@ import sys
 
 from cement.core import backend, handler, hook
 
-from pmtools.core import command
+from scilife.pm.core import command
 
 LOG = backend.minimal_logger(__name__)
 

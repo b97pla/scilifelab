@@ -9,7 +9,7 @@ import couchdb
 from datetime import datetime
 
 from cement.core import backend, controller, handler
-from pmtools.core.controller import AbstractBaseController
+from scilife.pm.core.controller import AbstractBaseController
 
 from bcbio.qc import FlowcellQCMetrics, QCMetrics, SampleQCMetrics, LaneQCMetrics
 

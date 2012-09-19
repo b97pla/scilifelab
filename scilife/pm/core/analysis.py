@@ -6,8 +6,8 @@ import sys
 import os
 import re
 from cement.core import controller
-from pmtools.core.controller import AbstractExtendedBaseController
-from pmtools.lib.flowcell import Flowcell
+from scilife.pm.core.controller import AbstractExtendedBaseController
+from scilife.pm.lib.flowcell import Flowcell
 
 ## Main analysis controller
 class AnalysisController(AbstractExtendedBaseController):

@@ -48,8 +48,8 @@ import re
 import yaml
 
 from cement.core import controller, hook
-from pmtools.core.controller import AbstractExtendedBaseController, AbstractBaseController
-from pmtools.utils.misc import query_yes_no, filtered_walk
+from scilife.pm.core.controller import AbstractExtendedBaseController, AbstractBaseController
+from scilife.pm.utils.misc import query_yes_no, filtered_walk
 
 ## Main project controller
 class ProjectController(AbstractExtendedBaseController):

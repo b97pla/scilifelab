@@ -12,7 +12,7 @@ import os
 import shutil
 
 from cement.core import controller
-from pmtools.core.controller import AbstractBaseController
+from scilife.pm.core.controller import AbstractBaseController
 
 ## Main delivery controller
 class DeliveryController(AbstractBaseController):

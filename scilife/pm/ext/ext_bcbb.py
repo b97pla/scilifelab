@@ -9,7 +9,7 @@ import sys
 
 from cement.core import backend, handler, hook
 
-from pmtools.core import naming
+from scilife.pm.core import naming
 
 LOG = backend.minimal_logger(__name__)
 

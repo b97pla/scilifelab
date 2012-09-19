@@ -8,11 +8,12 @@ import shutil
 from cement.core import handler
 from cement.utils import shell
 from test_default import PmTest
-from pmtools.core.analysis import AnalysisController
-from pmtools.utils.misc import walk
+from scilife.pm.core.analysis import AnalysisController
+from scilife.pm.utils.misc import walk
 
-delivery_dir = os.path.abspath(os.path.join(os.path.curdir, "data", "projects", "j_doe_00_01", "data"))
-intermediate_delivery_dir = os.path.abspath(os.path.join(os.path.curdir, "data", "projects", "j_doe_00_01", "intermediate"))
+filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+delivery_dir = os.path.abspath(os.path.join(filedir, "data", "projects", "j_doe_00_01", "data"))
+intermediate_delivery_dir = os.path.abspath(os.path.join(filedir, "data", "projects", "j_doe_00_01", "intermediate"))
 
 class PmAnalysisTest(PmTest):
     def setUp(self):

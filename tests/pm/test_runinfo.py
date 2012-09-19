@@ -7,11 +7,12 @@ import glob
 import re
 from cement.core import handler
 from test_default import PmTest
-from pmtools.lib.flowcell import *
+from scilife.pm.lib.flowcell import *
 
+filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 flowcell = "120829_SN0001_0001_AA001AAAXX"
-fc_dir = os.path.join(os.path.curdir, "data", "analysis", flowcell)
-runinfo = os.path.join(os.path.curdir, "data", "archive", flowcell, "run_info.yaml")
+fc_dir = os.path.join(filedir, "data", "analysis", flowcell)
+runinfo = os.path.join(filedir, "data", "archive", flowcell, "run_info.yaml")
 
 class PmFlowcellTest(PmTest):
     """Test flowcell object functionality"""

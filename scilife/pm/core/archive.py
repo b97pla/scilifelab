@@ -6,8 +6,8 @@ import os
 import yaml
 
 from cement.core import controller
-from pmtools.core.controller import AbstractExtendedBaseController
-from pmtools.lib.flowcell import *
+from scilife.pm.core.controller import AbstractExtendedBaseController
+from scilife.pm.lib.flowcell import *
 
 ## Main archive controller
 class ArchiveController(AbstractExtendedBaseController):

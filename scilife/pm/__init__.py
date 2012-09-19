@@ -1,5 +1,5 @@
 """
-Pipeline Management Tools
+Project Management Tools
 """
 
 __import__('pkg_resources').declare_namespace(__name__)
@@ -14,9 +14,9 @@ from cStringIO import StringIO
 
 from cement.core import foundation, controller, handler, backend, output
 
-from pmtools.core import command
-from pmtools.core import shell
-from pmtools.core.controller import PmController
+from scilife.pm.core import command
+from scilife.pm.core import shell
+from scilife.pm.core.controller import PmController
 
 LOG = backend.minimal_logger(__name__)    
 
