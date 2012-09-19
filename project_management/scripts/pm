@@ -2,7 +2,6 @@
 import os
 import sys
 from cement.core import foundation, handler
-import argparse
 from pmtools.lib.config import config_defaults
 from pmtools import PmApp
 from pmtools.core.controller import PmController

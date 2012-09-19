@@ -86,12 +86,12 @@ class ProjectController(AbstractExtendedBaseController):
             self._meta.path_id = self.pargs.project
             # Add intermediate or data
             if self.app.pargs.intermediate:
-                if os.path.exists(os.path.join(self._meta.project_root, "nobackup")):
+                if os.path.exists(os.path.join(self._meta.project_root, self._meta.path_id, "nobackup")):
                     self._meta.path_id = os.path.join(self._meta.path_id, "nobackup", "intermediate")
                 else:
                     self._meta.path_id = os.path.join(self._meta.path_id, "intermediate")
             if self.app.pargs.data and not self.app.pargs.intermediate:
-                if os.path.exists(os.path.join(self._meta.project_root, "nobackup")):
+                if os.path.exists(os.path.join(self._meta.project_root, self._meta.path_id, "nobackup")):
                     self._meta.path_id = os.path.join(self._meta.path_id, "nobackup", "data")
                 else:
                     self._meta.path_id = os.path.join(self._meta.path_id, "data")

@@ -233,7 +233,6 @@ class AbstractExtendedBaseController(AbstractBaseController):
         pattern = "|".join(["{}$".format(x) for x in self._meta.file_pat])
         self._compress(pattern)
 
-
     def file_filter(f):
         if not pattern:
             return

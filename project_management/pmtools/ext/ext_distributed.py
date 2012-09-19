@@ -24,6 +24,9 @@ class DistributedCommandHandler(command.CommandHandler):
         label = 'distributed'
         """The string identifier of this handler."""
 
+        n_submitted_jobs = 0
+        """The number of submitted jobs"""
+
     def sbatch(self,  cmd_args, capture=True, ignore_error=False, cwd=None, **kw):
         """sbatch: write cmd_args to sbatch template and submit"""
         print "FIX ME: sbatch: write cmd_args to sbatch template and submit"
@@ -38,9 +41,14 @@ class DistributedCommandHandler(command.CommandHandler):
             pass
 
     def drmaa(self, cmd_args, capture=True, ignore_error=False, cwd=None, **kw):
+        if self.app.pargs.partition == "node" and self.app.pargs.max_node_jobs < self._meta.n_submitted_jobs:
+            self.app.log.info("number of submitted jobs larger than maximum number of allowed node jobs; not submitting job")
+            return
+        self._meta.n_submitted_jobs = self._meta.n_submitted_jobs + 1
         if not self.app.pargs.job_account:
             self.app.log.warn("no job account provided; cannot proceed with drmaa command")
             return
+
         command = " ".join(cmd_args)
         def runpipe():
             if not os.getenv("DRMAA_LIBRARY_PATH"):
@@ -99,6 +107,8 @@ def add_shared_distributed_options(app):
                           action='store', help='time limit', default="00:10:00")
     app.args.add_argument('--partition', type=str,
                           action='store', help='partition', default="core")
+    app.args.add_argument('--max_node_jobs', type=int, default=10,
+                          action='store', help='maximum number of node jobs (default 10)')
 
 def set_distributed_handler(app):
     """
