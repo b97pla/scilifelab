@@ -2,13 +2,13 @@
 from setuptools import setup, find_packages
 import sys, os
 
-setup(name = "scilife",
+setup(name = "scilifelab",
       version = "0.1",
       author = "SciLife",
       author_email = "genomics@scilifelab.se",
       description = "Useful scripts for use at SciLife",
       license = "MIT",
-      #namespace_packages=["scilife"],
+      namespace_packages=["scilife"],
       scripts = ['scripts/runsizes.py',
                  'scripts/bcbb_helpers/run_bcbb_pipeline.py',
                  'scripts/bcbb_helpers/report_to_gdocs.py',
@@ -25,7 +25,7 @@ setup(name = "scilife",
       test_suite = 'nose.collector',
       #packages=find_packages(exclude=['tests']),
       packages=['scilife'],
-      #package_dir = {'pmtools':'scilife/project_management/pmtools'},
+      #package_dir = {'scilife':'scilife'},
       #package_data = {'pmtools':['scilife/project_management/pmtools/templates/tpl/make/*']}
       )
 os.system("git rev-parse --short --verify HEAD > ~/.scilifelab_version")
