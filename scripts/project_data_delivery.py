@@ -11,6 +11,7 @@ file describing analysis setup, copy files to delivery directory. By
 default, the following files are delivered:
 
   - project-summary.csv
+  - YAML run info if present
   - run_summary.yaml
   - *.vcf
   - *.vcf.idx
@@ -50,7 +51,6 @@ import shutil
 from bcbio.log import logger, setup_logging
 from bcbio.pipeline.config_loader import load_config
 
-
 def main(config_file, delivery_dir, run_info_yaml, analysis_dir=None):
     if analysis_dir is None:
         analysis_dir = os.path.abspath(os.path.curdir)
@@ -74,25 +74,33 @@ def main(config_file, delivery_dir, run_info_yaml, analysis_dir=None):
         # Vcf files, tsv and tranches
         vcftypes = ('*.vcf', '*.idx', '*.tranches', '*.eval', '*.tsv')
         for vcftype in vcftypes:
-            glob_str = os.path.join(analysis_dir, str(info['lane']) +  vcftype)
+            glob_str = os.path.join(analysis_dir, str(info['lane']) +  "_" + vcftype)
             infiles[info['lane']]['vcf'].extend(glob.glob(glob_str))
         # Bam files
-        glob_str = os.path.join(analysis_dir, str(info['lane']) +  options.bam_glob)
+        glob_str = os.path.join(analysis_dir, str(info['lane']) + "_" + options.bam_glob)
         bamfiles = glob.glob(glob_str)
         infiles[info['lane']]['bam'] = bamfiles
         # Bigwig files
-        glob_str = os.path.join(analysis_dir, str(info['lane']) +  "*.bigwig")
+        glob_str = os.path.join(analysis_dir, str(info['lane']) + "_" + "*.bigwig")
         bigwigfiles = glob.glob(glob_str)
         infiles[info['lane']]['bigwig'] = bigwigfiles
         # metrics files
-        glob_str = os.path.join(analysis_dir, str(info['lane']) +  "*metrics")
+        glob_str = os.path.join(analysis_dir, str(info['lane']) +  "_" + "*metrics")
         metricsfiles = glob.glob(glob_str)
         infiles[info['lane']]['metrics'] = metricsfiles
-        
+
+    # snpEff files
+    glob_str = os.path.join(analysis_dir, "snpEff*")
+    snpeff_files = glob.glob(glob_str)
+    
     # Loop through the list and deliver if appropriate
     _make_dir(delivery_dir)
     _deliver_file(os.path.join(analysis_dir,"project-summary.csv"),os.path.join(delivery_dir,"project-summary.csv") )
     _deliver_file(os.path.join(analysis_dir,"run_summary.yaml"),os.path.join(delivery_dir,"run_summary.yaml") )
+    _deliver_file(run_info_yaml,os.path.join(delivery_dir,os.path.basename(run_info_yaml) ))
+    if not options.no_vcf:
+        for sf in snpeff_files:
+            _deliver_file(sf, os.path.join(delivery_dir,os.path.basename(sf) ))
     for lane_num in infiles.keys():
         lane = infiles[lane_num]
         if not options.no_vcf:
@@ -106,6 +114,10 @@ def main(config_file, delivery_dir, run_info_yaml, analysis_dir=None):
         if not options.no_metrics:
             for metrics in lane['metrics']:
                 (src, tgt) = _rename_sample_file(metrics, lane_num, lane2sample[lane_num],delivery_dir)
+                _deliver_file(src, tgt)
+        if options.bam:
+            for bamfile in lane['bam']:
+                (src, tgt) = _rename_sample_file(bamfile, lane_num, lane2sample[lane_num],delivery_dir)
                 _deliver_file(src, tgt)
 
 
@@ -124,6 +136,8 @@ def _deliver_file(src, tgt):
     else:
         deliver_fn = shutil.copyfile
     if src is None:
+        return
+    if not os.path.exists(src):
         return
     if os.path.exists(tgt):
         logger.warn("%s already exists: not doing anything!" %(tgt))
@@ -156,7 +170,7 @@ if __name__ == "__main__":
     parser.add_option("-a", "--analysis_dir", dest="analysis_dir")
     parser.add_option("-b", "--bam", dest="bam", action="store_true",
                       default=False)
-    parser.add_option("-g", "--bam_glob", dest="bam_glob", default="*-sort-dup-gatkrecal-realign*.bam")
+    parser.add_option("-g", "--bam_glob", dest="bam_glob", default="*-sort-dup-gatkrecal-realign*.bam*")
     parser.add_option("-f", "--only_install_run_info", dest="only_run_info", action="store_true",
                       default=False)
     parser.add_option("-m", "--move_data", dest="move", action="store_true",

@@ -1,14 +1,15 @@
 #!/usr/bin/env python
+"""Setup file and install script SciLife python scripts.
+"""
 from setuptools import setup, find_packages
-import sys, os
+import os
 
-setup(name = "scilife",
+setup(name = "scilifelab",
       version = "0.1",
       author = "SciLife",
       author_email = "genomics@scilifelab.se",
       description = "Useful scripts for use at SciLife",
       license = "MIT",
-      #namespace_packages=["scilife"],
       scripts = ['scripts/runsizes.py',
                  'scripts/bcbb_helpers/run_bcbb_pipeline.py',
                  'scripts/bcbb_helpers/report_to_gdocs.py',
