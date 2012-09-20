@@ -79,5 +79,7 @@ setup(name = "scilifelab",
       ],
       test_suite = 'nose.collector',
       packages=['scilife'],
+      ## package_data: install data/templates needed by modules
+      package_data = {'scilife':['pm/templates/tpl/make/*', 'data/*']}
       )
 os.system("git rev-parse --short --verify HEAD > ~/.scilifelab_version")
