@@ -15,7 +15,7 @@ The three first options are mandatory. There are further flags you can use:
 -c, --config: Provide config file (post_process.yaml)
 -o, --old: Run old TopHat (1.0.14) instead - mainly to reproduce old runs
 -t, --projtag: Provide a project tag that will be shown in the queuing system to distinguish from other TopHat runs
--p, --phred33: Use phred33 / Sanger quality scale, e g for MiSeq or CASAVA 1.8 and above
+-p, --phred64: Use phred64 quality scale
 -f, --fai: Generate UCSC Genome Browser compatible BigWig tracks, using the specified FASTA index (fai) file
 -m, --mail: Specify a mailing address for SLURM
 -a, --alloc-time: Time to allocate in SLURM. Hours:minutes:seconds or days-hours:minutes:seconds
@@ -29,15 +29,15 @@ parser = optparse.OptionParser()
 parser.add_option('-c', '--config', action="store", dest="conffile", default=os.path.expanduser("~/config/post_process.yaml"), help="Specify config file (post_process.yaml)")
 parser.add_option('-o', '--old', action="store_true", dest="old", default="False", help="Run old TopHat (1.0.14) instead - mainly to reproduce old runs")
 parser.add_option('-t', '--projtag', action="store", dest="projtag", default="", help="Provide a project tag that will be shown in the queuing system to distinguish from other TopHat runs")
-parser.add_option('-p', '--phred33', action="store_true", dest="phred33", default="False", help="Use phred33 / Sanger quality scale, e g for MiSeq or CASAVA1.8 and above")
+parser.add_option('-p', '--phred64', action="store_true", dest="phred64", default="False", help="Use phred64 quality scale")
 parser.add_option('-f', '--fai', action="store", dest="fai", default="", help="Provide FASTA index file for generating UCSC bigwig tracks")
 parser.add_option('-m', '--mail', action="store", dest="mail", default="mikael.huss@scilifelab.se", help="Specify a mailing address for SLURM mail notifications")
-parser.add_option('-a', '--alloc-time', action="store", dest="hours", default="10:00:00", help="Time to allocate in SLURM. Please specify as hours:minutes:seconds or days-hours:minutes:seconds")
+parser.add_option('-a', '--alloc-time', action="store", dest="hours", default="40:00:00", help="Time to allocate in SLURM. Please specify as hours:minutes:seconds or days-hours:minutes:seconds")
 
 (opts, args) = parser.parse_args()
 
 old = opts.old
-phred33 = opts.phred33
+phred64 = opts.phred64
 fai = opts.fai
 projtag = opts.projtag
 mail = opts.mail
@@ -46,8 +46,8 @@ conffile = opts.conffile
 
 if not len ( hours.split(':') ) == 3: sys.exit("Please specify the time allocation string as hours:minutes:seconds or days-hours:minutes:seconds") 
 
-qscale = '--solexa1.3-quals'
-if phred33 == True: qscale = ''
+qscale = ''
+if phred64 == True: qscale = '--solexa1.3-quals'
 
 fpath = sys.argv[1]
 refpath = sys.argv[2]
@@ -71,13 +71,13 @@ for fname in flist:
     print fname.split("_")
     # 2_date_fcid_sample_1.fastq
     if not tag in sample_names: sample_names.append(tag)
-    if read == "1.fastq": read1forsample[tag]=fname
-    if read == "2.fastq": read2forsample[tag]=fname
+    if (read == "1.Q25.fastq") | (read == "1.fastq"): read1forsample[tag]=fname
+    if (read == "2.Q25.fastq") | (read == "2.fastq"): read2forsample[tag]=fname
 
 print "Best guess for sample names: "
 for n in sorted(sample_names):
     print n
-
+print read2forsample.keys()
 r = raw_input("Press n to exit")
 if r.upper() == "N": sys.exit(0)
 
@@ -89,12 +89,13 @@ for n in sorted(sample_names):
     print "Generating sbatch files for sample ", n
     oF = open("map_tophat_" + n + ".sh", "w")
     oF.write("#! /bin/bash -l\n")
-    oF.write("#SBATCH -A a2010002\n")                   
+    oF.write("#SBATCH -A a2012043\n")                   
     oF.write("#SBATCH -p node\n")
     oF.write("#SBATCH -t " + hours + "\n")
     oF.write("#SBATCH -J tophat_" + n + projtag + "\n")
     oF.write("#SBATCH -e tophat_" + n + projtag + ".err\n")
     oF.write("#SBATCH -o tophat_" + n + projtag + ".out\n")
+    oF.write("#SBATCH --qos=seqver")
     oF.write("#SBATCH --mail-user=" + mail + "\n")
     oF.write("#SBATCH --mail-type=ALL\n")
 

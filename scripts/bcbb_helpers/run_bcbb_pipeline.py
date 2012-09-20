@@ -8,11 +8,11 @@ import yaml
 import subprocess
 import copy
 import tempfile
-from optparse import OptionParser
-
+import argparse
 import bcbio.solexa.flowcell
 import bcbio.solexa.samplesheet
 from bcbio.pipeline.config_loader import load_config
+import scilifelab.scripts.bcbb_helpers.report_to_gdocs as report
 
 # The directory where CASAVA has written the demuxed output
 CASAVA_OUTPUT_DIR = "Unaligned"
@@ -27,9 +27,8 @@ PROCESS_YAML = True
 # If True, will assign the distributed master process and workers to a separate RabbitMQ queue for each flowcell 
 FC_SPECIFIC_AMPQ = True
 
-
 def main(post_process_config_file, fc_dir, run_info_file=None, only_run=False, only_setup=False, ignore_casava=False):
- 
+    
     run_arguments = [[os.getcwd(),post_process_config_file,fc_dir,run_info_file]]
     if has_casava_output(fc_dir) and not ignore_casava:
         if not only_run:
@@ -290,15 +289,6 @@ def _setup_config_files(dst_dir,configs,post_process_config_file,fc_dir,sample_n
     if 'distributed' in local_post_process and 'platform_args' in local_post_process['distributed']:
         slurm_out = "%s-bcbb.log" % sample_name
         local_post_process['distributed']['platform_args'] = "%s -J %s -o %s -D %s" % (local_post_process['distributed']['platform_args'], sample_name, slurm_out, dst_dir)
-    
-    # Modify base_dir and store_dir variables to be relative to dst_dir
-    if "store_dir" in local_post_process:
-        local_post_process["store_dir"] = os.path.relpath(local_post_process["store_dir"],dst_dir)
-    if "analysis" in local_post_process:
-        for dir in ("store_dir","base_dir"):
-            if dir in local_post_process["analysis"]:
-                local_post_process["analysis"][dir] = os.path.relpath(local_post_process["analysis"][dir],dst_dir)
-                    
     local_post_process_file = os.path.join(dst_dir,"%s-post_process.yaml" % sample_name)
     with open(local_post_process_file,'w') as fh:
         fh.write(yaml.safe_dump(local_post_process, default_flow_style=False, allow_unicode=True, width=1000))
@@ -321,9 +311,19 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet):
         config = yaml.load(fh)
     
     # Replace the default analysis
+    ## TODO: This is an ugly hack, should be replaced by a custom config 
     for lane in config:
-        lane['analysis'] = 'Align_standard'
-    
+        if lane.get('genome_build','') == 'hg19':
+            lane['analysis'] = 'Align_standard_seqcap'
+        else:
+            lane['analysis'] = 'Align_standard'
+        for plex in lane.get('multiplex',[]):
+            if plex.get('genome_build','') == 'hg19':
+                plex['analysis'] = 'Align_standard_seqcap'
+            else:
+                plex['analysis'] = 'Align_standard'
+                
+
     # Remove the yaml file, we will write a new one later
     os.remove(yaml_file)
     
@@ -382,20 +382,32 @@ def has_casava_output(fc_dir):
         pass
     return False
 
+def report_to_gdocs(fc_dir, post_process_config_file):
+    # Rename any existing run_info.yaml as it will interfere with gdocs upload
+    run_info = os.path.join(fc_dir, "run_info.yaml")
+    if os.path.exists(run_info):
+        os.rename(run_info, "{}.bak".format(run_info))
+    report.main(os.path.basename(os.path.abspath(fc_dir)), post_process_config_file)
+
 if __name__ == "__main__":
 
-    parser = OptionParser()
-    parser.add_option("-r", "--only-run", dest="only_run", action="store_true", default=False)
-    parser.add_option("-s", "--only-setup", dest="only_setup", action="store_true", default=False)
-    parser.add_option("-i", "--ignore-casava", dest="ignore_casava", action="store_true", default=False)
-    options, args = parser.parse_args()
-    
-    if len(args) < 2:
-        print __doc__
-        sys.exit()
-    
-    run_info_file = None
-    if len(args) > 2:
-        run_info_file = args[2]
+    parser = argparse.ArgumentParser(description="Wrapper script for bcbb pipeline. If given a .yaml configuration file, "\
+                                     "a run folder containing the sequence data from an illumina run and, optionally, "\
+                                     "a custom yaml file with options that should override what is specified in the "\
+                                     "config and samplesheet, the script will copy the relevant files from [store_dir] "\
+                                     "to [base_dir] and submit the automated_initial_analysis.py pipeline script for each "\
+                                     "sample to the cluster platform specified in the configuration.")
+
+    parser.add_argument("config", action="store", default=None, help="Path to the .yaml pipeline configuration file")
+    parser.add_argument("fcdir", action="store", default=None, help="Path to the archive run folder")
+    parser.add_argument("custom_config", action="store", default=None, help="Path to a custom configuration file with lane or sample specific options that will override the main configuration", nargs="?")
+    parser.add_argument("-r", "--only-run", dest="only_run", action="store_true", default=False, help="Don't setup the analysis directory, just start the pipeline")
+    parser.add_argument("-s", "--only-setup", dest="only_setup", action="store_true", default=False, help="Setup the analysis directory but don't start the pipeline")
+    parser.add_argument("-i", "--ignore-casava", dest="ignore_casava", action="store_true", default=False, help="Ignore any Casava 1.8+ file structure and just assume the pre-casava pipeline setup")
+    parser.add_argument("-g", "--no-google-report", dest="no_google_report", action="store_true", default=False, help="Don't upload any demultiplex statistics to Google Docs")
+    args = parser.parse_args()
         
-    main(args[0],args[1],run_info_file,options.only_run,options.only_setup,options.ignore_casava)
+    main(args.config,args.fcdir,args.custom_config,args.only_run,args.only_setup,args.ignore_casava)
+    if not args.no_google_report:
+        report_to_gdocs(args.fcdir, args.config)
+

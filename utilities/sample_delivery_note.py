@@ -35,7 +35,7 @@ paragraphs["UPPNEX project id"] = "{uppnex_project_id}"
 paragraphs["Flow cell id"] = "{FC_id}"
 
 paragraphs["Sequence data directory"] = \
-"/proj/{uppnex_project_id}/INBOX/{project_name}/{start_date}_{FC_id}"
+"/proj/{uppnex_project_id}/INBOX/{project_name}/{scilifelab_name}/{start_date}_{FC_id}"
 
 paragraphs["Sample"] = "{scilifelab_name} / {customer_name}." \
                        "Ordered amount: {ordered_amount} million paired reads."
@@ -85,7 +85,6 @@ def formatted_page(canvas, doc):
     canvas.saveState()
     canvas.drawImage("sll_logo.gif", 2 * cm, defaultPageSize[1] - 2 * cm, 4 * cm, 1.25 * cm)
     canvas.restoreState()
-
 
 def make_note(parameters):
     """Builds a pdf note based on the passed dictionary of parameters.
@@ -146,7 +145,7 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
     # Warning: ugliness ahead! :-)
     # Temp views for FlowcellQCMetrics and ProjectSummary while we wait for permanent ones
     fc_map_fun = '''function(doc) { if (doc.entity_type == "FlowcellQCMetrics") emit(doc, null);}'''                       
-    ps_map_fun = '''function(doc) { if (doc.entity_type == "ProjectSummary") emit(doc, null);}'''                       
+    ps_map_fun = '''function(doc) { if (doc.Entity_type == "ProjectSummary") emit(doc, null);}'''                       
     s_map_fun = '''function(doc) { if (doc.entity_type == "SampleQCMetrics") emit(doc, null);}'''                       
     
     parameters = {}
@@ -157,6 +156,8 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
     found_proj_for_fc = False
     results = qc.query(s_map_fun)
     avail_proj = set()
+    error_rates = {}
+    qvs = {}
     for r in results:
         obj = r['key']
         if obj.has_key('sample_prj'): 
@@ -165,23 +166,34 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                 avail_proj.add(obj['sample_prj'])
             if obj['sample_prj'] == prj and obj['flowcell'] == fc: # We have the correct flow cell and project ID
                 found_proj_for_fc = True
-                
+                print "SampleQCMetrics document ID: ", r['id']
+
+                #if found_fc: print "DEBUG: Found flow cell document"
+                #if found_proj_for_fc: print "DEBUG: Found project"
+
                 try:
                     
                     # Now we fill in the parameters dictionary for generating the report
                     
                     # Project ID
                     parameters['project_name'] = obj['sample_prj']
-                    
-                    # Customer reference
-                    if (opts.customer_ref): parameters['customer_reference'] = opts.customer_ref
+
+                    # Customer reference (can be manually provided by user)
+                    if (opts.customer_ref != "N/A"): 
+                        parameters['customer_reference'] = opts.customer_ref
+                        print "DEBUG: Customer reference taken from command-line"
                     else:
+                        print "DEBUG: Looking for customer reference in ProjectSummary document"
                         customer_ref = "no customer reference given"
-                        if obj['customer_prj']:                  
-                            customer_ref = obj['customer_prj']
-                        parameters['customer_reference'] = customer_ref
- 
+                        results = qc.query(ps_map_fun)
+                        for r in results:
+                            if prj == r['key']['Project_id']:
+                                cust_ref = r['key']['Customer_reference']
+                                parameters['customer_reference'] = cust_ref
+                    print "Customer reference value: ", parameters['customer_reference']
+
                     # Uppnex ID (can be manually provided by user)
+                    #print "Uppmax ID from command line: ", opts.uppnex_id
                     if (opts.uppnex_id): parameters['uppnex_project_id'] = opts.uppnex_id # User provided Uppnex ID
                     else:
                         uppnex = "NA"
@@ -190,39 +202,63 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                             if prj == r['key']['Project_id']:
                                 uppnex = r['key']['Uppnex_id']
                                 parameters['uppnex_project_id'] = uppnex
-                    
+
                     # Start date
                     parameters['start_date'] = obj['date']
 
                     # Ordered amount (can be manually provided by user)
-                    if (opts.ordered_million): parameters['ordered_amount'] = opts.ordered_million
+                    if (opts.ordered_million != "N/A"): 
+                        parameters['ordered_amount'] = opts.ordered_million
                     else:
-                        ordered_amnt = "N.A."
+                        ordered_amnt = "N/A"
                         results = qc.query(ps_map_fun)
                         for r in results:
                             if prj == r['key']['Project_id']:
-                                temp = r['key']['min_M_reads_per_sample_ordered']
-                                if len(temp) > 0 and temp != ' ':
-                                    ordered_amnt = temp
+                                print "ProjectSummary document ID: ", r['id']
+                                temp = r['key']['Min_M_reads_per_sample_ordered']
+                                ordered_million = str(temp)
+                                if len(ordered_million) > 0 and ordered_million != ' ':
+                                    ordered_amnt = ordered_million
                         parameters['ordered_amount'] = ordered_amnt
-                    
+
                     # Flowcell ID
                     parameters['FC_id'] = obj['flowcell']
                     # Scilife sample name
                     parameters['scilifelab_name'] = obj['barcode_name']
+
                     # Customer sample name
                     try:
                         cust_name = "no customer sample name given"
-                        if (obj['customer_sample_name']): cust_name = obj['customer_sample_name']
+                        if (obj['customer_sample_name']): 
+                            cust_name = obj['customer_sample_name']
+                            print " DEBUG --- found customer sample name in SampleQCMetrics: ", cust_name
+                        else:
+                            print " DEBUG --- found no customer sample name corresponding to SciLife ID ", parameters['scilifelab_name'], " in SampleQCMetrics; trying ProjectSummary document ..."
+                            results = qc.query(ps_map_fun)
+                            for r in results: 
+                                if prj == r['key']['Project_id']:
+                                    slist = r['key']['Samples']
+                                    for s in slist.keys():
+                                        without_index = "_".join(parameters['scilifelab_name'].split("_")[0:-1])
+                                        if slist[s].has_key('scilife_name'):
+                                            if slist[s]['scilife_name'] == without_index:
+                                                if slist[s].has_key('customer_name'): 
+                                                    cust_name = slist[s]['customer_name']
+                                                    print "Found customer sample name ", cust_name, " corresponding to ", slist[s]['scilife_name'], " or ", parameters['scilifelab_name']
+                                                else: print "WARNING: Did not find customer sample name corresponding to ", slist[s]['scilife_name']," in ProjectSummary document"
                         parameters['customer_name'] = cust_name
                     except:
                         print "Failed to set customer sample name"
+                    if cust_name == "no customer sample name given": print "WARNING: Could not set customer sample name for ", parameters['scilifelab_name']
                     # (Rounded) amount of read pairs, in millions
                     try:
                         rounded_amnt = round(float(obj['bc_count'])/1000000,1)
                         parameters['rounded_read_count'] = str(rounded_amnt)
                     except:
                         parameters['rounded_read_count'] = 'N/A'
+
+                    print "After customer sample name"
+                    # print "DEBUG: ", parameters
                     # Lane
                     lane = obj['lane']
                     # Average PhiX error rate and QV>30 (latter not implemented yet)
@@ -233,13 +269,22 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                         full_fc_name = r['key']['name']
                         short_fc_name = full_fc_name.split("_")[-1]
                         if short_fc_name == fc:
+                            print "FlowCellQCMetrics ID: ", r['id']
+                            #print "DEBUG: Found FlowCellQCMetrics document corresponding to SampleQCMetrics flowcell (whew)"
                             phix_r1 = float(r['key']['metrics']['illumina']['Summary']['read1'][lane]['ErrRatePhiX'])
                             phix_r2 = float(r['key']['metrics']['illumina']['Summary']['read3'][lane]['ErrRatePhiX'])
                             phix_avg = (phix_r1 + phix_r2)/2
                     parameters['phix_error_rate'] = str(phix_avg)
+                    error_rates[parameters['scilifelab_name']] = parameters['phix_error_rate']
                     # Average QV 
-                    avg_qv = calc_avg_qv(obj['metrics']['fastqc']['stats']['Per sequence quality scores']['Count'])
+                    # print "DEBUG: ", obj['metrics']['fastqc']
+                    avg_qv = "N/A"
+                    try:
+                        avg_qv = calc_avg_qv(obj['metrics']['fastqc']['stats']['Per sequence quality scores']['Count'])
+                    except:
+                        pass
                     parameters['avg_quality_score'] = str(avg_qv)
+                    qvs[parameters['scilifelab_name']] = parameters['avg_quality_score']
                 except:
                     sys.exit("Could not fetch all info from StatusDB")
                 print "Making note for sample ", parameters['scilifelab_name'], " on flowcell ", parameters['FC_id'], " lane ", obj['lane']
@@ -253,10 +298,16 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                         if float(parameters['rounded_read_count']) < float(parameters['ordered_amount']): success_message += "The yield may be lower than expected."
                 except:
                     print "Warning: Could not assess success of run."
-                    print obj['_id']
+                    #print obj['_id']
                     success_message = "Could not assess success or failure of run."
                 parameters['success'] = success_message
                 make_note(parameters)
+
+    print "*** Quality stats ***"
+    print "Scilifelab ID\tPhiXError\tAvgQV"
+    for k in sorted(error_rates.keys()):
+        print k + "\t" + error_rates[k] + "\t" + qvs[k]
+
     if not found_fc:
         print "Could not find specified flow cell!"
         print "Available as FlowcellQCMetrics documents:"
@@ -281,7 +332,7 @@ def main():
 
 Usage:
 
-python sample_delivery_note.py <flow cell ID (e g BC0HYUACXX)> <project ID (e g J.Lindberg_12_01>  
+python sample_delivery_note.py <project ID (e g J.Lindberg_12_01> <flow cell ID (e g BC0HYUACXX)> 
 
 The two first options are mandatory (kind of ... the program will just generate an example note if they are omitted). There are further flags you can use:
 
@@ -296,8 +347,8 @@ The two first options are mandatory (kind of ... the program will just generate 
 
     parser = optparse.OptionParser()
     parser.add_option('-u', '--uppnex', action="store", dest="uppnex_id", default="", help="Manually insert UPPNEX ID into reports")
-    parser.add_option('-o', '--ordered-million-reads', action="store", dest="ordered_million", default="N.A.", help="Manually insert the ordered number of read pairs (in millions) into reports")
-    parser.add_option('-r', '--customer-reference', action="store", dest="customer_ref", default="N.A.", help="Manually insert customer reference (the customer's name for the project) into reports")
+    parser.add_option('-o', '--ordered-million-reads', action="store", dest="ordered_million", default="N/A", help="Manually insert the ordered number of read pairs (in millions) into reports")
+    parser.add_option('-r', '--customer-reference', action="store", dest="customer_ref", default="N/A", help="Manually insert customer reference (the customer's name for the project) into reports")
 
     (opts, args) = parser.parse_args()
 
@@ -306,8 +357,8 @@ The two first options are mandatory (kind of ... the program will just generate 
         print usage
         make_example_note()
     else:
-        fc = sys.argv[1]
-        proj = sys.argv[2]
+        proj = sys.argv[1]
+        fc = sys.argv[2]
 
         if len(fc) > 10:
             fc = fc[-10:]
