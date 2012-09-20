@@ -14,13 +14,16 @@ from types import *
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import Paragraph, SimpleDocTemplate
-# from reportlab.platypus import Image
+#from reportlab.platypus import Image
 # from reportlab.platypus import Spacer
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
  
 from reportlab.rl_config import defaultPageSize
+
+def filter_non_printable(str):
+  return ''.join([c for c in str if ord(c) > 31 or ord(c) == 9])
 
 styles = getSampleStyleSheet()
 p = styles['Normal']
@@ -48,7 +51,7 @@ paragraphs["Information"] = OrderedDict()
 paragraphs["Information"]["Naming conventions"] = \
 "The data is delivered in fastq format using Illumina 1.8 quality scores. " \
 "There will be one file for the forward reads and one file for the reverse " \
-"reads. More information on our naming conventions can be found here."
+"reads. More information on our naming conventions can be found at http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf."
 
 paragraphs["Information"]["Data access at UPPMAX"] = \
 "Data from the sequencing will be uploaded to the UPPNEX (UPPMAX Next " \
@@ -56,7 +59,7 @@ paragraphs["Information"]["Data access at UPPMAX"] = \
 "user can access it. If you have problems to access your data, please contact " \
 "SciLifeLab genomics_support@scilifelab.se. If you have questions regarding " \
 "UPPNEX, please contact support@uppmax.uu.se. Information on how to access your " \
-"data can be found here."
+"data can be found at http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf."
 
 paragraphs["Information"]["Acknowledgement"] = \
 "Please notify us when you publish using data produced at Science For Life " \
@@ -92,7 +95,11 @@ def make_note(parameters):
                 story.append(Paragraph(sub_headline, h4))
                 story.append(Paragraph(sub_paragraph, p))
         else:
-            story.append(Paragraph(paragraph.format(**parameters), p))
+            try:
+                story.append(Paragraph(paragraph.format(**parameters), p))
+            except:
+                print "Failed to make note. Value of parameters: ", parameters
+                sys.exit(0)
         if headline == 'Samples': 
             data = parameters['sample_table']
             t=Table(data,5*[1.25*inch], len(data)*[0.25*inch])
@@ -166,11 +173,13 @@ def make_status_note(prj="", opts=None):
         # Project ID
         parameters['project_name'] = doc['Project_id']
         # Customer reference
-        if (opts.customer_ref): parameters['customer_reference'] = opts.customer_ref
+        if (opts.customer_ref != "N/A"): parameters['customer_reference'] = opts.customer_ref
         else:
             customer_ref = "no customer reference given"
-            if obj['customer_prj']: customer_ref = obj['customer_prj']
-            parameters['customer_reference'] = customer_ref
+            if doc.has_key('Customer_reference'): 
+                if doc['Customer_reference']:customer_ref = doc['Customer_reference']
+            parameters['customer_reference'] = filter_non_printable(customer_ref)
+        
         # Uppnex ID (can be manually provided by user)
         if (opts.uppnex_id): parameters['uppnex_project_id'] = opts.uppnex_id # User provided Uppnex ID
         else: parameters['uppnex_project_id'] = doc['Uppnex_id']
@@ -181,7 +190,8 @@ def make_status_note(prj="", opts=None):
         sample_table.append(['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status'])
         slist = doc['Samples']
         
-        for s in sorted(slist.keys(), cmp=custom_sort):
+        #for s in sorted(slist.keys(), cmp=custom_sort):
+        for s in sorted(slist.keys()):
             row = []
             if slist[s].has_key('scilife_name'): row.append( slist[s]['scilife_name'])
             else: row.append("N/A")
@@ -194,32 +204,61 @@ def make_status_note(prj="", opts=None):
                 for sdoc in sq_metrics:
                     print "DEBUG: SampleQCMetrics doc: ", sdoc
                     res_ = qc[sdoc]
-                    ind_seqs.add(res_['sequence'])
-                row.append(','.join(list(ind_seqs)))
+                    if res_['sequence']:
+                        ind_seqs.add(res_['sequence'])
+                if len(ind_seqs) > 0: 
+                    # print "DEBUG: Barcode(s): ", ind_seqs
+                    row.append(','.join(list(ind_seqs)))
+                else: row.append('N/A')
             else:
-                row.append("N/A")
-            if doc.has_key('min_M_reads_per_sample_ordered'): 
+                row.append('N/A')
+          
+            # Million reads sequenced
+            
+            counts_from_sqcm = -1
+            if slist[s].has_key('M_reads_sequenced'): row.append(slist[s]['M_reads_sequenced'])
+            elif slist[s].has_key('SampleQCMetrics'):
+                counts_from_sqcm = 0
+                sq_metrics = slist[s]['SampleQCMetrics']
+                for sdoc in sq_metrics:
+                    res_ = qc[sdoc]
+                    if res_.has_key('bc_count'):
+                        if res_['bc_count']:
+                            counts_from_sqcm += int(res_['bc_count'])
+                        else:
+                            sys.exit("Could not establish read counts for sample, ", res_['id'])
+                    else:
+                        print "WARNING: No bc_count tag for sample ", slist[s]
+                row.append(str(round(counts_from_sqcm / 1000000,1)))
+            else: row.append('N/A')
+           
+
+            # Million reads ordered
+            if doc.has_key('Min_M_reads_per_sample_ordered'): 
                     try: 
-                        row.append( round(float(doc['min_M_reads_per_sample_ordered']),2))
+                        row.append( round(float(doc['Min_M_reads_per_sample_ordered']),2))
                     except:
                         row.append("N/A")
-            else: row.append("N/A")
-            if slist[s].has_key('M_reads_sequenced'): row.append(slist[s]['M_reads_sequenced'])
-            else: row.append("N/A")
-            status = 'N/A'
+            else: row.append(opts.ordered_million)
+           
+ 
             # Check for status of sample.
             # Test 1: Check if it has a status attribute
-            # Test 2: If not, check if it has an M_reads_sequenced attribute and a min_M_reads_per_sample_ordered attribute and compare those
+            # Test 2: If not, check if it has an M_reads_sequenced attribute and a Min_M_reads_per_sample_ordered attribute and compare those
             # Test 3: If not, check if there is a SampleQCMetrics attribute and go in and sum up all the reads (not implemented yet)
             if slist[s].has_key('status'): 
                 status = slist[s]['status']
-            elif slist[s].has_key('M_reads_sequenced') and doc.has_key('min_M_reads_per_sample_ordered'):
-                    if slist[s]['M_reads_sequenced'] >= doc['min_M_reads_per_sample_ordered']: status = "P"
+            elif slist[s].has_key('M_reads_sequenced') and doc.has_key('Min_M_reads_per_sample_ordered'):
+                    if slist[s]['M_reads_sequenced'] >= doc['Min_M_reads_per_sample_ordered']: status = "P"
                     else: status = "NP"
             else:
-                pass
-                #print "Couldn't determine status of sample ", s
-            if status != "P": all_passed = False
+                if doc.has_key('min_M_reads_per_sample_ordered'):
+                    if counts_from_sqcm >= 1000000 * doc['Min_M_reads_per_sample_ordered']: status = "P"
+                elif opts.ordered_million.isdigit():
+                    if counts_from_sqcm >= 1000000 * int(opts.ordered_million): status = "P"
+                else: status = "N/A"
+
+            if status == "NP": all_passed = False
             row.append(status)
             sample_table.append(row)
     except: 
@@ -253,8 +292,8 @@ The first option is mandatory. There are further flags you can use:
 
     parser = optparse.OptionParser()
     parser.add_option('-u', '--uppnex', action="store", dest="uppnex_id", default="", help="Manually insert UPPNEX ID into reports")
-    parser.add_option('-o', '--ordered-million-reads', action="store", dest="ordered_million", default="N.A.", help="Manually insert the ordered number of read pairs (in millions) into reports")
-    parser.add_option('-r', '--customer-reference', action="store", dest="customer_ref", default="N.A.", help="Manually insert customer reference (the customer's name for the project) into reports")
+    parser.add_option('-o', '--ordered-million-reads', action="store", dest="ordered_million", default="N/A", help="Manually insert the ordered number of read pairs (in millions) into reports")
+    parser.add_option('-r', '--customer-reference', action="store", dest="customer_ref", default="N/A", help="Manually insert customer reference (the customer's name for the project) into reports")
 
     (opts, args) = parser.parse_args()
 

@@ -35,7 +35,7 @@ paragraphs["UPPNEX project id"] = "{uppnex_project_id}"
 paragraphs["Flow cell id"] = "{FC_id}"
 
 paragraphs["Sequence data directory"] = \
-"/proj/{uppnex_project_id}/INBOX/{project_name}/{start_date}_{FC_id}"
+"/proj/{uppnex_project_id}/INBOX/{project_name}/{scilifelab_name}/{start_date}_{FC_id}"
 
 paragraphs["Sample"] = "{scilifelab_name} / {customer_name}." \
                        "Ordered amount: {ordered_amount} million paired reads."
@@ -105,7 +105,7 @@ def make_note(parameters):
         else:
             story.append(Paragraph(paragraph.format(**parameters), p))
 
-    doc = SimpleDocTemplate("{scilifelab_name}_note.pdf".format(**parameters))
+    doc = SimpleDocTemplate("{scilifelab_name}_note_{FC_id}.pdf".format(**parameters))
     doc.build(story, onFirstPage=formatted_page, onLaterPages=formatted_page)
 
 def calc_avg_qv(counts):
@@ -142,147 +142,192 @@ def make_example_note():
     make_note(parameters)
 
 def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
-    # Warning: ugliness ahead! :-)
-    # Temp views for FlowcellQCMetrics and ProjectSummary while we wait for permanent ones
-    fc_map_fun = '''function(doc) { if (doc.entity_type == "FlowcellQCMetrics") emit(doc, null);}'''                       
-    ps_map_fun = '''function(doc) { if (doc.entity_type == "ProjectSummary") emit(doc, null);}'''                       
-    s_map_fun = '''function(doc) { if (doc.entity_type == "SampleQCMetrics") emit(doc, null);}'''                       
     
     parameters = {}
     phix_err_cutoff = 2.0
     couch = couchdb.Server("http://maggie.scilifelab.se:5984")
     qc = couch['qc']
+
     found_fc = False
     found_proj_for_fc = False
-    results = qc.query(s_map_fun)
-    avail_proj = set()
-    for r in results:
-        obj = r['key']
-        if obj.has_key('sample_prj'): 
-            if obj['flowcell'] == fc: 
-                found_fc = True
-                avail_proj.add(obj['sample_prj'])
-            if obj['sample_prj'] == prj and obj['flowcell'] == fc: # We have the correct flow cell and project ID
-                found_proj_for_fc = True
-                
-                try:
-                    
-                    # Now we fill in the parameters dictionary for generating the report
-                    
-                    # Project ID
-                    parameters['project_name'] = obj['sample_prj']
-                    
-                    # Customer reference
-                    if (opts.customer_ref): parameters['customer_reference'] = opts.customer_ref
-                    else:
-                        customer_ref = "no customer reference given"
-                        if obj['customer_prj']:                  
-                            customer_ref = obj['customer_prj']
-                        parameters['customer_reference'] = customer_ref
- 
-                    # Uppnex ID (can be manually provided by user)
-                    if (opts.uppnex_id): parameters['uppnex_project_id'] = opts.uppnex_id # User provided Uppnex ID
-                    else:
-                        uppnex = "NA"
-                        results = qc.query(ps_map_fun)
-                        for r in results:
-                            if prj == r['key']['Project_id']:
-                                uppnex = r['key']['Uppnex_id']
-                                parameters['uppnex_project_id'] = uppnex
-                    
-                    # Start date
-                    parameters['start_date'] = obj['date']
+    fc_doc = None
+    prj_doc = None
 
-                    # Ordered amount (can be manually provided by user)
-                    if (opts.ordered_million): parameters['ordered_amount'] = opts.ordered_million
-                    else:
-                        ordered_amnt = "N.A."
-                        results = qc.query(ps_map_fun)
-                        for r in results:
-                            if prj == r['key']['Project_id']:
-                                temp = r['key']['min_M_reads_per_sample_ordered']
-                                if len(temp) > 0 and temp != ' ':
-                                    ordered_amnt = temp
-                        parameters['ordered_amount'] = ordered_amnt
+    # Identify the correct flow cell.
+    for res in qc.view("_design/entitytypes/_view/FlowcellQCMetrics"):
+        doc = qc[res.id]
+        full_fc_name = doc['name']
+        short_fc_name = full_fc_name.split("_")[-1]
+        if short_fc_name == fc: 
+            found_fc = True
+            fc_doc = doc
+
+    # Identify the correct ProjectSummary document. We will need this for a lot of things.
+    for res in qc.view("_design/entitytypes/_view/ProjectSummary"):
+        doc = qc[res.id]
+        if doc['Project_id'] == prj:
+            found_proj_for_fc = True
+            prj_doc = doc
+
+    avail_proj = set()
+    error_rates = {}
+    qvs = {}
+
+    try:
                     
-                    # Flowcell ID
-                    parameters['FC_id'] = obj['flowcell']
-                    # Scilife sample name
-                    parameters['scilifelab_name'] = obj['barcode_name']
-                    # Customer sample name
-                    try:
-                        cust_name = "no customer sample name given"
-                        if (obj['customer_sample_name']): cust_name = obj['customer_sample_name']
-                        parameters['customer_name'] = cust_name
-                    except:
-                        print "Failed to set customer sample name"
-                    # (Rounded) amount of read pairs, in millions
-                    try:
-                        rounded_amnt = round(float(obj['bc_count'])/1000000,1)
-                        parameters['rounded_read_count'] = str(rounded_amnt)
-                    except:
-                        parameters['rounded_read_count'] = 'N/A'
-                    # Barcode sequence
-                    print "DEBUG: Barcode sequence: ", obj['barcode']    
-                    # Lane
-                    lane = obj['lane']
-                    # Average PhiX error rate and QV>30 (latter not implemented yet)
-                    phix_avg = 'N/A'
-                    qv_30_avg = 'N/A'
-                    results = qc.query(fc_map_fun)
-                    for r in results:
-                        full_fc_name = r['key']['name']
-                        short_fc_name = full_fc_name.split("_")[-1]
-                        if short_fc_name == fc:
-                            phix_r1 = float(r['key']['metrics']['illumina']['Summary']['read1'][lane]['ErrRatePhiX'])
-                            phix_r2 = float(r['key']['metrics']['illumina']['Summary']['read3'][lane]['ErrRatePhiX'])
-                            phix_avg = (phix_r1 + phix_r2)/2
-                    parameters['phix_error_rate'] = str(phix_avg)
-                    # Average QV 
-                    avg_qv = calc_avg_qv(obj['metrics']['fastqc']['stats']['Per sequence quality scores']['Count'])
-                    parameters['avg_quality_score'] = str(avg_qv)
-                except:
-                    sys.exit("Could not fetch all info from StatusDB")
-                print "Making note for sample ", parameters['scilifelab_name'], " on flowcell ", parameters['FC_id'], " lane ", obj['lane']
-                # Successful run?
-                success_message = ''
-                try:
-                    if float(parameters['phix_error_rate']) < phix_err_cutoff and float(parameters['rounded_read_count']) > float(parameters['ordered_amount']):
-                        success_message += "Successful run."
-                    else:
-                        if float(parameters['phix_error_rate']) > phix_err_cutoff: success_message += "High average error rate."
-                        if float(parameters['rounded_read_count']) < float(parameters['ordered_amount']): success_message += "The yield may be lower than expected."
-                except:
-                    print "Warning: Could not assess success of run."
-                    print obj['_id']
-                    success_message = "Could not assess success or failure of run."
-                parameters['success'] = success_message
-                make_note(parameters)
-    if not found_fc:
-        print "Could not find specified flow cell!"
-        print "Available as FlowcellQCMetrics documents:"
-        res = qc.query(fc_map_fun)
-        fcqm = []
-        for r in res:
-            fcqm.append( r['key']['name'])
-        if len(fcqm) != len(set(fcqm)): print "(Warning: possible duplicates)"
-        for f in sorted(fcqm): print f
-        print "Available as fields in SampleQCMetrics documents:"
-        res = qc.query(s_map_fun)
-        sqm = set()
-        for r in res:
-            sqm.add(r['key']['flowcell'])
-        for f in sorted(sqm): print f
-    elif not found_proj_for_fc:    
-        print "Could not find specified project in this flow cell. Available projects for flow cell:"
-        for i in avail_proj: print i
+        # Now we fill in the parameters dictionary for generating the report
+
+        # Project ID
+        assert(prj_doc['Project_id'] == prj)
+        parameters['project_name'] = prj_doc['Project_id']
+
+        # Customer reference (can be manually provided by user; if not, its value is "N/A")
+        if (opts.customer_ref != "N/A"): 
+            parameters['customer_reference'] = opts.customer_ref
+            print "DEBUG: Customer reference taken from command-line"
+        else:
+            print "DEBUG: Looking for customer reference in ProjectSummary document"
+            try:
+                customer_ref = prj_doc['Customer_reference']
+            except:
+                print "WARNING: Could not obtain customer reference from ProjectSummary ", prj_doc['_id']
+            if len(customer_ref) > 1: 
+                parameters['customer_reference'] = customer_ref
+            else: 
+                parameters['customer_reference'] = "No customer reference given"
+                print "WARNING: Possible malformed/empty customer reference in ProjectSummary ", prj_doc['_id']
+
+        # Uppnex ID (can be manually provided by user)
+        if (opts.uppnex_id != "N/A"): 
+            parameters['uppnex_project_id'] = opts.uppnex_id # User provided Uppnex ID
+        else:
+            print "DEBUG: Looking for UPPNEX reference in ProjectSummary document"
+            try:
+                customer_ref = prj_doc['Uppnex_id']
+            except:
+                print "WARNING: Could not obtain UPPNEX ID from ProjectSummary ", prj_doc['_id']
+            if len(customer_ref) > 1: 
+                parameters['uppnex_project_id'] = customer_ref
+            else: 
+                parameters['uppnex_project_id'] = "N/A"
+                print "WARNING: Possible malformed/empty UPPNEX project ID in ProjectSummary ", prj_doc['_id']
+
+        # Ordered amount (can be manually provided by user)
+        if (opts.ordered_million != "N/A"): 
+            parameters['ordered_amount'] = opts.ordered_million
+        else:
+            try: 
+                temp = prj_doc['Min_M_reads_per_sample_ordered']
+                ordered_million = str(temp)
+            except:
+                print "WARNING: Could not obtain M ordered reads from ProjectSummary ", prj_doc['_id']
+            if len(ordered_million) > 0 and ordered_million != ' ':
+                ordered_amnt = str(round(float(ordered_million),1))
+            else: ordered_amnt = "N/A"    
+            parameters['ordered_amount'] = ordered_amnt
+
+        # Flowcell ID
+        parameters['FC_id'] = fc # Taken from the command line.
+
+        # Now descend into sample list from ProjectSummary and try to figure out which to include!
+        slist = prj_doc['Samples']
+        sufficient_yield = True
+        for s in sorted(slist.keys()):
+            if slist[s].has_key('SampleQCMetrics'): 
+                # Check if there are SampleQCMetrics for the appropriate flow cell
+                samp_metrics_entries = slist[s]['SampleQCMetrics']
+                for entry in samp_metrics_entries:
+                    if qc[entry]['flowcell'] == fc:
+                        # Now we have the sample, flowcell and project ... start filling in specific stuff
+                        parameters['success'] = "Successful run. "
+                        # SciLife name
+                        if slist[s].has_key('scilife_name'): parameters['scilifelab_name'] = slist[s]['scilife_name']
+                        else: 
+                            print "WARNING: Could not get SciLife name for sample ", s
+                            parameters['scilifelab_name'] = "N/A"
+                        # Customer name
+                        if slist[s].has_key('customer_name'): parameters['customer_name'] = slist[s]['customer_name']
+                        else: 
+                            print "WARNING: Could not get customer name for sample ", s
+                            parameters['customer_name'] = "N/A"
+                        # Rounded read count
+                        if qc[entry].has_key('bc_count'): 
+                            raw = qc[entry]['bc_count']
+                            rounded = str(round(float(raw)/1000000,1))
+                            parameters['rounded_read_count'] = rounded
+                        else:
+                            print "WARNING: Could not get rounded read count for sample"
+                            parameters['rounded_read_count'] = 'N/A'
+                        # Sufficient yield?
+                        try: 
+                            dummy = float(parameters['ordered_amount'])
+                            if float(parameters['rounded_read_count']) < float(parameters['ordered_amount']): sufficient_yield = False
+                        except:
+                             sufficient_yield = False
+                        if not sufficient_yield: parameters['success'] = 'The yield may not be sufficient. '
+                        # Start date
+                        if qc[entry].has_key('date'): parameters['start_date'] = qc[entry]['date']
+                        # PhiX error rate
+                        if qc[entry].has_key('lane'):
+                            lane = qc[entry]['lane']
+                            try:
+                                lane_metrics = fc_doc['metrics']['illumina']['Summary']
+                                phix_err = 0.5 * ( float(lane_metrics['read1'][lane]['ErrRatePhiX']) + float(float(lane_metrics['read2'][lane]['ErrRatePhiX'])))
+                                parameters['phix_error_rate'] = str(phix_err)
+                                if phix_err > phix_err_cutoff:
+                                    print "WARNING: High error rate. "
+                                    parameters['success'] += 'Average PhiX error rate above 2.0%.'
+                            except:
+                                print "WARNING: Could not obtain lane metrics from FlowcellQCMetrics document ", fc_doc
+                        else:
+                            print "WARNING: Could not find lane for sample ", s
+                        error_rates[s] =str( phix_err)
+ 
+                        # Average quality score
+                        try:
+                            qv_counts = qc[entry]['metrics']['fastqc']['stats']['Per sequence quality scores']['Count']
+                            parameters['avg_quality_score'] = calc_avg_qv(qv_counts)
+                        except:
+                            print "WARNING: Could not get FastQC quality scores from ", entry
+                            parameters['avg_quality_score'] = "N/A"
+                        qvs[s] = str(parameters['avg_quality_score'])
+
+#                        print parameters
+                        make_note(parameters)
+    except:
+        print "Could not fetch all info from StatusDB"
+        sys.exit(0)
+
+    print "*** Quality stats ***"
+    print "Scilifelab ID\tPhiXError\tAvgQV"
+    for k in sorted(error_rates.keys()):
+        print k + "\t" + error_rates[k] + "\t" + qvs[k]
+
+        if not found_fc:
+            print "Could not find specified flow cell!"
+            print "Available as FlowcellQCMetrics documents:"
+            res = qc.query(fc_map_fun)
+            fcqm = []
+            for r in res:
+                fcqm.append( r['key']['name'])
+                if len(fcqm) != len(set(fcqm)): print "(Warning: possible duplicates)"
+                for f in sorted(fcqm): print f
+                print "Available as fields in SampleQCMetrics documents:"
+            res = qc.query(s_map_fun)
+            sqm = set()
+            for r in res:
+                sqm.add(r['key']['flowcell'])
+            for f in sorted(sqm): print f
+        elif not found_proj_for_fc:    
+            print "Could not find specified project in this flow cell. Available projects for flow cell:"
+            for i in avail_proj: print i
             
 def main():
     usage = """ Generate sample-centered delivery notes for a specific run, in a specific project, based on information in StatusDB. 
 
 Usage:
 
-python sample_delivery_note.py <flow cell ID (e g BC0HYUACXX)> <project ID (e g J.Lindberg_12_01>  
+python sample_delivery_note.py <project ID (e g J.Lindberg_12_01> <flow cell ID (e g BC0HYUACXX)> 
 
 The two first options are mandatory (kind of ... the program will just generate an example note if they are omitted). There are further flags you can use:
 
@@ -296,9 +341,9 @@ The two first options are mandatory (kind of ... the program will just generate 
         sys.exit(0)
 
     parser = optparse.OptionParser()
-    parser.add_option('-u', '--uppnex', action="store", dest="uppnex_id", default="", help="Manually insert UPPNEX ID into reports")
-    parser.add_option('-o', '--ordered-million-reads', action="store", dest="ordered_million", default="N.A.", help="Manually insert the ordered number of read pairs (in millions) into reports")
-    parser.add_option('-r', '--customer-reference', action="store", dest="customer_ref", default="N.A.", help="Manually insert customer reference (the customer's name for the project) into reports")
+    parser.add_option('-u', '--uppnex', action="store", dest="uppnex_id", default="N/A", help="Manually insert UPPNEX ID into reports")
+    parser.add_option('-o', '--ordered-million-reads', action="store", dest="ordered_million", default="N/A", help="Manually insert the ordered number of read pairs (in millions) into reports")
+    parser.add_option('-r', '--customer-reference', action="store", dest="customer_ref", default="N/A", help="Manually insert customer reference (the customer's name for the project) into reports")
 
     (opts, args) = parser.parse_args()
 
@@ -307,8 +352,8 @@ The two first options are mandatory (kind of ... the program will just generate 
         print usage
         make_example_note()
     else:
-        fc = sys.argv[1]
-        proj = sys.argv[2]
+        proj = sys.argv[1]
+        fc = sys.argv[2]
 
         if len(fc) > 10:
             fc = fc[-10:]
