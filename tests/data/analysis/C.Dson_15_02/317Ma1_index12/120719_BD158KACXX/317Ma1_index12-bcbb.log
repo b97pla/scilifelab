@@ -1,0 +1,2052 @@
+[2012-09-06 01:26:49,733] bcbb pipeline is running with software versions: {'maq': '0.7.1', 'bcbb': 'a41dd1b', 'pdflatex': '3.141592-1.40.3-2.2 (Web2C 7.5.6)', 'bowtie': '0.12.7', 'picard': '1.64', 'barcode': '0.3a', 'samtools': '0.1.12-10', 'ucsc_bigwig': '4', 'bwa': '0.5.9-r16', 'ps2pdf': 'N/A', 'fastqc': '0.7.2', 'gatk': '1.5-11-g5c5d8e7'}
+[2012-09-06 01:26:49,816] Found YAML samplesheet, using 317Ma1_index12-bcbb-config.yaml instead of Galaxy API
+[DEBUG/MainProcess] created semlock with handle 47475386867712
+[DEBUG/MainProcess] created semlock with handle 47475386871808
+[DEBUG/MainProcess] created semlock with handle 47475386875904
+[DEBUG/MainProcess] created semlock with handle 47475386880000
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-1] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-2] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-3] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-4] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-5] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-6] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-7] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-8] child process calling self.run()
+[DEBUG/MainProcess] doing set_length()
+[2012-09-06 01:26:52,440] Demultiplexing 5_120719_BD158KACXX
+[2012-09-06 01:26:55,999] Demultiplexing 3_120719_BD158KACXX
+[2012-09-06 01:26:56,091] Demultiplexing 4_120719_BD158KACXX
+[2012-09-06 01:26:56,223] Demultiplexing 2_120719_BD158KACXX
+[DEBUG/PoolWorker-2] worker exiting after 1 tasks
+[INFO/PoolWorker-2] process shutting down
+[DEBUG/PoolWorker-2] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-2] running the remaining "atexit" finalizers
+[INFO/PoolWorker-2] process exiting with exitcode 0
+[DEBUG/PoolWorker-4] worker exiting after 1 tasks
+[INFO/PoolWorker-4] process shutting down
+[DEBUG/PoolWorker-4] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-4] running the remaining "atexit" finalizers
+[INFO/PoolWorker-4] process exiting with exitcode 0
+[DEBUG/PoolWorker-3] worker exiting after 1 tasks
+[INFO/PoolWorker-3] process shutting down
+[DEBUG/PoolWorker-3] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-3] running the remaining "atexit" finalizers
+[INFO/PoolWorker-3] process exiting with exitcode 0
+[DEBUG/MainProcess] cleaning up worker 3
+[DEBUG/MainProcess] cleaning up worker 2
+[DEBUG/MainProcess] cleaning up worker 1
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-9] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-10] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-11] child process calling self.run()
+[DEBUG/PoolWorker-1] worker exiting after 1 tasks
+[INFO/PoolWorker-1] process shutting down
+[DEBUG/PoolWorker-1] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-1] running the remaining "atexit" finalizers
+[INFO/PoolWorker-1] process exiting with exitcode 0
+[DEBUG/MainProcess] terminating pool
+[SUBDEBUG/MainProcess] finalizer calling <bound method type._terminate_pool of <class 'multiprocessing.pool.Pool'>> with args (<Queue.Queue instance at 0x37e7128>, <multiprocessing.queues.SimpleQueue object at 0x37d1190>, <multiprocessing.queues.SimpleQueue object at 0x37dbc10>, [<Process(PoolWorker-1, stopped daemon)>, <Process(PoolWorker-5, started daemon)>, <Process(PoolWorker-6, started daemon)>, <Process(PoolWorker-7, started daemon)>, <Process(PoolWorker-8, started daemon)>, <Process(PoolWorker-9, started daemon)>, <Process(PoolWorker-10, started daemon)>, <Process(PoolWorker-11, started daemon)>], <Thread(Thread-1, started daemon 47475388983040)>, <Thread(Thread-2, started daemon 47475391084288)>, <Thread(Thread-3, started daemon 47475563955968)>, {}) and kwargs {}
+[DEBUG/MainProcess] finalizing pool
+[DEBUG/MainProcess] helping task handler/workers to finish
+[DEBUG/MainProcess] removing tasks from inqueue until task handler finished
+[DEBUG/MainProcess] task handler got sentinel
+[DEBUG/MainProcess] task handler sending sentinel to result handler
+[DEBUG/MainProcess] task handler sending sentinel to workers
+[DEBUG/MainProcess] result handler got sentinel
+[DEBUG/PoolWorker-5] worker got sentinel -- exiting
+[DEBUG/MainProcess] task handler exiting
+[DEBUG/PoolWorker-5] worker exiting after 0 tasks
+[DEBUG/PoolWorker-6] worker got sentinel -- exiting
+[DEBUG/PoolWorker-7] worker got sentinel -- exiting
+[INFO/PoolWorker-5] process shutting down
+[DEBUG/PoolWorker-6] worker exiting after 0 tasks
+[DEBUG/PoolWorker-5] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-8] worker got sentinel -- exiting
+[DEBUG/PoolWorker-7] worker exiting after 0 tasks
+[INFO/PoolWorker-6] process shutting down
+[DEBUG/MainProcess] ensuring that outqueue is not full
+[DEBUG/PoolWorker-9] worker got sentinel -- exiting
+[INFO/PoolWorker-7] process shutting down
+[DEBUG/PoolWorker-6] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-8] worker exiting after 0 tasks
+[DEBUG/PoolWorker-5] running the remaining "atexit" finalizers
+[DEBUG/MainProcess] result handler exiting: len(cache)=0, thread._state=0
+[DEBUG/PoolWorker-10] worker got sentinel -- exiting
+[DEBUG/PoolWorker-7] running all "atexit" finalizers with priority >= 0
+[INFO/PoolWorker-8] process shutting down
+[DEBUG/PoolWorker-9] worker exiting after 0 tasks
+[INFO/PoolWorker-5] process exiting with exitcode 0
+[DEBUG/PoolWorker-6] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-8] running all "atexit" finalizers with priority >= 0
+[INFO/PoolWorker-9] process shutting down
+[DEBUG/PoolWorker-10] worker exiting after 0 tasks
+[DEBUG/PoolWorker-7] running the remaining "atexit" finalizers
+[INFO/PoolWorker-6] process exiting with exitcode 0
+[DEBUG/PoolWorker-9] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-8] running the remaining "atexit" finalizers
+[INFO/PoolWorker-10] process shutting down
+[DEBUG/PoolWorker-11] worker got sentinel -- exiting
+[INFO/PoolWorker-7] process exiting with exitcode 0
+[INFO/PoolWorker-8] process exiting with exitcode 0
+[DEBUG/PoolWorker-10] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-9] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-11] worker exiting after 0 tasks
+[INFO/PoolWorker-9] process exiting with exitcode 0
+[DEBUG/PoolWorker-10] running the remaining "atexit" finalizers
+[INFO/PoolWorker-11] process shutting down
+[DEBUG/PoolWorker-11] running all "atexit" finalizers with priority >= 0
+[INFO/PoolWorker-10] process exiting with exitcode 0
+[DEBUG/PoolWorker-11] running the remaining "atexit" finalizers
+[INFO/PoolWorker-11] process exiting with exitcode 0
+[DEBUG/MainProcess] terminating workers
+[DEBUG/MainProcess] joining task handler
+[DEBUG/MainProcess] joining result handler
+[DEBUG/MainProcess] joining pool workers
+[DEBUG/MainProcess] created semlock with handle 47475563958272
+[DEBUG/MainProcess] created semlock with handle 47475563962368
+[DEBUG/MainProcess] worker handler exiting
+[DEBUG/MainProcess] created semlock with handle 47475563966464
+[DEBUG/MainProcess] created semlock with handle 47475563970560
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-12] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-13] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-14] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-15] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-16] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-17] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-18] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-19] child process calling self.run()
+[DEBUG/MainProcess] doing set_length()
+[2012-09-06 01:26:56,510] Removing phix contaminants on C.Dson_15_02_317Ma1_index12, using bowtie
+[2012-09-06 01:26:56,510] Removing phix contaminants on C.Dson_15_02_317Ma1_index12, using bowtie
+[2012-09-06 01:26:56,510] Removing phix contaminants on C.Dson_15_02_317Ma1_index12, using bowtie
+[2012-09-06 01:26:56,510] Removing phix contaminants on C.Dson_15_02_317Ma1_index12, using bowtie
+[2012-09-06 01:26:56,510] Removing phix contaminants on C.Dson_15_02_317Ma1_index12, using bowtie
+[DEBUG/PoolWorker-13] worker exiting after 1 tasks
+[INFO/PoolWorker-13] process shutting down
+[DEBUG/PoolWorker-13] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-13] running the remaining "atexit" finalizers
+[INFO/PoolWorker-13] process exiting with exitcode 0
+# reads processed: 80041
+# reads with at least one reported alignment: 35 (0.04%)
+# reads that failed to align: 80006 (99.96%)
+Reported 35 paired-end alignments to 1 output stream(s)
+
+[DEBUG/MainProcess] cleaning up worker 1
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-20] child process calling self.run()
+[DEBUG/PoolWorker-14] worker exiting after 1 tasks
+[INFO/PoolWorker-14] process shutting down
+[DEBUG/PoolWorker-14] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-14] running the remaining "atexit" finalizers
+[INFO/PoolWorker-14] process exiting with exitcode 0
+# reads processed: 114057
+# reads with at least one reported alignment: 88 (0.08%)
+# reads that failed to align: 113969 (99.92%)
+Reported 88 paired-end alignments to 1 output stream(s)
+
+[DEBUG/MainProcess] cleaning up worker 1
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-21] child process calling self.run()
+[DEBUG/PoolWorker-16] worker exiting after 1 tasks
+[INFO/PoolWorker-16] process shutting down
+[DEBUG/PoolWorker-16] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-16] running the remaining "atexit" finalizers
+[INFO/PoolWorker-16] process exiting with exitcode 0
+# reads processed: 233450
+# reads with at least one reported alignment: 163 (0.07%)
+# reads that failed to align: 233287 (99.93%)
+Reported 163 paired-end alignments to 1 output stream(s)
+
+[DEBUG/MainProcess] cleaning up worker 2
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-22] child process calling self.run()
+[DEBUG/PoolWorker-15] worker exiting after 1 tasks
+[INFO/PoolWorker-15] process shutting down
+[DEBUG/PoolWorker-15] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-15] running the remaining "atexit" finalizers
+[INFO/PoolWorker-15] process exiting with exitcode 0
+# reads processed: 224049
+# reads with at least one reported alignment: 151 (0.07%)
+# reads that failed to align: 223898 (99.93%)
+Reported 151 paired-end alignments to 1 output stream(s)
+
+[DEBUG/PoolWorker-12] worker exiting after 1 tasks
+[INFO/PoolWorker-12] process shutting down
+[DEBUG/PoolWorker-12] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-12] running the remaining "atexit" finalizers
+[INFO/PoolWorker-12] process exiting with exitcode 0
+# reads processed: 222343
+# reads with at least one reported alignment: 165 (0.07%)
+# reads that failed to align: 222178 (99.93%)
+Reported 165 paired-end alignments to 1 output stream(s)
+
+[DEBUG/MainProcess] terminating pool
+[SUBDEBUG/MainProcess] finalizer calling <bound method type._terminate_pool of <class 'multiprocessing.pool.Pool'>> with args (<Queue.Queue instance at 0x37e7128>, <multiprocessing.queues.SimpleQueue object at 0x37e6fd0>, <multiprocessing.queues.SimpleQueue object at 0x37f2510>, [<Process(PoolWorker-12, started daemon)>, <Process(PoolWorker-15, stopped daemon)>, <Process(PoolWorker-17, started daemon)>, <Process(PoolWorker-18, started daemon)>, <Process(PoolWorker-19, started daemon)>, <Process(PoolWorker-20, started daemon)>, <Process(PoolWorker-21, started daemon)>, <Process(PoolWorker-22, started daemon)>], <Thread(Thread-4, started daemon 47475388983040)>, <Thread(Thread-5, started daemon 47475563955968)>, <Thread(Thread-6, started daemon 47475391084288)>, {}) and kwargs {}
+[DEBUG/MainProcess] finalizing pool
+[DEBUG/MainProcess] helping task handler/workers to finish
+[DEBUG/MainProcess] removing tasks from inqueue until task handler finished
+[DEBUG/MainProcess] task handler got sentinel
+[DEBUG/MainProcess] task handler sending sentinel to result handler
+[DEBUG/MainProcess] task handler sending sentinel to workers
+[DEBUG/MainProcess] task handler exiting
+[DEBUG/PoolWorker-17] worker got sentinel -- exiting
+[DEBUG/PoolWorker-18] worker got sentinel -- exiting
+[DEBUG/PoolWorker-17] worker exiting after 0 tasks
+[DEBUG/PoolWorker-19] worker got sentinel -- exiting
+[DEBUG/PoolWorker-18] worker exiting after 0 tasks
+[INFO/PoolWorker-17] process shutting down
+[DEBUG/PoolWorker-20] worker got sentinel -- exiting
+[INFO/PoolWorker-18] process shutting down
+[DEBUG/PoolWorker-19] worker exiting after 0 tasks
+[DEBUG/PoolWorker-17] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-21] worker got sentinel -- exiting
+[DEBUG/PoolWorker-20] worker exiting after 0 tasks
+[DEBUG/PoolWorker-18] running all "atexit" finalizers with priority >= 0
+[INFO/PoolWorker-19] process shutting down
+[DEBUG/PoolWorker-22] worker got sentinel -- exiting
+[DEBUG/PoolWorker-17] running the remaining "atexit" finalizers
+[INFO/PoolWorker-20] process shutting down
+[DEBUG/PoolWorker-21] worker exiting after 0 tasks
+[DEBUG/PoolWorker-19] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-18] running the remaining "atexit" finalizers
+[INFO/PoolWorker-17] process exiting with exitcode 0
+[DEBUG/PoolWorker-22] worker exiting after 0 tasks
+[DEBUG/PoolWorker-20] running all "atexit" finalizers with priority >= 0
+[DEBUG/MainProcess] terminating workers
+[INFO/PoolWorker-21] process shutting down
+[INFO/PoolWorker-18] process exiting with exitcode 0
+[DEBUG/PoolWorker-19] running the remaining "atexit" finalizers
+[INFO/PoolWorker-22] process shutting down
+[DEBUG/MainProcess] joining task handler
+[DEBUG/MainProcess] joining result handler
+[DEBUG/MainProcess] result handler found thread._state=TERMINATE
+[DEBUG/MainProcess] ensuring that outqueue is not full
+[DEBUG/MainProcess] result handler exiting: len(cache)=0, thread._state=2
+[DEBUG/MainProcess] joining pool workers
+[DEBUG/MainProcess] created semlock with handle 47475386867712
+[DEBUG/MainProcess] created semlock with handle 47475386871808
+[DEBUG/MainProcess] created semlock with handle 47475386875904
+[DEBUG/MainProcess] created semlock with handle 47475386880000
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-23] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-24] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-25] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-26] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-27] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-28] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[DEBUG/MainProcess] worker handler exiting
+[INFO/PoolWorker-29] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[DEBUG/MainProcess] doing set_length()
+[2012-09-06 01:27:14,952] Aligning lane 5_120719_BD158KACXX_2_nophix with bwa aligner
+[2012-09-06 01:27:14,952] Aligning lane 5_120719_BD158KACXX_1_nophix with bwa aligner
+[2012-09-06 01:27:14,952] Aligning lane 2_120719_BD158KACXX_1_nophix with bwa aligner
+[2012-09-06 01:27:14,953] Aligning lane 3_120719_BD158KACXX_1_nophix with bwa aligner
+[2012-09-06 01:27:14,953] Aligning lane 4_120719_BD158KACXX_1_nophix with bwa aligner
+[2012-09-06 01:27:15,021] bwa aln -n 2 -k 2 -t 8 /bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/bwa/hg19.fa /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_2_nophix_1_fastq.txt
+[2012-09-06 01:27:15,041] bwa aln -n 2 -k 2 -t 8 /bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/bwa/hg19.fa /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_1_nophix_1_fastq.txt
+[2012-09-06 01:27:15,068] bwa aln -n 2 -k 2 -t 8 /bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/bwa/hg19.fa /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/2_120719_BD158KACXX_1_nophix_1_fastq.txt
+[2012-09-06 01:27:15,082] bwa aln -n 2 -k 2 -t 8 /bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/bwa/hg19.fa /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/3_120719_BD158KACXX_1_nophix_1_fastq.txt
+[2012-09-06 01:27:15,108] bwa aln -n 2 -k 2 -t 8 /bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/bwa/hg19.fa /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/4_120719_BD158KACXX_1_nophix_1_fastq.txt
+[bwa_aln_core] calculate SA coordinate... [bwa_aln_core] calculate SA coordinate... [bwa_aln_core] calculate SA coordinate... 16.08 sec
+[bwa_aln_core] write to the disk... 0.02 sec
+[bwa_aln_core] 113969 sequences have been processed.
+11.22 sec
+[bwa_aln_core] write to the disk... [2012-09-06 01:27:22,441] bwa aln -n 2 -k 2 -t 8 /bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/bwa/hg19.fa /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_2_nophix_2_fastq.txt
+0.00 sec
+[bwa_aln_core] 80006 sequences have been processed.
+[2012-09-06 01:27:22,644] bwa aln -n 2 -k 2 -t 8 /bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/bwa/hg19.fa /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_1_nophix_2_fastq.txt
+32.68 sec
+[bwa_aln_core] write to the disk... 0.03 sec
+[bwa_aln_core] 233287 sequences have been processed.
+[2012-09-06 01:27:26,512] bwa aln -n 2 -k 2 -t 8 /bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/bwa/hg19.fa /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/2_120719_BD158KACXX_1_nophix_2_fastq.txt
+[bwa_aln_core] calculate SA coordinate... [bwa_aln_core] calculate SA coordinate... [bwa_aln_core] calculate SA coordinate... 10.26 sec
+[bwa_aln_core] write to the disk... 0.01 sec
+[bwa_aln_core] 80006 sequences have been processed.
+[2012-09-06 01:27:44,541] bwa sampe /bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/bwa/hg19.fa /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/5_120719_BD158KACXX_1_nophix_1.sai /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/5_120719_BD158KACXX_1_nophix_2.sai /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_1_nophix_1_fastq.txt /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_1_nophix_2_fastq.txt
+33.13 sec
+[bwa_aln_core] write to the disk... 0.04 sec
+[bwa_aln_core] 222178 sequences have been processed.
+[bwa_aln_core] calculate SA coordinate... [2012-09-06 01:27:45,222] bwa aln -n 2 -k 2 -t 8 /bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/bwa/hg19.fa /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/3_120719_BD158KACXX_1_nophix_2_fastq.txt
+[bwa_sai2sam_pe_core] convert to sequence coordinate... 
+19.74 sec
+[bwa_aln_core] write to the disk... 0.02 sec
+[bwa_aln_core] 113969 sequences have been processed.
+[2012-09-06 01:27:46,388] bwa sampe /bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/bwa/hg19.fa /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/5_120719_BD158KACXX_2_nophix_1.sai /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/5_120719_BD158KACXX_2_nophix_2.sai /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_2_nophix_1_fastq.txt /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_2_nophix_2_fastq.txt
+[bwa_sai2sam_pe_core] convert to sequence coordinate... 
+31.86 sec
+[bwa_aln_core] write to the disk... 0.03 sec
+[bwa_aln_core] 223898 sequences have been processed.
+[2012-09-06 01:27:54,717] bwa aln -n 2 -k 2 -t 8 /bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/bwa/hg19.fa /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/4_120719_BD158KACXX_1_nophix_2_fastq.txt
+[bwa_aln_core] calculate SA coordinate... 33.53 sec
+[bwa_aln_core] write to the disk... 0.03 sec
+[bwa_aln_core] 233287 sequences have been processed.
+[2012-09-06 01:28:17,559] bwa sampe /bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/bwa/hg19.fa /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/2_120719_BD158KACXX_1_nophix_1.sai /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/2_120719_BD158KACXX_1_nophix_2.sai /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/2_120719_BD158KACXX_1_nophix_1_fastq.txt /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/2_120719_BD158KACXX_1_nophix_2_fastq.txt
+[bwa_sai2sam_pe_core] convert to sequence coordinate... 
+[bwa_aln_core] calculate SA coordinate... [bwa_aln_core] calculate SA coordinate... [infer_isize] (25, 50, 75) percentile: (150, 185, 226)
+[infer_isize] low and high boundaries: 101 and 378 for estimating avg and std
+[infer_isize] inferred external isize from 52032 pairs: 190.745 +/- 55.226
+[infer_isize] skewness: 0.676; kurtosis: 0.167; ap_prior: 1.21e-05
+[infer_isize] inferred maximum insert size: 575 (6.95 sigma)
+[bwa_sai2sam_pe_core] time elapses: 8.61 sec
+[bwa_sai2sam_pe_core] changing coordinates of 1274 alignments.
+[bwa_sai2sam_pe_core] align unmapped mate...
+30.64 sec
+[bwa_aln_core] write to the disk... 0.03 sec
+[bwa_aln_core] 222178 sequences have been processed.
+[2012-09-06 01:28:36,659] bwa sampe /bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/bwa/hg19.fa /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/3_120719_BD158KACXX_1_nophix_1.sai /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/3_120719_BD158KACXX_1_nophix_2.sai /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/3_120719_BD158KACXX_1_nophix_1_fastq.txt /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/3_120719_BD158KACXX_1_nophix_2_fastq.txt
+36.43 sec
+[bwa_aln_core] write to the disk... 0.02 sec
+[bwa_aln_core] 223898 sequences have been processed.
+[2012-09-06 01:28:37,290] bwa sampe /bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/bwa/hg19.fa /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/4_120719_BD158KACXX_1_nophix_1.sai /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/4_120719_BD158KACXX_1_nophix_2.sai /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/4_120719_BD158KACXX_1_nophix_1_fastq.txt /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/4_120719_BD158KACXX_1_nophix_2_fastq.txt
+[infer_isize] (25, 50, 75) percentile: (125, 155, 199)
+[infer_isize] low and high boundaries: 101 and 347 for estimating avg and std
+[infer_isize] inferred external isize from 33466 pairs: 166.332 +/- 52.414
+[infer_isize] skewness: 0.974; kurtosis: 0.421; ap_prior: 1.06e-05
+[infer_isize] inferred maximum insert size: 532 (6.97 sigma)
+[bwa_sai2sam_pe_core] time elapses: 8.30 sec
+[bwa_sai2sam_pe_core] changing coordinates of 757 alignments.
+[bwa_sai2sam_pe_core] align unmapped mate...
+[infer_isize] (25, 50, 75) percentile: (138, 167, 211)
+[infer_isize] low and high boundaries: 101 and 357 for estimating avg and std
+[infer_isize] inferred external isize from 168865 pairs: 177.903 +/- 53.617
+[infer_isize] skewness: 0.936; kurtosis: 0.431; ap_prior: 1.00e-05
+[infer_isize] inferred maximum insert size: 551 (6.96 sigma)
+[bwa_sai2sam_pe_core] time elapses: 8.78 sec
+[bwa_sai2sam_pe_core] changing coordinates of 3369 alignments.
+[bwa_sai2sam_pe_core] align unmapped mate...
+[bwa_sai2sam_pe_core] convert to sequence coordinate... 
+[bwa_sai2sam_pe_core] convert to sequence coordinate... 
+[bwa_paired_sw] 7096 out of 8310 Q17 singletons are mated.
+[bwa_paired_sw] 32 out of 700 Q17 discordant pairs are fixed.
+[bwa_sai2sam_pe_core] time elapses: 3.80 sec
+[bwa_sai2sam_pe_core] refine gapped alignments... 0.23 sec
+[bwa_sai2sam_pe_core] print alignments... 0.75 sec
+[bwa_sai2sam_pe_core] 80006 sequences have been processed.
+[Thu Sep 06 01:28:51 CEST 2012] net.sf.picard.sam.FastqToSam FASTQ=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_1_nophix_1_fastq.txt FASTQ2=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_1_nophix_2_fastq.txt QUALITY_FORMAT=Standard OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/tx/5_120719_BD158KACXX_1_nophix_1_fastq-fastq.bam READ_GROUP_NAME=5 SAMPLE_NAME=C.Dson_15_02_317Ma1_index12 PLATFORM_UNIT=5_120719_BD158KACXX_1_nophix PLATFORM=illumina TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpI9AuDY] VALIDATION_STRINGENCY=SILENT    SORT_ORDER=queryname MIN_Q=0 MAX_Q=93 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:28:51 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+[bwa_paired_sw] 15763 out of 19093 Q17 singletons are mated.
+[bwa_paired_sw] 66 out of 2253 Q17 discordant pairs are fixed.
+[bwa_sai2sam_pe_core] time elapses: 7.64 sec
+[bwa_sai2sam_pe_core] refine gapped alignments... 0.70 sec
+[bwa_sai2sam_pe_core] print alignments... [bwa_paired_sw] 20239 out of 30162 Q17 singletons are mated.
+[bwa_paired_sw] 15 out of 2503 Q17 discordant pairs are fixed.
+[bwa_sai2sam_pe_core] time elapses: 10.09 sec
+[bwa_sai2sam_pe_core] refine gapped alignments... 0.27 sec
+[bwa_sai2sam_pe_core] print alignments... INFO	2012-09-06 01:28:57	FastqToSam	Processed 80006 fastq reads
+[Thu Sep 06 01:28:57 CEST 2012] net.sf.picard.sam.FastqToSam done. Elapsed time: 0.09 minutes.
+Runtime.totalMemory()=475660288
+[Thu Sep 06 01:28:57 CEST 2012] net.sf.picard.sam.MergeBamAlignment UNMAPPED_BAM=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/5_120719_BD158KACXX_1_nophix_1_fastq-fastq.bam ALIGNED_BAM=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/5_120719_BD158KACXX_1_nophix.sam] OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/tx/5_120719_BD158KACXX_1_nophix.bam REFERENCE_SEQUENCE=/bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/seq/hg19.fa PAIRED_RUN=true TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpc_ZJv6] VALIDATION_STRINGENCY=SILENT    CLIP_ADAPTERS=true IS_BISULFITE_SEQUENCE=false ALIGNED_READS_ONLY=false MAX_INSERTIONS_OR_DELETIONS=1 READ1_TRIM=0 READ2_TRIM=0 SORT_ORDER=coordinate CLIP_OVERLAPPING_READS=true VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:28:57 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+INFO	2012-09-06 01:28:57	SamAlignmentMerger	[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/5_120719_BD158KACXX_1_nophix.sam]
+[infer_isize] (25, 50, 75) percentile: (138, 167, 211)
+[infer_isize] low and high boundaries: 101 and 357 for estimating avg and std
+[infer_isize] inferred external isize from 161211 pairs: 177.868 +/- 53.628
+[infer_isize] skewness: 0.937; kurtosis: 0.444; ap_prior: 1.00e-05
+[infer_isize] inferred maximum insert size: 551 (6.96 sigma)
+0.97 sec
+[bwa_sai2sam_pe_core] 113969 sequences have been processed.
+[infer_isize] (25, 50, 75) percentile: (138, 167, 211)
+[infer_isize] low and high boundaries: 101 and 357 for estimating avg and std
+[infer_isize] inferred external isize from 161501 pairs: 177.894 +/- 53.469
+[infer_isize] skewness: 0.928; kurtosis: 0.418; ap_prior: 1.00e-05
+[infer_isize] inferred maximum insert size: 550 (6.96 sigma)
+[Thu Sep 06 01:28:58 CEST 2012] net.sf.picard.sam.FastqToSam FASTQ=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_2_nophix_1_fastq.txt FASTQ2=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_2_nophix_2_fastq.txt QUALITY_FORMAT=Standard OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/tx/5_120719_BD158KACXX_2_nophix_1_fastq-fastq.bam READ_GROUP_NAME=5 SAMPLE_NAME=C.Dson_15_02_317Ma1_index12 PLATFORM_UNIT=5_120719_BD158KACXX_2_nophix PLATFORM=illumina TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpnPzvlk] VALIDATION_STRINGENCY=SILENT    SORT_ORDER=queryname MIN_Q=0 MAX_Q=93 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:28:58 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+INFO	2012-09-06 01:28:59	SamAlignmentMerger	Finished reading 160012 total records from alignment SAM/BAM.
+2.36 sec
+[bwa_sai2sam_pe_core] 233287 sequences have been processed.
+[Thu Sep 06 01:29:00 CEST 2012] net.sf.picard.sam.FastqToSam FASTQ=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/2_120719_BD158KACXX_1_nophix_1_fastq.txt FASTQ2=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/2_120719_BD158KACXX_1_nophix_2_fastq.txt QUALITY_FORMAT=Standard OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/tx/2_120719_BD158KACXX_1_nophix_1_fastq-fastq.bam READ_GROUP_NAME=2 SAMPLE_NAME=C.Dson_15_02_317Ma1_index12 PLATFORM_UNIT=2_120719_BD158KACXX_1_nophix PLATFORM=illumina TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpM_eg0f] VALIDATION_STRINGENCY=SILENT    SORT_ORDER=queryname MIN_Q=0 MAX_Q=93 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:29:00 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+[bwa_sai2sam_pe_core] time elapses: 7.90 sec
+[bwa_sai2sam_pe_core] changing coordinates of 3305 alignments.
+[bwa_sai2sam_pe_core] align unmapped mate...
+[bwa_sai2sam_pe_core] time elapses: 8.74 sec
+[bwa_sai2sam_pe_core] changing coordinates of 3291 alignments.
+[bwa_sai2sam_pe_core] align unmapped mate...
+INFO	2012-09-06 01:29:06	FastqToSam	Processed 113969 fastq reads
+[Thu Sep 06 01:29:06 CEST 2012] net.sf.picard.sam.FastqToSam done. Elapsed time: 0.13 minutes.
+Runtime.totalMemory()=475660288
+[Thu Sep 06 01:29:06 CEST 2012] net.sf.picard.sam.MergeBamAlignment UNMAPPED_BAM=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/5_120719_BD158KACXX_2_nophix_1_fastq-fastq.bam ALIGNED_BAM=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/5_120719_BD158KACXX_2_nophix.sam] OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/tx/5_120719_BD158KACXX_2_nophix.bam REFERENCE_SEQUENCE=/bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/seq/hg19.fa PAIRED_RUN=true TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpafa0SO] VALIDATION_STRINGENCY=SILENT    CLIP_ADAPTERS=true IS_BISULFITE_SEQUENCE=false ALIGNED_READS_ONLY=false MAX_INSERTIONS_OR_DELETIONS=1 READ1_TRIM=0 READ2_TRIM=0 SORT_ORDER=coordinate CLIP_OVERLAPPING_READS=true VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:29:06 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+INFO	2012-09-06 01:29:06	SamAlignmentMerger	[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/5_120719_BD158KACXX_2_nophix.sam]
+[bwa_paired_sw] 14194 out of 17266 Q17 singletons are mated.
+[bwa_paired_sw] 63 out of 2194 Q17 discordant pairs are fixed.
+[bwa_sai2sam_pe_core] time elapses: 7.09 sec
+[bwa_sai2sam_pe_core] refine gapped alignments... INFO	2012-09-06 01:29:09	SamAlignmentMerger	Finished reading 227938 total records from alignment SAM/BAM.
+0.65 sec
+[bwa_sai2sam_pe_core] print alignments... [bwa_paired_sw] 15367 out of 18642 Q17 singletons are mated.
+[bwa_paired_sw] 87 out of 2169 Q17 discordant pairs are fixed.
+[bwa_sai2sam_pe_core] time elapses: 7.45 sec
+[bwa_sai2sam_pe_core] refine gapped alignments... 0.67 sec
+[bwa_sai2sam_pe_core] print alignments... 2.23 sec
+[bwa_sai2sam_pe_core] 222178 sequences have been processed.
+[Thu Sep 06 01:29:13 CEST 2012] net.sf.picard.sam.FastqToSam FASTQ=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/3_120719_BD158KACXX_1_nophix_1_fastq.txt FASTQ2=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/3_120719_BD158KACXX_1_nophix_2_fastq.txt QUALITY_FORMAT=Standard OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/tx/3_120719_BD158KACXX_1_nophix_1_fastq-fastq.bam READ_GROUP_NAME=3 SAMPLE_NAME=C.Dson_15_02_317Ma1_index12 PLATFORM_UNIT=3_120719_BD158KACXX_1_nophix PLATFORM=illumina TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpQKEXuy] VALIDATION_STRINGENCY=SILENT    SORT_ORDER=queryname MIN_Q=0 MAX_Q=93 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:29:13 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+INFO	2012-09-06 01:29:15	FastqToSam	Processed 233287 fastq reads
+[Thu Sep 06 01:29:15 CEST 2012] net.sf.picard.sam.FastqToSam done. Elapsed time: 0.24 minutes.
+Runtime.totalMemory()=875036672
+[Thu Sep 06 01:29:15 CEST 2012] net.sf.picard.sam.MergeBamAlignment UNMAPPED_BAM=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/2_120719_BD158KACXX_1_nophix_1_fastq-fastq.bam ALIGNED_BAM=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/2_120719_BD158KACXX_1_nophix.sam] OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/tx/2_120719_BD158KACXX_1_nophix.bam REFERENCE_SEQUENCE=/bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/seq/hg19.fa PAIRED_RUN=true TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpLfyraw] VALIDATION_STRINGENCY=SILENT    CLIP_ADAPTERS=true IS_BISULFITE_SEQUENCE=false ALIGNED_READS_ONLY=false MAX_INSERTIONS_OR_DELETIONS=1 READ1_TRIM=0 READ2_TRIM=0 SORT_ORDER=coordinate CLIP_OVERLAPPING_READS=true VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:29:15 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+INFO	2012-09-06 01:29:15	SamAlignmentMerger	[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/2_120719_BD158KACXX_1_nophix.sam]
+2.22 sec
+[bwa_sai2sam_pe_core] 223898 sequences have been processed.
+[Thu Sep 06 01:29:16 CEST 2012] net.sf.picard.sam.FastqToSam FASTQ=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/4_120719_BD158KACXX_1_nophix_1_fastq.txt FASTQ2=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/4_120719_BD158KACXX_1_nophix_2_fastq.txt QUALITY_FORMAT=Standard OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/tx/4_120719_BD158KACXX_1_nophix_1_fastq-fastq.bam READ_GROUP_NAME=4 SAMPLE_NAME=C.Dson_15_02_317Ma1_index12 PLATFORM_UNIT=4_120719_BD158KACXX_1_nophix PLATFORM=illumina TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpUnqSau] VALIDATION_STRINGENCY=SILENT    SORT_ORDER=queryname MIN_Q=0 MAX_Q=93 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:29:16 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+INFO	2012-09-06 01:29:22	SamAlignmentMerger	Finished reading 466574 total records from alignment SAM/BAM.
+INFO	2012-09-06 01:29:26	FastqToSam	Processed 222178 fastq reads
+[Thu Sep 06 01:29:26 CEST 2012] net.sf.picard.sam.FastqToSam done. Elapsed time: 0.22 minutes.
+Runtime.totalMemory()=880345088
+[Thu Sep 06 01:29:27 CEST 2012] net.sf.picard.sam.MergeBamAlignment UNMAPPED_BAM=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/3_120719_BD158KACXX_1_nophix_1_fastq-fastq.bam ALIGNED_BAM=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/3_120719_BD158KACXX_1_nophix.sam] OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/tx/3_120719_BD158KACXX_1_nophix.bam REFERENCE_SEQUENCE=/bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/seq/hg19.fa PAIRED_RUN=true TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpB74F44] VALIDATION_STRINGENCY=SILENT    CLIP_ADAPTERS=true IS_BISULFITE_SEQUENCE=false ALIGNED_READS_ONLY=false MAX_INSERTIONS_OR_DELETIONS=1 READ1_TRIM=0 READ2_TRIM=0 SORT_ORDER=coordinate CLIP_OVERLAPPING_READS=true VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:29:27 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+INFO	2012-09-06 01:29:27	SamAlignmentMerger	[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/3_120719_BD158KACXX_1_nophix.sam]
+INFO	2012-09-06 01:29:30	FastqToSam	Processed 223898 fastq reads
+[Thu Sep 06 01:29:30 CEST 2012] net.sf.picard.sam.FastqToSam done. Elapsed time: 0.23 minutes.
+Runtime.totalMemory()=877461504
+[Thu Sep 06 01:29:30 CEST 2012] net.sf.picard.sam.MergeBamAlignment UNMAPPED_BAM=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/4_120719_BD158KACXX_1_nophix_1_fastq-fastq.bam ALIGNED_BAM=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/4_120719_BD158KACXX_1_nophix.sam] OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/tx/4_120719_BD158KACXX_1_nophix.bam REFERENCE_SEQUENCE=/bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/seq/hg19.fa PAIRED_RUN=true TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmp4s14Cm] VALIDATION_STRINGENCY=SILENT    CLIP_ADAPTERS=true IS_BISULFITE_SEQUENCE=false ALIGNED_READS_ONLY=false MAX_INSERTIONS_OR_DELETIONS=1 READ1_TRIM=0 READ2_TRIM=0 SORT_ORDER=coordinate CLIP_OVERLAPPING_READS=true VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:29:30 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+INFO	2012-09-06 01:29:30	SamAlignmentMerger	[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/4_120719_BD158KACXX_1_nophix.sam]
+INFO	2012-09-06 01:29:33	SamAlignmentMerger	Finished reading 444356 total records from alignment SAM/BAM.
+INFO	2012-09-06 01:29:38	SamAlignmentMerger	Finished reading 447796 total records from alignment SAM/BAM.
+INFO	2012-09-06 01:30:05	AbstractAlignmentMerger	Wrote 135476 alignment records and 92462 unmapped reads.
+[Thu Sep 06 01:30:05 CEST 2012] net.sf.picard.sam.MergeBamAlignment done. Elapsed time: 0.98 minutes.
+Runtime.totalMemory()=1940652032
+INFO	2012-09-06 01:30:06	AbstractAlignmentMerger	Wrote 136459 alignment records and 23553 unmapped reads.
+[Thu Sep 06 01:30:06 CEST 2012] net.sf.picard.sam.MergeBamAlignment done. Elapsed time: 1.16 minutes.
+Runtime.totalMemory()=2344615936
+[Thu Sep 06 01:30:07 CEST 2012] net.sf.picard.sam.SortSam INPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/5_120719_BD158KACXX_2_nophix.bam OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/tx/5_120719_BD158KACXX_2_nophix-sort.bam SORT_ORDER=coordinate TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmp7FM9J1] VALIDATION_STRINGENCY=SILENT    VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:30:07 CEST 2012] net.sf.picard.sam.SortSam INPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/5_120719_BD158KACXX_1_nophix.bam OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/tx/5_120719_BD158KACXX_1_nophix-sort.bam SORT_ORDER=coordinate TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmphD93Xy] VALIDATION_STRINGENCY=SILENT    VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:30:07 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+[Thu Sep 06 01:30:07 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+INFO	2012-09-06 01:30:08	SortSam	Finished reading inputs, merging and writing to output now.
+INFO	2012-09-06 01:30:08	SortSam	Finished reading inputs, merging and writing to output now.
+[Thu Sep 06 01:30:12 CEST 2012] net.sf.picard.sam.SortSam done. Elapsed time: 0.08 minutes.
+Runtime.totalMemory()=377225216
+[DEBUG/PoolWorker-23] worker exiting after 1 tasks
+[INFO/PoolWorker-23] process shutting down
+[DEBUG/PoolWorker-23] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-23] running the remaining "atexit" finalizers
+[INFO/PoolWorker-23] process exiting with exitcode 0
+[DEBUG/MainProcess] cleaning up worker 0
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-31] child process calling self.run()
+[Thu Sep 06 01:30:13 CEST 2012] net.sf.picard.sam.SortSam done. Elapsed time: 0.10 minutes.
+Runtime.totalMemory()=377225216
+[DEBUG/PoolWorker-24] worker exiting after 1 tasks
+[INFO/PoolWorker-24] process shutting down
+[DEBUG/PoolWorker-24] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-24] running the remaining "atexit" finalizers
+[INFO/PoolWorker-24] process exiting with exitcode 0
+[DEBUG/MainProcess] cleaning up worker 0
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-32] child process calling self.run()
+INFO	2012-09-06 01:30:39	AbstractAlignmentMerger	Wrote 404583 alignment records and 39773 unmapped reads.
+[Thu Sep 06 01:30:39 CEST 2012] net.sf.picard.sam.MergeBamAlignment done. Elapsed time: 1.20 minutes.
+Runtime.totalMemory()=2863333376
+INFO	2012-09-06 01:30:39	AbstractAlignmentMerger	Wrote 425015 alignment records and 41559 unmapped reads.
+[Thu Sep 06 01:30:39 CEST 2012] net.sf.picard.sam.MergeBamAlignment done. Elapsed time: 1.40 minutes.
+Runtime.totalMemory()=2863333376
+[Thu Sep 06 01:30:39 CEST 2012] net.sf.picard.sam.SortSam INPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/3_120719_BD158KACXX_1_nophix.bam OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/tx/3_120719_BD158KACXX_1_nophix-sort.bam SORT_ORDER=coordinate TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpcVI3xe] VALIDATION_STRINGENCY=SILENT    VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:30:39 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+[Thu Sep 06 01:30:39 CEST 2012] net.sf.picard.sam.SortSam INPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/2_120719_BD158KACXX_1_nophix.bam OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/tx/2_120719_BD158KACXX_1_nophix-sort.bam SORT_ORDER=coordinate TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpMEpyja] VALIDATION_STRINGENCY=SILENT    VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:30:39 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+INFO	2012-09-06 01:30:39	AbstractAlignmentMerger	Wrote 407256 alignment records and 40540 unmapped reads.
+[Thu Sep 06 01:30:39 CEST 2012] net.sf.picard.sam.MergeBamAlignment done. Elapsed time: 1.16 minutes.
+Runtime.totalMemory()=2863333376
+[Thu Sep 06 01:30:40 CEST 2012] net.sf.picard.sam.SortSam INPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/4_120719_BD158KACXX_1_nophix.bam OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/tx/4_120719_BD158KACXX_1_nophix-sort.bam SORT_ORDER=coordinate TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpHegMnx] VALIDATION_STRINGENCY=SILENT    VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:30:40 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+INFO	2012-09-06 01:30:41	SortSam	Finished reading inputs, merging and writing to output now.
+INFO	2012-09-06 01:30:41	SortSam	Finished reading inputs, merging and writing to output now.
+INFO	2012-09-06 01:30:42	SortSam	Finished reading inputs, merging and writing to output now.
+[Thu Sep 06 01:30:50 CEST 2012] net.sf.picard.sam.SortSam done. Elapsed time: 0.19 minutes.
+Runtime.totalMemory()=659619840
+[DEBUG/PoolWorker-27] worker exiting after 1 tasks
+[INFO/PoolWorker-27] process shutting down
+[DEBUG/PoolWorker-27] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-27] running the remaining "atexit" finalizers
+[INFO/PoolWorker-27] process exiting with exitcode 0
+[DEBUG/MainProcess] cleaning up worker 2
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-33] child process calling self.run()
+[Thu Sep 06 01:30:51 CEST 2012] net.sf.picard.sam.SortSam done. Elapsed time: 0.20 minutes.
+Runtime.totalMemory()=660602880
+[Thu Sep 06 01:30:51 CEST 2012] net.sf.picard.sam.SortSam done. Elapsed time: 0.20 minutes.
+Runtime.totalMemory()=662372352
+[DEBUG/PoolWorker-25] worker exiting after 1 tasks
+[INFO/PoolWorker-25] process shutting down
+[DEBUG/PoolWorker-25] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-25] running the remaining "atexit" finalizers
+[INFO/PoolWorker-25] process exiting with exitcode 0
+[DEBUG/PoolWorker-26] worker exiting after 1 tasks
+[INFO/PoolWorker-26] process shutting down
+[DEBUG/PoolWorker-26] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-26] running the remaining "atexit" finalizers
+[INFO/PoolWorker-26] process exiting with exitcode 0
+[DEBUG/MainProcess] cleaning up worker 1
+[DEBUG/MainProcess] cleaning up worker 0
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-34] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[DEBUG/MainProcess] terminating pool
+[INFO/PoolWorker-35] child process calling self.run()
+[SUBDEBUG/MainProcess] finalizer calling <bound method type._terminate_pool of <class 'multiprocessing.pool.Pool'>> with args (<Queue.Queue instance at 0x37f7c68>, <multiprocessing.queues.SimpleQueue object at 0x37ea450>, <multiprocessing.queues.SimpleQueue object at 0x37ea390>, [<Process(PoolWorker-28, started daemon)>, <Process(PoolWorker-29, started daemon)>, <Process(PoolWorker-30, started daemon)>, <Process(PoolWorker-31, started daemon)>, <Process(PoolWorker-32, started daemon)>, <Process(PoolWorker-33, started daemon)>, <Process(PoolWorker-34, started daemon)>, <Process(PoolWorker-35, started daemon)>], <Thread(Thread-7, started daemon 47475388983040)>, <Thread(Thread-8, started daemon 47475391084288)>, <Thread(Thread-9, started daemon 47475563955968)>, {}) and kwargs {}
+[DEBUG/MainProcess] finalizing pool
+[DEBUG/MainProcess] helping task handler/workers to finish
+[DEBUG/MainProcess] task handler got sentinel
+[DEBUG/MainProcess] removing tasks from inqueue until task handler finished
+[DEBUG/MainProcess] task handler sending sentinel to result handler
+[DEBUG/MainProcess] task handler sending sentinel to workers
+[DEBUG/MainProcess] task handler exiting
+[DEBUG/PoolWorker-28] worker got sentinel -- exiting
+[DEBUG/PoolWorker-29] worker got sentinel -- exiting
+[DEBUG/PoolWorker-28] worker exiting after 0 tasks
+[DEBUG/PoolWorker-31] worker got sentinel -- exiting
+[INFO/PoolWorker-28] process shutting down
+[DEBUG/PoolWorker-29] worker exiting after 0 tasks
+[DEBUG/PoolWorker-32] worker got sentinel -- exiting
+[DEBUG/PoolWorker-31] worker exiting after 0 tasks
+[DEBUG/PoolWorker-28] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-33] worker got sentinel -- exiting
+[INFO/PoolWorker-29] process shutting down
+[DEBUG/PoolWorker-32] worker exiting after 0 tasks
+[DEBUG/PoolWorker-34] worker got sentinel -- exiting
+[DEBUG/PoolWorker-29] running all "atexit" finalizers with priority >= 0
+[INFO/PoolWorker-31] process shutting down
+[DEBUG/PoolWorker-28] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-33] worker exiting after 0 tasks
+[INFO/PoolWorker-32] process shutting down
+[DEBUG/PoolWorker-31] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-34] worker exiting after 0 tasks
+[INFO/PoolWorker-28] process exiting with exitcode 0
+[DEBUG/PoolWorker-32] running all "atexit" finalizers with priority >= 0
+[INFO/PoolWorker-33] process shutting down
+[DEBUG/PoolWorker-29] running the remaining "atexit" finalizers
+[DEBUG/MainProcess] terminating workers
+[INFO/PoolWorker-34] process shutting down
+[DEBUG/PoolWorker-31] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-33] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-32] running the remaining "atexit" finalizers
+[DEBUG/MainProcess] joining task handler
+[DEBUG/MainProcess] joining result handler
+[DEBUG/MainProcess] result handler found thread._state=TERMINATE
+[DEBUG/MainProcess] ensuring that outqueue is not full
+[DEBUG/MainProcess] result handler exiting: len(cache)=0, thread._state=2
+[DEBUG/MainProcess] joining pool workers
+[DEBUG/MainProcess] created semlock with handle 47475391086592
+[DEBUG/MainProcess] created semlock with handle 47475391090688
+[DEBUG/MainProcess] created semlock with handle 47475391094784
+[DEBUG/MainProcess] created semlock with handle 47475391098880
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-36] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-37] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-38] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-39] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-40] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-41] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-42] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-43] child process calling self.run()
+[DEBUG/MainProcess] doing set_length()
+[2012-09-06 01:30:52,259] Combining fastq and BAM files ('', 'C.Dson_15_02_317Ma1_index12', '2', 'CTTGTA')
+[2012-09-06 01:30:52,259] Combining fastq and BAM files ('', 'C.Dson_15_02_317Ma1_index12', '3', 'CTTGTA')
+[2012-09-06 01:30:52,259] Combining fastq and BAM files ('', 'C.Dson_15_02_317Ma1_index12', '4', 'CTTGTA')
+[2012-09-06 01:30:52,260] Combining fastq and BAM files ('', 'C.Dson_15_02_317Ma1_index12', '5', 'CTTGTA')
+[2012-09-06 01:30:52,260] Combining fastq and BAM files ('', 'C.Dson_15_02_317Ma1_index12', '5', 'GGCTAC')
+[DEBUG/MainProcess] worker handler exiting
+[Thu Sep 06 01:30:52 CEST 2012] net.sf.picard.sam.MergeSamFiles INPUT=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/2_120719_BD158KACXX_1_nophix-sort.bam] OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tx/2_120719_BD158KACXX_1_nophix-sort.bam SORT_ORDER=coordinate TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpHlmd59] VALIDATION_STRINGENCY=SILENT    ASSUME_SORTED=false MERGE_SEQUENCE_DICTIONARIES=false USE_THREADING=false VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:30:52 CEST 2012] net.sf.picard.sam.MergeSamFiles INPUT=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/3_120719_BD158KACXX_1_nophix-sort.bam] OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tx/3_120719_BD158KACXX_1_nophix-sort.bam SORT_ORDER=coordinate TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmp2DLKUo] VALIDATION_STRINGENCY=SILENT    ASSUME_SORTED=false MERGE_SEQUENCE_DICTIONARIES=false USE_THREADING=false VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:30:52 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+[Thu Sep 06 01:30:52 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+[Thu Sep 06 01:30:52 CEST 2012] net.sf.picard.sam.MergeSamFiles INPUT=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/4_120719_BD158KACXX_1_nophix-sort.bam] OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tx/4_120719_BD158KACXX_1_nophix-sort.bam SORT_ORDER=coordinate TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpIjYuLi] VALIDATION_STRINGENCY=SILENT    ASSUME_SORTED=false MERGE_SEQUENCE_DICTIONARIES=false USE_THREADING=false VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:30:52 CEST 2012] net.sf.picard.sam.MergeSamFiles INPUT=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/5_120719_BD158KACXX_1_nophix-sort.bam] OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tx/5_120719_BD158KACXX_1_nophix-sort.bam SORT_ORDER=coordinate TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmp8PAzAA] VALIDATION_STRINGENCY=SILENT    ASSUME_SORTED=false MERGE_SEQUENCE_DICTIONARIES=false USE_THREADING=false VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:30:52 CEST 2012] net.sf.picard.sam.MergeSamFiles INPUT=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/alignments/5_120719_BD158KACXX_2_nophix-sort.bam] OUTPUT=/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tx/5_120719_BD158KACXX_2_nophix-sort.bam SORT_ORDER=coordinate TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpOmZKCT] VALIDATION_STRINGENCY=SILENT    ASSUME_SORTED=false MERGE_SEQUENCE_DICTIONARIES=false USE_THREADING=false VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:30:52 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+[Thu Sep 06 01:30:52 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+[Thu Sep 06 01:30:52 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+INFO	INFO	2012-09-06 01:30:52	MergeSamFiles	Input files are in same order as output so sorting to temp directory is not needed.
+2012-09-06 01:30:52	MergeSamFiles	Input files are in same order as output so sorting to temp directory is not needed.
+INFO	2012-09-06 01:30:52	MergeSamFiles	Input files are in same order as output so sorting to temp directory is not needed.
+INFO	INFO	2012-09-06 01:30:52	MergeSamFiles	Input files are in same order as output so sorting to temp directory is not needed.
+2012-09-06 01:30:52	MergeSamFiles	Input files are in same order as output so sorting to temp directory is not needed.
+INFO	2012-09-06 01:30:56	MergeSamFiles	Finished reading inputs.
+[Thu Sep 06 01:30:56 CEST 2012] net.sf.picard.sam.MergeSamFiles done. Elapsed time: 0.07 minutes.
+Runtime.totalMemory()=377225216
+[DEBUG/PoolWorker-39] worker exiting after 1 tasks
+[INFO/PoolWorker-39] process shutting down
+[DEBUG/PoolWorker-39] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-39] running the remaining "atexit" finalizers
+[INFO/PoolWorker-39] process exiting with exitcode 0
+[DEBUG/MainProcess] cleaning up worker 3
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-44] child process calling self.run()
+INFO	2012-09-06 01:30:58	MergeSamFiles	Finished reading inputs.
+[Thu Sep 06 01:30:58 CEST 2012] net.sf.picard.sam.MergeSamFiles done. Elapsed time: 0.10 minutes.
+Runtime.totalMemory()=377225216
+[DEBUG/PoolWorker-40] worker exiting after 1 tasks
+[INFO/PoolWorker-40] process shutting down
+[DEBUG/PoolWorker-40] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-40] running the remaining "atexit" finalizers
+[INFO/PoolWorker-40] process exiting with exitcode 0
+[DEBUG/MainProcess] cleaning up worker 3
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-45] child process calling self.run()
+INFO	2012-09-06 01:31:02	MergeSamFiles	Finished reading inputs.
+INFO	2012-09-06 01:31:02	MergeSamFiles	Finished reading inputs.
+INFO	2012-09-06 01:31:03	MergeSamFiles	Finished reading inputs.
+[Thu Sep 06 01:31:03 CEST 2012] net.sf.picard.sam.MergeSamFiles done. Elapsed time: 0.19 minutes.
+Runtime.totalMemory()=377225216
+[DEBUG/PoolWorker-37] worker exiting after 1 tasks
+[INFO/PoolWorker-37] process shutting down
+[DEBUG/PoolWorker-37] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-37] running the remaining "atexit" finalizers
+[INFO/PoolWorker-37] process exiting with exitcode 0
+[DEBUG/MainProcess] cleaning up worker 1
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-46] child process calling self.run()
+[Thu Sep 06 01:31:03 CEST 2012] net.sf.picard.sam.MergeSamFiles done. Elapsed time: 0.19 minutes.
+Runtime.totalMemory()=377225216
+[Thu Sep 06 01:31:03 CEST 2012] net.sf.picard.sam.MergeSamFiles done. Elapsed time: 0.19 minutes.
+Runtime.totalMemory()=377225216
+[DEBUG/PoolWorker-38] worker exiting after 1 tasks
+[INFO/PoolWorker-38] process shutting down
+[DEBUG/PoolWorker-38] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-38] running the remaining "atexit" finalizers
+[INFO/PoolWorker-38] process exiting with exitcode 0
+[DEBUG/PoolWorker-36] worker exiting after 1 tasks
+[INFO/PoolWorker-36] process shutting down
+[DEBUG/PoolWorker-36] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-36] running the remaining "atexit" finalizers
+[INFO/PoolWorker-36] process exiting with exitcode 0
+[DEBUG/MainProcess] terminating pool
+[SUBDEBUG/MainProcess] finalizer calling <bound method type._terminate_pool of <class 'multiprocessing.pool.Pool'>> with args (<Queue.Queue instance at 0x37e93b0>, <multiprocessing.queues.SimpleQueue object at 0x37eaa50>, <multiprocessing.queues.SimpleQueue object at 0x2b2dc0018210>, [<Process(PoolWorker-36, stopped daemon)>, <Process(PoolWorker-38, stopped daemon)>, <Process(PoolWorker-41, started daemon)>, <Process(PoolWorker-42, started daemon)>, <Process(PoolWorker-43, started daemon)>, <Process(PoolWorker-44, started daemon)>, <Process(PoolWorker-45, started daemon)>, <Process(PoolWorker-46, started daemon)>], <Thread(Thread-10, started daemon 47475563955968)>, <Thread(Thread-11, started daemon 47475391084288)>, <Thread(Thread-12, started daemon 47475393201920)>, {}) and kwargs {}
+[DEBUG/MainProcess] finalizing pool
+[DEBUG/MainProcess] helping task handler/workers to finish
+[DEBUG/MainProcess] task handler got sentinel
+[DEBUG/MainProcess] removing tasks from inqueue until task handler finished
+[DEBUG/MainProcess] task handler sending sentinel to result handler
+[DEBUG/MainProcess] task handler sending sentinel to workers
+[DEBUG/MainProcess] task handler exiting
+[DEBUG/PoolWorker-41] worker got sentinel -- exiting
+[DEBUG/PoolWorker-41] worker exiting after 0 tasks
+[DEBUG/PoolWorker-42] worker got sentinel -- exiting
+[INFO/PoolWorker-41] process shutting down
+[DEBUG/PoolWorker-42] worker exiting after 0 tasks
+[DEBUG/PoolWorker-43] worker got sentinel -- exiting
+[DEBUG/PoolWorker-41] running all "atexit" finalizers with priority >= 0
+[INFO/PoolWorker-42] process shutting down
+[DEBUG/PoolWorker-43] worker exiting after 0 tasks
+[DEBUG/PoolWorker-44] worker got sentinel -- exiting
+[DEBUG/PoolWorker-42] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-41] running the remaining "atexit" finalizers
+[INFO/PoolWorker-43] process shutting down
+[DEBUG/PoolWorker-44] worker exiting after 0 tasks
+[INFO/PoolWorker-41] process exiting with exitcode 0
+[DEBUG/PoolWorker-43] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-45] worker got sentinel -- exiting
+[DEBUG/PoolWorker-42] running the remaining "atexit" finalizers
+[INFO/PoolWorker-44] process shutting down
+[DEBUG/PoolWorker-46] worker got sentinel -- exiting
+[INFO/PoolWorker-42] process exiting with exitcode 0
+[DEBUG/PoolWorker-43] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-45] worker exiting after 0 tasks
+[DEBUG/PoolWorker-44] running all "atexit" finalizers with priority >= 0
+[DEBUG/MainProcess] terminating workers
+[DEBUG/PoolWorker-46] worker exiting after 0 tasks
+[INFO/PoolWorker-45] process shutting down
+[INFO/PoolWorker-43] process exiting with exitcode 0
+[DEBUG/PoolWorker-44] running the remaining "atexit" finalizers
+[INFO/PoolWorker-46] process shutting down
+[DEBUG/PoolWorker-45] running all "atexit" finalizers with priority >= 0
+[INFO/PoolWorker-44] process exiting with exitcode 0
+[DEBUG/PoolWorker-46] running all "atexit" finalizers with priority >= 0
+[DEBUG/MainProcess] result handler found thread._state=TERMINATE
+[DEBUG/PoolWorker-45] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-46] running the remaining "atexit" finalizers
+[INFO/PoolWorker-45] process exiting with exitcode 0
+[DEBUG/MainProcess] ensuring that outqueue is not full
+[INFO/PoolWorker-46] process exiting with exitcode 0
+[DEBUG/MainProcess] joining task handler
+[DEBUG/MainProcess] result handler exiting: len(cache)=0, thread._state=2
+[DEBUG/MainProcess] joining result handler
+[DEBUG/MainProcess] joining pool workers
+[DEBUG/MainProcess] cleaning up worker 1897
+[DEBUG/MainProcess] cleaning up worker 1898
+[DEBUG/MainProcess] cleaning up worker 1899
+[DEBUG/MainProcess] created semlock with handle 47475386867712
+[DEBUG/MainProcess] created semlock with handle 47475386871808
+[DEBUG/MainProcess] created semlock with handle 47475386875904
+[DEBUG/MainProcess] created semlock with handle 47475386880000
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-47] child process calling self.run()
+[DEBUG/MainProcess] worker handler exiting
+[DEBUG/MainProcess] added worker
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-49] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-50] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-51] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-52] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-53] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-54] child process calling self.run()
+[DEBUG/MainProcess] doing set_length()
+[2012-09-06 01:31:04,010] Marking duplicates in ('', 'C.Dson_15_02_317Ma1_index12', '5', 'CTTGTA') with Picard
+[2012-09-06 01:31:04,010] Marking duplicates in ('', 'C.Dson_15_02_317Ma1_index12', '5', 'GGCTAC') with Picard
+[2012-09-06 01:31:04,011] Marking duplicates in ('', 'C.Dson_15_02_317Ma1_index12', '3', 'CTTGTA') with Picard
+[2012-09-06 01:31:04,011] Marking duplicates in ('', 'C.Dson_15_02_317Ma1_index12', '4', 'CTTGTA') with Picard
+[2012-09-06 01:31:04,011] Marking duplicates in ('', 'C.Dson_15_02_317Ma1_index12', '2', 'CTTGTA') with Picard
+[Thu Sep 06 01:31:04 CEST 2012] net.sf.picard.sam.MarkDuplicates INPUT=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/5_120719_BD158KACXX_1_nophix-sort.bam] OUTPUT=tx/5_120719_BD158KACXX_1_nophix-sort-dup.bam METRICS_FILE=tx/5_120719_BD158KACXX_1_nophix-sort-dup.dup_metrics TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpfbiW5l] VALIDATION_STRINGENCY=SILENT    REMOVE_DUPLICATES=false ASSUME_SORTED=false MAX_SEQUENCES_FOR_DISK_READ_ENDS_MAP=50000 MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=8000 SORTING_COLLECTION_SIZE_RATIO=0.25 READ_NAME_REGEX=[a-zA-Z0-9]+:[0-9]:([0-9]+):([0-9]+):([0-9]+).* OPTICAL_DUPLICATE_PIXEL_DISTANCE=100 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false[Thu Sep 06 01:31:04 CEST 2012] net.sf.picard.sam.MarkDuplicates INPUT=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/4_120719_BD158KACXX_1_nophix-sort.bam] OUTPUT=tx/4_120719_BD158KACXX_1_nophix-sort-dup.bam METRICS_FILE=tx/4_120719_BD158KACXX_1_nophix-sort-dup.dup_metrics TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpYiwpMn] VALIDATION_STRINGENCY=SILENT    REMOVE_DUPLICATES=false ASSUME_SORTED=false MAX_SEQUENCES_FOR_DISK_READ_ENDS_MAP=50000 MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=8000 SORTING_COLLECTION_SIZE_RATIO=0.25 READ_NAME_REGEX=[a-zA-Z0-9]+:[0-9]:([0-9]+):([0-9]+):([0-9]+).* OPTICAL_DUPLICATE_PIXEL_DISTANCE=100 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+
+[Thu Sep 06 01:31:04 CEST 2012] net.sf.picard.sam.MarkDuplicates INPUT=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/3_120719_BD158KACXX_1_nophix-sort.bam] OUTPUT=tx/3_120719_BD158KACXX_1_nophix-sort-dup.bam METRICS_FILE=tx/3_120719_BD158KACXX_1_nophix-sort-dup.dup_metrics TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpqtdR05] VALIDATION_STRINGENCY=SILENT    REMOVE_DUPLICATES=false ASSUME_SORTED=false MAX_SEQUENCES_FOR_DISK_READ_ENDS_MAP=50000 MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=8000 SORTING_COLLECTION_SIZE_RATIO=0.25 READ_NAME_REGEX=[a-zA-Z0-9]+:[0-9]:([0-9]+):([0-9]+):([0-9]+).* OPTICAL_DUPLICATE_PIXEL_DISTANCE=100 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:31:04 CEST 2012] net.sf.picard.sam.MarkDuplicates INPUT=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/5_120719_BD158KACXX_2_nophix-sort.bam] OUTPUT=tx/5_120719_BD158KACXX_2_nophix-sort-dup.bam METRICS_FILE=tx/5_120719_BD158KACXX_2_nophix-sort-dup.dup_metrics TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpVtQQwQ] VALIDATION_STRINGENCY=SILENT    REMOVE_DUPLICATES=false ASSUME_SORTED=false MAX_SEQUENCES_FOR_DISK_READ_ENDS_MAP=50000 MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=8000 SORTING_COLLECTION_SIZE_RATIO=0.25 READ_NAME_REGEX=[a-zA-Z0-9]+:[0-9]:([0-9]+):([0-9]+):([0-9]+).* OPTICAL_DUPLICATE_PIXEL_DISTANCE=100 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:31:04 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+[Thu Sep 06 01:31:04 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+[Thu Sep 06 01:31:04 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+[Thu Sep 06 01:31:04 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+INFO	INFO	INFO	2012-09-06 01:31:04	MarkDuplicates	Start of doWork freeMemory: 374853992; totalMemory: 377225216; maxMemory: 2863333376
+INFO	2012-09-06 01:31:04	MarkDuplicates	Reading input file and constructing read end information.
+INFO	2012-09-06 01:31:04	MarkDuplicates	Start of doWork freeMemory: 374853992; totalMemory: 377225216; maxMemory: 2863333376
+2012-09-06 01:31:04INFO		MarkDuplicates	Will retain up to 11362434 data points before spilling to disk.
+2012-09-06 01:31:04	MarkDuplicates	Reading input file and constructing read end information.2012-09-06 01:31:04
+	MarkDuplicatesINFO		Start of doWork freeMemory: 374853992; totalMemory: 377225216; maxMemory: 2863333376
+INFO	2012-09-06 01:31:04	MarkDuplicates	Will retain up to 11362434 data points before spilling to disk.
+2012-09-06 01:31:04	MarkDuplicates	Reading input file and constructing read end information.
+INFO	2012-09-06 01:31:04	MarkDuplicates	Will retain up to 11362434 data points before spilling to disk.
+INFO	2012-09-06 01:31:04	MarkDuplicates	Start of doWork freeMemory: 374853992; totalMemory: 377225216; maxMemory: 2863333376
+INFO	2012-09-06 01:31:04	MarkDuplicates	Reading input file and constructing read end information.
+INFO	2012-09-06 01:31:04	MarkDuplicates	Will retain up to 11362434 data points before spilling to disk.
+[Thu Sep 06 01:31:04 CEST 2012] net.sf.picard.sam.MarkDuplicates INPUT=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/2_120719_BD158KACXX_1_nophix-sort.bam] OUTPUT=tx/2_120719_BD158KACXX_1_nophix-sort-dup.bam METRICS_FILE=tx/2_120719_BD158KACXX_1_nophix-sort-dup.dup_metrics TMP_DIR=[/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/tmp/tmpmIw4Du] VALIDATION_STRINGENCY=SILENT    REMOVE_DUPLICATES=false ASSUME_SORTED=false MAX_SEQUENCES_FOR_DISK_READ_ENDS_MAP=50000 MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=8000 SORTING_COLLECTION_SIZE_RATIO=0.25 READ_NAME_REGEX=[a-zA-Z0-9]+:[0-9]:([0-9]+):([0-9]+):([0-9]+).* OPTICAL_DUPLICATE_PIXEL_DISTANCE=100 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:31:04 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+INFO	2012-09-06 01:31:04	MarkDuplicates	Start of doWork freeMemory: 374853992; totalMemory: 377225216; maxMemory: 2863333376
+INFO	2012-09-06 01:31:04	MarkDuplicates	Reading input file and constructing read end information.
+INFO	2012-09-06 01:31:04	MarkDuplicates	Will retain up to 11362434 data points before spilling to disk.
+INFO	2012-09-06 01:31:07	MarkDuplicates	Read 139046 records. 0 pairs never matched.
+INFO	2012-09-06 01:31:07	MarkDuplicates	After buildSortedReadEndLists freeMemory: 493566064; totalMemory: 693895168; maxMemory: 2863333376
+INFO	2012-09-06 01:31:07	MarkDuplicates	Will retain up to 89479168 duplicate indices before spilling to disk.
+INFO	2012-09-06 01:31:07	MarkDuplicates	Traversing read pair information and detecting duplicates.
+INFO	2012-09-06 01:31:07	MarkDuplicates	Traversing fragment information and detecting duplicates.
+INFO	2012-09-06 01:31:08	MarkDuplicates	Read 150752 records. 0 pairs never matched.
+INFO	2012-09-06 01:31:08	MarkDuplicates	After buildSortedReadEndLists freeMemory: 499492112; totalMemory: 699334656; maxMemory: 2863333376
+INFO	2012-09-06 01:31:08	MarkDuplicates	Will retain up to 89479168 duplicate indices before spilling to disk.
+INFO	2012-09-06 01:31:08	MarkDuplicates	Sorting list of duplicate records.
+INFO	2012-09-06 01:31:08	MarkDuplicates	Traversing read pair information and detecting duplicates.
+INFO	2012-09-06 01:31:08	MarkDuplicates	After generateDuplicateIndexes freeMemory: 688855888; totalMemory: 1409744896; maxMemory: 2863333376
+INFO	2012-09-06 01:31:08	MarkDuplicates	Marking 108 records as duplicates.
+INFO	2012-09-06 01:31:08	MarkDuplicates	Traversing fragment information and detecting duplicates.
+INFO	2012-09-06 01:31:08	MarkDuplicates	Found 0 optical duplicate clusters.
+INFO	2012-09-06 01:31:09	MarkDuplicates	Sorting list of duplicate records.
+INFO	2012-09-06 01:31:09	MarkDuplicates	Read 413210 records. 0 pairs never matched.
+INFO	2012-09-06 01:31:09	MarkDuplicates	Read 431214 records. 0 pairs never matched.
+INFO	2012-09-06 01:31:09	MarkDuplicates	Read 410138 records. 0 pairs never matched.
+INFO	2012-09-06 01:31:09	MarkDuplicates	After generateDuplicateIndexes freeMemory: 694290008; totalMemory: 1415184384; maxMemory: 2863333376
+INFO	2012-09-06 01:31:09	MarkDuplicates	Marking 307 records as duplicates.
+INFO	2012-09-06 01:31:09	MarkDuplicates	Found 0 optical duplicate clusters.
+INFO	2012-09-06 01:31:09	MarkDuplicates	After buildSortedReadEndLists freeMemory: 671574176; totalMemory: 902299648; maxMemory: 2863333376
+INFO	2012-09-06 01:31:09	MarkDuplicates	Will retain up to 89479168 duplicate indices before spilling to disk.
+INFO	2012-09-06 01:31:09	MarkDuplicates	After buildSortedReadEndLists freeMemory: 570543328; totalMemory: 800849920; maxMemory: 2863333376
+INFO	2012-09-06 01:31:09	MarkDuplicates	Will retain up to 89479168 duplicate indices before spilling to disk.
+INFO	2012-09-06 01:31:09	MarkDuplicates	After buildSortedReadEndLists freeMemory: 546532960; totalMemory: 774176768; maxMemory: 2863333376
+INFO	2012-09-06 01:31:09	MarkDuplicates	Will retain up to 89479168 duplicate indices before spilling to disk.
+INFO	2012-09-06 01:31:09	MarkDuplicates	Traversing read pair information and detecting duplicates.
+INFO	2012-09-06 01:31:09	MarkDuplicates	Traversing read pair information and detecting duplicates.
+INFO	2012-09-06 01:31:09	MarkDuplicates	Traversing read pair information and detecting duplicates.
+INFO	2012-09-06 01:31:10	MarkDuplicates	Traversing fragment information and detecting duplicates.
+INFO	2012-09-06 01:31:10	MarkDuplicates	Traversing fragment information and detecting duplicates.
+INFO	2012-09-06 01:31:10	MarkDuplicates	Traversing fragment information and detecting duplicates.
+INFO	2012-09-06 01:31:11	MarkDuplicates	Sorting list of duplicate records.
+INFO	2012-09-06 01:31:11	MarkDuplicates	Sorting list of duplicate records.
+INFO	2012-09-06 01:31:11	MarkDuplicates	Sorting list of duplicate records.
+INFO	2012-09-06 01:31:11	MarkDuplicates	After generateDuplicateIndexes freeMemory: 779582936; totalMemory: 1502085120; maxMemory: 2863333376
+INFO	2012-09-06 01:31:11	MarkDuplicates	Marking 708 records as duplicates.
+INFO	2012-09-06 01:31:11	MarkDuplicates	Found 0 optical duplicate clusters.
+INFO	2012-09-06 01:31:11	MarkDuplicates	After generateDuplicateIndexes freeMemory: 896338832; totalMemory: 1621491712; maxMemory: 2863333376
+INFO	2012-09-06 01:31:11	MarkDuplicates	Marking 594 records as duplicates.
+INFO	2012-09-06 01:31:11	MarkDuplicates	Found 0 optical duplicate clusters.
+INFO	2012-09-06 01:31:11	MarkDuplicates	After generateDuplicateIndexes freeMemory: 803162280; totalMemory: 1526333440; maxMemory: 2863333376
+INFO	2012-09-06 01:31:11	MarkDuplicates	Marking 643 records as duplicates.
+INFO	2012-09-06 01:31:11	MarkDuplicates	Found 0 optical duplicate clusters.
+INFO	2012-09-06 01:31:12	MarkDuplicates	Before output close freeMemory: 1403977544; totalMemory: 1409744896; maxMemory: 2863333376
+INFO	2012-09-06 01:31:12	MarkDuplicates	After output close freeMemory: 1403977400; totalMemory: 1409744896; maxMemory: 2863333376
+[Thu Sep 06 01:31:12 CEST 2012] net.sf.picard.sam.MarkDuplicates done. Elapsed time: 0.15 minutes.
+Runtime.totalMemory()=1409744896
+[DEBUG/PoolWorker-47] worker exiting after 1 tasks
+[INFO/PoolWorker-47] process shutting down
+[DEBUG/PoolWorker-47] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-47] running the remaining "atexit" finalizers
+[INFO/PoolWorker-47] process exiting with exitcode 0
+[DEBUG/MainProcess] cleaning up worker 0
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-55] child process calling self.run()
+INFO	2012-09-06 01:31:14	MarkDuplicates	Before output close freeMemory: 1409411552; totalMemory: 1415184384; maxMemory: 2863333376
+INFO	2012-09-06 01:31:14	MarkDuplicates	After output close freeMemory: 1409411408; totalMemory: 1415184384; maxMemory: 2863333376
+[Thu Sep 06 01:31:14 CEST 2012] net.sf.picard.sam.MarkDuplicates done. Elapsed time: 0.18 minutes.
+Runtime.totalMemory()=1415184384
+[DEBUG/PoolWorker-49] worker exiting after 1 tasks
+[INFO/PoolWorker-49] process shutting down
+[DEBUG/PoolWorker-49] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-49] running the remaining "atexit" finalizers
+[INFO/PoolWorker-49] process exiting with exitcode 0
+[DEBUG/MainProcess] cleaning up worker 1
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-56] child process calling self.run()
+INFO	2012-09-06 01:31:21	MarkDuplicates	Before output close freeMemory: 1604723760; totalMemory: 1614151680; maxMemory: 2863333376
+INFO	2012-09-06 01:31:21	MarkDuplicates	Before output close freeMemory: 1868674976; totalMemory: 1883766784; maxMemory: 2863333376
+INFO	2012-09-06 01:31:21	MarkDuplicates	After output close freeMemory: 1570841504; totalMemory: 1580269568; maxMemory: 2863333376
+[Thu Sep 06 01:31:21 CEST 2012] net.sf.picard.sam.MarkDuplicates done. Elapsed time: 0.30 minutes.
+Runtime.totalMemory()=1580269568
+INFO	2012-09-06 01:31:22	MarkDuplicates	Before output close freeMemory: 1657009632; totalMemory: 1667694592; maxMemory: 2863333376
+[DEBUG/PoolWorker-50] worker exiting after 1 tasks
+[INFO/PoolWorker-50] process shutting down
+[DEBUG/PoolWorker-50] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-50] running the remaining "atexit" finalizers
+[INFO/PoolWorker-50] process exiting with exitcode 0
+INFO	2012-09-06 01:31:22	MarkDuplicates	After output close freeMemory: 1838397200; totalMemory: 1853489152; maxMemory: 2863333376
+[DEBUG/MainProcess] cleaning up worker 1
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-57] child process calling self.run()
+[Thu Sep 06 01:31:22 CEST 2012] net.sf.picard.sam.MarkDuplicates done. Elapsed time: 0.30 minutes.
+Runtime.totalMemory()=1853489152
+INFO	2012-09-06 01:31:22	MarkDuplicates	After output close freeMemory: 1625290064; totalMemory: 1635975168; maxMemory: 2863333376
+[Thu Sep 06 01:31:22 CEST 2012] net.sf.picard.sam.MarkDuplicates done. Elapsed time: 0.31 minutes.
+Runtime.totalMemory()=1635975168
+[DEBUG/PoolWorker-51] worker exiting after 1 tasks
+[INFO/PoolWorker-51] process shutting down
+[DEBUG/PoolWorker-51] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-51] running the remaining "atexit" finalizers
+[INFO/PoolWorker-51] process exiting with exitcode 0
+[DEBUG/MainProcess] cleaning up worker 1
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-58] child process calling self.run()
+[DEBUG/PoolWorker-52] worker exiting after 1 tasks
+[INFO/PoolWorker-52] process shutting down
+[DEBUG/PoolWorker-52] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-52] running the remaining "atexit" finalizers
+[INFO/PoolWorker-52] process exiting with exitcode 0
+[DEBUG/MainProcess] terminating pool
+[SUBDEBUG/MainProcess] finalizer calling <bound method type._terminate_pool of <class 'multiprocessing.pool.Pool'>> with args (<Queue.Queue instance at 0x37e9d88>, <multiprocessing.queues.SimpleQueue object at 0x2b2dc0018dd0>, <multiprocessing.queues.SimpleQueue object at 0x2b2dc0020ad0>, [<Process(PoolWorker-48, started daemon)>, <Process(PoolWorker-52, stopped daemon)>, <Process(PoolWorker-53, started daemon)>, <Process(PoolWorker-54, started daemon)>, <Process(PoolWorker-55, started daemon)>, <Process(PoolWorker-56, started daemon)>, <Process(PoolWorker-57, started daemon)>, <Process(PoolWorker-58, started daemon)>], <Thread(Thread-13, started daemon 47475563955968)>, <Thread(Thread-14, started daemon 47475393201920)>, <Thread(Thread-15, started daemon 47475391084288)>, {}) and kwargs {}
+[DEBUG/MainProcess] finalizing pool
+[DEBUG/MainProcess] helping task handler/workers to finish
+[DEBUG/MainProcess] task handler got sentinel
+[DEBUG/MainProcess] removing tasks from inqueue until task handler finished
+[DEBUG/MainProcess] task handler sending sentinel to result handler
+[DEBUG/MainProcess] task handler sending sentinel to workers
+[DEBUG/MainProcess] task handler exiting
+[DEBUG/PoolWorker-53] worker got sentinel -- exiting
+[DEBUG/PoolWorker-53] worker exiting after 0 tasks
+[DEBUG/PoolWorker-54] worker got sentinel -- exiting
+[INFO/PoolWorker-53] process shutting down
+[DEBUG/PoolWorker-55] worker got sentinel -- exiting
+[DEBUG/PoolWorker-54] worker exiting after 0 tasks
+[DEBUG/PoolWorker-53] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-55] worker exiting after 0 tasks
+[INFO/PoolWorker-54] process shutting down
+[DEBUG/PoolWorker-56] worker got sentinel -- exiting
+[INFO/PoolWorker-55] process shutting down
+[DEBUG/PoolWorker-54] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-53] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-57] worker got sentinel -- exiting
+[DEBUG/PoolWorker-56] worker exiting after 0 tasks
+[DEBUG/PoolWorker-55] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-54] running the remaining "atexit" finalizers
+[INFO/PoolWorker-53] process exiting with exitcode 0
+[INFO/PoolWorker-56] process shutting down
+[DEBUG/PoolWorker-57] worker exiting after 0 tasks
+[DEBUG/PoolWorker-55] running the remaining "atexit" finalizers
+[INFO/PoolWorker-54] process exiting with exitcode 0
+[DEBUG/PoolWorker-56] running all "atexit" finalizers with priority >= 0
+[INFO/PoolWorker-57] process shutting down
+[INFO/PoolWorker-55] process exiting with exitcode 0
+[DEBUG/PoolWorker-57] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-56] running the remaining "atexit" finalizers
+[INFO/PoolWorker-56] process exiting with exitcode 0
+[DEBUG/PoolWorker-57] running the remaining "atexit" finalizers
+[INFO/PoolWorker-57] process exiting with exitcode 0
+[DEBUG/MainProcess] result handler got sentinel
+[DEBUG/PoolWorker-58] worker got sentinel -- exiting
+[DEBUG/PoolWorker-58] worker exiting after 0 tasks
+[DEBUG/MainProcess] terminating workers
+[INFO/PoolWorker-58] process shutting down
+[DEBUG/PoolWorker-58] running all "atexit" finalizers with priority >= 0
+[DEBUG/MainProcess] ensuring that outqueue is not full
+[DEBUG/MainProcess] joining task handler
+[DEBUG/MainProcess] worker handler exiting
+[DEBUG/MainProcess] result handler exiting: len(cache)=0, thread._state=2
+[DEBUG/MainProcess] joining result handler
+[DEBUG/MainProcess] joining pool workers
+[DEBUG/MainProcess] created semlock with handle 47475391086592
+[DEBUG/MainProcess] created semlock with handle 47475391090688
+[DEBUG/MainProcess] created semlock with handle 47475391094784
+[DEBUG/MainProcess] created semlock with handle 47475391098880
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-59] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-60] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-61] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-62] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-63] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-64] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-65] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-66] child process calling self.run()
+[DEBUG/MainProcess] doing set_length()
+[2012-09-06 01:31:22,927] Screening for contaminants on sample ('', 'C.Dson_15_02_317Ma1_index12', '5', 'CTTGTA') with genome hg19
+[2012-09-06 01:31:22,928] Screening for contaminants on sample ('', 'C.Dson_15_02_317Ma1_index12', '5', 'GGCTAC') with genome hg19
+[2012-09-06 01:31:22,928] Screening for contaminants on sample ('', 'C.Dson_15_02_317Ma1_index12', '3', 'CTTGTA') with genome hg19
+[2012-09-06 01:31:22,928] Screening for contaminants on sample ('', 'C.Dson_15_02_317Ma1_index12', '4', 'CTTGTA') with genome hg19
+[2012-09-06 01:31:22,929] Screening for contaminants on sample ('', 'C.Dson_15_02_317Ma1_index12', '2', 'CTTGTA') with genome hg19
+Reading configuration from '/bubo/proj/a2010002/nobackup/sw/mf/bioinfo-tools/misc/fastqscreen/0.2.1/fastq_screen.conf'
+Reading configuration from '/bubo/proj/a2010002/nobackup/sw/mf/bioinfo-tools/misc/fastqscreen/0.2.1/fastq_screen.conf'
+Reading configuration from '/bubo/proj/a2010002/nobackup/sw/mf/bioinfo-tools/misc/fastqscreen/0.2.1/fastq_screen.conf'
+Reading configuration from '/bubo/proj/a2010002/nobackup/sw/mf/bioinfo-tools/misc/fastqscreen/0.2.1/fastq_screen.conf'
+Reading configuration from '/bubo/proj/a2010002/nobackup/sw/mf/bioinfo-tools/misc/fastqscreen/0.2.1/fastq_screen.conf'
+Using '/bubo/sw/apps/bioinfo/bowtie/0.12.6/kalkyl/bowtie' as bowtie path
+Using 1 threads for searches
+Using '/bubo/sw/apps/bioinfo/bowtie/0.12.6/kalkyl/bowtie' as bowtie path
+Using 1 threads for searches
+Using '/bubo/sw/apps/bioinfo/bowtie/0.12.6/kalkyl/bowtie' as bowtie path
+Using 1 threads for searches
+Using '/bubo/sw/apps/bioinfo/bowtie/0.12.6/kalkyl/bowtie' as bowtie path
+Using 1 threads for searches
+Using '/bubo/sw/apps/bioinfo/bowtie/0.12.6/kalkyl/bowtie' as bowtie path
+Using 1 threads for searches
+Adding database Spruce
+Adding database Spruce
+Adding database Spruce
+Adding database Spruce
+Adding database Spruce
+Adding database Human
+Adding database Human
+Adding database Human
+Adding database Human
+Adding database Human
+Adding database Mouse
+Adding database Mouse
+Adding database Mouse
+Adding database Mouse
+Adding database Mouse
+Adding database Ecoli
+Adding database Ecoli
+Adding database Ecoli
+Adding database PhiX
+Adding database PhiX
+Adding database Ecoli
+Adding database Ecoli
+Adding database PhiX
+Adding database PhiX
+Adding database PhiX
+Adding database Adapters
+Adding database Adapters
+Processing /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/2_120719_BD158KACXX_1_nophix_1_fastq.txt and /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/2_120719_BD158KACXX_1_nophix_2_fastq.txt
+Adding database Adapters
+Processing /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/3_120719_BD158KACXX_1_nophix_1_fastq.txt and /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/3_120719_BD158KACXX_1_nophix_2_fastq.txt
+Processing /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_2_nophix_1_fastq.txt and /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_2_nophix_2_fastq.txt
+Adding database Adapters
+Processing /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/4_120719_BD158KACXX_1_nophix_1_fastq.txt and /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/4_120719_BD158KACXX_1_nophix_2_fastq.txt
+Adding database Adapters
+Processing /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_1_nophix_1_fastq.txt and /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_1_nophix_2_fastq.txt
+Counting sequences in /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/2_120719_BD158KACXX_1_nophix_1_fastq.txt
+Counting sequences in /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/3_120719_BD158KACXX_1_nophix_1_fastq.txt
+Counting sequences in /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_2_nophix_1_fastq.txt
+Counting sequences in /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/4_120719_BD158KACXX_1_nophix_1_fastq.txt
+Counting sequences in /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_1_nophix_1_fastq.txt
+Not making subset of 2000000 since 80006 actual seqs is too low or close enough at /proj/a2010002/nobackup/sw/mf/bioinfo-tools/misc/fastqscreen/0.2.1/fastq_screen line 329, <IN> line 324028.
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_1_nophix_1_fastq.txt against Spruce
+Not making subset of 2000000 since 113969 actual seqs is too low or close enough at /proj/a2010002/nobackup/sw/mf/bioinfo-tools/misc/fastqscreen/0.2.1/fastq_screen line 329, <IN> line 459880.
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_2_nophix_1_fastq.txt against Spruce
+Not making subset of 2000000 since 233287 actual seqs is too low or close enough at /proj/a2010002/nobackup/sw/mf/bioinfo-tools/misc/fastqscreen/0.2.1/fastq_screen line 329, <IN> line 937152.
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/2_120719_BD158KACXX_1_nophix_1_fastq.txt against Spruce
+Not making subset of 2000000 since 222178 actual seqs is too low or close enough at /proj/a2010002/nobackup/sw/mf/bioinfo-tools/misc/fastqscreen/0.2.1/fastq_screen line 329, <IN> line 892716.
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/3_120719_BD158KACXX_1_nophix_1_fastq.txt against Spruce
+Not making subset of 2000000 since 223898 actual seqs is too low or close enough at /proj/a2010002/nobackup/sw/mf/bioinfo-tools/misc/fastqscreen/0.2.1/fastq_screen line 329, <IN> line 899596.
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/4_120719_BD158KACXX_1_nophix_1_fastq.txt against Spruce
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_1_nophix_1_fastq.txt against Human
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_2_nophix_1_fastq.txt against Human
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/3_120719_BD158KACXX_1_nophix_1_fastq.txt against Human
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/2_120719_BD158KACXX_1_nophix_1_fastq.txt against Human
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/4_120719_BD158KACXX_1_nophix_1_fastq.txt against Human
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_1_nophix_1_fastq.txt against Mouse
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_2_nophix_1_fastq.txt against Mouse
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/3_120719_BD158KACXX_1_nophix_1_fastq.txt against Mouse
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_1_nophix_1_fastq.txt against Ecoli
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_2_nophix_1_fastq.txt against Ecoli
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_1_nophix_1_fastq.txt against PhiX
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_1_nophix_1_fastq.txt against Adapters
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/4_120719_BD158KACXX_1_nophix_1_fastq.txt against Mouse
+[DEBUG/PoolWorker-59] worker exiting after 1 tasks
+[INFO/PoolWorker-59] process shutting down
+[DEBUG/PoolWorker-59] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-59] running the remaining "atexit" finalizers
+[INFO/PoolWorker-59] process exiting with exitcode 0
+[DEBUG/MainProcess] cleaning up worker 0
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-67] child process calling self.run()
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_2_nophix_1_fastq.txt against PhiX
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/5_120719_BD158KACXX_2_nophix_1_fastq.txt against Adapters
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/2_120719_BD158KACXX_1_nophix_1_fastq.txt against Mouse
+[DEBUG/PoolWorker-60] worker exiting after 1 tasks
+[INFO/PoolWorker-60] process shutting down
+[DEBUG/PoolWorker-60] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-60] running the remaining "atexit" finalizers
+[INFO/PoolWorker-60] process exiting with exitcode 0
+[DEBUG/MainProcess] cleaning up worker 0
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-68] child process calling self.run()
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/3_120719_BD158KACXX_1_nophix_1_fastq.txt against Ecoli
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/3_120719_BD158KACXX_1_nophix_1_fastq.txt against PhiX
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/4_120719_BD158KACXX_1_nophix_1_fastq.txt against Ecoli
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/3_120719_BD158KACXX_1_nophix_1_fastq.txt against Adapters
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/2_120719_BD158KACXX_1_nophix_1_fastq.txt against Ecoli
+[DEBUG/PoolWorker-61] worker exiting after 1 tasks
+[INFO/PoolWorker-61] process shutting down
+[DEBUG/PoolWorker-61] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-61] running the remaining "atexit" finalizers
+[INFO/PoolWorker-61] process exiting with exitcode 0
+[DEBUG/MainProcess] cleaning up worker 0
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-69] child process calling self.run()
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/4_120719_BD158KACXX_1_nophix_1_fastq.txt against PhiX
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/2_120719_BD158KACXX_1_nophix_1_fastq.txt against PhiX
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/4_120719_BD158KACXX_1_nophix_1_fastq.txt against Adapters
+Searching /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/nophix/2_120719_BD158KACXX_1_nophix_1_fastq.txt against Adapters
+[DEBUG/PoolWorker-62] worker exiting after 1 tasks
+[INFO/PoolWorker-62] process shutting down
+[DEBUG/PoolWorker-62] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-62] running the remaining "atexit" finalizers
+[INFO/PoolWorker-62] process exiting with exitcode 0
+[DEBUG/MainProcess] cleaning up worker 0
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-70] child process calling self.run()
+[DEBUG/PoolWorker-63] worker exiting after 1 tasks
+[INFO/PoolWorker-63] process shutting down
+[DEBUG/PoolWorker-63] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-63] running the remaining "atexit" finalizers
+[INFO/PoolWorker-63] process exiting with exitcode 0
+[DEBUG/MainProcess] terminating pool
+[SUBDEBUG/MainProcess] finalizer calling <bound method type._terminate_pool of <class 'multiprocessing.pool.Pool'>> with args (<Queue.Queue instance at 0x37f7c68>, <multiprocessing.queues.SimpleQueue object at 0x37dbdd0>, <multiprocessing.queues.SimpleQueue object at 0x2b2dc0020210>, [<Process(PoolWorker-63, stopped daemon)>, <Process(PoolWorker-64, started daemon)>, <Process(PoolWorker-65, started daemon)>, <Process(PoolWorker-66, started daemon)>, <Process(PoolWorker-67, started daemon)>, <Process(PoolWorker-68, started daemon)>, <Process(PoolWorker-69, started daemon)>, <Process(PoolWorker-70, started daemon)>], <Thread(Thread-16, started daemon 47475391084288)>, <Thread(Thread-17, started daemon 47475563955968)>, <Thread(Thread-18, started daemon 47475393201920)>, {}) and kwargs {}
+[DEBUG/MainProcess] finalizing pool
+[DEBUG/MainProcess] helping task handler/workers to finish
+[DEBUG/MainProcess] task handler got sentinel
+[DEBUG/MainProcess] removing tasks from inqueue until task handler finished
+[DEBUG/MainProcess] task handler sending sentinel to result handler
+[DEBUG/MainProcess] task handler sending sentinel to workers
+[DEBUG/MainProcess] result handler got sentinel
+[DEBUG/MainProcess] ensuring that outqueue is not full
+[DEBUG/MainProcess] task handler exiting
+[DEBUG/PoolWorker-64] worker got sentinel -- exiting
+[DEBUG/PoolWorker-65] worker got sentinel -- exiting
+[DEBUG/PoolWorker-64] worker exiting after 0 tasks
+[DEBUG/PoolWorker-65] worker exiting after 0 tasks
+[INFO/PoolWorker-64] process shutting down
+[DEBUG/PoolWorker-67] worker got sentinel -- exiting
+[DEBUG/PoolWorker-66] worker got sentinel -- exiting
+[INFO/PoolWorker-65] process shutting down
+[DEBUG/PoolWorker-64] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-68] worker got sentinel -- exiting
+[DEBUG/PoolWorker-67] worker exiting after 0 tasks
+[DEBUG/PoolWorker-65] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-66] worker exiting after 0 tasks
+[DEBUG/PoolWorker-64] running the remaining "atexit" finalizers
+[INFO/PoolWorker-67] process shutting down
+[DEBUG/PoolWorker-68] worker exiting after 0 tasks
+[INFO/PoolWorker-66] process shutting down
+[DEBUG/PoolWorker-65] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-69] worker got sentinel -- exiting
+[INFO/PoolWorker-64] process exiting with exitcode 0
+[DEBUG/PoolWorker-67] running all "atexit" finalizers with priority >= 0
+[INFO/PoolWorker-68] process shutting down
+[DEBUG/PoolWorker-66] running all "atexit" finalizers with priority >= 0
+[INFO/PoolWorker-65] process exiting with exitcode 0
+[DEBUG/PoolWorker-68] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-69] worker exiting after 0 tasks
+[DEBUG/PoolWorker-66] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-67] running the remaining "atexit" finalizers
+[INFO/PoolWorker-69] process shutting down
+[DEBUG/PoolWorker-68] running the remaining "atexit" finalizers
+[INFO/PoolWorker-66] process exiting with exitcode 0
+[INFO/PoolWorker-67] process exiting with exitcode 0
+[DEBUG/PoolWorker-69] running all "atexit" finalizers with priority >= 0
+[INFO/PoolWorker-68] process exiting with exitcode 0
+[DEBUG/PoolWorker-69] running the remaining "atexit" finalizers
+[INFO/PoolWorker-69] process exiting with exitcode 0
+[DEBUG/PoolWorker-70] worker got sentinel -- exiting
+[DEBUG/MainProcess] result handler exiting: len(cache)=0, thread._state=0
+[DEBUG/PoolWorker-70] worker exiting after 0 tasks
+[DEBUG/MainProcess] terminating workers
+[INFO/PoolWorker-70] process shutting down
+[DEBUG/MainProcess] joining task handler
+[DEBUG/MainProcess] joining result handler
+[DEBUG/MainProcess] joining pool workers
+[DEBUG/MainProcess] cleaning up worker 2524
+[DEBUG/MainProcess] worker handler exiting
+[DEBUG/MainProcess] created semlock with handle 47475386867712
+[DEBUG/MainProcess] created semlock with handle 47475386871808
+[DEBUG/MainProcess] created semlock with handle 47475386875904
+[DEBUG/MainProcess] created semlock with handle 47475386880000
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-71] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-72] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-73] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-74] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-75] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-76] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-77] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-78] child process calling self.run()
+[DEBUG/MainProcess] doing set_length()
+[2012-09-06 01:36:44,552] Recalibrating ('', 'C.Dson_15_02_317Ma1_index12', '5', 'CTTGTA') with GATK
+[2012-09-06 01:36:44,552] Recalibrating ('', 'C.Dson_15_02_317Ma1_index12', '5', 'GGCTAC') with GATK
+[2012-09-06 01:36:44,552] Recalibrating ('', 'C.Dson_15_02_317Ma1_index12', '3', 'CTTGTA') with GATK
+[2012-09-06 01:36:44,553] Recalibrating ('', 'C.Dson_15_02_317Ma1_index12', '4', 'CTTGTA') with GATK
+[2012-09-06 01:36:44,553] Recalibrating ('', 'C.Dson_15_02_317Ma1_index12', '2', 'CTTGTA') with GATK
+[DEBUG/PoolWorker-71] worker exiting after 1 tasks
+[INFO/PoolWorker-71] process shutting down
+[DEBUG/PoolWorker-71] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-71] running the remaining "atexit" finalizers
+[INFO/PoolWorker-71] process exiting with exitcode 0
+[DEBUG/PoolWorker-72] worker exiting after 1 tasks
+[INFO/PoolWorker-72] process shutting down
+[DEBUG/PoolWorker-72] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-72] running the remaining "atexit" finalizers
+[INFO/PoolWorker-72] process exiting with exitcode 0
+[DEBUG/PoolWorker-73] worker exiting after 1 tasks
+[INFO/PoolWorker-73] process shutting down
+[DEBUG/PoolWorker-73] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-73] running the remaining "atexit" finalizers
+[INFO/PoolWorker-73] process exiting with exitcode 0
+[DEBUG/PoolWorker-74] worker exiting after 1 tasks
+[INFO/PoolWorker-74] process shutting down
+[DEBUG/PoolWorker-74] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-74] running the remaining "atexit" finalizers
+[INFO/PoolWorker-74] process exiting with exitcode 0
+[DEBUG/PoolWorker-75] worker exiting after 1 tasks
+[INFO/PoolWorker-75] process shutting down
+[DEBUG/PoolWorker-75] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-75] running the remaining "atexit" finalizers
+[INFO/PoolWorker-75] process exiting with exitcode 0
+[DEBUG/MainProcess] terminating pool
+[SUBDEBUG/MainProcess] finalizer calling <bound method type._terminate_pool of <class 'multiprocessing.pool.Pool'>> with args (<Queue.Queue instance at 0x37f7c68>, <multiprocessing.queues.SimpleQueue object at 0x2b2dc0027c10>, <multiprocessing.queues.SimpleQueue object at 0x2b2dc0020550>, [<Process(PoolWorker-71, stopped daemon)>, <Process(PoolWorker-72, stopped daemon)>, <Process(PoolWorker-73, stopped daemon)>, <Process(PoolWorker-74, stopped daemon)>, <Process(PoolWorker-75, stopped daemon)>, <Process(PoolWorker-76, started daemon)>, <Process(PoolWorker-77, started daemon)>, <Process(PoolWorker-78, started daemon)>], <Thread(Thread-19, started daemon 47475391084288)>, <Thread(Thread-20, started daemon 47475393201920)>, <Thread(Thread-21, started daemon 47475563955968)>, {}) and kwargs {}
+[DEBUG/MainProcess] finalizing pool
+[DEBUG/MainProcess] helping task handler/workers to finish
+[DEBUG/MainProcess] task handler got sentinel
+[DEBUG/MainProcess] removing tasks from inqueue until task handler finished
+[DEBUG/MainProcess] task handler sending sentinel to result handler
+[DEBUG/MainProcess] task handler sending sentinel to workers
+[DEBUG/MainProcess] result handler got sentinel
+[DEBUG/PoolWorker-76] worker got sentinel -- exiting
+[DEBUG/MainProcess] task handler exiting
+[DEBUG/PoolWorker-77] worker got sentinel -- exiting
+[DEBUG/MainProcess] ensuring that outqueue is not full
+[DEBUG/PoolWorker-76] worker exiting after 0 tasks
+[DEBUG/PoolWorker-78] worker got sentinel -- exiting
+[DEBUG/PoolWorker-77] worker exiting after 0 tasks
+[INFO/PoolWorker-76] process shutting down
+[DEBUG/PoolWorker-78] worker exiting after 0 tasks
+[INFO/PoolWorker-77] process shutting down
+[DEBUG/PoolWorker-76] running all "atexit" finalizers with priority >= 0
+[DEBUG/MainProcess] result handler exiting: len(cache)=0, thread._state=2
+[INFO/PoolWorker-78] process shutting down
+[DEBUG/PoolWorker-77] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-78] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-76] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-77] running the remaining "atexit" finalizers
+[DEBUG/MainProcess] terminating workers
+[INFO/PoolWorker-76] process exiting with exitcode 0
+[DEBUG/PoolWorker-78] running the remaining "atexit" finalizers
+[INFO/PoolWorker-77] process exiting with exitcode 0
+[DEBUG/MainProcess] joining task handler
+[DEBUG/MainProcess] joining result handler
+[DEBUG/MainProcess] joining pool workers
+[DEBUG/MainProcess] cleaning up worker 2776
+[DEBUG/MainProcess] cleaning up worker 2778
+[DEBUG/MainProcess] worker handler exiting
+[DEBUG/MainProcess] created semlock with handle 47475391086592
+[DEBUG/MainProcess] created semlock with handle 47475391090688
+[DEBUG/MainProcess] created semlock with handle 47475391094784
+[DEBUG/MainProcess] created semlock with handle 47475391098880
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-79] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-80] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-81] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-82] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-83] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-84] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-85] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-86] child process calling self.run()
+[DEBUG/MainProcess] doing set_length()
+[DEBUG/PoolWorker-79] worker exiting after 1 tasks
+[INFO/PoolWorker-79] process shutting down
+[DEBUG/PoolWorker-79] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-79] running the remaining "atexit" finalizers
+[INFO/PoolWorker-79] process exiting with exitcode 0
+[DEBUG/PoolWorker-80] worker exiting after 1 tasks
+[INFO/PoolWorker-80] process shutting down
+[DEBUG/PoolWorker-80] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-80] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-81] worker exiting after 1 tasks
+[INFO/PoolWorker-80] process exiting with exitcode 0
+[INFO/PoolWorker-81] process shutting down
+[DEBUG/PoolWorker-81] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-81] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-82] worker exiting after 1 tasks
+[INFO/PoolWorker-81] process exiting with exitcode 0
+[INFO/PoolWorker-82] process shutting down
+[DEBUG/PoolWorker-82] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-82] running the remaining "atexit" finalizers
+[INFO/PoolWorker-82] process exiting with exitcode 0
+[DEBUG/PoolWorker-83] worker exiting after 1 tasks
+[INFO/PoolWorker-83] process shutting down
+[DEBUG/PoolWorker-83] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-83] running the remaining "atexit" finalizers
+[INFO/PoolWorker-83] process exiting with exitcode 0
+[DEBUG/MainProcess] terminating pool
+[SUBDEBUG/MainProcess] finalizer calling <bound method type._terminate_pool of <class 'multiprocessing.pool.Pool'>> with args (<Queue.Queue instance at 0x37f7c68>, <multiprocessing.queues.SimpleQueue object at 0x2b2dc00187d0>, <multiprocessing.queues.SimpleQueue object at 0x2b2dc0018710>, [<Process(PoolWorker-79, stopped daemon)>, <Process(PoolWorker-80, stopped daemon)>, <Process(PoolWorker-81, started daemon)>, <Process(PoolWorker-82, started daemon)>, <Process(PoolWorker-83, started daemon)>, <Process(PoolWorker-84, started daemon)>, <Process(PoolWorker-85, started daemon)>, <Process(PoolWorker-86, started daemon)>], <Thread(Thread-22, started daemon 47475391084288)>, <Thread(Thread-23, started daemon 47475563955968)>, <Thread(Thread-24, started daemon 47475393201920)>, {}) and kwargs {}
+[DEBUG/MainProcess] finalizing pool
+[DEBUG/MainProcess] helping task handler/workers to finish
+[DEBUG/MainProcess] task handler got sentinel
+[DEBUG/MainProcess] removing tasks from inqueue until task handler finished
+[DEBUG/MainProcess] task handler sending sentinel to result handler
+[DEBUG/MainProcess] task handler sending sentinel to workers
+[DEBUG/MainProcess] result handler got sentinel
+[DEBUG/MainProcess] ensuring that outqueue is not full
+[DEBUG/MainProcess] result handler exiting: len(cache)=0, thread._state=0
+[DEBUG/PoolWorker-84] worker got sentinel -- exiting
+[DEBUG/PoolWorker-85] worker got sentinel -- exiting
+[DEBUG/PoolWorker-86] worker got sentinel -- exiting
+[DEBUG/PoolWorker-84] worker exiting after 0 tasks
+[DEBUG/PoolWorker-85] worker exiting after 0 tasks
+[DEBUG/PoolWorker-86] worker exiting after 0 tasks
+[INFO/PoolWorker-84] process shutting down
+[INFO/PoolWorker-85] process shutting down
+[INFO/PoolWorker-86] process shutting down
+[DEBUG/PoolWorker-84] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-85] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-86] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-84] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-85] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-86] running the remaining "atexit" finalizers
+[INFO/PoolWorker-84] process exiting with exitcode 0
+[INFO/PoolWorker-85] process exiting with exitcode 0
+[INFO/PoolWorker-86] process exiting with exitcode 0
+[DEBUG/MainProcess] task handler exiting
+[DEBUG/MainProcess] terminating workers
+[DEBUG/MainProcess] joining task handler
+[DEBUG/MainProcess] joining result handler
+[DEBUG/MainProcess] joining pool workers
+[DEBUG/MainProcess] created semlock with handle 47475386867712
+[DEBUG/MainProcess] created semlock with handle 47475386871808
+[DEBUG/MainProcess] created semlock with handle 47475386875904
+[DEBUG/MainProcess] created semlock with handle 47475386880000
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-87] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-88] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-89] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-90] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-91] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-92] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-93] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-94] child process calling self.run()
+[DEBUG/MainProcess] doing set_length()
+[2012-09-06 01:36:44,814] Generating summary files: ('', 'C.Dson_15_02_317Ma1_index12', '5', 'CTTGTA')
+[2012-09-06 01:36:44,815] Generating summary files: ('', 'C.Dson_15_02_317Ma1_index12', '5', 'GGCTAC')
+[2012-09-06 01:36:44,815] Generating summary files: ('', 'C.Dson_15_02_317Ma1_index12', '3', 'CTTGTA')
+[2012-09-06 01:36:44,815] Generating summary files: ('', 'C.Dson_15_02_317Ma1_index12', '4', 'CTTGTA')
+[2012-09-06 01:36:44,815] Generating summary files: ('', 'C.Dson_15_02_317Ma1_index12', '2', 'CTTGTA')
+[DEBUG/MainProcess] worker handler exiting
+[Thu Sep 06 01:36:46 CEST 2012] net.sf.picard.analysis.CollectAlignmentSummaryMetrics INPUT=5_120719_BD158KACXX_1_nophix-sort-dup.bam OUTPUT=tx/5_120719_BD158KACXX_1_nophix-sort-dup.align_metrics REFERENCE_SEQUENCE=/bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/seq/hg19.fa VALIDATION_STRINGENCY=SILENT    MAX_INSERT_SIZE=100000 ADAPTER_SEQUENCE=[AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT, AGATCGGAAGAGCTCGTATGCCGTCTTCTGCTTG, AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT, AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTTG, AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT, AGATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNNNATCTCGTATGCCGTCTTCTGCTTG] METRIC_ACCUMULATION_LEVEL=[ALL_READS] IS_BISULFITE_SEQUENCED=false ASSUME_SORTED=true STOP_AFTER=0 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:36:46 CEST 2012] net.sf.picard.analysis.CollectAlignmentSummaryMetrics INPUT=5_120719_BD158KACXX_2_nophix-sort-dup.bam OUTPUT=tx/5_120719_BD158KACXX_2_nophix-sort-dup.align_metrics REFERENCE_SEQUENCE=/bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/seq/hg19.fa VALIDATION_STRINGENCY=SILENT    MAX_INSERT_SIZE=100000 ADAPTER_SEQUENCE=[AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT, AGATCGGAAGAGCTCGTATGCCGTCTTCTGCTTG, AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT, AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTTG, AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT, AGATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNNNATCTCGTATGCCGTCTTCTGCTTG] METRIC_ACCUMULATION_LEVEL=[ALL_READS] IS_BISULFITE_SEQUENCED=false ASSUME_SORTED=true STOP_AFTER=0 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false[Thu Sep 06 01:36:46 CEST 2012] net.sf.picard.analysis.CollectAlignmentSummaryMetrics INPUT=4_120719_BD158KACXX_1_nophix-sort-dup.bam OUTPUT=tx/4_120719_BD158KACXX_1_nophix-sort-dup.align_metrics REFERENCE_SEQUENCE=/bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/seq/hg19.fa VALIDATION_STRINGENCY=SILENT    MAX_INSERT_SIZE=100000 ADAPTER_SEQUENCE=[AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT, AGATCGGAAGAGCTCGTATGCCGTCTTCTGCTTG, AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT, AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTTG, AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT, AGATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNNNATCTCGTATGCCGTCTTCTGCTTG] METRIC_ACCUMULATION_LEVEL=[ALL_READS] IS_BISULFITE_SEQUENCED=false ASSUME_SORTED=true STOP_AFTER=0 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:36:46 CEST 2012] net.sf.picard.analysis.CollectAlignmentSummaryMetrics INPUT=2_120719_BD158KACXX_1_nophix-sort-dup.bam OUTPUT=tx/2_120719_BD158KACXX_1_nophix-sort-dup.align_metrics REFERENCE_SEQUENCE=/bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/seq/hg19.fa VALIDATION_STRINGENCY=SILENT    MAX_INSERT_SIZE=100000 ADAPTER_SEQUENCE=[AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT, AGATCGGAAGAGCTCGTATGCCGTCTTCTGCTTG, AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT, AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTTG, AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT, AGATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNNNATCTCGTATGCCGTCTTCTGCTTG] METRIC_ACCUMULATION_LEVEL=[ALL_READS] IS_BISULFITE_SEQUENCED=false ASSUME_SORTED=true STOP_AFTER=0 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+
+[Thu Sep 06 01:36:46 CEST 2012] net.sf.picard.analysis.CollectAlignmentSummaryMetrics INPUT=3_120719_BD158KACXX_1_nophix-sort-dup.bam OUTPUT=tx/3_120719_BD158KACXX_1_nophix-sort-dup.align_metrics REFERENCE_SEQUENCE=/bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/seq/hg19.fa VALIDATION_STRINGENCY=SILENT    MAX_INSERT_SIZE=100000 ADAPTER_SEQUENCE=[AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT, AGATCGGAAGAGCTCGTATGCCGTCTTCTGCTTG, AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT, AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTTG, AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT, AGATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNNNATCTCGTATGCCGTCTTCTGCTTG] METRIC_ACCUMULATION_LEVEL=[ALL_READS] IS_BISULFITE_SEQUENCED=false ASSUME_SORTED=true STOP_AFTER=0 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:36:46 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+[Thu Sep 06 01:36:46 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)[Thu Sep 06 01:36:46 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+
+[Thu Sep 06 01:36:46 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)[Thu Sep 06 01:36:46 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+
+[Thu Sep 06 01:37:29 CEST 2012] net.sf.picard.analysis.CollectAlignmentSummaryMetrics done. Elapsed time: 0.71 minutes.
+Runtime.totalMemory()=249167872
+[Thu Sep 06 01:37:29 CEST 2012] net.sf.picard.analysis.CollectAlignmentSummaryMetrics done. Elapsed time: 0.71 minutes.
+Runtime.totalMemory()=597164032
+[Thu Sep 06 01:37:29 CEST 2012] net.sf.picard.analysis.CollectAlignmentSummaryMetrics done. Elapsed time: 0.71 minutes.
+Runtime.totalMemory()=442695680
+[Thu Sep 06 01:37:29 CEST 2012] net.sf.picard.analysis.CollectAlignmentSummaryMetrics done. Elapsed time: 0.71 minutes.
+Runtime.totalMemory()=595853312
+[Thu Sep 06 01:37:29 CEST 2012] net.sf.picard.analysis.CollectInsertSizeMetrics HISTOGRAM_FILE=tx/5_120719_BD158KACXX_1_nophix-sort-dup-insert.pdf INPUT=5_120719_BD158KACXX_1_nophix-sort-dup.bam OUTPUT=tx/5_120719_BD158KACXX_1_nophix-sort-dup.insert_metrics VALIDATION_STRINGENCY=SILENT    DEVIATIONS=10.0 MINIMUM_PCT=0.05 METRIC_ACCUMULATION_LEVEL=[ALL_READS] ASSUME_SORTED=true STOP_AFTER=0 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:37:29 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+[Thu Sep 06 01:37:29 CEST 2012] net.sf.picard.analysis.CollectInsertSizeMetrics HISTOGRAM_FILE=tx/4_120719_BD158KACXX_1_nophix-sort-dup-insert.pdf INPUT=4_120719_BD158KACXX_1_nophix-sort-dup.bam OUTPUT=tx/4_120719_BD158KACXX_1_nophix-sort-dup.insert_metrics VALIDATION_STRINGENCY=SILENT    DEVIATIONS=10.0 MINIMUM_PCT=0.05 METRIC_ACCUMULATION_LEVEL=[ALL_READS] ASSUME_SORTED=true STOP_AFTER=0 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:37:29 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+[Thu Sep 06 01:37:29 CEST 2012] net.sf.picard.analysis.CollectInsertSizeMetrics HISTOGRAM_FILE=tx/2_120719_BD158KACXX_1_nophix-sort-dup-insert.pdf INPUT=2_120719_BD158KACXX_1_nophix-sort-dup.bam OUTPUT=tx/2_120719_BD158KACXX_1_nophix-sort-dup.insert_metrics VALIDATION_STRINGENCY=SILENT    DEVIATIONS=10.0 MINIMUM_PCT=0.05 METRIC_ACCUMULATION_LEVEL=[ALL_READS] ASSUME_SORTED=true STOP_AFTER=0 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:37:29 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+[Thu Sep 06 01:37:29 CEST 2012] net.sf.picard.analysis.CollectInsertSizeMetrics HISTOGRAM_FILE=tx/3_120719_BD158KACXX_1_nophix-sort-dup-insert.pdf INPUT=3_120719_BD158KACXX_1_nophix-sort-dup.bam OUTPUT=tx/3_120719_BD158KACXX_1_nophix-sort-dup.insert_metrics VALIDATION_STRINGENCY=SILENT    DEVIATIONS=10.0 MINIMUM_PCT=0.05 METRIC_ACCUMULATION_LEVEL=[ALL_READS] ASSUME_SORTED=true STOP_AFTER=0 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:37:29 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+[Thu Sep 06 01:37:30 CEST 2012] net.sf.picard.analysis.CollectAlignmentSummaryMetrics done. Elapsed time: 0.72 minutes.
+Runtime.totalMemory()=249167872
+[Thu Sep 06 01:37:30 CEST 2012] net.sf.picard.analysis.CollectInsertSizeMetrics HISTOGRAM_FILE=tx/5_120719_BD158KACXX_2_nophix-sort-dup-insert.pdf INPUT=5_120719_BD158KACXX_2_nophix-sort-dup.bam OUTPUT=tx/5_120719_BD158KACXX_2_nophix-sort-dup.insert_metrics VALIDATION_STRINGENCY=SILENT    DEVIATIONS=10.0 MINIMUM_PCT=0.05 METRIC_ACCUMULATION_LEVEL=[ALL_READS] ASSUME_SORTED=true STOP_AFTER=0 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:37:30 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+INFO	2012-09-06 01:37:45	ProcessExecutor	null device 
+INFO	2012-09-06 01:37:45	ProcessExecutor	          1 
+[Thu Sep 06 01:37:45 CEST 2012] net.sf.picard.analysis.CollectInsertSizeMetrics done. Elapsed time: 0.27 minutes.
+Runtime.totalMemory()=340459520
+[Thu Sep 06 01:37:46 CEST 2012] net.sf.picard.analysis.directed.CalculateHsMetrics BAIT_INTERVALS=/proj/a2010002/projects/data/seqcap/mans/baits/withchr/baits.Agilent50.picardStyle.interval_list TARGET_INTERVALS=/proj/a2010002/projects/data/seqcap/mans/targets/withchr/targets.Agilent50.picardStyle.interval_list INPUT=4_120719_BD158KACXX_1_nophix-sort-dup.bam OUTPUT=tx/4_120719_BD158KACXX_1_nophix-sort-dup.hs_metrics VALIDATION_STRINGENCY=SILENT    METRIC_ACCUMULATION_LEVEL=[ALL_READS] VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:37:46 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+INFO	2012-09-06 01:37:46	ProcessExecutor	null device 
+INFO	2012-09-06 01:37:46	ProcessExecutor	          1 
+[Thu Sep 06 01:37:46 CEST 2012] net.sf.picard.analysis.CollectInsertSizeMetrics done. Elapsed time: 0.29 minutes.
+Runtime.totalMemory()=349569024
+[Thu Sep 06 01:37:47 CEST 2012] net.sf.picard.analysis.directed.CalculateHsMetrics BAIT_INTERVALS=/proj/a2010002/projects/data/seqcap/mans/baits/withchr/baits.Agilent50.picardStyle.interval_list TARGET_INTERVALS=/proj/a2010002/projects/data/seqcap/mans/targets/withchr/targets.Agilent50.picardStyle.interval_list INPUT=5_120719_BD158KACXX_1_nophix-sort-dup.bam OUTPUT=tx/5_120719_BD158KACXX_1_nophix-sort-dup.hs_metrics VALIDATION_STRINGENCY=SILENT    METRIC_ACCUMULATION_LEVEL=[ALL_READS] VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:37:47 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+INFO	2012-09-06 01:37:49	ProcessExecutor	null device 
+INFO	2012-09-06 01:37:49	ProcessExecutor	          1 
+[Thu Sep 06 01:37:49 CEST 2012] net.sf.picard.analysis.CollectInsertSizeMetrics done. Elapsed time: 0.33 minutes.
+Runtime.totalMemory()=366870528
+[Thu Sep 06 01:37:49 CEST 2012] net.sf.picard.analysis.directed.CalculateHsMetrics BAIT_INTERVALS=/proj/a2010002/projects/data/seqcap/mans/baits/withchr/baits.Agilent50.picardStyle.interval_list TARGET_INTERVALS=/proj/a2010002/projects/data/seqcap/mans/targets/withchr/targets.Agilent50.picardStyle.interval_list INPUT=2_120719_BD158KACXX_1_nophix-sort-dup.bam OUTPUT=tx/2_120719_BD158KACXX_1_nophix-sort-dup.hs_metrics VALIDATION_STRINGENCY=SILENT    METRIC_ACCUMULATION_LEVEL=[ALL_READS] VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:37:49 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+[Thu Sep 06 01:37:55 CEST 2012] net.sf.picard.analysis.directed.CalculateHsMetrics done. Elapsed time: 0.14 minutes.
+Runtime.totalMemory()=1392443392
+[Thu Sep 06 01:37:55 CEST 2012] net.sf.picard.analysis.directed.CalculateHsMetrics done. Elapsed time: 0.16 minutes.
+Runtime.totalMemory()=1181876224
+Processing 5_120719_BD158KACXX_1_nophix-sort-dup.bam
+Processing 4_120719_BD158KACXX_1_nophix-sort-dup.bam
+[Thu Sep 06 01:37:59 CEST 2012] net.sf.picard.analysis.directed.CalculateHsMetrics done. Elapsed time: 0.16 minutes.
+Runtime.totalMemory()=1185742848
+Processing 2_120719_BD158KACXX_1_nophix-sort-dup.bam
+Approx 80% complete for 5_120719_BD158KACXX_1_nophix-sort-dup.bam
+INFO	2012-09-06 01:38:02	ProcessExecutor	null device 
+INFO	2012-09-06 01:38:02	ProcessExecutor	          1 
+[Thu Sep 06 01:38:02 CEST 2012] net.sf.picard.analysis.CollectInsertSizeMetrics done. Elapsed time: 0.54 minutes.
+Runtime.totalMemory()=362610688
+[Thu Sep 06 01:38:02 CEST 2012] net.sf.picard.analysis.directed.CalculateHsMetrics BAIT_INTERVALS=/proj/a2010002/projects/data/seqcap/mans/baits/withchr/baits.Agilent50.picardStyle.interval_list TARGET_INTERVALS=/proj/a2010002/projects/data/seqcap/mans/targets/withchr/targets.Agilent50.picardStyle.interval_list INPUT=3_120719_BD158KACXX_1_nophix-sort-dup.bam OUTPUT=tx/3_120719_BD158KACXX_1_nophix-sort-dup.hs_metrics VALIDATION_STRINGENCY=SILENT    METRIC_ACCUMULATION_LEVEL=[ALL_READS] VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+[Thu Sep 06 01:38:02 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+INFO	2012-09-06 01:38:05	ProcessExecutor	null device 
+INFO	2012-09-06 01:38:05	ProcessExecutor	          1 
+[Thu Sep 06 01:38:05 CEST 2012] net.sf.picard.analysis.CollectInsertSizeMetrics done. Elapsed time: 0.57 minutes.
+Runtime.totalMemory()=331284480
+This is pdfTeXk, Version 3.141592-1.40.3 (Web2C 7.5.6)
+ %&-line parsing enabled.
+[Thu Sep 06 01:38:05 CEST 2012] net.sf.picard.analysis.directed.CalculateHsMetrics BAIT_INTERVALS=/proj/a2010002/projects/data/seqcap/mans/baits/withchr/baits.Agilent50.picardStyle.interval_list TARGET_INTERVALS=/proj/a2010002/projects/data/seqcap/mans/targets/withchr/targets.Agilent50.picardStyle.interval_list INPUT=5_120719_BD158KACXX_2_nophix-sort-dup.bam OUTPUT=tx/5_120719_BD158KACXX_2_nophix-sort-dup.hs_metrics VALIDATION_STRINGENCY=SILENT    METRIC_ACCUMULATION_LEVEL=[ALL_READS] VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+entering extended mode
+
+(/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317M
+a1_index12/120719_BD158KACXX/5_120719_BD158KACXX_1_nophix-sort-dup-summary.tex[Thu Sep 06 01:38:05 CEST 2012] Executing as pontusla@q129.uppmax.uu.se on Linux 2.6.32-220.13.1.el6.x86_64 amd64; Java HotSpot(TM) 64-Bit Server VM 1.6.0_18-b07; Picard version: 1.64(1146)
+
+LaTeX2e <2005/12/01>
+Babel <v3.8h> and hyphenation patterns for english, usenglishmax, dumylang, noh
+yphenation, arabic, basque, bulgarian, coptic, welsh, czech, slovak, german, ng
+erman, danish, esperanto, spanish, catalan, galician, estonian, farsi, finnish,
+ french, greek, monogreek, ancientgreek, croatian, hungarian, interlingua, ibyc
+us, indonesian, icelandic, italian, latin, mongolian, dutch, norsk, polish, por
+tuguese, pinyin, romanian, russian, slovenian, uppersorbian, serbian, swedish, 
+turkish, ukenglish, ukrainian, loaded.
+(/usr/share/texmf/tex/latex/base/article.cls
+Document Class: article 2005/09/16 v1.4f Standard LaTeX document class
+(/usr/share/texmf/tex/latex/base/size10.clo))
+(/usr/share/texmf/tex/latex/preprint/fullpage.sty)
+(/usr/share/texmf/tex/latex/graphics/graphicx.sty
+(/usr/share/texmf/tex/latex/graphics/keyval.sty)
+(/usr/share/texmf/tex/latex/graphics/graphics.sty
+(/usr/share/texmf/tex/latex/graphics/trig.sty)
+(/usr/share/texmf/tex/latex/config/graphics.cfg)
+(/usr/share/texmf/tex/latex/pdftex-def/pdftex.def)))
+(/usr/share/texmf/tex/latex/placeins/placeins.sty)
+No file 5_120719_BD158KACXX_1_nophix-sort-dup-summary.aux.
+
+Overfull \hbox (29.3929pt too wide) in paragraph at lines 9--9
+[] \OT1/cmr/bx/n/12 : C.Dson[]15[]02[]317Ma1[]index12 : 5 : CTTGTA (5[]120719[]
+BD158KACXX[]1[]nophix-
+
+<fastqc/5_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_base_quality.pn
+g, id=1, 1520.68124pt x 602.25pt>
+<use fastqc/5_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_base_qualit
+y.png>
+<fastqc/5_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_base_sequence_c
+ontent.png, id=2, 1520.68124pt x 602.25pt>
+<use fastqc/5_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_base_sequen
+ce_content.png>
+<fastqc/5_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_sequence_gc_con
+tent.png, id=3, 803.0pt x 602.25pt>
+<use fastqc/5_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_sequence_gc
+_content.png>
+<fastqc/5_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/kmer_profiles.png, 
+id=4, 803.0pt x 602.25pt>
+<use fastqc/5_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/kmer_profiles.p
+ng>
+<5_120719_BD158KACXX_1_nophix-sort-dup-insert.pdf, id=5, 505.89pt x 505.89pt>
+<use 5_120719_BD158KACXX_1_nophix-sort-dup-insert.pdf> [1{/usr/share/texmf/font
+s/map/pdftex/updmap/pdftex.map} <./fastqc/5_120719_BD158KACXX_1_nophix-sort-dup
+_fastqc/Images/per_base_quality.png (PNG copy)>] [2 <./fastqc/5_120719_BD158KAC
+XX_1_nophix-sort-dup_fastqc/Images/per_base_sequence_content.png (PNG copy)> <.
+/fastqc/5_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_sequence_gc_con
+tent.png (PNG copy)>] [3 <./fastqc/5_120719_BD158KACXX_1_nophix-sort-dup_fastqc
+/Images/kmer_profiles.png (PNG copy)>] [4 <./5_120719_BD158KACXX_1_nophix-sort-
+dup-insert.pdf>] (./5_120719_BD158KACXX_1_nophix-sort-dup-summary.aux) )
+(see the transcript file for additional information)</usr/share/texmf/fonts/typ
+e1/bluesky/cm/cmbx12.pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmr10.pfb>
+Output written on 5_120719_BD158KACXX_1_nophix-sort-dup-summary.pdf (4 pages, 2
+24816 bytes).
+Transcript written on 5_120719_BD158KACXX_1_nophix-sort-dup-summary.log.
+[DEBUG/PoolWorker-87] worker exiting after 1 tasks
+[INFO/PoolWorker-87] process shutting down
+[DEBUG/PoolWorker-87] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-87] running the remaining "atexit" finalizers
+[INFO/PoolWorker-87] process exiting with exitcode 0
+[('Total', '80,006', 'paired'),
+ ('Aligned', '68,229', '(85.3\\%)'),
+ ('Pairs aligned', '66,936', '(83.7\\%)'),
+ ('Pair duplicates', '48', '(0.1\\%)'),
+ ('Insert size', '195.1', '+/- 60.7'),
+ (None, None, None),
+ ('On bait bases', '5,516,861', '(44.2\\%)'),
+ ('Near bait bases', '2,701,446', '(21.6\\%)'),
+ ('Off bait bases', '4,259,735', '(34.1\\%)'),
+ ('Mean bait coverage', '0.1', ''),
+ ('On target bases', '5,523,505', '(44.3\\%)'),
+ ('Mean target coverage', '0x', ''),
+ ('10x coverage targets', '0.0\\%', ''),
+ ('Zero coverage targets', '91.8\\%', ''),
+ ('Fold enrichment', '26x', '')]
+[DEBUG/MainProcess] cleaning up worker 0
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-95] child process calling self.run()
+Approx 75% complete for 2_120719_BD158KACXX_1_nophix-sort-dup.bam
+[Thu Sep 06 01:38:12 CEST 2012] net.sf.picard.analysis.directed.CalculateHsMetrics done. Elapsed time: 0.15 minutes.
+Runtime.totalMemory()=1184890880
+Processing 3_120719_BD158KACXX_1_nophix-sort-dup.bam
+This is pdfTeXk, Version 3.141592-1.40.3 (Web2C 7.5.6)
+ %&-line parsing enabled.
+entering extended mode
+
+(/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317M
+a1_index12/120719_BD158KACXX/4_120719_BD158KACXX_1_nophix-sort-dup-summary.tex
+LaTeX2e <2005/12/01>
+Babel <v3.8h> and hyphenation patterns for english, usenglishmax, dumylang, noh
+yphenation, arabic, basque, bulgarian, coptic, welsh, czech, slovak, german, ng
+erman, danish, esperanto, spanish, catalan, galician, estonian, farsi, finnish,
+ french, greek, monogreek, ancientgreek, croatian, hungarian, interlingua, ibyc
+us, indonesian, icelandic, italian, latin, mongolian, dutch, norsk, polish, por
+tuguese, pinyin, romanian, russian, slovenian, uppersorbian, serbian, swedish, 
+turkish, ukenglish, ukrainian, loaded.
+(/usr/share/texmf/tex/latex/base/article.cls
+Document Class: article 2005/09/16 v1.4f Standard LaTeX document class
+(/usr/share/texmf/tex/latex/base/size10.clo))
+(/usr/share/texmf/tex/latex/preprint/fullpage.sty)
+(/usr/share/texmf/tex/latex/graphics/graphicx.sty
+(/usr/share/texmf/tex/latex/graphics/keyval.sty)
+(/usr/share/texmf/tex/latex/graphics/graphics.sty
+(/usr/share/texmf/tex/latex/graphics/trig.sty)
+(/usr/share/texmf/tex/latex/config/graphics.cfg)
+(/usr/share/texmf/tex/latex/pdftex-def/pdftex.def)))
+(/usr/share/texmf/tex/latex/placeins/placeins.sty)
+No file 4_120719_BD158KACXX_1_nophix-sort-dup-summary.aux.
+
+Overfull \hbox (29.3929pt too wide) in paragraph at lines 9--9
+[] \OT1/cmr/bx/n/12 : C.Dson[]15[]02[]317Ma1[]index12 : 4 : CTTGTA (4[]120719[]
+BD158KACXX[]1[]nophix-
+
+<fastqc/4_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_base_quality.pn
+g, id=1, 1520.68124pt x 602.25pt>
+<use fastqc/4_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_base_qualit
+y.png>
+<fastqc/4_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_base_sequence_c
+ontent.png, id=2, 1520.68124pt x 602.25pt>
+<use fastqc/4_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_base_sequen
+ce_content.png>
+<fastqc/4_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_sequence_gc_con
+tent.png, id=3, 803.0pt x 602.25pt>
+<use fastqc/4_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_sequence_gc
+_content.png>
+<fastqc/4_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/kmer_profiles.png, 
+id=4, 803.0pt x 602.25pt>
+<use fastqc/4_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/kmer_profiles.p
+ng>
+<4_120719_BD158KACXX_1_nophix-sort-dup-insert.pdf, id=5, 505.89pt x 505.89pt>
+<use 4_120719_BD158KACXX_1_nophix-sort-dup-insert.pdf> [1{/usr/share/texmf/font
+s/map/pdftex/updmap/pdftex.map} <./fastqc/4_120719_BD158KACXX_1_nophix-sort-dup
+_fastqc/Images/per_base_quality.png (PNG copy)>] [2 <./fastqc/4_120719_BD158KAC
+XX_1_nophix-sort-dup_fastqc/Images/per_base_sequence_content.png (PNG copy)> <.
+/fastqc/4_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_sequence_gc_con
+tent.png (PNG copy)>] [3 <./fastqc/4_120719_BD158KACXX_1_nophix-sort-dup_fastqc
+/Images/kmer_profiles.png (PNG copy)>] [4 <./4_120719_BD158KACXX_1_nophix-sort-
+dup-insert.pdf>] (./4_120719_BD158KACXX_1_nophix-sort-dup-summary.aux) )
+(see the transcript file for additional information)</usr/share/texmf/fonts/typ
+e1/bluesky/cm/cmbx12.pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmr10.pfb>Approx 85% complete for 2_120719_BD158KACXX_1_nophix-sort-dup.bam
+
+Output written on 4_120719_BD158KACXX_1_nophix-sort-dup-summary.pdf (4 pages, 1
+97404 bytes).
+Transcript written on 4_120719_BD158KACXX_1_nophix-sort-dup-summary.log.
+[DEBUG/PoolWorker-90] worker exiting after 1 tasks
+[INFO/PoolWorker-90] process shutting down
+[DEBUG/PoolWorker-90] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-90] running the remaining "atexit" finalizers
+[INFO/PoolWorker-90] process exiting with exitcode 0
+[('Total', '223,898', 'paired'),
+ ('Aligned', '203,628', '(90.9\\%)'),
+ ('Pairs aligned', '200,651', '(89.6\\%)'),
+ ('Pair duplicates', '273', '(0.1\\%)'),
+ ('Insert size', '182.8', '+/- 60.2'),
+ (None, None, None),
+ ('On bait bases', '17,115,136', '(45.8\\%)'),
+ ('Near bait bases', '7,662,254', '(20.5\\%)'),
+ ('Off bait bases', '12,591,167', '(33.7\\%)'),
+ ('Mean bait coverage', '0.3', ''),
+ ('On target bases', '17,131,658', '(45.8\\%)'),
+ ('Mean target coverage', '0x', ''),
+ ('10x coverage targets', '0.0\\%', ''),
+ ('Zero coverage targets', '75.9\\%', ''),
+ ('Fold enrichment', '27x', '')]
+[DEBUG/MainProcess] cleaning up worker 2
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-96] child process calling self.run()
+[Thu Sep 06 01:38:12 CEST 2012] net.sf.picard.analysis.directed.CalculateHsMetrics done. Elapsed time: 0.13 minutes.
+Runtime.totalMemory()=1394409472
+Processing 5_120719_BD158KACXX_2_nophix-sort-dup.bam
+Approx 10% complete for 3_120719_BD158KACXX_1_nophix-sort-dup.bam
+Approx 20% complete for 3_120719_BD158KACXX_1_nophix-sort-dup.bam
+This is pdfTeXk, Version 3.141592-1.40.3 (Web2C 7.5.6)
+ %&-line parsing enabled.
+entering extended mode
+
+(/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317M
+a1_index12/120719_BD158KACXX/2_120719_BD158KACXX_1_nophix-sort-dup-summary.tex
+LaTeX2e <2005/12/01>
+Babel <v3.8h> and hyphenation patterns for english, usenglishmax, dumylang, noh
+yphenation, arabic, basque, bulgarian, coptic, welsh, czech, slovak, german, ng
+erman, danish, esperanto, spanish, catalan, galician, estonian, farsi, finnish,
+ french, greek, monogreek, ancientgreek, croatian, hungarian, interlingua, ibyc
+us, indonesian, icelandic, italian, latin, mongolian, dutch, norsk, polish, por
+tuguese, pinyin, romanian, russian, slovenian, uppersorbian, serbian, swedish, 
+turkish, ukenglish, ukrainian, loaded.
+(/usr/share/texmf/tex/latex/base/article.cls
+Document Class: article 2005/09/16 v1.4f Standard LaTeX document class
+(/usr/share/texmf/tex/latex/base/size10.clo))
+(/usr/share/texmf/tex/latex/preprint/fullpage.sty)
+(/usr/share/texmf/tex/latex/graphics/graphicx.sty
+(/usr/share/texmf/tex/latex/graphics/keyval.sty)
+(/usr/share/texmf/tex/latex/graphics/graphics.sty
+(/usr/share/texmf/tex/latex/graphics/trig.sty)
+(/usr/share/texmf/tex/latex/config/graphics.cfg)
+(/usr/share/texmf/tex/latex/pdftex-def/pdftex.def)))
+(/usr/share/texmf/tex/latex/placeins/placeins.sty)
+No file 2_120719_BD158KACXX_1_nophix-sort-dup-summary.aux.
+
+Overfull \hbox (29.3929pt too wide) in paragraph at lines 9--9
+[] \OT1/cmr/bx/n/12 : C.Dson[]15[]02[]317Ma1[]index12 : 2 : CTTGTA (2[]120719[]
+BD158KACXX[]1[]nophix-
+
+<fastqc/2_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_base_quality.pn
+g, id=1, 1520.68124pt x 602.25pt>
+<use fastqc/2_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_base_qualit
+y.png>
+<fastqc/2_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_base_sequence_c
+ontent.png, id=2, 1520.68124pt x 602.25pt>
+<use fastqc/2_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_base_sequen
+ce_content.png>
+<fastqc/2_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_sequence_gc_con
+tent.png, id=3, 803.0pt x 602.25pt>
+<use fastqc/2_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_sequence_gc
+_content.png>
+<fastqc/2_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/kmer_profiles.png, 
+id=4, 803.0pt x 602.25pt>
+<use fastqc/2_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/kmer_profiles.p
+ng>
+<2_120719_BD158KACXX_1_nophix-sort-dup-insert.pdf, id=5, 505.89pt x 505.89pt>
+<use 2_120719_BD158KACXX_1_nophix-sort-dup-insert.pdf> [1{/usr/share/texmf/font
+s/map/pdftex/updmap/pdftex.map} <./fastqc/2_120719_BD158KACXX_1_nophix-sort-dup
+_fastqc/Images/per_base_quality.png (PNG copy)>] [2 <./fastqc/2_120719_BD158KAC
+XX_1_nophix-sort-dup_fastqc/Images/per_base_sequence_content.png (PNG copy)> <.
+/fastqc/2_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_sequence_gc_con
+tent.png (PNG copy)>] [3 <./fastqc/2_120719_BD158KACXX_1_nophix-sort-dup_fastqc
+/Images/kmer_profiles.png (PNG copy)>] [4 <./2_120719_BD158KACXX_1_nophix-sort-
+dup-insert.pdf>] (./2_120719_BD158KACXX_1_nophix-sort-dup-summary.aux) )
+(see the transcript file for additional information)</usr/share/texmf/fonts/typ
+e1/bluesky/cm/cmbx12.pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmr10.pfb>
+Output written on 2_120719_BD158KACXX_1_nophix-sort-dup-summary.pdf (4 pages, 2
+06123 bytes).
+Transcript written on 2_120719_BD158KACXX_1_nophix-sort-dup-summary.log.
+[DEBUG/PoolWorker-91] worker exiting after 1 tasks
+[INFO/PoolWorker-91] process shutting down
+[DEBUG/PoolWorker-91] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-91] running the remaining "atexit" finalizers
+[INFO/PoolWorker-91] process exiting with exitcode 0
+[('Total', '233,287', 'paired'),
+ ('Aligned', '212,507', '(91.1\\%)'),
+ ('Pairs aligned', '209,408', '(89.8\\%)'),
+ ('Pair duplicates', '306', '(0.1\\%)'),
+ ('Insert size', '182.9', '+/- 60.5'),
+ (None, None, None),
+ ('On bait bases', '17,823,907', '(45.7\\%)'),
+ ('Near bait bases', '8,010,333', '(20.5\\%)'),
+ ('Off bait bases', '13,181,542', '(33.8\\%)'),
+ ('Mean bait coverage', '0.3', ''),
+ ('On target bases', '17,843,534', '(45.7\\%)'),
+ ('Mean target coverage', '0x', ''),
+ ('10x coverage targets', '0.0\\%', ''),
+ ('Zero coverage targets', '75.1\\%', ''),
+ ('Fold enrichment', '27x', '')]
+[DEBUG/MainProcess] cleaning up worker 2
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-97] child process calling self.run()
+Approx 30% complete for 3_120719_BD158KACXX_1_nophix-sort-dup.bam
+Approx 40% complete for 3_120719_BD158KACXX_1_nophix-sort-dup.bam
+Approx 50% complete for 3_120719_BD158KACXX_1_nophix-sort-dup.bam
+Approx 60% complete for 3_120719_BD158KACXX_1_nophix-sort-dup.bam
+Approx 70% complete for 3_120719_BD158KACXX_1_nophix-sort-dup.bam
+This is pdfTeXk, Version 3.141592-1.40.3 (Web2C 7.5.6)
+ %&-line parsing enabled.
+entering extended mode
+
+(/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317M
+a1_index12/120719_BD158KACXX/5_120719_BD158KACXX_2_nophix-sort-dup-summary.tex
+LaTeX2e <2005/12/01>
+Babel <v3.8h> and hyphenation patterns for english, usenglishmax, dumylang, noh
+yphenation, arabic, basque, bulgarian, coptic, welsh, czech, slovak, german, ng
+erman, danish, esperanto, spanish, catalan, galician, estonian, farsi, finnish,
+ french, greek, monogreek, ancientgreek, croatian, hungarian, interlingua, ibyc
+us, indonesian, icelandic, italian, latin, mongolian, dutch, norsk, polish, por
+tuguese, pinyin, romanian, russian, slovenian, uppersorbian, serbian, swedish, 
+turkish, ukenglish, ukrainian, loaded.
+(/usr/share/texmf/tex/latex/base/article.cls
+Document Class: article 2005/09/16 v1.4f Standard LaTeX document class
+(/usr/share/texmf/tex/latex/base/size10.clo))
+(/usr/share/texmf/tex/latex/preprint/fullpage.sty)
+(/usr/share/texmf/tex/latex/graphics/graphicx.sty
+(/usr/share/texmf/tex/latex/graphics/keyval.sty)
+(/usr/share/texmf/tex/latex/graphics/graphics.sty
+(/usr/share/texmf/tex/latex/graphics/trig.sty)
+(/usr/share/texmf/tex/latex/config/graphics.cfg)
+(/usr/share/texmf/tex/latex/pdftex-def/pdftex.def)))
+(/usr/share/texmf/tex/latex/placeins/placeins.sty)
+No file 5_120719_BD158KACXX_2_nophix-sort-dup-summary.aux.
+
+Overfull \hbox (30.60126pt too wide) in paragraph at lines 9--9
+[] \OT1/cmr/bx/n/12 : C.Dson[]15[]02[]317Ma1[]index12 : 5 : GGC-TAC (5[]120719[
+]BD158KACXX[]2[]nophix-
+
+<fastqc/5_120719_BD158KACXX_2_nophix-sort-dup_fastqc/Images/per_base_quality.pn
+g, id=1, 1520.68124pt x 602.25pt>
+<use fastqc/5_120719_BD158KACXX_2_nophix-sort-dup_fastqc/Images/per_base_qualit
+y.png>
+<fastqc/5_120719_BD158KACXX_2_nophix-sort-dup_fastqc/Images/per_base_sequence_c
+ontent.png, id=2, 1520.68124pt x 602.25pt>
+<use fastqc/5_120719_BD158KACXX_2_nophix-sort-dup_fastqc/Images/per_base_sequen
+ce_content.png>
+<fastqc/5_120719_BD158KACXX_2_nophix-sort-dup_fastqc/Images/per_sequence_gc_con
+tent.png, id=3, 803.0pt x 602.25pt>
+<use fastqc/5_120719_BD158KACXX_2_nophix-sort-dup_fastqc/Images/per_sequence_gc
+_content.png>
+<fastqc/5_120719_BD158KACXX_2_nophix-sort-dup_fastqc/Images/kmer_profiles.png, 
+id=4, 803.0pt x 602.25pt>
+<use fastqc/5_120719_BD158KACXX_2_nophix-sort-dup_fastqc/Images/kmer_profiles.p
+ng>
+<5_120719_BD158KACXX_2_nophix-sort-dup-insert.pdf, id=5, 505.89pt x 505.89pt>
+<use 5_120719_BD158KACXX_2_nophix-sort-dup-insert.pdf> [1{/usr/share/texmf/font
+s/map/pdftex/updmap/pdftex.map} <./fastqc/5_120719_BD158KACXX_2_nophix-sort-dup
+_fastqc/Images/per_base_quality.png (PNG copy)>] [2 <./fastqc/5_120719_BD158KAC
+XX_2_nophix-sort-dup_fastqc/Images/per_base_sequence_content.png (PNG copy)> <.
+/fastqc/5_120719_BD158KACXX_2_nophix-sort-dup_fastqc/Images/per_sequence_gc_con
+tent.png (PNG copy)>] [3 <./fastqc/5_120719_BD158KACXX_2_nophix-sort-dup_fastqc
+/Images/kmer_profiles.png (PNG copy)>] [4 <./5_120719_BD158KACXX_2_nophix-sort-
+dup-insert.pdf>] (./5_120719_BD158KACXX_2_nophix-sort-dup-summary.aux) )
+(see the transcript file for additional information)</usr/share/texmf/fonts/typ
+e1/bluesky/cm/cmbx12.pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmr10.pfb>
+Output written on 5_120719_BD158KACXX_2_nophix-sort-dup-summary.pdf (4 pages, 2
+30256 bytes).
+Transcript written on 5_120719_BD158KACXX_2_nophix-sort-dup-summary.log.
+[DEBUG/PoolWorker-88] worker exiting after 1 tasks
+[INFO/PoolWorker-88] process shutting down
+[DEBUG/PoolWorker-88] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-88] running the remaining "atexit" finalizers
+[INFO/PoolWorker-88] process exiting with exitcode 0
+[('Total', '113,969', 'paired'),
+ ('Aligned', '67,738', '(59.4\\%)'),
+ ('Pairs aligned', '60,100', '(52.7\\%)'),
+ ('Pair duplicates', '114', '(0.2\\%)'),
+ ('Insert size', '173.1', '+/- 56.6'),
+ (None, None, None),
+ ('On bait bases', '5,149,315', '(44.5\\%)'),
+ ('Near bait bases', '2,299,339', '(19.9\\%)'),
+ ('Off bait bases', '4,110,952', '(35.6\\%)'),
+ ('Mean bait coverage', '0.1', ''),
+ ('On target bases', '5,153,300', '(44.6\\%)'),
+ ('Mean target coverage', '0x', ''),
+ ('10x coverage targets', '0.0\\%', ''),
+ ('Zero coverage targets', '92.7\\%', ''),
+ ('Fold enrichment', '27x', '')]
+[DEBUG/MainProcess] cleaning up worker 0
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-98] child process calling self.run()
+Approx 80% complete for 3_120719_BD158KACXX_1_nophix-sort-dup.bam
+This is pdfTeXk, Version 3.141592-1.40.3 (Web2C 7.5.6)
+ %&-line parsing enabled.
+entering extended mode
+
+(/bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317M
+a1_index12/120719_BD158KACXX/3_120719_BD158KACXX_1_nophix-sort-dup-summary.tex
+LaTeX2e <2005/12/01>
+Babel <v3.8h> and hyphenation patterns for english, usenglishmax, dumylang, noh
+yphenation, arabic, basque, bulgarian, coptic, welsh, czech, slovak, german, ng
+erman, danish, esperanto, spanish, catalan, galician, estonian, farsi, finnish,
+ french, greek, monogreek, ancientgreek, croatian, hungarian, interlingua, ibyc
+us, indonesian, icelandic, italian, latin, mongolian, dutch, norsk, polish, por
+tuguese, pinyin, romanian, russian, slovenian, uppersorbian, serbian, swedish, 
+turkish, ukenglish, ukrainian, loaded.
+(/usr/share/texmf/tex/latex/base/article.cls
+Document Class: article 2005/09/16 v1.4f Standard LaTeX document class
+(/usr/share/texmf/tex/latex/base/size10.clo))
+(/usr/share/texmf/tex/latex/preprint/fullpage.sty)
+(/usr/share/texmf/tex/latex/graphics/graphicx.sty
+(/usr/share/texmf/tex/latex/graphics/keyval.sty)
+(/usr/share/texmf/tex/latex/graphics/graphics.sty
+(/usr/share/texmf/tex/latex/graphics/trig.sty)
+(/usr/share/texmf/tex/latex/config/graphics.cfg)
+(/usr/share/texmf/tex/latex/pdftex-def/pdftex.def)))
+(/usr/share/texmf/tex/latex/placeins/placeins.sty)
+No file 3_120719_BD158KACXX_1_nophix-sort-dup-summary.aux.
+
+Overfull \hbox (29.3929pt too wide) in paragraph at lines 9--9
+[] \OT1/cmr/bx/n/12 : C.Dson[]15[]02[]317Ma1[]index12 : 3 : CTTGTA (3[]120719[]
+BD158KACXX[]1[]nophix-
+
+<fastqc/3_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_base_quality.pn
+g, id=1, 1520.68124pt x 602.25pt>
+<use fastqc/3_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_base_qualit
+y.png>
+<fastqc/3_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_base_sequence_c
+ontent.png, id=2, 1520.68124pt x 602.25pt>
+<use fastqc/3_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_base_sequen
+ce_content.png>
+<fastqc/3_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_sequence_gc_con
+tent.png, id=3, 803.0pt x 602.25pt>
+<use fastqc/3_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_sequence_gc
+_content.png>
+<fastqc/3_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/kmer_profiles.png, 
+id=4, 803.0pt x 602.25pt>
+<use fastqc/3_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/kmer_profiles.p
+ng>
+<3_120719_BD158KACXX_1_nophix-sort-dup-insert.pdf, id=5, 505.89pt x 505.89pt>
+<use 3_120719_BD158KACXX_1_nophix-sort-dup-insert.pdf> [1{/usr/share/texmf/font
+s/map/pdftex/updmap/pdftex.map} <./fastqc/3_120719_BD158KACXX_1_nophix-sort-dup
+_fastqc/Images/per_base_quality.png (PNG copy)>] [2 <./fastqc/3_120719_BD158KAC
+XX_1_nophix-sort-dup_fastqc/Images/per_base_sequence_content.png (PNG copy)> <.
+/fastqc/3_120719_BD158KACXX_1_nophix-sort-dup_fastqc/Images/per_sequence_gc_con
+tent.png (PNG copy)>] [3 <./fastqc/3_120719_BD158KACXX_1_nophix-sort-dup_fastqc
+/Images/kmer_profiles.png (PNG copy)>] [4 <./3_120719_BD158KACXX_1_nophix-sort-
+dup-insert.pdf>] (./3_120719_BD158KACXX_1_nophix-sort-dup-summary.aux) )
+(see the transcript file for additional information)</usr/share/texmf/fonts/typ
+e1/bluesky/cm/cmbx12.pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmr10.pfb>
+Output written on 3_120719_BD158KACXX_1_nophix-sort-dup-summary.pdf (4 pages, 2
+07741 bytes).
+Transcript written on 3_120719_BD158KACXX_1_nophix-sort-dup-summary.log.
+[DEBUG/PoolWorker-89] worker exiting after 1 tasks
+[INFO/PoolWorker-89] process shutting down
+[DEBUG/PoolWorker-89] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-89] running the remaining "atexit" finalizers
+[INFO/PoolWorker-89] process exiting with exitcode 0
+[('Total', '222,178', 'paired'),
+ ('Aligned', '202,291', '(91.0\\%)'),
+ ('Pairs aligned', '199,514', '(89.8\\%)'),
+ ('Pair duplicates', '330', '(0.2\\%)'),
+ ('Insert size', '182.7', '+/- 60.2'),
+ (None, None, None),
+ ('On bait bases', '17,035,522', '(45.9\\%)'),
+ ('Near bait bases', '7,649,870', '(20.6\\%)'),
+ ('Off bait bases', '12,423,239', '(33.5\\%)'),
+ ('Mean bait coverage', '0.3', ''),
+ ('On target bases', '17,054,142', '(46.0\\%)'),
+ ('Mean target coverage', '0x', ''),
+ ('10x coverage targets', '0.0\\%', ''),
+ ('Zero coverage targets', '75.9\\%', ''),
+ ('Fold enrichment', '27x', '')]
+[DEBUG/MainProcess] cleaning up worker 0
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-99] child process calling self.run()
+[DEBUG/MainProcess] terminating pool
+[SUBDEBUG/MainProcess] finalizer calling <bound method type._terminate_pool of <class 'multiprocessing.pool.Pool'>> with args (<Queue.Queue instance at 0x37e8ab8>, <multiprocessing.queues.SimpleQueue object at 0x2b2dc0020690>, <multiprocessing.queues.SimpleQueue object at 0x2b2dc0020750>, [<Process(PoolWorker-92, started daemon)>, <Process(PoolWorker-93, started daemon)>, <Process(PoolWorker-94, started daemon)>, <Process(PoolWorker-95, started daemon)>, <Process(PoolWorker-96, started daemon)>, <Process(PoolWorker-97, started daemon)>, <Process(PoolWorker-98, started daemon)>, <Process(PoolWorker-99, started daemon)>], <Thread(Thread-25, started daemon 47475563955968)>, <Thread(Thread-26, started daemon 47475393201920)>, <Thread(Thread-27, started daemon 47475388983040)>, {}) and kwargs {}
+[DEBUG/MainProcess] finalizing pool
+[DEBUG/MainProcess] helping task handler/workers to finish
+[DEBUG/MainProcess] removing tasks from inqueue until task handler finished
+[DEBUG/MainProcess] task handler got sentinel
+[DEBUG/MainProcess] task handler sending sentinel to result handler
+[DEBUG/MainProcess] task handler sending sentinel to workers
+[DEBUG/MainProcess] result handler got sentinel
+[DEBUG/MainProcess] ensuring that outqueue is not full
+[DEBUG/PoolWorker-92] worker got sentinel -- exiting
+[DEBUG/MainProcess] result handler exiting: len(cache)=0, thread._state=0
+[DEBUG/PoolWorker-92] worker exiting after 0 tasks
+[DEBUG/PoolWorker-93] worker got sentinel -- exiting
+[INFO/PoolWorker-92] process shutting down
+[DEBUG/PoolWorker-93] worker exiting after 0 tasks
+[DEBUG/MainProcess] task handler exiting
+[DEBUG/PoolWorker-92] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-94] worker got sentinel -- exiting
+[INFO/PoolWorker-93] process shutting down
+[DEBUG/PoolWorker-93] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-94] worker exiting after 0 tasks
+[DEBUG/PoolWorker-92] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-95] worker got sentinel -- exiting
+[INFO/PoolWorker-94] process shutting down
+[DEBUG/PoolWorker-96] worker got sentinel -- exiting
+[INFO/PoolWorker-92] process exiting with exitcode 0
+[DEBUG/PoolWorker-93] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-95] worker exiting after 0 tasks
+[DEBUG/PoolWorker-97] worker got sentinel -- exiting
+[DEBUG/PoolWorker-94] running all "atexit" finalizers with priority >= 0
+[INFO/PoolWorker-93] process exiting with exitcode 0
+[DEBUG/PoolWorker-96] worker exiting after 0 tasks
+[INFO/PoolWorker-95] process shutting down
+[DEBUG/PoolWorker-97] worker exiting after 0 tasks
+[DEBUG/PoolWorker-98] worker got sentinel -- exiting
+[DEBUG/PoolWorker-94] running the remaining "atexit" finalizers
+[INFO/PoolWorker-96] process shutting down
+[DEBUG/PoolWorker-95] running all "atexit" finalizers with priority >= 0
+[INFO/PoolWorker-97] process shutting down
+[INFO/PoolWorker-94] process exiting with exitcode 0
+[DEBUG/PoolWorker-98] worker exiting after 0 tasks
+[DEBUG/PoolWorker-96] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-97] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-95] running the remaining "atexit" finalizers
+[INFO/PoolWorker-98] process shutting down
+[DEBUG/PoolWorker-96] running the remaining "atexit" finalizers
+[INFO/PoolWorker-95] process exiting with exitcode 0
+[DEBUG/PoolWorker-97] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-98] running all "atexit" finalizers with priority >= 0
+[INFO/PoolWorker-96] process exiting with exitcode 0
+[INFO/PoolWorker-97] process exiting with exitcode 0
+[DEBUG/PoolWorker-98] running the remaining "atexit" finalizers
+[INFO/PoolWorker-98] process exiting with exitcode 0
+[DEBUG/PoolWorker-99] worker got sentinel -- exiting
+[DEBUG/PoolWorker-99] worker exiting after 0 tasks
+[INFO/PoolWorker-99] process shutting down
+[DEBUG/PoolWorker-99] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-99] running the remaining "atexit" finalizers
+[INFO/PoolWorker-99] process exiting with exitcode 0
+[DEBUG/MainProcess] terminating workers
+[DEBUG/MainProcess] joining task handler
+[DEBUG/MainProcess] joining result handler
+[DEBUG/MainProcess] joining pool workers
+[DEBUG/MainProcess] created semlock with handle 47475393204224
+[DEBUG/MainProcess] created semlock with handle 47475393208320
+[DEBUG/MainProcess] created semlock with handle 47475393212416
+[DEBUG/MainProcess] created semlock with handle 47475393216512
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-100] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-101] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-102] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-103] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-104] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-105] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-106] child process calling self.run()
+[DEBUG/MainProcess] added worker
+[INFO/PoolWorker-107] child process calling self.run()
+[DEBUG/MainProcess] doing set_length()
+[2012-09-06 01:38:27,983] Preparing BigWig file ('', 'C.Dson_15_02_317Ma1_index12', '5', 'CTTGTA')
+[2012-09-06 01:38:27,984] Preparing BigWig file ('', 'C.Dson_15_02_317Ma1_index12', '4', 'CTTGTA')
+[2012-09-06 01:38:27,984] Preparing BigWig file ('', 'C.Dson_15_02_317Ma1_index12', '2', 'CTTGTA')
+[2012-09-06 01:38:27,984] Preparing BigWig file ('', 'C.Dson_15_02_317Ma1_index12', '5', 'GGCTAC')
+[2012-09-06 01:38:27,984] Preparing BigWig file ('', 'C.Dson_15_02_317Ma1_index12', '3', 'CTTGTA')
+[DEBUG/MainProcess] worker handler exiting
+3_120719_BD158KACXX_1_nophix-sort-dup.bam /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/317Ma1_index12-post_process.yaml --outfile=tx/3_120719_BD158KACXX_1_nophix-sort-dup.bigwig
+5_120719_BD158KACXX_2_nophix-sort-dup.bam /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/317Ma1_index12-post_process.yaml --outfile=tx/5_120719_BD158KACXX_2_nophix-sort-dup.bigwig
+5_120719_BD158KACXX_1_nophix-sort-dup.bam /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/317Ma1_index12-post_process.yaml --outfile=tx/5_120719_BD158KACXX_1_nophix-sort-dup.bigwig
+2_120719_BD158KACXX_1_nophix-sort-dup.bam /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/317Ma1_index12-post_process.yaml --outfile=tx/2_120719_BD158KACXX_1_nophix-sort-dup.bigwig
+4_120719_BD158KACXX_1_nophix-sort-dup.bam /bubo/proj/a2010002/nobackup/illumina/pipeline_test/analysis/C.Dson_15_02/317Ma1_index12/120719_BD158KACXX/317Ma1_index12-post_process.yaml --outfile=tx/4_120719_BD158KACXX_1_nophix-sort-dup.bigwig
+[DEBUG/PoolWorker-103] worker exiting after 1 tasks
+[DEBUG/PoolWorker-104] worker exiting after 1 tasks
+[DEBUG/PoolWorker-100] worker exiting after 1 tasks
+[INFO/PoolWorker-103] process shutting down
+[DEBUG/PoolWorker-102] worker exiting after 1 tasks
+[INFO/PoolWorker-104] process shutting down
+[DEBUG/PoolWorker-103] running all "atexit" finalizers with priority >= 0
+[INFO/PoolWorker-100] process shutting down
+[DEBUG/PoolWorker-104] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-100] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-103] running the remaining "atexit" finalizers
+[INFO/PoolWorker-102] process shutting down
+[DEBUG/PoolWorker-104] running the remaining "atexit" finalizers
+[INFO/PoolWorker-103] process exiting with exitcode 0
+[DEBUG/PoolWorker-100] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-102] running all "atexit" finalizers with priority >= 0
+[INFO/PoolWorker-104] process exiting with exitcode 0
+[INFO/PoolWorker-100] process exiting with exitcode 0
+[DEBUG/PoolWorker-102] running the remaining "atexit" finalizers
+[INFO/PoolWorker-102] process exiting with exitcode 0
+[DEBUG/PoolWorker-101] worker exiting after 1 tasks
+[INFO/PoolWorker-101] process shutting down
+[DEBUG/PoolWorker-101] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-101] running the remaining "atexit" finalizers
+[INFO/PoolWorker-101] process exiting with exitcode 0
+[DEBUG/MainProcess] terminating pool
+[SUBDEBUG/MainProcess] finalizer calling <bound method type._terminate_pool of <class 'multiprocessing.pool.Pool'>> with args (<Queue.Queue instance at 0x37e9518>, <multiprocessing.queues.SimpleQueue object at 0x2b2dc0027850>, <multiprocessing.queues.SimpleQueue object at 0x2b2dc0027910>, [<Process(PoolWorker-100, stopped daemon)>, <Process(PoolWorker-101, stopped daemon)>, <Process(PoolWorker-102, stopped daemon)>, <Process(PoolWorker-103, stopped daemon)>, <Process(PoolWorker-104, stopped daemon)>, <Process(PoolWorker-105, started daemon)>, <Process(PoolWorker-106, started daemon)>, <Process(PoolWorker-107, started daemon)>], <Thread(Thread-28, started daemon 47475393201920)>, <Thread(Thread-29, started daemon 47475388983040)>, <Thread(Thread-30, started daemon 47475391084288)>, {}) and kwargs {}
+[DEBUG/MainProcess] finalizing pool
+[DEBUG/MainProcess] helping task handler/workers to finish
+[DEBUG/MainProcess] removing tasks from inqueue until task handler finished
+[DEBUG/MainProcess] task handler got sentinel
+[DEBUG/MainProcess] task handler sending sentinel to result handler
+[DEBUG/MainProcess] task handler sending sentinel to workers
+[DEBUG/MainProcess] result handler got sentinel
+[DEBUG/MainProcess] task handler exiting
+[DEBUG/MainProcess] ensuring that outqueue is not full
+[DEBUG/PoolWorker-106] worker got sentinel -- exiting
+[DEBUG/PoolWorker-105] worker got sentinel -- exiting
+[DEBUG/PoolWorker-106] worker exiting after 0 tasks
+[DEBUG/PoolWorker-105] worker exiting after 0 tasks
+[DEBUG/PoolWorker-107] worker got sentinel -- exiting
+[INFO/PoolWorker-106] process shutting down
+[INFO/PoolWorker-105] process shutting down
+[DEBUG/PoolWorker-107] worker exiting after 0 tasks
+[DEBUG/PoolWorker-106] running all "atexit" finalizers with priority >= 0
+[DEBUG/PoolWorker-105] running all "atexit" finalizers with priority >= 0
+[DEBUG/MainProcess] result handler exiting: len(cache)=0, thread._state=0
+[INFO/PoolWorker-107] process shutting down
+[DEBUG/PoolWorker-106] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-105] running the remaining "atexit" finalizers
+[DEBUG/PoolWorker-107] running all "atexit" finalizers with priority >= 0
+[INFO/PoolWorker-106] process exiting with exitcode 0
+[DEBUG/MainProcess] terminating workers
+[INFO/PoolWorker-105] process exiting with exitcode 0
+[DEBUG/PoolWorker-107] running the remaining "atexit" finalizers
+[DEBUG/MainProcess] joining task handler
+[DEBUG/MainProcess] joining result handler
+[DEBUG/MainProcess] joining pool workers
+[DEBUG/MainProcess] cleaning up worker 3751
+[DEBUG/MainProcess] worker handler exiting
+[INFO/MainProcess] process shutting down
+[DEBUG/MainProcess] running all "atexit" finalizers with priority >= 0
+[DEBUG/MainProcess] running the remaining "atexit" finalizers
+[('Total', '113,969', 'paired'),
+ ('Aligned', '67,738', '(59.4\\%)'),
+ ('Pairs aligned', '60,100', '(52.7\\%)'),
+ ('Pair duplicates', '114', '(0.2\\%)'),
+ ('Insert size', '173.1', '+/- 56.6'),
+ (None, None, None),
+ ('On bait bases', '5,149,315', '(44.5\\%)'),
+ ('Near bait bases', '2,299,339', '(19.9\\%)'),
+ ('Off bait bases', '4,110,952', '(35.6\\%)'),
+ ('Mean bait coverage', '0.1', ''),
+ ('On target bases', '5,153,300', '(44.6\\%)'),
+ ('Mean target coverage', '0x', ''),
+ ('10x coverage targets', '0.0\\%', ''),
+ ('Zero coverage targets', '92.7\\%', ''),
+ ('Fold enrichment', '27x', '')]
+[('Total', '222,178', 'paired'),
+ ('Aligned', '202,291', '(91.0\\%)'),
+ ('Pairs aligned', '199,514', '(89.8\\%)'),
+ ('Pair duplicates', '330', '(0.2\\%)'),
+ ('Insert size', '182.7', '+/- 60.2'),
+ (None, None, None),
+ ('On bait bases', '17,035,522', '(45.9\\%)'),
+ ('Near bait bases', '7,649,870', '(20.6\\%)'),
+ ('Off bait bases', '12,423,239', '(33.5\\%)'),
+ ('Mean bait coverage', '0.3', ''),
+ ('On target bases', '17,054,142', '(46.0\\%)'),
+ ('Mean target coverage', '0x', ''),
+ ('10x coverage targets', '0.0\\%', ''),
+ ('Zero coverage targets', '75.9\\%', ''),
+ ('Fold enrichment', '27x', '')]
+[('Total', '80,006', 'paired'),
+ ('Aligned', '68,229', '(85.3\\%)'),
+ ('Pairs aligned', '66,936', '(83.7\\%)'),
+ ('Pair duplicates', '48', '(0.1\\%)'),
+ ('Insert size', '195.1', '+/- 60.7'),
+ (None, None, None),
+ ('On bait bases', '5,516,861', '(44.2\\%)'),
+ ('Near bait bases', '2,701,446', '(21.6\\%)'),
+ ('Off bait bases', '4,259,735', '(34.1\\%)'),
+ ('Mean bait coverage', '0.1', ''),
+ ('On target bases', '5,523,505', '(44.3\\%)'),
+ ('Mean target coverage', '0x', ''),
+ ('10x coverage targets', '0.0\\%', ''),
+ ('Zero coverage targets', '91.8\\%', ''),
+ ('Fold enrichment', '26x', '')]
+[('Total', '233,287', 'paired'),
+ ('Aligned', '212,507', '(91.1\\%)'),
+ ('Pairs aligned', '209,408', '(89.8\\%)'),
+ ('Pair duplicates', '306', '(0.1\\%)'),
+ ('Insert size', '182.9', '+/- 60.5'),
+ (None, None, None),
+ ('On bait bases', '17,823,907', '(45.7\\%)'),
+ ('Near bait bases', '8,010,333', '(20.5\\%)'),
+ ('Off bait bases', '13,181,542', '(33.8\\%)'),
+ ('Mean bait coverage', '0.3', ''),
+ ('On target bases', '17,843,534', '(45.7\\%)'),
+ ('Mean target coverage', '0x', ''),
+ ('10x coverage targets', '0.0\\%', ''),
+ ('Zero coverage targets', '75.1\\%', ''),
+ ('Fold enrichment', '27x', '')]
+[('Total', '223,898', 'paired'),
+ ('Aligned', '203,628', '(90.9\\%)'),
+ ('Pairs aligned', '200,651', '(89.6\\%)'),
+ ('Pair duplicates', '273', '(0.1\\%)'),
+ ('Insert size', '182.8', '+/- 60.2'),
+ (None, None, None),
+ ('On bait bases', '17,115,136', '(45.8\\%)'),
+ ('Near bait bases', '7,662,254', '(20.5\\%)'),
+ ('Off bait bases', '12,591,167', '(33.7\\%)'),
+ ('Mean bait coverage', '0.3', ''),
+ ('On target bases', '17,131,658', '(45.8\\%)'),
+ ('Mean target coverage', '0x', ''),
+ ('10x coverage targets', '0.0\\%', ''),
+ ('Zero coverage targets', '75.9\\%', ''),
+ ('Fold enrichment', '27x', '')]

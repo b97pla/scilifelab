@@ -1,0 +1,1 @@
+run_bcbb_pipeline.py --only-run 317Ma1_index12-post_process.yaml ../120719_BD158KACXX 317Ma1_index12-bcbb-config.yaml

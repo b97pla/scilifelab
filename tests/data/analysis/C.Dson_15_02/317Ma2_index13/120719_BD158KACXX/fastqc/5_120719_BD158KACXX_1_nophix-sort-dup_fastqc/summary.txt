@@ -1,0 +1,11 @@
+PASS	Basic Statistics	5_120719_BD158KACXX_1_nophix-sort-dup.bam
+FAIL	Per base sequence quality	5_120719_BD158KACXX_1_nophix-sort-dup.bam
+PASS	Per sequence quality scores	5_120719_BD158KACXX_1_nophix-sort-dup.bam
+PASS	Per base sequence content	5_120719_BD158KACXX_1_nophix-sort-dup.bam
+PASS	Per base GC content	5_120719_BD158KACXX_1_nophix-sort-dup.bam
+PASS	Per sequence GC content	5_120719_BD158KACXX_1_nophix-sort-dup.bam
+PASS	Per base N content	5_120719_BD158KACXX_1_nophix-sort-dup.bam
+PASS	Sequence Length Distribution	5_120719_BD158KACXX_1_nophix-sort-dup.bam
+PASS	Sequence Duplication Levels	5_120719_BD158KACXX_1_nophix-sort-dup.bam
+PASS	Overrepresented sequences	5_120719_BD158KACXX_1_nophix-sort-dup.bam
+WARN	Kmer Content	5_120719_BD158KACXX_1_nophix-sort-dup.bam

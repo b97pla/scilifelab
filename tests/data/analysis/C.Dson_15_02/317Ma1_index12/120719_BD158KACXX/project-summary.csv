@@ -1,0 +1,6 @@
+Sample,Total,Aligned,Pair duplicates,Insert size,On target bases,Mean target coverage,10x coverage targets,Zero coverage targets,Total variations,In dbSNP,Transition/Transversion (all),Transition/Transversion (dbSNP),Transition/Transversion (novel)
+C.Dson_15_02_317Ma1_index12;5;GGCTAC,113969,59.4%,0.2%,173.1,44.6%,0x,0.0%,92.7%,,,,,
+C.Dson_15_02_317Ma1_index12;3;CTTGTA,222178,91.0%,0.2%,182.7,46.0%,0x,0.0%,75.9%,,,,,
+C.Dson_15_02_317Ma1_index12;5;CTTGTA,80006,85.3%,0.1%,195.1,44.3%,0x,0.0%,91.8%,,,,,
+C.Dson_15_02_317Ma1_index12;2;CTTGTA,233287,91.1%,0.1%,182.9,45.7%,0x,0.0%,75.1%,,,,,
+C.Dson_15_02_317Ma1_index12;4;CTTGTA,223898,90.9%,0.1%,182.8,45.8%,0x,0.0%,75.9%,,,,,

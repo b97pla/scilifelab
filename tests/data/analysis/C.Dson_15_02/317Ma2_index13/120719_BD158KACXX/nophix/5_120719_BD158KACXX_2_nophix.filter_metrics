@@ -1,0 +1,5 @@
+# reads processed: 191300
+# reads with at least one reported alignment: 95 (0.05%)
+# reads that failed to align: 191205 (99.95%)
+Reported 95 paired-end alignments to 1 output stream(s)
+
