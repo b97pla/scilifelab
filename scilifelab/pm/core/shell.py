@@ -5,7 +5,7 @@ import subprocess
 from cement.core import backend, handler
 from cement.utils import shell
 
-from scilife.pm.core import command
+from scilifelab.pm.core import command
 
 Log = backend.minimal_logger(__name__)
 

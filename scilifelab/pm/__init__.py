@@ -14,9 +14,9 @@ from cStringIO import StringIO
 
 from cement.core import foundation, controller, handler, backend, output
 
-from scilife.pm.core import command
-from scilife.pm.core import shell
-from scilife.pm.core.controller import PmController
+from scilifelab.pm.core import command
+from scilifelab.pm.core import shell
+from scilifelab.pm.core.controller import PmController
 
 LOG = backend.minimal_logger(__name__)    
 

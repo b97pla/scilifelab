@@ -7,8 +7,8 @@ import re
 
 from cement.core import interface, handler, controller, backend
 
-from scilife.pm.lib.help import PmHelpFormatter
-from scilife.pm.utils.misc import filtered_output, query_yes_no, filtered_walk
+from scilifelab.pm.lib.help import PmHelpFormatter
+from scilifelab.pm.utils.misc import filtered_output, query_yes_no, filtered_walk
 
 LOG = backend.minimal_logger(__name__)
 

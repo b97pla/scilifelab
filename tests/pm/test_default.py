@@ -1,7 +1,7 @@
 import os
 from cement.core import backend, handler, output
 from cement.utils import test
-from scilife.pm import PmApp
+from scilifelab.pm import PmApp
 
 ## Set default configuration
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))

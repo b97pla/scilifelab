@@ -8,7 +8,7 @@ import glob
 from cement.core import handler
 from cement.utils import shell
 from test_default import PmTest, safe_makedir
-from scilife.pm.core.project import ProjectController
+from scilifelab.pm.core.project import ProjectController
 
 flowcell = "120829_AA001AAAXX"
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))

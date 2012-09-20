@@ -13,7 +13,7 @@ import yaml
 
 from cement.core import controller, output, backend
 from cement.utils.shell import *
-from scilife.pm import AbstractBaseController, SubSubController
+from scilifelab.pm import AbstractBaseController, SubSubController
 
 Log = backend.minimal_logger(__name__)
 
