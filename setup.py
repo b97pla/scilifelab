@@ -8,7 +8,7 @@ setup(name = "scilifelab",
       author_email = "genomics@scilifelab.se",
       description = "Useful scripts for use at SciLife",
       license = "MIT",
-      namespace_packages=["scilife"],
+      namespace_packages=["scilifelab"],
       ## Comment out scripts that aren't needed. Not all scripts have
       ## right permissions so either should be omitted or chmoded.
       scripts = ['scripts/runsizes.py',
@@ -28,7 +28,6 @@ setup(name = "scilifelab",
                  'scripts/run_cmd.py',
                  'scripts/run_genome_filter.py',
                  'scripts/run_hs_metrics.py',
-                 'scripts/run_metrics_to_statusdb.py',
                  'scripts/runinfotools.py',
                  'scripts/runsizes.py',
                  'scripts/split_demultiplexed.py',
@@ -66,7 +65,6 @@ setup(name = "scilifelab",
                  'utilities/generate_sbatch.py',
                  'utilities/project_status_note.py',
                  'utilities/read_illumina_summary_xml.py',
-                 'utilities/runQC_to_statusdb.py',
                  'utilities/sample_delivery_note.py',
                  ],
       install_requires = [
@@ -79,8 +77,8 @@ setup(name = "scilifelab",
           "mock"
       ],
       test_suite = 'nose.collector',
-      packages=['scilife'],
+      packages=['scilifelab'],
       ## package_data: install data/templates needed by modules
-      package_data = {'scilife':['pm/templates/tpl/make/*', 'data/*']}
+      package_data = {'scilifelab':['pm/templates/tpl/make/*', 'data/*']}
       )
 os.system("git rev-parse --short --verify HEAD > ~/.scilifelab_version")
