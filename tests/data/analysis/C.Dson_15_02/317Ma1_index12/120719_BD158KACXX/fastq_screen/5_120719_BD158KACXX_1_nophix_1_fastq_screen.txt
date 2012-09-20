@@ -1,7 +1,0 @@
-Library	Unmapped	Mapped_One_library	Mapped_Multiple_Libraries
-Spruce	100.00	0.00	0.00
-Human	19.67	80.22	0.11
-Mouse	99.89	0.00	0.11
-Ecoli	100.00	0.00	0.00
-PhiX	100.00	0.00	0.00
-Adapters	100.00	0.00	0.00
