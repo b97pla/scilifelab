@@ -1,7 +1,9 @@
 import os
 from cement.core import backend, handler, output
-from cement.utils import test
+from cement.utils import test, shell
 from scilifelab.pm import PmApp
+from data import files as data_files
+from empty_files import files as empty_files
 
 ## Set default configuration
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
@@ -50,7 +52,6 @@ class PmTestApp(PmApp):
     #     super(PmTestApp, self).setup()
     #     self._output_data = dict(stdout=[], stderr=[])
 
-
 ## Main pm test 
 class PmTest(test.CementTestCase):
     app_class = PmTestApp
@@ -58,6 +59,14 @@ class PmTest(test.CementTestCase):
     OUTPUT_FILES = []
 
     def setUp(self):
+        ## setup empty files 
+        for k,v in data_files.items():
+            if not os.path.exists(os.path.join(filedir, k)):
+                print k
+        for f in empty_files:
+            if not os.path.exists(os.path.join(filedir, f)):
+                os.makedirs(os.path.dirname(os.path.join(filedir, f)))
+                shell.exec_cmd(['touch', os.path.join(filedir, f)])
         self._clean()
 
     def _clean(self):
@@ -72,3 +81,8 @@ class PmTest(test.CementTestCase):
             self.app.close()
             
         
+if __name__ == "__main__":
+    print empty_files
+    print data_files
+    for k,v in data_files.items():
+        print data_files[k]
