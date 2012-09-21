@@ -40,12 +40,19 @@ class PmAnalysisTest(PmTest):
     
     def test_4_from_pre_to_pre_casava_transfer(self):
         """Test pre_casava transfer to project directory"""
-        self.app = self.make_app(argv = ['analysis', 'transfer', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '--from_pre_casava', '--to_pre_casava'])
+        self.app = self.make_app(argv = ['analysis', 'transfer', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '--from_pre_casava', '--to_pre_casava', '--quiet'])
         handler.register(AnalysisController)
         self._run_app()
         ## Assert data output
         res = shell.exec_cmd(["ls", "-1", os.path.join(delivery_dir, "120829_AA001AAAXX", "1_120829_AA001AAAXX_barcode")])
-        self.eq(['1_120829_AA001AAAXX_nophix_10_1_fastq.txt', '1_120829_AA001AAAXX_nophix_10_2_fastq.txt', '1_120829_AA001AAAXX_nophix_12_1_fastq.txt', '1_120829_AA001AAAXX_nophix_12_2_fastq.txt'], res[0].split()[0:4])
+        res_files = ['1_120829_AA001AAAXX_nophix_10_1_fastq.txt', '1_120829_AA001AAAXX_nophix_10_2_fastq.txt',
+                     '1_120829_AA001AAAXX_nophix_12_1_fastq.txt','1_120829_AA001AAAXX_nophix_12_2_fastq.txt',
+                     '1_120829_AA001AAAXX_nophix_1_1_fastq.txt','1_120829_AA001AAAXX_nophix_1_2_fastq.txt',
+                     '1_120829_AA001AAAXX_nophix_2_1_fastq.txt','1_120829_AA001AAAXX_nophix_2_2_fastq.txt',
+                     '1_120829_AA001AAAXX_nophix_3_1_fastq.txt','1_120829_AA001AAAXX_nophix_3_2_fastq.txt',
+                     '1_120829_AA001AAAXX_nophix_4_1_fastq.txt','1_120829_AA001AAAXX_nophix_4_2_fastq.txt',
+                     '1_120829_AA001AAAXX_nophix_8_1_fastq.txt','1_120829_AA001AAAXX_nophix_8_2_fastq.txt']
+        self.eq(set(res_files), set(res[0].split()))
         ## Assert intermediate delivery output 
         res = shell.exec_cmd(["ls", "-1", os.path.join(intermediate_delivery_dir, "120829_AA001AAAXX")])
         self.eq(['1_120829_AA001AAAXX_nophix_1-sort-dup.align_metrics','1_120829_AA001AAAXX_nophix_1-sort-dup.bam'], res[0].split()[0:2])
@@ -55,7 +62,7 @@ class PmAnalysisTest(PmTest):
             runinfo_yaml = yaml.load(fh)
         self.eq(runinfo_yaml['details'][0]['multiplex'][0]['name'], 'P1_101F_index1')
         self.eq(runinfo_yaml['details'][0]['multiplex'][0]['description'], 'J.Doe_00_01_P1_101F_index1')
-        self.eq(runinfo_yaml['details'][0]['multiplex'][0]['files'], [os.path.join(delivery_dir,"120829_AA001AAAXX", "1_120829_AA001AAAXX_barcode", os.path.basename(x)) for x in ['1_120829_AA001AAAXX_nophix_1_1_fastq.txt','1_120829_AA001AAAXX_nophix_1_2_fastq.txt']])
+        self.eq(set(runinfo_yaml['details'][0]['multiplex'][0]['files']), set([os.path.join(delivery_dir,"120829_AA001AAAXX", "1_120829_AA001AAAXX_barcode", os.path.basename(x)) for x in ['1_120829_AA001AAAXX_nophix_1_1_fastq.txt','1_120829_AA001AAAXX_nophix_1_2_fastq.txt']]))
             
         
 
