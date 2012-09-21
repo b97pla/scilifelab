@@ -151,7 +151,13 @@ class QCMetricsController(AbstractBaseController):
     ##############################
 
     def _collect_pre_casava_qc(self):
-        return []
+        qc_objects = []
+        runinfo_yaml = os.path.join(os.path.abspath(self.pargs.flowcell), "run_info.yaml")
+        if not os.path.exists(runinfo_yaml):
+            self.app.log.warn("No such file {}".format(runinfo_yaml))
+            raise IOError
+
+        
 
     def _collect_casava_qc(self):
         qc_objects = []
