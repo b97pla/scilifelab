@@ -1,17 +1,27 @@
 
 import os
 import sys
-import miseq_data
-
-PHRED_OFFSET = 64
+import fastq_utils
+import argparse
 
 def main():
-    args = sys.argv[1:]
     
-    if len(args) < 2:
-        return 1
+    parser = argparse.ArgumentParser(description="Filter reads from a pair of FastQ files based on the average quality."\
+                                     "If the average quality of one of the reads in the pair is below the given threshold, "\
+                                     "the pair is discarded. Output is a file named as INPUT.Q[T].[EXT], where T is the threshold "\
+                                     "and EXT is the file extension. Accepts uncompressed or gzip-compressed input files")
+
+    parser.add_argument('-T','--threshold', action='store', default=20, 
+                        help="if any read in the pair has an average quality below this threshold, the pair is discarded. Default is 20.")
+    parser.add_argument('-p','--phred', action='store', default=33, 
+                        help="the Phred quality score offset. Default is 33 (Sanger)")
+    parser.add_argument('fastq1', action='store', default=None, 
+                        help="the first sequence file of the pair")
+    parser.add_argument('fastq2', action='store', default=None, 
+                        help="the second sequence file of the pair")
     
-    process_fastq(args[0],args[1])
+    args = parser.parse_args()
+    process_fastq(args.fastq1, args.fastq2, [int(args.threshold)], int(args.phred))
 
 def print_average_quals(qualities):
     
@@ -23,23 +33,25 @@ def print_average_quals(qualities):
         avg_quality.insert(0,bin)
         print ",".join([str(i) for i in avg_quality])
         
-def process_fastq(fastq_r1, fastq_r2, bins=[25,30], phred_offset=64):
+def process_fastq(fastq_r1, fastq_r2, bins, phred_offset):
     
-    fh_r1 = miseq_data.FastQParser(fastq_r1)
-    fh_r2 = miseq_data.FastQParser(fastq_r2)
+    fh_r1 = fastq_utils.FastQParser(fastq_r1)
+    fh_r2 = fastq_utils.FastQParser(fastq_r2)
     oh1 = {}
     oh2 = {}
     root1, ext1 = os.path.splitext(fastq_r1)
     root2, ext2 = os.path.splitext(fastq_r2)
     for b in bins:
-        oh1[b] = miseq_data.FastQWriter("%s.Q%d%s" % (root1,b,ext1))
-        oh2[b] = miseq_data.FastQWriter("%s.Q%d%s" % (root2,b,ext2))
+        oh1[b] = fastq_utils.FastQWriter("%s.Q%d%s" % (root1,b,ext1))
+        oh2[b] = fastq_utils.FastQWriter("%s.Q%d%s" % (root2,b,ext2))
     
     for r1 in fh_r1:
         r2 = fh_r2.next()
-        assert r2[0][0:-1] == r1[0][0:-1], "FATAL: Read identifiers differ for paired reads (%s and %s)" % (r1[0],r2[0])
+        r1h = r1[0].split()
+        r2h = r2[0].split()
+        assert r2h[0] == r1h[0] and r2h[1][1:] == r1h[1][1:], "FATAL: Read identifiers differ for paired reads (%s and %s)" % (r1[0],r2[0])
             
-        bin = min(int(round(quality_average(r1[3].strip(),phred_offset))),int(round(quality_average(r2[3].strip(),phred_offset))))
+        bin = min(int(round(fastq_utils.avgQ(r1,phred_offset))),int(round(fastq_utils.avgQ(r2,phred_offset))))
         
         for b in bins:
             if bin >= b:

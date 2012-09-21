@@ -1,21 +1,35 @@
 #!/usr/bin/env python
-"""Setup file and install script SciLife python scripts.
-"""
 from setuptools import setup, find_packages
+import sys
 import os
+import glob
 
 setup(name = "scilifelab",
-      version = "0.1",
-      author = "SciLife",
-      author_email = "genomics@scilifelab.se",
-      description = "Useful scripts for use at SciLife",
+      version = "0.2",
+      author = "Science for Life Laboratory",
+      author_email = "genomics_support@scilifelab.se",
+      description = "Useful scripts for use at SciLifeLab",
       license = "MIT",
-      scripts = ['scripts/project_management.py',
-                 'scripts/bcbb_helpers/run_bcbb_pipeline.py',
-                 'scripts/bcbb_helpers/process_run_info.py'
-                ],
+      namespace_packages=["scilifelab"],
+      scripts = glob.glob('scripts/*.py',),
+                 #'scripts/bcbb_helpers/*.py,
       install_requires = [
           "bcbio-nextgen >= 0.2",
           "drmaa >= 0.5",
-      ])
+	      "sphinx >= 1.1.3",
+	      "couchdb >= 0.8",
+          "reportlab >= 2.5",
+          "cement >= 2.0.2",
+          "mock"
+      ],
+      test_suite = 'nose.collector',
+      packages=['scilifelab'],
+      ## package_data: install data/templates needed by modules
+      package_data = {'scilifelab':[
+                        'pm/templates/tpl/make/*',
+                        'data/grf/*',
+                        #'sbatch/*' # should be deprecated by python-drmaa, not even installing it...
+                     ]}
+      )
+
 os.system("git rev-parse --short --verify HEAD > ~/.scilifelab_version")
