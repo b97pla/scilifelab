@@ -2,14 +2,14 @@
 import os
 import sys
 from cement.core import foundation, handler
-from scilife.pm.lib.config import config_defaults
-from scilife.pm import PmApp
-from scilife.pm.core.controller import PmController
-from scilife.pm.core.output import PmOutputHandler
-from scilife.pm.core.project import ProjectController, BcbioRunController
-from scilife.pm.core.archive import ArchiveController
-from scilife.pm.core.analysis import AnalysisController
-from scilife.pm.core.deliver import DeliveryController
+from scilifelab.pm.lib.config import config_defaults
+from scilifelab.pm import PmApp
+from scilifelab.pm.core.controller import PmController
+from scilifelab.pm.core.output import PmOutputHandler
+from scilifelab.pm.core.project import ProjectController, BcbioRunController
+from scilifelab.pm.core.archive import ArchiveController
+from scilifelab.pm.core.analysis import AnalysisController
+from scilifelab.pm.core.deliver import DeliveryController
 
 CONFIGFILE=os.path.join(os.getenv("HOME"), ".pm", "pm.conf")
 PLUGINDIR=os.path.join(os.getenv("HOME"), ".pm", "plugins")
@@ -21,10 +21,10 @@ app = PmApp('pm',
             output_handler = PmOutputHandler, 
             config_files = [CONFIGFILE], 
             extensions = ['json',
-                          'scilife.pm.ext.ext_distributed',                        
-                          'scilife.pm.ext.ext_bcbb',                        
-                          'scilife.pm.ext.ext_hs_metrics',
-                          'scilife.pm.ext.ext_qc'],
+                          'scilifelab.pm.ext.ext_distributed',                        
+                          'scilifelab.pm.ext.ext_bcbb',                        
+                          'scilifelab.pm.ext.ext_hs_metrics',
+                          'scilifelab.pm.ext.ext_qc'],
             plugin_dir = PLUGINDIR,
             plugin_config_dir = PLUGINCONFIGDIR,
             )
