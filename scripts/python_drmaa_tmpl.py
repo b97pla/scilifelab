@@ -30,7 +30,7 @@ def main():
 	jt.workingDirectory = drmaa.JobTemplate.HOME_DIRECTORY
 	jt.outputPath = ":"+drmaa.JobTemplate.HOME_DIRECTORY+'/job_stdout.out'
 	jt.joinFiles=True # Joins stdout & stderr together
-	jt.email=["roman@scilifelab.se"]
+	jt.email=[os.environ['USER']+"@domain.com"]
 
 	jobid = s.runJob(jt)
 	print 'Your job has been submitted with id ' + jobid
