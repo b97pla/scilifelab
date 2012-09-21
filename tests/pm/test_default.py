@@ -62,10 +62,16 @@ class PmTest(test.CementTestCase):
         ## setup empty files 
         for k,v in data_files.items():
             if not os.path.exists(os.path.join(filedir, k)):
-                print k
+                if not os.path.exists(os.path.dirname(os.path.join(filedir, k))):
+                    os.makedirs(os.path.dirname(os.path.join(filedir, k)))
+                with open(os.path.join(filedir, k), "w") as fh:
+                    print "Preparing test: writing to file {}".format(k)
+                    fh.write(v)
         for f in empty_files:
             if not os.path.exists(os.path.join(filedir, f)):
-                os.makedirs(os.path.dirname(os.path.join(filedir, f)))
+                print "Preparing test: touching file {}".format(f)
+                if not os.path.exists(os.path.dirname(os.path.join(filedir, f))):
+                    os.makedirs(os.path.dirname(os.path.join(filedir, f)))
                 shell.exec_cmd(['touch', os.path.join(filedir, f)])
         self._clean()
 
@@ -80,9 +86,3 @@ class PmTest(test.CementTestCase):
         finally:
             self.app.close()
             
-        
-if __name__ == "__main__":
-    print empty_files
-    print data_files
-    for k,v in data_files.items():
-        print data_files[k]
