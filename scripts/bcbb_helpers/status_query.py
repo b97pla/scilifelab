@@ -193,9 +193,13 @@ def _get_most_recent(ifiles):
     for ifile in ifiles:
         with open(ifile) as fh:
             for line in fh:
-                time = parser.parse(line.strip())
-                if time > most_recent[0]:
-                    most_recent = (time,ifile)
+                try:
+                    time = parser.parse(line.strip())
+                    if time > most_recent[0]:
+                        most_recent = (time,ifile)
+                except ValueError:
+                    # If we cannot parse time stamp, we may have grabbed some non-relevant file, in which case we'll break
+                    break 
     return most_recent
 
 def _get_project_analysis_dir(analysis_dir, project):
