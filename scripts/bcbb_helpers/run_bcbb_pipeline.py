@@ -10,6 +10,7 @@ import copy
 import tempfile
 import argparse
 import csv
+import re
 
 import bcbio.solexa.flowcell
 import bcbio.solexa.samplesheet
@@ -145,6 +146,7 @@ def setup_analysis(post_process_config, archive_dir, run_info_file):
             
     return [[os.getcwd(),post_process_config,archive_dir,run_info_file]]
         
+        
 def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_config_file):
     """Parse the CASAVA 1.8+ generated flowcell directory and create a 
        corresponding directory structure suitable for bcbb analysis,
@@ -192,17 +194,11 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
         
         # Create a bcbb yaml config file from the samplesheet
         project_config = bcbb_configuration_from_samplesheet(project_samplesheet)
-        # Extract the lane and barcode sequence from the sample files and add the paths to the config
-        sample_files = _map_sample_files(project.get('samples',[]))
-
-        # Add the sample files to the config
-        for lane in project_config:
-            lane_no = lane['lane']
-            if 'multiplex' in lane:
-                for sample in lane['multiplex']:
-                    sample = _link_sample_files(sample,lane_no,sample_files)
-            else:
-                lane = _link_sample_files(lane,lane_no,sample_files)
+        # Create custom configs for each sample containing the sample files and overload
+        for sample in project.get('samples',[]):
+            sample_name = sample['sample_name'].replace('__','.')
+            custom_sample_cfg = _sample_files_custom_config([os.path.join(project_dir,sample_name,fc_run_id,sf) for sf in sample['sample_files']])
+            project_config = override_with_custom_config(project_config,custom_sample_cfg)
                 
         project_config = override_with_custom_config(project_config,custom_config)
         arguments = _setup_config_files(project_dir,project_config,post_process_config_file,fc_dir_structure['fc_dir'],project_name,fc_date,fc_name)
@@ -245,13 +241,6 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
         
     return sample_run_arguments
 
-def _link_sample_files(item, lane_no, sample_files):
-    
-    key = ":".join([item['name'],item.get('sequence','NoIndex'),lane_no])
-    assert key in sample_files, "Could not match sample files for {}".format(key)
-    item['files'] = sample_files[key]
-    return item
-
 def _sample_files_custom_config(sample_files):
     """Create a custom sample config to pass the file names
     """
@@ -276,12 +265,13 @@ def _parse_sample_filename(fname):
     fields = ['SampleID','Index','Lane','Read','Chunk']
     m = re.match(pattern,fname)
     pcs = []
-    for i in range(len(m.groups())):
-        try:
-            p = int(m.group(i+1))
-        except:
-            p = m.group(i+1)
-        pcs.append(p)
+    if m is not None:
+        for g in m.groups():
+            try:
+                p = int(g)
+            except:
+                p = g
+            pcs.append(p)
     if len(pcs) != len(fields):
         raise ValueError('Invalid file name format')
     
@@ -511,105 +501,109 @@ import shutil
 import string
 import mock
 import bcbio.utils as utils
-     
 
-class CasavaStructureBuilder(unittest.TestCase):
-    """Builder for the Casava file structure
-    """
-    
-    def setUp(self):
-        
-        # Create the file structure in a temporary location
-        self.test_archive_dir = tempfile.mkdtemp()
-        
-        # Create a flowcell id
-        barcode = generate_fc_barcode()
-        fcid = generate_run_id(fc_barcode=barcode)
-        self.fc_dir = os.path.join(self.test_archive_dir,fcid)
-        os.makedirs(self.fc_dir)
-        
-        # Generate run data and write it to a samplesheet
-        self.samplesheet = os.path.join(self.fc_dir,"SampleSheet.csv")
-        generate_run_samplesheet(barcode,self.samplesheet)
-        
-        # Create the file structure according to the samplesheet
-        with open(self.samplesheet) as in_handle:
-            for row in in_handle:
-                if len(row) == 0 or row[0] == "#":
-                    continue
-                csv_data = row.strip().split(",")
-                lane = 0
-                try:
-                    lane = int(str(csv_data[1]))
-                except ValueError:
-                    # This is most likely the header row
-                    continue
-                
-                sample_name = csv_data[2]
-                project_name = csv_data[9]
-                index_sequence = csv_data[4]
-                
-                project_folder = os.path.join(self.fc_dir,"Unaligned","Project_{}".format(project_name))
-                sample_folder = os.path.join(project_folder,"Sample_{}".format(sample_name))
-                sample_file_r1 = os.path.join(sample_folder,"{}_{}_L00{}_R1_001.fastq.gz".format(
-                                                    sample_name,
-                                                    index_sequence,
-                                                    lane))
-                sample_file_r2 = sample_file_r1.replace("_R1_","_R2_")
-                sample_ssheet = os.path.join(sample_folder,"SampleSheet.csv")
-                
-                os.makedirs(sample_folder)
-                utils.touch_file(sample_file_r1)
-                utils.touch_file(sample_file_r2)
-                sample_ssheet = _write_samplesheet([csv_data],sample_ssheet)
-                
-        # Create a Basecall_Stats_[FCID] folder and a Demultiplex_Stats.htm file
-        bcall_dir = os.path.join(self.fc_dir,"Unaligned","Basecall_Stats_{}".format(barcode))
-        os.mkdir(bcall_dir)
-        os.mkdir(os.path.join(bcall_dir,"Plots"))
-        os.mkdir(os.path.join(bcall_dir,"css"))
-        utils.touch_file(os.path.join(bcall_dir,"Demultiplex_Stats.htm"))
+import tests.generate_test_data as td
+
+#class CasavaStructureBuilder(unittest.TestCase):
+#    """Builder for the Casava file structure
+#    """
+#    
+#    def setUp(self):
+#        
+#        # Create the file structure in a temporary location
+#        self.test_archive_dir = tempfile.mkdtemp()
+#        
+#        # Create a flowcell id
+#        barcode = generate_fc_barcode()
+#        fcid = generate_run_id(fc_barcode=barcode)
+#        self.fc_dir = os.path.join(self.test_archive_dir,fcid)
+#        os.makedirs(self.fc_dir)
+#        
+#        # Generate run data and write it to a samplesheet
+#        self.samplesheet = os.path.join(self.fc_dir,"SampleSheet.csv")
+#        generate_run_samplesheet(barcode,self.samplesheet)
+#        
+#        # Create the file structure according to the samplesheet
+#        with open(self.samplesheet) as in_handle:
+#            for row in in_handle:
+#                if len(row) == 0 or row[0] == "#":
+#                    continue
+#                csv_data = row.strip().split(",")
+#                lane = 0
+#                try:
+#                    lane = int(str(csv_data[1]))
+#                except ValueError:
+#                    # This is most likely the header row
+#                    continue
+#                
+#                sample_name = csv_data[2]
+#                project_name = csv_data[9]
+#                index_sequence = csv_data[4]
+#                
+#                project_folder = os.path.join(self.fc_dir,"Unaligned","Project_{}".format(project_name))
+#                sample_folder = os.path.join(project_folder,"Sample_{}".format(sample_name))
+#                sample_file_r1 = os.path.join(sample_folder,"{}_{}_L00{}_R1_001.fastq.gz".format(
+#                                                    sample_name,
+#                                                    index_sequence,
+#                                                    lane))
+#                sample_file_r2 = sample_file_r1.replace("_R1_","_R2_")
+#                sample_ssheet = os.path.join(sample_folder,"SampleSheet.csv")
+#                
+#                os.makedirs(sample_folder)
+#                utils.touch_file(sample_file_r1)
+#                utils.touch_file(sample_file_r2)
+#                sample_ssheet = _write_samplesheet([csv_data],sample_ssheet)
+#                
+#        # Create a Basecall_Stats_[FCID] folder and a Demultiplex_Stats.htm file
+#        bcall_dir = os.path.join(self.fc_dir,"Unaligned","Basecall_Stats_{}".format(barcode))
+#        os.mkdir(bcall_dir)
+#        os.mkdir(os.path.join(bcall_dir,"Plots"))
+#        os.mkdir(os.path.join(bcall_dir,"css"))
+#        utils.touch_file(os.path.join(bcall_dir,"Demultiplex_Stats.htm"))
+#    
+#    def tearDown(self):
+#        shutil.rmtree(self.test_archive_dir)
+#        
+#class CasavaStructureTest(CasavaStructureBuilder):
+#    
+#    def test_has_casava_output_true(self):
+#        """Test that has_casava_output returns true
+#        """
+#        self.assertTrue(has_casava_output(self.fc_dir))
+#    
+#    def test_has_casava_output_false(self):
+#        """Test that has_casava_output returns false
+#        """
+#        # FIXME: How do we mock the implicit call to parse_casava_directory? The code below does not work..
+#        #parse_casava_directory = mock.Mock(return_value={'projects': []})
+#        #self.assertFalse(has_casava_output(self.fc_dir))
+#        pass
+            
+class SamplesheetTest(unittest.TestCase):
     
     def tearDown(self):
-        shutil.rmtree(self.test_archive_dir)
+        shutil.rmtree(self.test_analysis_dir)
         
-class CasavaStructureTest(CasavaStructureBuilder):
-    
-    def test_has_casava_output_true(self):
-        """Test that has_casava_output returns true
-        """
-        self.assertTrue(has_casava_output(self.fc_dir))
-    
-    def test_has_casava_output_false(self):
-        """Test that has_casava_output returns false
-        """
-        # FIXME: How do we mock the implicit call to parse_casava_directory? The code below does not work..
-        #parse_casava_directory = mock.Mock(return_value={'projects': []})
-        #self.assertFalse(has_casava_output(self.fc_dir))
-        pass
-            
-class SamplesheetTest(CasavaStructureBuilder):
-    
     def setUp(self):
          
-        CasavaStructureBuilder.setUp(self)
         self.test_analysis_dir = tempfile.mkdtemp()
-        self.post_process_config_file = os.path.join(self.test_archive_dir,"test_post_process.yaml")
-        config = {
-                  'analysis': {
-                               'base_dir': self.test_analysis_dir,
-                               'store_dir': self.test_archive_dir
-                               },
-                  'galaxy_config': 'galaxy',
-                  'distributed': {
-                                  'platform_args': 'slurm'
-                                  }
-                  }
-        
-        with open(self.post_process_config_file,'w') as fh:
-            fh.write(yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, width=1000))
-            
-        setup_analysis_directory_structure(self.post_process_config_file,self.fc_dir,None)
+#        CasavaStructureBuilder.setUp(self)
+#        self.post_process_config_file = os.path.join(self.test_archive_dir,"test_post_process.yaml")
+#        config = {
+#                  'analysis': {
+#                               'base_dir': self.test_analysis_dir,
+#                               'store_dir': self.test_archive_dir
+#                               },
+#                  'galaxy_config': 'galaxy',
+#                  'distributed': {
+#                                  'platform_args': 'slurm'
+#                                  }
+#                  }
+#        
+#        with open(self.post_process_config_file,'w') as fh:
+#            fh.write(yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, width=1000))
+#            
+#        setup_analysis_directory_structure(self.post_process_config_file,self.fc_dir,None)
         
         
     def test_project_based_setup(self):
@@ -664,33 +658,33 @@ class SamplesheetTest(CasavaStructureBuilder):
                     'Read': random.randint(1,2),
                     'Chunk': 1}
         self.assertDictEqual(expected,
-                             _parse_sample_filename(generate_sample_file(sample_name=expected['SampleID'],
-                                                                         barcode=expected['Index'],
-                                                                         lane=expected['Lane'],
-                                                                         readno=expected['Read'])),
+                             _parse_sample_filename(td.generate_sample_file(sample_name=expected['SampleID'],
+                                                                            barcode=expected['Index'],
+                                                                            lane=expected['Lane'],
+                                                                            readno=expected['Read'])),
                              "Parsing barcoded sample filename failed")
         
         # A file without barcode
         expected['Index'] = 'NoIndex'
         self.assertDictEqual(expected,
-                             _parse_sample_filename(generate_sample_file(sample_name=expected['SampleID'],
-                                                                         barcode=expected['Index'],
-                                                                         lane=expected['Lane'],
-                                                                         readno=expected['Read'])),
+                             _parse_sample_filename(td.generate_sample_file(sample_name=expected['SampleID'],
+                                                                            barcode=expected['Index'],
+                                                                            lane=expected['Lane'],
+                                                                            readno=expected['Read'])),
                              "Parsing non-barcoded sample filename failed")
         
         # A file of undetermined barcode reads
         expected['Index'] = 'Undetermined'
         self.assertDictEqual(expected,
-                             _parse_sample_filename(generate_sample_file(sample_name=expected['SampleID'],
-                                                                         barcode=expected['Index'],
-                                                                         lane=expected['Lane'],
-                                                                         readno=expected['Read'])),
+                             _parse_sample_filename(td.generate_sample_file(sample_name=expected['SampleID'],
+                                                                            barcode=expected['Index'],
+                                                                            lane=expected['Lane'],
+                                                                            readno=expected['Read'])),
                              "Parsing undetermined barcode sample filename failed")
         
         # An invalid filename
-        self.assertRaises(_parse_sample_filename('This_is_an_invalid_filename'),
-                          "Parsing an invalid filename should raise an exception")
+        with self.assertRaises(ValueError):
+            _parse_sample_filename('This_is_an_invalid_filename')
         
       
         
