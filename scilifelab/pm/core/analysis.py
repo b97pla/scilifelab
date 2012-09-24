@@ -25,6 +25,7 @@ class AnalysisController(AbstractExtendedBaseController):
             (['-b', '--barcode_id'], dict(help="Barcode id")),
             (['--from_pre_casava'], dict(help="Use pre-casava directory structure for gathering information", action="store_true", default=False)),
             (['--to_pre_casava'], dict(help="Use pre-casava directory structure for delivery", action="store_true", default=False)),
+            (['--transfer_dir'], dict(help="Transfer data to transfer_dir instead of sample_prj dir", action="store", default=None))
             ]
 
     def _process_args(self):
@@ -36,6 +37,12 @@ class AnalysisController(AbstractExtendedBaseController):
             self._meta.path_id = self.pargs.flowcell
         if self.pargs.project:
             self._meta.path_id = self.pargs.project
+        ## Temporary fix for pre-casava directories
+        if self.pargs.from_pre_casava:
+            self._meta.path_id = self.pargs.flowcell
+        ## This is a bug; how will this work when processing casava-folders?!?
+        if self.command == "hs_metrics":
+            self._meta.path_id = self.pargs.flowcell
         super(AnalysisController, self)._process_args()
 
     @controller.expose(help="List runinfo contents")
