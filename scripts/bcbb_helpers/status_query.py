@@ -10,7 +10,7 @@ import getpass
 import subprocess
 import drmaa
 
-def status_query(archive_dir, analysis_dir, flowcell, project):
+def status_query(archive_dir, analysis_dir, flowcell, project, brief):
     """Get a status report of the progress of flowcells based on a snapshot of the file system
     """
     
@@ -56,14 +56,15 @@ def status_query(archive_dir, analysis_dir, flowcell, project):
                 proj_status['samples'].append(sample_status)
                 sample_status['sample_id'] = smpl
                 sdir = _get_sample_analysis_dir(pdir, smpl)
-                if not pdir:
+                if not sdir:
                     continue
                 sample_status['sample_dir'] = sdir
                 
                 # Match the flowcell we're processing to the sample flowcell directories
-                [sample_fc] = [d for d in _get_flowcelldirs(sdir) if d.split("_")[-1] == fcdir.split("_")[-1]]
-                if not sample_fc:
+                sample_fc = [d for d in _get_flowcelldirs(sdir) if d.split("_")[-1] == fcdir.split("_")[-1]]
+                if len(sample_fc) == 0:
                     continue
+                sample_fc = sample_fc[0]
                 sample_status['sample_fc_dir'] = sample_fc
                 
                 fastq_screen = _get_fastq_screen_folder(sample_fc)
@@ -71,9 +72,10 @@ def status_query(archive_dir, analysis_dir, flowcell, project):
                     sample_status['fastq_screen'] = [fastq_screen,_fastq_screen_finished(fastq_screen)]
                 
                 now = datetime.datetime.now()
-                [pipeline_start_indicator] = _get_pipeline_indicator(sample_fc,[1])
-                if not pipeline_start_indicator:
+                pipeline_start_indicator = _get_pipeline_indicator(sample_fc,[1])
+                if len(pipeline_start_indicator) == 0:
                     continue
+                pipeline_start_indicator = pipeline_start_indicator[0]
                 
                 most_recent, _ = _get_most_recent([pipeline_start_indicator])
                 sample_status['pipeline_started'] = [pipeline_start_indicator,most_recent]
@@ -104,19 +106,27 @@ def status_query(archive_dir, analysis_dir, flowcell, project):
             fc_status['projects'].append(proj_status)
             
         status.append(fc_status) 
-    print_status(status)
+    print_status(status,brief)
          
-def print_status(status):
+def print_status(status, brief=False):
     """Pretty-print the status output
     """
     
     for fc_status in status:
         print "{}".format(fc_status['flowcell'])
         for proj_status in fc_status.get('projects',[]):
+            
+            if brief:
+                print "\t".join([proj_status['project'],
+                                "All Finished" if proj_status.get('finished',False) else "{}/{} finished".format(proj_status.get('no_finished_samples',0),
+                                                                                                                 len(proj_status.get('samples',[])))])
+                continue
+            
             print "\t{}".format(proj_status['project'])
             print "\t\tAnalysis finished...\t{}".format("Yes" if proj_status.get('finished',False) else "{}/{} samples".format(proj_status.get('no_finished_samples',0),
-                                                                                                                       len(proj_status.get('samples',[])))) 
+                                                                                                                               len(proj_status.get('samples',[]))))
             print "\t\tProject analysis folder exists...\t{}".format("Yes" if proj_status.get('project_dir',None) is not None else "No")
+            
             for sample_status in proj_status.get('samples',[]):
                 
                 print "\t\t{}".format(sample_status['sample_id'])
@@ -134,7 +144,7 @@ def print_status(status):
                 slurm_jobs = sample_status.get('slurm_job',[])
                 print "\t\t\tPipeline jobs exist in slurm...\t{}".format("Yes" if len(slurm_jobs) > 0 else "No")
                 for job in slurm_jobs:
-                    print "\t\t\t\tJob id {} is {}".format(job)
+                    print "\t\t\t\tJob id {} is {}".format(str(job[0]), str(job[1]))
                 
                 stat, finished = sample_status.get('fastq_screen',[None,False])
                 print "\t\t\tFastq_screen has finished...\t{}".format("Yes" if finished else "{}".format("No" if stat is not None else "N/A"))
@@ -309,13 +319,15 @@ def main():
                         help="only display the status for the specified flowcell")
     parser.add_argument('-p','--project', action='store', default=None, 
                         help="display only the status for the specified project")
+    parser.add_argument('-b','--brief', action='store_true', default=False, 
+                        help="display only a brief summary of the status status")
     parser.add_argument('-r','--archive-dir', dest='archive_dir', action='store', default="/proj/a2010002/archive", 
                         help="path to the folder containing flowcell data")
     parser.add_argument('-a','--analysis-dir', dest='analysis_dir', action='store', default="/proj/a2010002/nobackup/illumina", 
                         help="path to the folder containing project analysis data")
     
     args = parser.parse_args()
-    status_query(args.archive_dir,args.analysis_dir,args.flowcell,args.project)
+    status_query(args.archive_dir,args.analysis_dir,args.flowcell,args.project,args.brief)
       
 if __name__ == "__main__":
     main()
