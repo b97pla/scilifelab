@@ -25,6 +25,7 @@ class AnalysisController(AbstractExtendedBaseController):
             (['-b', '--barcode_id'], dict(help="Barcode id")),
             (['--from_pre_casava'], dict(help="Use pre-casava directory structure for gathering information", action="store_true", default=False)),
             (['--to_pre_casava'], dict(help="Use pre-casava directory structure for delivery", action="store_true", default=False)),
+            (['--transfer_dir'], dict(help="Transfer data to transfer_dir instead of sample_prj dir", action="store", default=None))
             ]
 
     def _process_args(self):
