@@ -14,6 +14,7 @@ import re
 
 import bcbio.solexa.flowcell
 import bcbio.solexa.samplesheet
+from bcbio.utils import safe_makedir
 from bcbio.pipeline.config_loader import load_config
 import scilifelab.scripts.bcbb_helpers.report_to_gdocs as report
 
@@ -241,6 +242,65 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
         
     return sample_run_arguments
 
+def create_project_analysis_structure(project, destination_dir, fc_run_id):
+    """Create a project's analysis directory structure in the specified destination directory
+    """
+    assert os.path.exists(destination_dir), \
+    "Analysis top-level directory, {}, does not exist".format(destination_dir)
+    
+    # Create a project directory if it doesn't already exist
+    project_name = project['project_name'].replace('__','.')
+    project_dir = os.path.join(destination_dir,project_name)
+    safe_makedir(project_dir)
+    
+    # Create the sample directories if they don't already exist
+    for sample in project.get('samples',[]):
+        sample_name = sample['sample_name'].replace('__','.')
+        sample_dir = os.path.join(project_dir,sample_name,fc_run_id)
+        safe_makedir(sample_dir)
+        
+    return project_dir
+
+def copy_project_analysis_files(project, src_project_dir, dest_project_dir, fc_run_id):
+    """Copy the project sequence files and samplesheets to the analysis directory
+    """
+    
+    assert os.path.exists(dest_project_dir), \
+    "The project analysis directory, {}, does not exists".format(dest_project_dir)
+    
+    # Loop over the samples and add rsync statements
+    rsync_files = []
+    for sample in project.get('samples',[]):
+        sample_name = sample['sample_name'].replace('__','.')
+        src_sample_dir = os.path.join(src_project_dir,sample['sample_dir'])
+        dest_sample_dir = os.path.join(dest_project_dir,sample_name,fc_run_id)
+        for f in sample.get('files',[]) + [sample.get('samplesheet',None)]:
+            if f is not None:
+                rsync_files.append([os.path.join(src_sample_dir,f),dest_sample_dir])
+    
+    # Do the rsync
+    for src_file, dst_dir in rsync_files:
+        do_rsync([src_file],dst_dir)
+
+def reduce_samplesheet_to_project(samplesheet, project_name, dest_project_dir):
+    """Extract the rows for the project from a samplesheet
+    """
+    data = []
+    header = []
+    with open(samplesheet) as fh:
+        csvread = csv.DictReader(fh, dialect='excel')
+        header = csvread.fieldnames
+        data = [row for row in csvread if row['SampleProject'] == project_name or row['SampleProject'].replace('__','.') == project_name]
+       
+    project_samplesheet = os.path.join(dest_project_dir,"{}_{}".format([project_name,os.path.basename(samplesheet)]))         
+    with open(project_samplesheet,"w") as outh:
+        csvwrite = csv.DictWriter(outh,header)
+        csvwrite.writeheader()
+        csvwrite.writerows(sorted(data, key=lambda d: (d['Lane'],d['Index'])))
+        
+    return project_samplesheet
+    
+    
 def _sample_files_custom_config(sample_files):
     """Create a custom sample config to pass the file names
     """
@@ -428,6 +488,7 @@ def parse_casava_directory(fc_dir):
     
     fc_dir = os.path.abspath(fc_dir)
     fc_name, fc_date = bcbio.solexa.flowcell.get_flowcell_info(fc_dir)
+    fc_samplesheet = _get_samplesheet(fc_dir) 
     unaligned_dir = os.path.join(fc_dir,CASAVA_OUTPUT_DIR)
     basecall_stats_dir_pattern = os.path.join(unaligned_dir,"Basecall_Stats_*")
     basecall_stats_dir = None
@@ -451,7 +512,13 @@ def parse_casava_directory(fc_dir):
         project_name = project_dir.replace(project_dir_pattern[0:-1],'')
         projects.append({'project_dir': os.path.relpath(project_dir,unaligned_dir), 'project_name': project_name, 'samples': project_samples})
     
-    return {'fc_dir': fc_dir, 'fc_name': fc_name, 'fc_date': fc_date, 'data_dir': os.path.relpath(unaligned_dir,fc_dir), 'basecall_stats_dir': basecall_stats_dir, 'projects': projects}
+    return {'fc_dir': fc_dir, 
+            'fc_name': fc_name, 
+            'fc_date': fc_date, 
+            'samplesheet': fc_samplesheet,
+            'data_dir': os.path.relpath(unaligned_dir,fc_dir), 
+            'basecall_stats_dir': basecall_stats_dir, 
+            'projects': projects}
     
 def has_casava_output(fc_dir):
     try:
@@ -461,6 +528,21 @@ def has_casava_output(fc_dir):
     except:
         pass
     return False
+
+def _get_samplesheet(flowcell_dir):
+    """Get the samplesheet from the flowcell directory, returning firstly [FCID].csv and secondly SampleSheet.csv
+    """
+    pattern = os.path.join(flowcell_dir,"*.csv")
+    ssheet = None
+    for f in glob.glob(pattern):
+        if not os.path.isfile(f):
+            continue
+        name, _ = os.path.splitext(os.path.basename(f))
+        if flowcell_dir.endswith(name):
+            return f
+        if name == "SampleSheet":
+            ssheet = f
+    return ssheet
 
 def report_to_gdocs(fc_dir, post_process_config_file):
     # Rename any existing run_info.yaml as it will interfere with gdocs upload
