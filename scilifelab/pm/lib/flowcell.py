@@ -157,7 +157,11 @@ class Flowcell(object):
     def _yaml_to_tab(self, runinfo_yaml):
         """Convert yaml to internal representation"""
         out = []
-        for info in runinfo_yaml:
+        if runinfo_yaml.has_key("fc_date"):
+            self.fc_date = runinfo_yaml["fc_date"]
+        if runinfo_yaml.has_key("fc_name"):
+            self.fc_name = runinfo_yaml["fc_name"]
+        for info in runinfo_yaml['details']:
             self.lane_files[info.get('lane', None)] = []
             laneinfo = [info.get(x.replace("lane_", "")) for x in self._keys['lane']]
             for mp in info.get("multiplex", None):
@@ -261,6 +265,8 @@ class Flowcell(object):
         pruned_fc.filename = self.filename.replace(".yaml", "-pruned.yaml")
         pruned_fc._set_sample_dict()
         pruned_fc.lane_files = dict((x, self.lane_files[x]) for x in pruned_fc.lanes())
+        pruned_fc.fc_date = self.fc_date
+        pruned_fc.fc_name = self.fc_name
         return pruned_fc
 
     def load(self, paths, runinfo="run_info.yaml"):

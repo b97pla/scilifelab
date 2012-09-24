@@ -7,7 +7,7 @@ import os
 import re
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractExtendedBaseController
-
+from scilifelab.pm.utils.misc import query_yes_no, filtered_walk
 from scilifelab.pm.lib.flowcell import Flowcell
 
 ## Main analysis controller
@@ -54,7 +54,18 @@ class AnalysisController(AbstractExtendedBaseController):
         """Get information from casava structure"""
         if not self._check_pargs(["project"]):
             return
-
+        fc_list = []
+        pattern = "-bcbb-config.yaml$"
+        def bcbb_yaml_filter(f):
+            return re.search(pattern, f) != None
+        samples = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), bcbb_yaml_filter)
+        for s in samples:
+            fc = Flowcell(s)
+            fc_new = fc.subset("sample_prj", self.pargs.project)
+            fc_new.collect_files(os.path.dirname(s))        
+            fc_list.append(fc_new)
+        return fc_list
+            
     def _to_casava_structure(self, fc):
         outdir_pfx = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data"))
         for sample in fc:
@@ -138,7 +149,12 @@ class AnalysisController(AbstractExtendedBaseController):
         if self.pargs.to_pre_casava:
             self._to_pre_casava_structure(fc)
         else:
-            self._to_casava_structure(fc)
+            if isinstance(fc, list):
+                for f in fc:
+                    self._to_casava_structure(f)
+            else:
+                self._to_casava_structure(fc)
+
 
         ## Fix lane_files for pre_casava output
         ## if self.pargs.pre_casava:
