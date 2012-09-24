@@ -9,6 +9,8 @@ import subprocess
 import copy
 import tempfile
 import argparse
+import csv
+
 import bcbio.solexa.flowcell
 import bcbio.solexa.samplesheet
 from bcbio.pipeline.config_loader import load_config
@@ -156,6 +158,7 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
     assert os.path.exists(analysis_dir), "ERROR: Analysis top directory %s does not exist" % analysis_dir
     
     # A list with the arguments to each run, when running by sample
+    project_run_arguments = []
     sample_run_arguments = []
     
     # Parse the flowcell dir
@@ -180,6 +183,31 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
         if not os.path.exists(project_dir):
             os.mkdir(project_dir,0770)
         
+        # Merge the samplesheets of the underlying samples
+        src_project_dir = os.path.join(fc_dir_structure['fc_dir'],fc_dir_structure['data_dir'],project['project_dir'])
+        samplesheets = []
+        for sample in project.get('samples',[]):
+            samplesheets.append(os.path.join(src_project_dir,sample['sample_dir'],sample['samplesheet']))            
+        project_samplesheet = _merge_samplesheets(samplesheets, os.path.join(project_dir,"SampleSheet.csv"))
+        
+        # Create a bcbb yaml config file from the samplesheet
+        project_config = bcbb_configuration_from_samplesheet(project_samplesheet)
+        # Extract the lane and barcode sequence from the sample files and add the paths to the config
+        sample_files = _map_sample_files(project.get('samples',[]))
+
+        # Add the sample files to the config
+        for lane in project_config:
+            lane_no = lane['lane']
+            if 'multiplex' in lane:
+                for sample in lane['multiplex']:
+                    sample = _link_sample_files(sample,lane_no,sample_files)
+            else:
+                lane = _link_sample_files(lane,lane_no,sample_files)
+                
+        project_config = override_with_custom_config(project_config,custom_config)
+        arguments = _setup_config_files(project_dir,project_config,post_process_config_file,fc_dir_structure['fc_dir'],project_name,fc_date,fc_name)
+        project_run_arguments.append([arguments[1],arguments[0],arguments[1],arguments[3]])
+        
         # Iterate over the samples in the project
         for sample_no, sample in enumerate(project.get('samples',[])):
             # Create a directory for the sample if it doesn't already exist
@@ -194,8 +222,8 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
                 os.mkdir(dst_sample_dir,0770)
             
             # rsync the source files to the sample directory
-            src_sample_dir = os.path.join(fc_dir_structure['fc_dir'],fc_dir_structure['data_dir'],project['project_dir'],sample['sample_dir'])
-            sample_files = do_rsync([os.path.join(src_sample_dir,f) for f in sample.get('files',[])],dst_sample_dir)
+            src_sample_dir = os.path.join(src_project_dir,sample['sample_dir'])
+            sample_files = do_rsync([os.path.join(src_sample_dir,f) for f in (sample.get('files',[]) + [sample.get('samplesheet',None)])],dst_sample_dir)
             
             # Generate a sample-specific configuration yaml structure
             samplesheet = os.path.join(src_sample_dir,sample['samplesheet'])
@@ -208,14 +236,76 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
                         sample['files'] = [os.path.basename(f) for f in sample_files if f.find("_%s_L00%d_" % (sample['sequence'],int(lane['lane']))) >= 0]
                 else:
                     lane['files'] = [os.path.basename(f) for f in sample_files if f.find("_L00%d_" % int(lane['lane'])) >= 0]
-                    
-            sample_config = override_with_custom_config(sample_config,custom_config)
+            
+            # Override the sample config with project-generated ids and custom config
+            sample_config = override_with_custom_config(sample_config,project_config)
             
             arguments = _setup_config_files(dst_sample_dir,sample_config,post_process_config_file,fc_dir_structure['fc_dir'],sample_name,fc_date,fc_name)
             sample_run_arguments.append([arguments[1],arguments[0],arguments[1],arguments[3]])
         
     return sample_run_arguments
 
+def _link_sample_files(item, lane_no, sample_files):
+    
+    key = ":".join([item['name'],item.get('sequence','NoIndex'),lane_no])
+    assert key in sample_files, "Could not match sample files for {}".format(key)
+    item['files'] = sample_files[key]
+    return item
+
+def _sample_files_custom_config(sample_files):
+    """Create a custom sample config to pass the file names
+    """
+    fields = _parse_sample_filename(sample_files[0])
+    
+    config = {'lane': fields['Lane']}
+    sample_config = {}
+    if pcs['Index'] != 'NoIndex':
+        sample_config['sequence'] = pcs['Index']
+        config['multiplex'] = [sample_config]
+    else:
+        sample_config = config
+    
+    sample_config['files'] = sample_files
+        
+    return config
+
+def _parse_sample_filename(fname):
+    """Extract the sample data that can be deduced from the sample filename
+    """
+    pattern = r"^(.+?)_(NoIndex|Undetermined|[ACGT\-]+)_L(\d+)_R(\d)_(\d+)\.fastq.*$"
+    fields = ['SampleID','Index','Lane','Read','Chunk']
+    m = re.match(pattern,fname)
+    pcs = []
+    for i in range(len(m.groups())):
+        try:
+            p = int(m.group(i+1))
+        except:
+            p = m.group(i+1)
+        pcs.append(p)
+    if len(pcs) != len(fields):
+        raise ValueError('Invalid file name format')
+    
+    return dict(zip(fields,pcs))
+
+def _merge_samplesheets(samplesheets, merged_samplesheet):
+    """Merge several .csv samplesheets into one
+    """
+    data = []
+    header = []
+    for samplesheet in samplesheets:
+        with open(samplesheet) as fh:
+            csvread = csv.DictReader(fh, dialect='excel')
+            header = csvread.fieldnames
+            for row in csvread:
+                data.append(row)
+                
+    with open(merged_samplesheet,"w") as outh:
+        csvwrite = csv.DictWriter(outh,header)
+        csvwrite.writeheader()
+        csvwrite.writerows(sorted(data, key=lambda d: (d['Lane'],d['Index'])))
+        
+    return merged_samplesheet
+    
 def _copy_basecall_stats(source_dir, destination_dir):
     """Copy relevant files from the Basecall_Stats_FCID directory
        to the analysis directory
@@ -289,6 +379,7 @@ def _setup_config_files(dst_dir,configs,post_process_config_file,fc_dir,sample_n
     if 'distributed' in local_post_process and 'platform_args' in local_post_process['distributed']:
         slurm_out = "%s-bcbb.log" % sample_name
         local_post_process['distributed']['platform_args'] = "%s -J %s -o %s -D %s" % (local_post_process['distributed']['platform_args'], sample_name, slurm_out, dst_dir)
+            
     local_post_process_file = os.path.join(dst_dir,"%s-post_process.yaml" % sample_name)
     with open(local_post_process_file,'w') as fh:
         fh.write(yaml.safe_dump(local_post_process, default_flow_style=False, allow_unicode=True, width=1000))
@@ -296,7 +387,7 @@ def _setup_config_files(dst_dir,configs,post_process_config_file,fc_dir,sample_n
     # Write the command for running the pipeline with the configuration files
     run_command_file = os.path.join(dst_dir,"%s-bcbb-command.txt" % sample_name)
     with open(run_command_file,"w") as fh:
-        fh.write(" ".join([os.path.basename(__file__),"--only-run",os.path.basename(local_post_process_file), os.path.join("..",os.path.basename(dst_dir)), os.path.basename(config_file)])) 
+        fh.write(" ".join([os.path.basename(__file__),"--only-run","--no-google-report",os.path.basename(local_post_process_file), os.path.join("..",os.path.basename(dst_dir)), os.path.basename(config_file)])) 
         fh.write("\n")   
     
     return [os.path.basename(local_post_process_file), dst_dir, fc_dir, os.path.basename(config_file)]
@@ -323,7 +414,6 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet):
             else:
                 plex['analysis'] = 'Align_standard'
                 
-
     # Remove the yaml file, we will write a new one later
     os.remove(yaml_file)
     
@@ -411,3 +501,197 @@ if __name__ == "__main__":
     if not args.no_google_report:
         report_to_gdocs(args.fcdir, args.config)
 
+# --- Testing code: run with 'nosetests -v -s run_bcbb_pipeline.py'
+
+import unittest
+import tempfile
+import random
+import datetime
+import shutil
+import string
+import mock
+import bcbio.utils as utils
+     
+
+class CasavaStructureBuilder(unittest.TestCase):
+    """Builder for the Casava file structure
+    """
+    
+    def setUp(self):
+        
+        # Create the file structure in a temporary location
+        self.test_archive_dir = tempfile.mkdtemp()
+        
+        # Create a flowcell id
+        barcode = generate_fc_barcode()
+        fcid = generate_run_id(fc_barcode=barcode)
+        self.fc_dir = os.path.join(self.test_archive_dir,fcid)
+        os.makedirs(self.fc_dir)
+        
+        # Generate run data and write it to a samplesheet
+        self.samplesheet = os.path.join(self.fc_dir,"SampleSheet.csv")
+        generate_run_samplesheet(barcode,self.samplesheet)
+        
+        # Create the file structure according to the samplesheet
+        with open(self.samplesheet) as in_handle:
+            for row in in_handle:
+                if len(row) == 0 or row[0] == "#":
+                    continue
+                csv_data = row.strip().split(",")
+                lane = 0
+                try:
+                    lane = int(str(csv_data[1]))
+                except ValueError:
+                    # This is most likely the header row
+                    continue
+                
+                sample_name = csv_data[2]
+                project_name = csv_data[9]
+                index_sequence = csv_data[4]
+                
+                project_folder = os.path.join(self.fc_dir,"Unaligned","Project_{}".format(project_name))
+                sample_folder = os.path.join(project_folder,"Sample_{}".format(sample_name))
+                sample_file_r1 = os.path.join(sample_folder,"{}_{}_L00{}_R1_001.fastq.gz".format(
+                                                    sample_name,
+                                                    index_sequence,
+                                                    lane))
+                sample_file_r2 = sample_file_r1.replace("_R1_","_R2_")
+                sample_ssheet = os.path.join(sample_folder,"SampleSheet.csv")
+                
+                os.makedirs(sample_folder)
+                utils.touch_file(sample_file_r1)
+                utils.touch_file(sample_file_r2)
+                sample_ssheet = _write_samplesheet([csv_data],sample_ssheet)
+                
+        # Create a Basecall_Stats_[FCID] folder and a Demultiplex_Stats.htm file
+        bcall_dir = os.path.join(self.fc_dir,"Unaligned","Basecall_Stats_{}".format(barcode))
+        os.mkdir(bcall_dir)
+        os.mkdir(os.path.join(bcall_dir,"Plots"))
+        os.mkdir(os.path.join(bcall_dir,"css"))
+        utils.touch_file(os.path.join(bcall_dir,"Demultiplex_Stats.htm"))
+    
+    def tearDown(self):
+        shutil.rmtree(self.test_archive_dir)
+        
+class CasavaStructureTest(CasavaStructureBuilder):
+    
+    def test_has_casava_output_true(self):
+        """Test that has_casava_output returns true
+        """
+        self.assertTrue(has_casava_output(self.fc_dir))
+    
+    def test_has_casava_output_false(self):
+        """Test that has_casava_output returns false
+        """
+        # FIXME: How do we mock the implicit call to parse_casava_directory? The code below does not work..
+        #parse_casava_directory = mock.Mock(return_value={'projects': []})
+        #self.assertFalse(has_casava_output(self.fc_dir))
+        pass
+            
+class SamplesheetTest(CasavaStructureBuilder):
+    
+    def setUp(self):
+         
+        CasavaStructureBuilder.setUp(self)
+        self.test_analysis_dir = tempfile.mkdtemp()
+        self.post_process_config_file = os.path.join(self.test_archive_dir,"test_post_process.yaml")
+        config = {
+                  'analysis': {
+                               'base_dir': self.test_analysis_dir,
+                               'store_dir': self.test_archive_dir
+                               },
+                  'galaxy_config': 'galaxy',
+                  'distributed': {
+                                  'platform_args': 'slurm'
+                                  }
+                  }
+        
+        with open(self.post_process_config_file,'w') as fh:
+            fh.write(yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, width=1000))
+            
+        setup_analysis_directory_structure(self.post_process_config_file,self.fc_dir,None)
+        
+        
+    def test_project_based_setup(self):
+        """Test the project based setup
+        """
+        self.assertTrue(os.path.exists(self.test_analysis_dir))
+    
+    def test__merge_samplesheets(self):
+        """Test the merging of the samplesheets
+        """ 
+        src_rows = _parse_samplesheet(generate_run_samplesheet())
+
+        # Write individual samplesheets for each row
+        samplesheets = []
+        for i in range(1,len(src_rows)):
+            fh, tfile = tempfile.mkstemp(dir=self.test_analysis_dir)
+            os.close(fh)
+            with open(tfile,"w") as outh:
+                # Write the header row to each samplesheet
+                outh.write("{}\n".format(",".join(src_rows[0])))
+                # Write a varying number of rows 
+                for j in range(random.randint(1,5)):
+                    i += j
+                    if i < len(src_rows):
+                        outh.write("{}\n".format(",".join(src_rows[i])))
+            samplesheets.append(tfile)
+        
+        # Merge the samplesheets
+        fh, tfile = tempfile.mkstemp(dir=self.test_analysis_dir)
+        os.close(fh)
+        merged_file = _merge_samplesheets(samplesheets,tfile)
+        merged_rows = _parse_samplesheet(merged_file)
+        for i,item in enumerate(merged_rows[0]):
+            self.assertEqual(item,src_rows[0][i])
+        src_rows.remove(merged_rows[0])
+        
+        for i in range(1,len(merged_rows)):
+            self.assertTrue(merged_rows[i] in src_rows)
+            src_rows.remove(merged_rows[i])
+        
+        self.assertEqual(len(src_rows),0)
+        
+
+    def test__parse_sample_filename(self):
+        """Parse a sample file name
+        """
+        
+        # A valid filename
+        expected = {'SampleID': td.generate_sample(),
+                    'Index': td.generate_barcode(),
+                    'Lane': random.randint(1,8),
+                    'Read': random.randint(1,2),
+                    'Chunk': 1}
+        self.assertDictEqual(expected,
+                             _parse_sample_filename(generate_sample_file(sample_name=expected['SampleID'],
+                                                                         barcode=expected['Index'],
+                                                                         lane=expected['Lane'],
+                                                                         readno=expected['Read'])),
+                             "Parsing barcoded sample filename failed")
+        
+        # A file without barcode
+        expected['Index'] = 'NoIndex'
+        self.assertDictEqual(expected,
+                             _parse_sample_filename(generate_sample_file(sample_name=expected['SampleID'],
+                                                                         barcode=expected['Index'],
+                                                                         lane=expected['Lane'],
+                                                                         readno=expected['Read'])),
+                             "Parsing non-barcoded sample filename failed")
+        
+        # A file of undetermined barcode reads
+        expected['Index'] = 'Undetermined'
+        self.assertDictEqual(expected,
+                             _parse_sample_filename(generate_sample_file(sample_name=expected['SampleID'],
+                                                                         barcode=expected['Index'],
+                                                                         lane=expected['Lane'],
+                                                                         readno=expected['Read'])),
+                             "Parsing undetermined barcode sample filename failed")
+        
+        # An invalid filename
+        self.assertRaises(_parse_sample_filename('This_is_an_invalid_filename'),
+                          "Parsing an invalid filename should raise an exception")
+        
+      
+        
+    
