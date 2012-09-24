@@ -28,7 +28,7 @@ class PmAnalysisTest(PmTest):
         self.app = self.make_app(argv = ['analysis', 'ls'])
         handler.register(AnalysisController)
         self._run_app()
-        self.eq(self.app._output_data['stdout'].getvalue(), '120829_SN0001_0001_AA001AAAXX\n120829_SN0001_0002_BB001BBBXX')
+        self.eq(self.app._output_data['stdout'].getvalue(), '120829_SN0001_0001_AA001AAAXX\n120829_SN0001_0002_BB001BBBXX\n120924_SN0002_0003_CC003CCCXX\nJ.Doe_00_04\nJ.Doe_00_05\nJ.Doe_00_06')
 
     def test_3_from_pre_to_casava_transfer(self):
         """Test from pre-casava to casava transfer to project directory"""
@@ -66,14 +66,14 @@ class PmAnalysisTest(PmTest):
 
     def test_5_quiet(self):
         """Test pre_casava delivery to project directory with quiet flag"""
-        self.app = self.make_app(argv = ['analysis', 'transfer', '120829_SN0001_0001_AA001AAAXX', '-p', 'J.Doe_00_01', '--from_pre_casava', '--to_pre_casava', '--quiet'])
+        self.app = self.make_app(argv = ['analysis', 'transfer',  'J.Doe_00_01', '-f', '120829_SN0001_0001_AA001AAAXX', '--from_pre_casava', '--to_pre_casava', '--quiet'])
         handler.register(AnalysisController)
         self._run_app()
 
 
     def test_6_from_casava_to_casava_transfer(self):
         """Test from casava to casava transfer to project directory"""
-        self.app = self.make_app(argv = ['analysis', 'transfer', 'J.Doe_00_01'])
+        self.app = self.make_app(argv = ['analysis', 'transfer', 'J.Doe_00_04'])
         handler.register(AnalysisController)
         self._run_app()
     

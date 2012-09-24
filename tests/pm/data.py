@@ -205,7 +205,6 @@ for r in files['data/archive/120924_SN0002_0003_CC003CCCXX/C003CCCXX.csv'].split
     v = r.split(",")
     if v[0] == "FCID":
         continue
-    print v
     k = {'lane':v[1], 'name':v[2], 'sample_prj':v[8].replace("__", "."), 'sequence':v[4]}
     files["data/analysis/{}/{}/120924_CC003CCCXX/{}-bcbb-config.yaml".format(v[5].replace("__", "."), v[2], v[2])] = Template("""details:
 - analysis: Standard

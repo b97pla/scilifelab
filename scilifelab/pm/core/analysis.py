@@ -36,6 +36,12 @@ class AnalysisController(AbstractExtendedBaseController):
             self._meta.path_id = self.pargs.flowcell
         if self.pargs.project:
             self._meta.path_id = self.pargs.project
+        ## Temporary fix for pre-casava directories
+        if self.pargs.from_pre_casava:
+            self._meta.path_id = self.pargs.flowcell
+        ## This is a bug; how will this work when processing casava-folders?!?
+        if self.command == "hs_metrics":
+            self._meta.path_id = self.pargs.flowcell
         super(AnalysisController, self)._process_args()
 
     @controller.expose(help="List runinfo contents")
