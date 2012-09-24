@@ -1,5 +1,9 @@
-files = {'data/analysis/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_barcode/1_120829_AA001AAAXX_nophix.bc_metrics' : 
-         """1       19756915
+from mako.template import Template
+
+files = {
+    ### Old-school project analysis data
+    'data/analysis/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_barcode/1_120829_AA001AAAXX_nophix.bc_metrics' : 
+    """1       19756915
 2       18724985
 3       21948744
 4       17394069
@@ -8,15 +12,15 @@ files = {'data/analysis/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_barcod
 12	23252366
 unmatched       9289601
 """,
-         'data/analysis/120829_SN0001_0001_AA001AAAXX/2_120829_AA001AAAXX_barcode/2_120829_AA001AAAXX_nophix.bc_metrics' :
-             """5       19235231
+    'data/analysis/120829_SN0001_0001_AA001AAAXX/2_120829_AA001AAAXX_barcode/2_120829_AA001AAAXX_nophix.bc_metrics' :
+        """5       19235231
 7       10232523
 17       2194
 19       17125
 unmatched       22001241
 """,
-         'data/archive/120829_SN0001_0001_AA001AAAXX/run_info.yaml':
-"""- analysis: Align_illumina
+    'data/archive/120829_SN0001_0001_AA001AAAXX/run_info.yaml':
+        """- analysis: Align_illumina
   description: Lane 1, J.Doe_00_01
   flowcell_id: A001AAAXX
   genome_build: unknown
@@ -95,8 +99,9 @@ unmatched       22001241
     sample_prj: J.Doe_00_02
     sequence: TGACCA
 """,
-         'data/projects/j_doe_00_03/data/P000_101/120914_BB002ABCXX/P000_101-bcbb-config.yaml':
-"""details:
+    ### Casava result files after delivery
+    'data/projects/j_doe_00_03/data/P000_101/120914_BB002ABCXX/P000_101-bcbb-config.yaml':
+        """details:
 - analysis: Align_illumina
   description: Lane 3, J.Doe_00_03
   flowcell_id: B002ABCXX
@@ -113,8 +118,8 @@ unmatched       22001241
     sample_prj: J.Doe_00_03
     sequence: ATCACG
 """,
-         'data/projects/j_doe_00_03/data/P000_102/120914_BB002ABCXX/P000_102-bcbb-config.yaml':
-"""details:
+    'data/projects/j_doe_00_03/data/P000_102/120914_BB002ABCXX/P000_102-bcbb-config.yaml':
+        """details:
 - analysis: Align_illumina
   description: Lane 3, J.Doe_00_03
   flowcell_id: B002ABCXX
@@ -149,8 +154,8 @@ unmatched       22001241
     sample_prj: J.Doe_00_03
     sequence: ATCACG
 """,
-         'data/projects/j_doe_00_03/data/P000_104F/120914_BB002ABCXX/P000_104F-bcbb-config.yaml':
-"""details:
+    'data/projects/j_doe_00_03/data/P000_104F/120914_BB002ABCXX/P000_104F-bcbb-config.yaml':
+        """details:
 - analysis: Align_illumina
   description: Lane 5, J.Doe_00_03
   flowcell_id: B002ABCXX
@@ -166,5 +171,62 @@ unmatched       22001241
     name: P000_104F_index1
     sample_prj: J.Doe_00_03
     sequence: ATCACG
-"""
-         }
+""",
+    ### Casava flowcell information
+    'data/archive/120924_SN0002_0003_CC003CCCXX/C003CCCXX.csv':
+        """FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,SampleProject
+C003CCCXX,1,P001_101_index3,hg19,TGACCA,J__Doe_00_04,N,R1,NN,J__Doe_00_04
+C003CCCXX,1,P001_102_index6,hg19,ACAGTG,J__Doe_00_04,N,R1,NN,J__Doe_00_04
+C003CCCXX,2,P002_101_index3,hg19,TGACCA,J__Doe_00_05,N,R1,NN,J__Doe_00_05
+C003CCCXX,2,P002_102_index6,hg19,ACAGTG,J__Doe_00_05,N,R1,NN,J__Doe_00_05
+C003CCCXX,2,P002_103_index8,hg19,TGGTCA,J__Doe_00_05,N,R1,NN,J__Doe_00_05
+C003CCCXX,2,P003_101_index1,hg19,AGTGCG,J__Doe_00_06,N,R1,NN,J__Doe_00_06
+C003CCCXX,2,P003_102_index2,hg19,TGTGCG,J__Doe_00_06,N,R1,NN,J__Doe_00_06
+C003CCCXX,2,P003_103_index6,hg19,CGTTAA,J__Doe_00_06,N,R1,NN,J__Doe_00_06""",
+    ### Casava analysis data structures
+    'data/analysis/120924_SN0002_0003_CC003CCCXX/1_120924_CC003CCCXX.bc_metrics':
+        """7       22463443        TGACCA  P001_101_index3
+2       63340036        ACAGTG  P001_102_index6
+unmatched       2326234 Undetermined    lane1
+""",
+    'data/analysis/120924_SN0002_0003_CC003CCCXX/2_120924_CC003CCCXX.bc_metrics':
+        """5       2246343        TGACCA  P002_101_index3
+7       6334036        ACAGTG  P002_102_index6
+3       4495853        TGGTCA  P002_103_index8
+8       479491        AGTGCG  P003_101_index1
+4       9316653        TGTGCG  P003_102_index2
+1       7108259        CGTTAA  P003_103_index6
+unmatched       3946195 Undetermined    lane2
+"""}
+
+## Generate the sample files for casava 
+bcids = [7,2,5,7,3,8,4,1]
+for r in files['data/archive/120924_SN0002_0003_CC003CCCXX/C003CCCXX.csv'].split("\n"):
+    v = r.split(",")
+    if v[0] == "FCID":
+        continue
+    print v
+    k = {'lane':v[1], 'name':v[2], 'sample_prj':v[8].replace("__", "."), 'sequence':v[4]}
+    files["data/analysis/{}/{}/120924_CC003CCCXX/{}-bcbb-config.yaml".format(v[5].replace("__", "."), v[2], v[2])] = Template("""details:
+- analysis: Standard
+  description: Lane ${lane}, ${sample_prj}
+  flowcell_id: CC003CCCXX
+  genome_build: hg19
+  lane: '${lane}'
+  multiplex:
+  - analysis: Align_standard_seqcap
+    barcode_id: 5
+    barcode_type: SampleSheet
+    description: ${sample_prj}_${name}
+    files:
+    - ${name}_${sequence}_L00${lane}_R1_001.fastq
+    - ${name}_${sequence}_L00${lane}_R2_001.fastq
+    genome_build: hg19
+    genomes_filter_out: phix
+    name: ${name}
+    sample_prj: ${sample_prj}
+    sequence: ${sequence}
+fc_date: '120924'
+fc_name: CC003CCCXX
+""").render(**k)
+

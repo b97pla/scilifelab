@@ -19,8 +19,8 @@ class AnalysisController(AbstractExtendedBaseController):
         label = 'analysis'
         description = 'Manage analysis'
         arguments = [
-            (['flowcell'], dict(help="Flowcell id", nargs="?", default=None)),
-            (['-p', '--project'], dict(help="Project id")),
+            (['project'], dict(help="Project id", nargs="?", default=None)),
+            (['-f', '--flowcell'], dict(help="Flowcell id")),
             (['-l', '--lane'], dict(help="Lane id")),
             (['-b', '--barcode_id'], dict(help="Barcode id")),
             (['--from_pre_casava'], dict(help="Use pre-casava directory structure for gathering information", action="store_true", default=False)),
@@ -34,6 +34,8 @@ class AnalysisController(AbstractExtendedBaseController):
         ## Set path_id for parent class
         if self.pargs.flowcell:
             self._meta.path_id = self.pargs.flowcell
+        if self.pargs.project:
+            self._meta.path_id = self.pargs.project
         super(AnalysisController, self)._process_args()
 
     @controller.expose(help="List runinfo contents")
@@ -52,7 +54,6 @@ class AnalysisController(AbstractExtendedBaseController):
         """Get information from casava structure"""
         if not self._check_pargs(["project"]):
             return
-        self._not_implemented("Reading of casava structure not yet tested nor supported")
 
     def _to_casava_structure(self, fc):
         outdir_pfx = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data"))
