@@ -24,8 +24,8 @@ def main():
 
 	jt = s.createJobTemplate()
 	jt.jobName = "GalaxyJob"
-	jt.remoteCommand = 'echo'
-	jt.args = ['foo']
+	jt.remoteCommand = 'echo foo\necho baz\nls -a -l'
+	#jt.args = ['']
 	jt.nativeSpecification = "-A a2010002 -p devel -t 00:00:05"
 	jt.workingDirectory = drmaa.JobTemplate.HOME_DIRECTORY
 	jt.outputPath = ":"+drmaa.JobTemplate.HOME_DIRECTORY+'/job_stdout.out'
