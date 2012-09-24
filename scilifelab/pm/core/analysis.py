@@ -75,6 +75,8 @@ class AnalysisController(AbstractExtendedBaseController):
             
     def _to_casava_structure(self, fc):
         outdir_pfx = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data"))
+        if self.pargs.transfer_dir:
+           outdir_pfx = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.transfer_dir, "data"))
         for sample in fc:
             key = "{}_{}".format(sample['lane'], sample['barcode_id'])
             sources = {"files":sample['files'], "results":sample['results']}
@@ -96,6 +98,9 @@ class AnalysisController(AbstractExtendedBaseController):
     def _to_pre_casava_structure(self, fc):
         dirs = {"data":os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data", fc.fc_id())),
                 "intermediate":os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "intermediate", fc.fc_id()))}
+        if self.pargs.transfer_dir:
+           dirs["data"] = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.transfer_dir, "data", fc.fc_id()))
+           dirs["intermediate"] = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.transfer_dir, "intermediate", fc.fc_id()))
         self._make_output_dirs(dirs)
         fc_new = fc
         for sample in fc:

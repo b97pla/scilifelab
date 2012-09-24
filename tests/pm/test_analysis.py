@@ -70,10 +70,15 @@ class PmAnalysisTest(PmTest):
         handler.register(AnalysisController)
         self._run_app()
 
-
     def test_6_from_casava_to_casava_transfer(self):
         """Test from casava to casava transfer to project directory"""
         self.app = self.make_app(argv = ['analysis', 'transfer', 'J.Doe_00_04'])
+        handler.register(AnalysisController)
+        self._run_app()
+
+    def test_7_from_casava_to_casava_transfer(self):
+        """Test from casava to casava transfer to project directory"""
+        self.app = self.make_app(argv = ['analysis', 'transfer', 'J.Doe_00_04', '--transfer_dir', 'j_doe_00_04_custom'])
         handler.register(AnalysisController)
         self._run_app()
     
