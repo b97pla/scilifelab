@@ -71,35 +71,35 @@ class ProjectTest(PmTest):
     def test_4_compress_distributed(self):
         """Test distributed compression of project data"""
         if os.getenv("DRMAA_LIBRARY_PATH"):
-            self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '-n'] , extensions=['scilifelab.pm.ext.ext_distributed'])
+            self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '-n', '--force'] , extensions=['scilifelab.pm.ext.ext_distributed'])
             handler.register(ProjectController)
             self._run_app()
 
     def test_4_decompress_distributed(self):
         """Test distributed compression of project data"""
         if os.getenv("DRMAA_LIBRARY_PATH"):
-            self.app = self.make_app(argv = ['project', 'decompress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '-n'] , extensions=['scilifelab.pm.ext.ext_distributed'])
+            self.app = self.make_app(argv = ['project', 'decompress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '-n', '--force'] , extensions=['scilifelab.pm.ext.ext_distributed'])
             handler.register(ProjectController)
             self._run_app()
 
     def test_5_compress_pbzip2_node(self):
         """Test distributed compression of project data with pbzip2"""
         if os.getenv("DRMAA_LIBRARY_PATH"):
-            self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '--pbzip2', '-n'] , extensions=['scilifelab.pm.ext.ext_distributed'])
+            self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '--pbzip2', '-n', '--force'] , extensions=['scilifelab.pm.ext.ext_distributed'])
             handler.register(ProjectController)
             self._run_app()
 
     def test_5_decompress_pbzip2_node(self):
         """Test distributed decompression of project data with pbzip2"""
         if os.getenv("DRMAA_LIBRARY_PATH"):
-            self.app = self.make_app(argv = ['project', 'decompress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '--pbzip2', '-n'] , extensions=['scilifelab.pm.ext.ext_distributed'])
+            self.app = self.make_app(argv = ['project', 'decompress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '--pbzip2', '-n', '--force'] , extensions=['scilifelab.pm.ext.ext_distributed'])
             handler.register(ProjectController)
             self._run_app()
 
     @test.raises(Exception)
     def test_6_rm_analysis_1(self):
         """Test removal of non-existing intermediate analysis"""
-        self.app = self.make_app(argv = ['project', 'rm', 'j_doe_00_04', 'analysisoe'])
+        self.app = self.make_app(argv = ['project', 'rm', 'j_doe_00_04', 'analysisoe', '--force'])
         handler.register(ProjectController)
         handler.register(ProjectRmController)
         try:
@@ -109,7 +109,7 @@ class ProjectTest(PmTest):
 
     def test_6_rm_analysis_1_dry(self):
         """Test dry removal of one intermediate analysis"""
-        self.app = self.make_app(argv = ['project', 'rm', 'j_doe_00_04', 'analysis_1','-n'])
+        self.app = self.make_app(argv = ['project', 'rm', 'j_doe_00_04', 'analysis_1','-n', '--force'])
         handler.register(ProjectController)
         handler.register(ProjectRmController)
         self._run_app()
@@ -117,7 +117,7 @@ class ProjectTest(PmTest):
     @test.raises(Exception)
     def test_7_rm_analysis_1(self):
         """Test removal of one intermediate analysis"""
-        self.app = self.make_app(argv = ['project', 'rm', 'j_doe_00_04', 'analysis_1'])
+        self.app = self.make_app(argv = ['project', 'rm', 'j_doe_00_04', 'analysis_1', '--force'])
         handler.register(ProjectController)
         handler.register(ProjectRmController)
         self._run_app()

@@ -112,13 +112,13 @@ class CleanTest(PmTest):
                 exit_code = shell.exec_cmd2(['touch', outfile])
 
     def test_1_clean_dry(self):
-        self.app = self.make_app(argv = ['project', 'clean', 'j_doe_00_02', '--pileup', '-n', '--intermediate'])
+        self.app = self.make_app(argv = ['project', 'clean', 'j_doe_00_02', '--pileup', '-n', '--intermediate', '--force'])
         handler.register(ProjectController)
         self._run_app()
 
     def test_1_clean(self):
         before = glob.glob(os.path.join(intermediate, "120829_AA001AAAXX", "*"))
-        self.app = self.make_app(argv = ['project', 'clean', 'j_doe_00_02', '--pileup', '--intermediate'])
+        self.app = self.make_app(argv = ['project', 'clean', 'j_doe_00_02', '--pileup', '--intermediate', '--force'])
         handler.register(ProjectController)
         self._run_app()
         after = glob.glob(os.path.join(intermediate, "120829_AA001AAAXX", "*"))
@@ -127,7 +127,7 @@ class CleanTest(PmTest):
 
     def test_2_clean_fastqbam(self):
         before = glob.glob(os.path.join(data, "P1_106F_index6/120829_AA001AAAXX/alignments", "*"))
-        self.app = self.make_app(argv = ['project', 'clean', 'j_doe_00_02', '--data', '--fastqbam'])
+        self.app = self.make_app(argv = ['project', 'clean', 'j_doe_00_02', '--data', '--fastqbam', '--force'])
         handler.register(ProjectController)
         self._run_app()
         after = glob.glob(os.path.join(data, "P1_106F_index6/120829_AA001AAAXX/alignments", "*"))
