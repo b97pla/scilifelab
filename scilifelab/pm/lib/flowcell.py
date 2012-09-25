@@ -107,13 +107,11 @@ class Flowcell(object):
         out = []
         if not os.path.exists(infile):
             return None
-        first = True
         with open(infile) as fh:
             runinfo_csv = csv.reader(fh)
+            ## Skip header
+            runinfo_csv.next()
             for row in runinfo_csv:
-                if first:
-                    first = False
-                    continue
                 d = dict(zip(self._csv_keys, row))
                 d['analysis'] = "Align_standard_seqcap"
                 d['lane_description'] = "Lane {}, {}".format(d['lane'], d['sample_prj'].replace("__", "."))

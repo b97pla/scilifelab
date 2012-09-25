@@ -48,10 +48,6 @@ class PmTestApp(PmApp):
         config_defaults = config_defaults
         output_handler = PmTestOutputHandler
 
-    # def setup(self):
-    #     super(PmTestApp, self).setup()
-    #     self._output_data = dict(stdout=[], stderr=[])
-
 ## Main pm test 
 class PmTest(test.CementTestCase):
     app_class = PmTestApp
@@ -74,10 +70,6 @@ class PmTest(test.CementTestCase):
                 if not os.path.exists(os.path.dirname(os.path.join(filedir, f))):
                     os.makedirs(os.path.dirname(os.path.join(filedir, f)))
                 shell.exec_cmd(['touch', os.path.join(filedir, f)])
-        self._clean()
-
-    def _clean(self):
-        pass
 
     def _run_app(self):
         try:
