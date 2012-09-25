@@ -33,9 +33,6 @@ class Flowcell(object):
     keys = _keys['lane'] + _keys['mp']
     
     ## csv keys
-    # _csv_keys = dict('FCID'='flowcell_id', 'Lane' = 'lane', 'SampleID'='name', 'SampleRef' = 'genome_build', 'Index'='sequence', 'Description' = 'sample_prj',
-    #                  'Control'=None, 'Recipe'=None, 'Operator'=None, 'SampleProject'='sample_prj')
-    # _csv_keys = ['FCID', 'Lane', 'SampleID', 'SampleRef', 'Index', 'Description', 'Control', 'Recipe', 'Operator', 'SampleProject']
     _csv_keys = ['flowcell_id', 'lane', 'name', 'genome_build', 'sequence', 'sample_prj', 'control', 'recipe', 'operator', 'sample_prj']
 
     ## sample keys
