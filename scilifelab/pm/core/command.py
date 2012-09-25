@@ -163,3 +163,21 @@ class CommandHandler(handler.CementBaseHandler):
                 return
             os.unlink(fh)
         return self.dry("removing file {}".format(fh), runpipe)
+
+    def safe_rmdir(self, d):
+        """Wrapper for removing directories. Directory structure
+        should be empty of files, possibly containing subdirectories.
+
+        :param d: directory
+        """
+        def runpipe():
+            if d is None:
+                return
+            if not os.path.exists(d):
+                self.app.log.warn("not going to remove non-existant directory {}".format(d))
+                return
+            for root, dirs, files in os.walk(d):
+                for dt in dirs:
+                    os.rmdir(os.path.join(root, dt))
+            os.rmdir(d)
+        return self.dry("removing directory {}".format(d), runpipe)

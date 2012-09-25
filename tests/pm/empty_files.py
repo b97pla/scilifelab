@@ -203,6 +203,7 @@ def files():
             'data/projects/j_doe_00_03/j_doe_00_03_git/config/post_process.yaml',
             ])
     files.extend(add_casava_results(data_files()['data/archive/120924_SN0002_0003_CC003CCCXX/C003CCCXX.csv']))
+    files.extend(add_project_analyses())
     return files
 
 ## Add casava result files
@@ -255,6 +256,7 @@ def add_casava_results(runinfo):
 
 ## Add project analyses
 def add_project_analyses():
+    k={}
     file_types = ["-dup-gatkrecal-realign-insert.pdf","-dup-gatkrecal-realign-summary.aux","-dup-gatkrecal-realign-summary.log","-dup-gatkrecal-realign-summary.pdf","-dup-gatkrecal-realign-summary.tex",
                   "-dup-gatkrecal-realign-variants-combined-phased-annotated.vcf","-dup-gatkrecal-realign-variants-combined-phased-effects.tsv","-dup-gatkrecal-realign-variants-combined-phased-effects.vcf",
                   "-dup-gatkrecal-realign-variants-combined-phased-effects.vcf.idx","-dup-gatkrecal-realign-variants-combined-phased.eval","-dup-gatkrecal-realign-variants-combined-phased.vcf",
@@ -294,4 +296,4 @@ def add_project_analyses():
         tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_2/1_120924_CC003CCCXX_2-sort-dup-gatkrecal-realign-variants-split/1_120924_CC003CCCXX-sort-dup-gatkrecal-realign${ext}").render(**k))
         tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_2/1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-variants-split/1_120924_CC003CCCXX-sort-dup-gatkrecal-realign${ext}").render(**k))
 
-
+    return tmp

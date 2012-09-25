@@ -5,12 +5,13 @@ import os
 import sys
 import glob
 from cement.core import handler
-from cement.utils import shell
+from cement.utils import shell, test
 from test_default import PmTest, safe_makedir
-from scilifelab.pm.core.project import ProjectController
+from scilifelab.pm.core.project import ProjectController, ProjectRmController
 
+filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 flowcell = "120829_SN0001_0001_AA001AAAXX"
-runinfo = os.path.join(os.path.curdir, "data", "archive", flowcell, "run_info.yaml")
+runinfo = os.path.join(filedir, "data", "archive", flowcell, "run_info.yaml")
 
 class ProjectTest(PmTest):
 
@@ -94,3 +95,35 @@ class ProjectTest(PmTest):
             self.app = self.make_app(argv = ['project', 'decompress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '--pbzip2', '-n'] , extensions=['scilifelab.pm.ext.ext_distributed'])
             handler.register(ProjectController)
             self._run_app()
+
+    @test.raises(Exception)
+    def test_6_rm_analysis_1(self):
+        """Test removal of non-existing intermediate analysis"""
+        self.app = self.make_app(argv = ['project', 'rm', 'j_doe_00_04', 'analysisoe'])
+        handler.register(ProjectController)
+        handler.register(ProjectRmController)
+        try:
+            self._run_app()
+        except:
+            raise Exception
+
+    def test_6_rm_analysis_1_dry(self):
+        """Test dry removal of one intermediate analysis"""
+        self.app = self.make_app(argv = ['project', 'rm', 'j_doe_00_04', 'analysis_1','-n'])
+        handler.register(ProjectController)
+        handler.register(ProjectRmController)
+        self._run_app()
+
+    @test.raises(Exception)
+    def test_7_rm_analysis_1(self):
+        """Test removal of one intermediate analysis"""
+        self.app = self.make_app(argv = ['project', 'rm', 'j_doe_00_04', 'analysis_1'])
+        handler.register(ProjectController)
+        handler.register(ProjectRmController)
+        self._run_app()
+        try:
+            os.listdir(os.path.join(filedir, "data", "projects", "j_doe_00_04", "intermediate", "analysis_1"))
+        except:
+            raise Exception
+        
+        
