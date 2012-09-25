@@ -13,7 +13,7 @@ from scilifelab.pm.core.controller import AbstractBaseController
 
 from bcbio.qc import FlowcellQCMetrics, QCMetrics, SampleQCMetrics, LaneQCMetrics, FlowcellRunMetrics, SampleRunMetrics
 
-class QCMetricsController(AbstractBaseController):
+class RunMetricsController(AbstractBaseController):
     """
     Functionality for dealing with QC data
     """
@@ -29,6 +29,7 @@ class QCMetricsController(AbstractBaseController):
             (['--pre_casava'], dict(help="Toggle casava structure", default=False, action="store_true")),
             (['--project'], dict(help="Project id", default=None, action="store", type=str)),
             (['--sample'], dict(help="Sample id", default=None, action="store", type=str)),
+            (['--mtime'], dict(help="Last modification time of directory: skip if older", default=1, action="store", type=int))
             ]
 
     @controller.expose(hide=True)
@@ -150,17 +151,17 @@ class QCMetricsController(AbstractBaseController):
     ##############################
     ## New structures
     ##############################
-
     def _collect_pre_casava_qc(self):
         qc_objects = []
         runinfo_yaml = os.path.join(os.path.abspath(self.pargs.flowcell), "run_info.yaml")
         try:
             with open(runinfo_yaml) as fh:
-                pass
+                runinfo = yaml.load(fh)
         except IOError as e:
             self.app.log.warn(str(e))
             raise e
-        
+        print runinfo
+
     def _collect_casava_qc(self):
         qc_objects = []
         runinfo_csv = os.path.join(os.path.abspath(self.pargs.flowcell), "{}.csv".format(self._fc_id()))
@@ -191,6 +192,9 @@ class QCMetricsController(AbstractBaseController):
             if not os.path.exists(sampledir):
                 self.app.log.warn("No such sample directory: {}".format(sampledir))
                 raise IOError(2, "No such sample directory: {}".format(sampledir), sampledir)
+            ## Check modification time
+            print "Modification time: " + str( os.path.getmtime(sampledir))
+
             sample_fcdir = os.path.join(sampledir, self._fc_fullname())
             (fc_date, fc_name) = self._fc_parts()
             runinfo_yaml_file = os.path.join(sample_fcdir, "{}-bcbb-config.yaml".format(d['SampleID']))
@@ -226,7 +230,8 @@ class QCMetricsController(AbstractBaseController):
         else:
             self.log.info("Assuming casava based file structure for {}".format(self._fc_id()))
             qc_objects = self._collect_casava_qc()
-
+        if qc_objects is None:
+            return
         try:
             statusdb_url="http://{}:{}".format(self.pargs.url, self.pargs.port)
             couch = couchdb.Server(url=statusdb_url)
@@ -245,4 +250,4 @@ class QCMetricsController(AbstractBaseController):
 
 
 def load():
-    handler.register(QCMetricsController)
+    handler.register(RunMetricsController)
