@@ -32,6 +32,9 @@ class Flowcell(object):
                  mp = ['mp_analysis', 'barcode_id', 'barcode_type', 'sample_prj', 'name', 'sequence', 'files', 'genomes_filter_out', 'mp_description', 'results'])
     keys = _keys['lane'] + _keys['mp']
     
+    ## csv keys
+    _csv_keys = ['flowcell_id', 'lane', 'name', 'genome_build', 'sequence', 'sample_prj', 'control', 'recipe', 'operator', 'sample_prj']
+
     ## sample keys
     samples = dict()
     ## lane files
@@ -92,7 +95,41 @@ class Flowcell(object):
         return len(self.data)
 
     def _read(self, infile):
-        """Reads runinfo. Returns self"""
+        """Read infile. Pass to correct read wrapper."""
+        (root, ext) = os.path.splitext(infile)
+        if ext in [".csv"]:
+            return self._read_csv(infile)
+        else:
+            return self._read_yaml(infile)
+
+    def _read_csv(self, infile):
+        """Reads samplesheet csv file. Returns self converted to tab"""
+        out = []
+        if not os.path.exists(infile):
+            return None
+        with open(infile) as fh:
+            runinfo_csv = csv.reader(fh)
+            ## Skip header
+            runinfo_csv.next()
+            for row in runinfo_csv:
+                d = dict(zip(self._csv_keys, row))
+                d['analysis'] = "Align_standard_seqcap"
+                d['lane_description'] = "Lane {}, {}".format(d['lane'], d['sample_prj'].replace("__", "."))
+                d['lane_analysis'] = None
+                d['mp_description'] = "{}_{}".format(d['sample_prj'].replace("__", "."), d['name'])
+                d['mp_analysis'] = None
+                d['barcode_id'] = None
+                d['barcode_type'] = "Samplesheet"
+                d['files'] = [] ##["{}_{}_L00{}_R1_001.fastq".format(d['name'], d['sequence'], d['lane']), "{}_{}_L00{}_R2_001.fastq".format(d['name'], d['sequence'], d['lane'])]
+                d['genomes_filter_out'] = None ##'phix'
+                d['results'] = None
+                newrow = [d[k] for k in self.keys]
+                out.append(newrow)
+        self.filename = os.path.abspath(infile)
+        return out
+        
+    def _read_yaml(self, infile):
+        """Reads runinfo yaml file. Returns self converted to tab"""
         if not os.path.exists(infile):
             return None
         with open(infile) as fh:

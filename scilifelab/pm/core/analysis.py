@@ -19,12 +19,13 @@ class AnalysisController(AbstractExtendedBaseController):
         label = 'analysis'
         description = 'Manage analysis'
         arguments = [
-            (['flowcell'], dict(help="Flowcell id", nargs="?", default=None)),
-            (['-p', '--project'], dict(help="Project id")),
+            (['project'], dict(help="Project id", nargs="?", default=None)),
+            (['-f', '--flowcell'], dict(help="Flowcell id")),
             (['-l', '--lane'], dict(help="Lane id")),
             (['-b', '--barcode_id'], dict(help="Barcode id")),
             (['--from_pre_casava'], dict(help="Use pre-casava directory structure for gathering information", action="store_true", default=False)),
             (['--to_pre_casava'], dict(help="Use pre-casava directory structure for delivery", action="store_true", default=False)),
+            (['--transfer_dir'], dict(help="Transfer data to transfer_dir instead of sample_prj dir", action="store", default=None))
             ]
 
     def _process_args(self):
@@ -33,6 +34,14 @@ class AnalysisController(AbstractExtendedBaseController):
         assert os.path.exists(self._meta.root_path), "No such directory {}; check your analysis config".format(self._meta.root_path)
         ## Set path_id for parent class
         if self.pargs.flowcell:
+            self._meta.path_id = self.pargs.flowcell
+        if self.pargs.project:
+            self._meta.path_id = self.pargs.project
+        ## Temporary fix for pre-casava directories
+        if self.pargs.from_pre_casava:
+            self._meta.path_id = self.pargs.flowcell
+        ## This is a bug; how will this work when processing casava-folders?!?
+        if self.command == "hs_metrics":
             self._meta.path_id = self.pargs.flowcell
         super(AnalysisController, self)._process_args()
 
@@ -52,7 +61,6 @@ class AnalysisController(AbstractExtendedBaseController):
         """Get information from casava structure"""
         if not self._check_pargs(["project"]):
             return
-        self._not_implemented("Reading of casava structure not yet tested nor supported")
 
     def _to_casava_structure(self, fc):
         outdir_pfx = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data"))

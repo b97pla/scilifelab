@@ -25,7 +25,7 @@ class PmArchiveTest(PmTest):
         self.app = self.make_app(argv=['archive', 'ls'])
         handler.register(ArchiveController)
         self._run_app()
-        self.eq(self.app._output_data['stdout'].getvalue(), '120829_SN0001_0001_AA001AAAXX\n120829_SN0001_0002_BB001BBBXX')
+        self.eq(self.app._output_data['stdout'].getvalue(), '120829_SN0001_0001_AA001AAAXX\n120829_SN0001_0002_BB001BBBXX\n120924_SN0002_0003_CC003CCCXX')
     
     def test_3_runinfo_default(self):
         """Test runinfo default list"""
