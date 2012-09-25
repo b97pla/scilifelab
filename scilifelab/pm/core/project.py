@@ -171,7 +171,7 @@ class ProjectController(AbstractExtendedBaseController):
             self.app.log.info("Purging sam file {}".format(f))
             self.app.cmd.safe_unlink(f)
             if os.path.exists(f.replace(".sam", ".bam")):
-                self.app.cmd.safe_write(f, "File removed to save disk space: SAM converted to BAM")
+                self.app.cmd.write(f, "File removed to save disk space: SAM converted to BAM")
 
         ## Find bam files in alignments subfolders
         pattern = ".bam$"
@@ -182,7 +182,7 @@ class ProjectController(AbstractExtendedBaseController):
                 if os.path.exists(tgt):
                     self.app.log.info("Purging bam file {}".format(f))
                     self.app.cmd.safe_unlink(f)
-                    self.app.cmd.safe_write(f, "File removed to save disk space: Moved to {}".format(os.path.abspath(tgt)))
+                    self.app.cmd.write(f, "File removed to save disk space: Moved to {}".format(os.path.abspath(tgt)))
 
 class ProjectRmController(AbstractBaseController):
     class Meta:
