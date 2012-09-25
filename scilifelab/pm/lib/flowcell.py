@@ -33,9 +33,6 @@ class Flowcell(object):
     keys = _keys['lane'] + _keys['mp']
     
     ## csv keys
-    # _csv_keys = dict('FCID'='flowcell_id', 'Lane' = 'lane', 'SampleID'='name', 'SampleRef' = 'genome_build', 'Index'='sequence', 'Description' = 'sample_prj',
-    #                  'Control'=None, 'Recipe'=None, 'Operator'=None, 'SampleProject'='sample_prj')
-    # _csv_keys = ['FCID', 'Lane', 'SampleID', 'SampleRef', 'Index', 'Description', 'Control', 'Recipe', 'Operator', 'SampleProject']
     _csv_keys = ['flowcell_id', 'lane', 'name', 'genome_build', 'sequence', 'sample_prj', 'control', 'recipe', 'operator', 'sample_prj']
 
     ## sample keys
@@ -191,6 +188,7 @@ class Flowcell(object):
             d_mp["description"] = d_mp.get("description", "{}_{}".format(str(d_mp.get("sample_prj", None)), str(d_mp.get("name", None))))
             if d_mp.get("files", None):
                 d_mp["files"] = list(set(d_mp["files"]))
+                d_mp["files"].sort()
             if not self.unique_lanes:
                 yaml_out[d['lane']]["multiplex"].append(d_mp)
             else:
