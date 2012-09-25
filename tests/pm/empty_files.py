@@ -220,27 +220,39 @@ def add_casava_results(runinfo):
         i = i + 1
         tmp.append(Template("data/analysis/${sample_prj}/${name}/120924_CC003CCCXX/${name}_${sequence}_L00${lane}_R1_001.fastq").render(**k))
         tmp.append(Template("data/analysis/${sample_prj}/${name}/120924_CC003CCCXX/${name}_${sequence}_L00${lane}_R2_001.fastq").render(**k))
+
+        ## Add meta files to root folder
         file_types = ["-bcbb-command.txt","-bcbb-command.txtre","-bcbb.log","-post_process.yaml"]
         for x in file_types:
             k.update(ext=x)
             tmp.append(Template("data/analysis/${sample_prj}/${name}/120924_CC003CCCXX/${name}${ext}").render(**k))
+
+        ## Add meta files to root folder
         file_types = ["01_analysis_start.txt","02_process_lane.txt","03_remove_contaminants.txt","04_process_alignment.txt","05_merge_sample.txt","06_mark_duplicates_sample.txt","07_screen_sample_contaminants.txt","08_recalibrate_sample.txt","09_realign_sample.txt","10_variantcall.txt","11_detect_sv.txt","12_process_sample.txt","13_generate_bigwig.txt","14_write_metrics.txt", "bcbb_software_versions.txt"]
         for x in file_types:
             k.update(ext=x)
             tmp.append(Template("data/analysis/${sample_prj}/${name}/120924_CC003CCCXX/${ext}").render(**k))
         tmp.append(Template("data/analysis/${sample_prj}/${name}/120924_CC003CCCXX/${lane}_120924_CC003CCCXX.bc_metrics").render(**k))
-        file_types  = ["-insert.pdf", "-summary.aux", "-summary.log", "-summary.pdf", "-summary.tex", ".align_metrics", ".bam", ".dup_metrics", ".hs_metrics", ".insert_metrics"]
+
+        ## Add sort files to root folder
+        file_types  = ["-dup-insert.pdf", "-dup-summary.aux", "-dup-summary.log", "-dup-summary.pdf", "-dup-summary.tex", "-dup.align_metrics", "-dup.bam", "-dup.dup_metrics", "-dup.hs_metrics", "-dup.insert_metrics", ".bam"]
         for x in file_types:
             k.update(ext=x)
-            tmp.append(Template("data/analysis/${sample_prj}/${name}/120924_CC003CCCXX/${lane}_120924_CC003CCCXX_${barcode_id}_nophix-sort-dup${ext}").render(**k))
+            tmp.append(Template("data/analysis/${sample_prj}/${name}/120924_CC003CCCXX/${lane}_120924_CC003CCCXX_${barcode_id}_nophix-sort${ext}").render(**k))
+            
+        ## Add files to alignments folder
         file_types = ["-sort.bam",".bam",".sam","_1.sai","_1_fastq-fastq.bam","_2.sai"]
         for x in file_types:
             k.update(ext=x)
             tmp.append(Template("data/analysis/${sample_prj}/${name}/120924_CC003CCCXX/alignments/${lane}_120924_CC003CCCXX_${barcode_id}_nophix${ext}").render(**k))
+
+        ## Add files to fastq_screen
         file_types = [".png", ".txt"]
         for x in file_types:
             k.update(ext=x)
             tmp.append(Template("data/analysis/${sample_prj}/${name}/120924_CC003CCCXX/fastq_screen/${lane}_120924_CC003CCCXX_${barcode_id}_nophix_1_fastq_screen${ext}").render(**k))
+
+        ## Add files to fastqc
         file_types = ["fastqc_data.txt", "fastqc_report.html", "summary.txt"]
         for x in file_types:
             k.update(ext=x)

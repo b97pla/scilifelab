@@ -146,7 +146,46 @@ class ProjectController(AbstractExtendedBaseController):
         if not self.pargs.flowcell:
             self.log.warn("No flowcellid provided. Please provide a flowcellid from which to deliver. Available options are:\n\t{}".format("\n\t".join(self._flowcells())))
             return
-        
+
+    ## purge_alignments
+    @controller.expose(help="purge alignments in project folders")
+    def purge_alignments(self):
+        """Cleanup sam and bam files. In some cases, sam files
+        persist. If the corresponding bam file exists, replace the sam
+        file contents with a message that the file has been removed to
+        save space.
+        """
+        pattern = ".sam$"
+        def purge_filter(f):
+            if not pattern:
+                return
+            return re.search(pattern, f) != None
+
+        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), purge_filter)
+        if len(flist) == 0:
+            self.app.log.info("No sam files found")
+            return
+        if len(flist) > 0 and not query_yes_no("Going to remove/cleanup {} sam files ({}...). Are you sure you want to continue?".format(len(flist), ",".join([os.path.basename(x) for x in flist[0:10]])), force=self.pargs.force):
+            return
+        for f in flist:
+            self.app.log.info("Purging sam file {}".format(f))
+            self.app.cmd.safe_unlink(f)
+            if os.path.exists(f.replace(".sam", ".bam")):
+                with open(f, "w") as fh:
+                    fh.write("File removed to save disk space: SAM converted to BAM")
+
+        ## Find bam files in alignments subfolders
+        pattern = ".bam$"
+        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), purge_filter, include_dirs="alignments")
+        for f in flist:
+            f_tgt = [f.replace(".bam", "-sort.bam"), os.path.join(os.path.dirname(os.path.dirname(f)),os.path.basename(f) )]
+            for tgt in f_tgt:
+                if os.path.exists(tgt):
+                    self.app.log.info("Purging bam file {}".format(f))
+                    self.app.cmd.safe_unlink(f)
+                    with open(f, "w") as fh:
+                        fh.write("File removed to save disk space: Moved to {}".format(os.path.abspath(tgt)))
+
 class ProjectRmController(AbstractBaseController):
     class Meta:
         label = 'projectrm'
@@ -173,6 +212,7 @@ class ProjectRmController(AbstractBaseController):
             self.app.cmd.safe_unlink(f)
         self.app.log.info("removing {}".format(indir))
         self.app.cmd.safe_rmdir(indir)
+
 
 class BcbioRunController(AbstractBaseController):
     class Meta:

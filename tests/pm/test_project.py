@@ -8,10 +8,13 @@ from cement.core import handler
 from cement.utils import shell, test
 from test_default import PmTest, safe_makedir
 from scilifelab.pm.core.project import ProjectController, ProjectRmController
+from scilifelab.pm.core.analysis import AnalysisController
 
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 flowcell = "120829_SN0001_0001_AA001AAAXX"
 runinfo = os.path.join(filedir, "data", "archive", flowcell, "run_info.yaml")
+j_doe_00_04 = {"data":os.path.join(filedir, "data", "projects", "j_doe_00_04", "data")}
+analysis_1 = os.path.join(filedir, "data", "projects", "j_doe_00_04", "intermediate", "analysis_1")
 
 class ProjectTest(PmTest):
 
@@ -125,5 +128,20 @@ class ProjectTest(PmTest):
             os.listdir(os.path.join(filedir, "data", "projects", "j_doe_00_04", "intermediate", "analysis_1"))
         except:
             raise Exception
-        
+
+    def test_8_purge_alignments(self):
+        """Test purging alignments of sam files"""
+        self.app = self.make_app(argv = ['analysis', 'transfer', 'J.Doe_00_04', '--quiet'])
+        handler.register(AnalysisController)
+        self._run_app()
+        self.app = self.make_app(argv = ['project', 'purge_alignments', 'j_doe_00_04', 'analysis_1', '--force'])
+        handler.register(ProjectController)
+        handler.register(ProjectRmController)
+        self._run_app()
+        with open(os.path.join(j_doe_00_04['data'], "P001_102_index6", "120924_CC003CCCXX", "alignments", "1_120924_CC003CCCXX_2_nophix.sam")) as fh:
+            sam = fh.read()
+            self.eq(sam, "File removed to save disk space: SAM converted to BAM")
+        with open(os.path.join(j_doe_00_04['data'], "P001_102_index6", "120924_CC003CCCXX", "alignments", "1_120924_CC003CCCXX_2_nophix-sort.bam")) as fh:
+            bam = fh.read()
+            self.eq(bam, "File removed to save disk space: Moved to {}".format(os.path.join(j_doe_00_04['data'], "P001_102_index6", "120924_CC003CCCXX", "1_120924_CC003CCCXX_2_nophix-sort.bam")))
         
