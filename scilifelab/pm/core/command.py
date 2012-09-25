@@ -95,10 +95,10 @@ class CommandHandler(handler.CementBaseHandler):
         :param *kw: keyword arguments to pass to function
         """
         if self.app.pargs.dry_run:
-            ##print >> sys.stderr, "(DRY_RUN): " + message + "\n"
             self.app._output_data["stderr"].write("(DRY_RUN): " + message + "\n")
             return
-        self.app.log.info(message)
+        if self.app.pargs.verbose:
+            self.app.log.info(message)
         return func(*args, **kw)
 
     def safe_makedir(self, dname):
@@ -176,8 +176,12 @@ class CommandHandler(handler.CementBaseHandler):
             if not os.path.exists(d):
                 self.app.log.warn("not going to remove non-existant directory {}".format(d))
                 return
+            dirlist = []
             for root, dirs, files in os.walk(d):
-                for dt in dirs:
-                    os.rmdir(os.path.join(root, dt))
-            os.rmdir(d)
+                dirlist.extend([os.path.join(root, x) for x in dirs])
+            for x in dirlist:
+                try:
+                    os.removedirs(x)
+                except:
+                    pass
         return self.dry("removing directory {}".format(d), runpipe)

@@ -170,7 +170,6 @@ class ProjectRmController(AbstractBaseController):
         if len(flist) > 0 and not query_yes_no("Going to remove all contents ({} files) of analysis {} for project {}... Are you sure you want to continue?".format(len(flist), self.pargs.analysis_id, self.pargs.project), force=self.pargs.force):
             return
         for f in flist:
-            self.app.log.info("removing {}".format(f))
             self.app.cmd.safe_unlink(f)
         self.app.log.info("removing {}".format(indir))
         self.app.cmd.safe_rmdir(indir)
