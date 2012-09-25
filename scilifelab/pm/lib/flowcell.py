@@ -306,6 +306,11 @@ class Flowcell(object):
         for sample in self:
             pattern = "{}_[0-9]+_.?{}(_nophix)?_{}*{}".format(sample['lane'], sample['flowcell_id'], sample['barcode_id'], ext)
             glob_pfx.append(pattern)
+            # Catch sample files for casava
+            glob_pfx.append("^{}-.*\.*")
+        # Catch pipeline output
+        glob_pfx.append("^[0-1][0-9].*\.txt")
+        glob_pfx.append("^bcbb_software_versions\.txt")
         return glob_pfx
         
     def glob_pfx_re(self, ext=""):
@@ -333,6 +338,10 @@ class Flowcell(object):
     # 1_120829_AA001AAAXX_nophix_1-sort-dup.insert_metrics
     # 1_120829_AA001AAAXX_nophix_1-sort.bam
     def classify_file(self, f):
+        """Classify file by lane and sample.
+
+        FIXME: does not work with casava folder and sample naming structure
+        """
         re_lane = re.compile('^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?\.(filter|bc)_metrics|^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_[12]_fastq.txt')
         m_lane = re_lane.search(os.path.basename(f))
         if m_lane:
@@ -358,7 +367,9 @@ class Flowcell(object):
         return
 
     def collect_files(self, path, project=None):
-        """Collect files for a given project"""
+        """Collect files for a given project.
+
+        FIXME: does not work entirely for casava-like folder structure"""
         if project:
             fc = self.subset("sample_prj", project)
         else:

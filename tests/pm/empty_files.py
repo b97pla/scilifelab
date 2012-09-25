@@ -223,7 +223,10 @@ def add_casava_results(runinfo):
         for x in file_types:
             k.update(ext=x)
             tmp.append(Template("data/analysis/${sample_prj}/${name}/120924_CC003CCCXX/${name}${ext}").render(**k))
-        tmp.extend(["01_analysis_start.txt","02_process_lane.txt","03_remove_contaminants.txt","04_process_alignment.txt","05_merge_sample.txt","06_mark_duplicates_sample.txt","07_screen_sample_contaminants.txt","08_recalibrate_sample.txt","09_realign_sample.txt","10_variantcall.txt","11_detect_sv.txt","12_process_sample.txt","13_generate_bigwig.txt","14_write_metrics.txt", "bcbb_software_versions.txt"])
+        file_types = ["01_analysis_start.txt","02_process_lane.txt","03_remove_contaminants.txt","04_process_alignment.txt","05_merge_sample.txt","06_mark_duplicates_sample.txt","07_screen_sample_contaminants.txt","08_recalibrate_sample.txt","09_realign_sample.txt","10_variantcall.txt","11_detect_sv.txt","12_process_sample.txt","13_generate_bigwig.txt","14_write_metrics.txt", "bcbb_software_versions.txt"]
+        for x in file_types:
+            k.update(ext=x)
+            tmp.append(Template("data/analysis/${sample_prj}/${name}/120924_CC003CCCXX/${ext}").render(**k))
         tmp.append(Template("data/analysis/${sample_prj}/${name}/120924_CC003CCCXX/${lane}_120924_CC003CCCXX.bc_metrics").render(**k))
         file_types  = ["-insert.pdf", "-summary.aux", "-summary.log", "-summary.pdf", "-summary.tex", ".align_metrics", ".bam", ".dup_metrics", ".hs_metrics", ".insert_metrics"]
         for x in file_types:
