@@ -253,4 +253,45 @@ def add_casava_results(runinfo):
 
 
 
+## Add project analyses
+def add_project_analyses():
+    file_types = ["-dup-gatkrecal-realign-insert.pdf","-dup-gatkrecal-realign-summary.aux","-dup-gatkrecal-realign-summary.log","-dup-gatkrecal-realign-summary.pdf","-dup-gatkrecal-realign-summary.tex",
+                  "-dup-gatkrecal-realign-variants-combined-phased-annotated.vcf","-dup-gatkrecal-realign-variants-combined-phased-effects.tsv","-dup-gatkrecal-realign-variants-combined-phased-effects.vcf",
+                  "-dup-gatkrecal-realign-variants-combined-phased-effects.vcf.idx","-dup-gatkrecal-realign-variants-combined-phased.eval","-dup-gatkrecal-realign-variants-combined-phased.vcf",
+                  "-dup-gatkrecal-realign-variants-combined-phased.vcf.eval_metrics","-dup-gatkrecal-realign-variants-combined-phased.vcf.idx","-dup-gatkrecal-realign-variants-combined.vcf",
+                  "-dup-gatkrecal-realign-variants-combined.vcf.idx","-dup-gatkrecal-realign-variants-indel-filterINDEL.vcf","-dup-gatkrecal-realign-variants-indel-filterINDEL.vcf.idx",
+                  "-dup-gatkrecal-realign-variants-indel.vcf","-dup-gatkrecal-realign-variants-indel.vcf.idx","-dup-gatkrecal-realign-variants-snp-SNPfilter.vcf",
+                  "-dup-gatkrecal-realign-variants-snp-SNPfilter.vcf.idx","-dup-gatkrecal-realign-variants-snp.recal","-dup-gatkrecal-realign-variants-snp.tranches",
+                  "-dup-gatkrecal-realign-variants-snp.vcf","-dup-gatkrecal-realign-variants-snp.vcf.idx","-dup-gatkrecal-realign-variants.vcf",
+                  "-dup-gatkrecal-realign-variants.vcf.idx","-dup-gatkrecal-realign.align_metrics","-dup-gatkrecal-realign.bam",
+                  "-dup-gatkrecal-realign.bam.bai","-dup-gatkrecal-realign.bigwig","-dup-gatkrecal-realign.hs_metrics","-dup-gatkrecal-realign.insert_metrics","-dup-gatkrecal-realign.pileup.gz",
+                  "-dup-gatkrecal.bam","-dup-gatkrecal.bam.bai","-dup.bam","-dup.dup_metrics","-dup.recal",".bam"]
+    tmp = []
+    for x in file_types:
+        k.update(ext=x)
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_1/1_120924_CC003CCCXX_7-sort${ext}").render(**k))
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_1/1_120924_CC003CCCXX_2-sort${ext}").render(**k))
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_2/1_120924_CC003CCCXX_7-sort${ext}").render(**k))
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_2/1_120924_CC003CCCXX_2-sort${ext}").render(**k))
+
+
+    file_types = ["-chr1-realign-subsetchr1.bam","-chr1-realign-subsetchr1.bam.bai","-chr1-realign.bam","-chr1-realign.intervals",
+                  "-chr10-realign-subsetchr10.bam","-chr10-realign-subsetchr10.bam.bai","-chr10-realign.bam","-chr10-realign.intervals"]
+
+    for x in file_types:
+        k.update(ext=x)
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_1/1_120924_CC003CCCXX_2-sort-dup-gatkrecal-realign-split/1_120924_CC003CCCXX-sort-dup-gatkrecal${ext}").render(**k))
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_1/1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-split/1_120924_CC003CCCXX-sort-dup-gatkrecal${ext}").render(**k))
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_2/1_120924_CC003CCCXX_2-sort-dup-gatkrecal-realign-split/1_120924_CC003CCCXX-sort-dup-gatkrecal${ext}").render(**k))
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_2/1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-split/1_120924_CC003CCCXX-sort-dup-gatkrecal${ext}").render(**k))
+        
+
+    file_types = ["-chr1-variants.vcf","-chr1-variants.vcf.idx", "-chr10-variants.vcf", "-chr10-variants.vcf.idx"]
+    for x in file_types:
+        k.update(ext=x)
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_1/1_120924_CC003CCCXX_2-sort-dup-gatkrecal-realign-variants-split/1_120924_CC003CCCXX-sort-dup-gatkrecal-realign${ext}").render(**k))
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_1/1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-variants-split/1_120924_CC003CCCXX-sort-dup-gatkrecal-realign${ext}").render(**k))
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_2/1_120924_CC003CCCXX_2-sort-dup-gatkrecal-realign-variants-split/1_120924_CC003CCCXX-sort-dup-gatkrecal-realign${ext}").render(**k))
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_2/1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-variants-split/1_120924_CC003CCCXX-sort-dup-gatkrecal-realign${ext}").render(**k))
+
 
