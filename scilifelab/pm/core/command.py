@@ -185,3 +185,19 @@ class CommandHandler(handler.CementBaseHandler):
                 except:
                     pass
         return self.dry("removing directory {}".format(d), runpipe)
+
+    def safe_write(self, fn, msg=""):
+        """Wrapper for writing to a file.
+
+        :param fn: file name
+        :param msg: message to write
+        """
+        def runpipe():
+            if fn is None:
+                return
+            if os.path.exists(fn):
+                self.app.log.warn("not overwriting existing file {}".format(fn))
+                return
+            with open(fn, "w") as fh:
+                fh.write(msg)
+        return self.dry("writing to file {}".format(fn), runpipe)

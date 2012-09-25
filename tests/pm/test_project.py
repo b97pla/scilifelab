@@ -9,6 +9,7 @@ from cement.utils import shell, test
 from test_default import PmTest, safe_makedir
 from scilifelab.pm.core.project import ProjectController, ProjectRmController
 from scilifelab.pm.core.analysis import AnalysisController
+from scilifelab.pm.utils.misc import walk
 
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 flowcell = "120829_SN0001_0001_AA001AAAXX"
@@ -50,6 +51,9 @@ class ProjectTest(PmTest):
             m = glob.glob("{}*".format(os.path.join(self.fastq_dir, f)))
             if not m:
                 exit_code = shell.exec_cmd2(['touch', os.path.join(self.fastq_dir, f)])
+        flist = walk(j_doe_00_04['data'])
+        for f in flist:
+            os.unlink(f)
 
     def test_1_project_transfer(self):
         self.app = self.make_app(argv = ['project', 'transfer'])
@@ -129,6 +133,20 @@ class ProjectTest(PmTest):
         except:
             raise Exception
 
+    def test_8_purge_alignments_dry(self):
+        """Test purging alignments of sam files, dry run"""
+        self.app = self.make_app(argv = ['analysis', 'transfer', 'J.Doe_00_04', '--quiet'])
+        handler.register(AnalysisController)
+        self._run_app()
+        self.app = self.make_app(argv = ['project', 'purge_alignments', 'j_doe_00_04', 'analysis_1', '-n', '--force'])
+        handler.register(ProjectController)
+        handler.register(ProjectRmController)
+        self._run_app()
+        with open(os.path.join(j_doe_00_04['data'], "P001_102_index6", "120924_CC003CCCXX", "alignments", "1_120924_CC003CCCXX_2_nophix.sam")) as fh:
+            sam = fh.read()
+            self.eq(sam, "")
+
+        
     def test_8_purge_alignments(self):
         """Test purging alignments of sam files"""
         self.app = self.make_app(argv = ['analysis', 'transfer', 'J.Doe_00_04', '--quiet'])
