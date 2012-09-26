@@ -4,15 +4,25 @@ import sys
 import yaml
 from optparse import OptionParser
 
+def _printer(verbose):
+    if verbose:
+        def vprint(S):
+            print(S)
+    else:
+        def vprint(S):
+            pass
+    return vprint
+
 def main(run_info_yaml, lane, out_file, genome_build, barcode_type, trim, ascii, analysis, description, clear_description, verbose):
     
-    if verbose: print "Verifying that %s exists" % run_info_yaml
+    vprint = _printer(verbose)
+    vprint("Verifying that {} exists".format(run_info_yaml))
     assert os.path.exists(run_info_yaml)
-    if verbose: print "Parsing %s" % run_info_yaml
+    vprint("Parsing {}".format(run_info_yaml))
     with open(run_info_yaml) as fh:
         run_info = yaml.load(fh)
 
-    if verbose: print "Extracting lane info"
+    vprint("Extracting lane info")
     if lane == 0:
         lane_info = run_info
     else:
@@ -21,8 +31,8 @@ def main(run_info_yaml, lane, out_file, genome_build, barcode_type, trim, ascii,
                 lane_info = [info]
                 break
     for info in lane_info:
-        if verbose: print "Processing lane %s" % info["lane"]
-        _process_info(info,genome_build,barcode_type,trim,ascii,analysis,description,clear_description,verbose)
+        vprint("Processing lane {}".format(info["lane"]))
+        _process_info(info,genome_build,barcode_type,trim,ascii,analysis,description,clear_description,vprint)
     
     if out_file is not None:
         with open(out_file,'w') as fh:
@@ -31,33 +41,33 @@ def main(run_info_yaml, lane, out_file, genome_build, barcode_type, trim, ascii,
         print yaml.dump(run_info, allow_unicode=True, default_flow_style=False)
         
         
-def _process_info(info,genome_build,barcode_type,trim,ascii,analysis,description,clear_description,verbose):
+def _process_info(info,genome_build,barcode_type,trim,ascii,analysis,description,clear_description,vprint):
     
     if genome_build is not None:
-        if verbose: print "\tSetting genome build: %s" % genome_build
+        vprint("\tSetting genome build: {}".format(genome_build))
         info['genome_build'] = genome_build
     if analysis is not None:
-        if verbose: print "\tSetting analysis: %s" % analysis
+        vprint("\tSetting analysis: {}".format(analysis))
         info['analysis'] = analysis
     if description is not None:
-        if verbose: print "\tSetting description: %s" % description
+        vprint("\tSetting description: {}".format(description))
         info['description'] = description
     if ascii and 'description' in info:
-        if verbose: print "\tEnsuring ascii"
+        vprint("\tEnsuring ascii")
         info['description'] = _replace_ascii(info['description'])
         
     for multiplex in info.get('multiplex',[]):
-        if verbose: print "\tProcessing multiplexed barcode id %s" % multiplex['barcode_id']
+        vprint("\tProcessing multiplexed barcode id {}".format(multiplex['barcode_id']))
         if barcode_type is not None:
-            if verbose: print "\t\tSetting barcode_type: %s" % barcode_type
+            vprint("\t\tSetting barcode_type: {}".format(barcode_type))
             multiplex['barcode_type'] = barcode_type
         if trim > 0:
-            if verbose: print "\t\tTrimming %s nucleotides from end of barcode" % trim
+            vprint("\t\tTrimming {} nucleotides from end of barcode".format(trim))
             multiplex['sequence'] = multiplex['sequence'][0:(-1*trim)]
         if clear_description and 'description' in multiplex:
             del multiplex['description']
         if ascii:
-            if verbose: print "\t\tEnsuring ascii"
+            vprint("\t\tEnsuring ascii")
             if 'sample_prj' in multiplex:
                 multiplex['sample_prj'] = _replace_ascii(multiplex['sample_prj'])
             if 'description' in multiplex:
