@@ -93,6 +93,9 @@ class RunMetricsController(AbstractBaseController):
                 raise IOError(2, "No such yaml file for sample: {}".format(sampledir), sampledir)
             with open(runinfo_yaml_file) as fh:
                 runinfo_yaml = yaml.load(fh)
+            if not runinfo_yaml['details'][0].get("multiplex", None):
+                self.app.log.warn("No multiplex information for sample {}".format(runinfo_yaml_file))
+                continue
             sample_kw = dict(path=sample_fcdir, flowcell=fc_name, date=fc_date, lane=d['Lane'], barcode_name=d['SampleID'], sample_prj=d['SampleProject'].replace("__", "."), barcode_id=runinfo_yaml['details'][0]['multiplex'][0]['barcode_id'], sequence=runinfo_yaml['details'][0]['multiplex'][0]['sequence'])
             obj = SampleQCMetrics(**sample_kw)
             obj.read_picard_metrics()
@@ -180,9 +183,12 @@ class RunMetricsController(AbstractBaseController):
             fcobj.parse_run_info_yaml()
             qc_objects.append(fcobj)
         for info in runinfo:
+            if not info.get("multiplex", None):
+                self.app.log.warn("No multiplex information for lane {}".format(info.get("lane")))
+                continue
             for sample in info["multiplex"]:
                 sample.update({k: info.get(k, None) for k in ('analysis', 'description', 'flowcell_id', 'lane')})
-                sample_kw = dict(path=fcdir, flowcell=fc_name, date=fc_date, lane=sample['lane'], barcode_name=sample['name'], sample_prj=sample['sample_prj'],
+                sample_kw = dict(path=fcdir, flowcell=fc_name, date=fc_date, lane=sample['lane'], barcode_name=sample['name'], sample_prj=sample.get('sample_prj', None),
                                  barcode_id=sample['barcode_id'], sequence=sample['sequence'])
                 obj = SampleRunMetrics(**sample_kw)
                 obj.read_picard_metrics()
@@ -235,6 +241,9 @@ class RunMetricsController(AbstractBaseController):
                 raise IOError(2, "No such yaml file for sample: {}".format(runinfo_yaml_file), runinfo_yaml_file)
             with open(runinfo_yaml_file) as fh:
                 runinfo_yaml = yaml.load(fh)
+            if not runinfo_yaml['details'][0].get("multiplex", None):
+                self.app.log.warn("No multiplex information for sample {}".format(d['SampleID']))
+                continue
             sample_kw = dict(path=sample_fcdir, flowcell=fc_name, date=fc_date, lane=d['Lane'], barcode_name=d['SampleID'], sample_prj=d['SampleProject'].replace("__", "."), barcode_id=runinfo_yaml['details'][0]['multiplex'][0]['barcode_id'], sequence=runinfo_yaml['details'][0]['multiplex'][0]['sequence'])
             obj = SampleRunMetrics(**sample_kw)
             obj.read_picard_metrics()
