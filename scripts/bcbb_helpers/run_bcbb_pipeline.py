@@ -172,6 +172,55 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
     # Copy the basecall stats directory 
     _copy_basecall_stats(os.path.join(fc_dir_structure['fc_dir'],fc_dir_structure['basecall_stats_dir']), analysis_dir)
     
+    # Create the directory structure and copy the sequence files
+    for project in fc_dir_structure.get('projects',[]):
+        project_name = project['project_name'].replace('__','.')
+        run_name = "{}_{}".join([project_name,fc_name])
+        src_project_dir = os.path.join(fc_dir_structure['fc_dir'],
+                                       fc_dir_structure['data_dir'],
+                                       project['project_dir'])
+        # Create the directory structure for the project
+        dest_project_dir = create_project_analysis_structure(project, 
+                                                             analysis_dir, 
+                                                             fc_run_id)
+        # Copy the project files to the project directory and its sub-directories
+        copy_project_analysis_files(project,
+                                    src_project_dir,
+                                    dest_project_dir,
+                                    fc_run_id)
+        # Write a pruned samplesheet to the project folder
+        csv_samplesheet = reduce_samplesheet_to_project(project.get('Samplesheet',None), 
+                                                        project_name, 
+                                                        run_name, 
+                                                        dest_project_dir)
+        
+        # Write a project-specific run_info-configuration based on the samplesheet
+        project_run_info_file = project_run_info_from_samplesheet(project, 
+                                                                  run_name,
+                                                                  csv_samplesheet, 
+                                                                  dest_project_dir, 
+                                                                  custom_config_file=custom_config_file,
+                                                                  fc_date=fc_date,
+                                                                  fc_name=fc_name)
+        
+        # Write a project-specific post_process configuration
+        project_pp_config_file = post_process_config_for_project(run_name,
+                                                                 dest_project_dir,
+                                                                 project_run_info_file.replace('bcbb-config','post_process'),
+                                                                 post_process_config_file)
+        
+        # Write the command for re-running the project-based analysis
+        project_run_parameters = [project_pp_config_file,
+                                  fc_dir,
+                                  project_run_info_file]
+        project_command_file = project_run_command(run_name,
+                                                   dest_project_dir,
+                                                   project_run_parameters)
+        
+        # Append the parameters to the list of run arguments
+        project_run_arguments.append([dest_project_dir] + project_run_parameters)
+    
+    
     # Parse the custom_config_file
     custom_config = []
     if custom_config_file is not None:
@@ -282,7 +331,7 @@ def copy_project_analysis_files(project, src_project_dir, dest_project_dir, fc_r
     for src_file, dst_dir in rsync_files:
         do_rsync([src_file],dst_dir)
 
-def reduce_samplesheet_to_project(samplesheet, project_name, dest_project_dir):
+def reduce_samplesheet_to_project(samplesheet, project_name, run_name, dest_project_dir):
     """Extract the rows for the project from a samplesheet
     """
     data = []
@@ -290,9 +339,12 @@ def reduce_samplesheet_to_project(samplesheet, project_name, dest_project_dir):
     with open(samplesheet) as fh:
         csvread = csv.DictReader(fh, dialect='excel')
         header = csvread.fieldnames
-        data = [row for row in csvread if row['SampleProject'] == project_name or row['SampleProject'].replace('__','.') == project_name]
-       
-    project_samplesheet = os.path.join(dest_project_dir,"{}_{}".format([project_name,os.path.basename(samplesheet)]))         
+        data = [row for row in csvread if 
+                row['SampleProject'] == project_name or 
+                row['SampleProject'].replace('__','.') == project_name or 
+                row['SampleProject'] == project_name.replace('__','.')]
+    project_samplesheet = os.path.join(dest_project_dir,
+                                       "{}.csv".format(run_name))         
     with open(project_samplesheet,"w") as outh:
         csvwrite = csv.DictWriter(outh,header)
         csvwrite.writeheader()
@@ -300,22 +352,143 @@ def reduce_samplesheet_to_project(samplesheet, project_name, dest_project_dir):
         
     return project_samplesheet
     
+def _default_custom_from_config(config):
+    """Create a default custom configuration based on pre-set criteria that can be used to 
+    override the bcbb-created config
+    """
+    custom = []
     
+    # Change all analyses to 'Align_standard', except if genome is 'hg19', in which
+    # case we'll use 'Align_standard_seqcap'
+    for item in config:
+        custom_item = {'lane': item['lane'], 'analysis': 'Align_standard'}
+        custom.append(custom_item)
+        if item.get('genome_build','') == 'hg19':
+            custom_item['analysis'] = 'Align_standard_seqcap'
+            
+        # If the lane does not contaion multiplexed samples, we can continue to the next iteration
+        if 'multiplex' not in item:
+            continue
+        
+        custom_item['multiplex'] = []
+        for plex in item['multiplex']:
+            custom_plex = {'sequence': plex['sequence'], 'analysis': 'Align_standard'}
+            if plex.get('genome_build','') == 'hg19':
+                custom_plex['analysis'] = 'Align_standard_seqcap'
+            custom_item.append(custom_plex)
+            
+    return custom
+    
+def dump_config(config, config_file=None):
+    """Write the configuration to a yaml-file
+    """
+    # Create a temporary file if none was supplied
+    if config_file is None:
+        fh, config_file = tempfile.mkstemp(suffix=".yaml")
+        os.close(fh)
+        
+    with open(config_file,'w') as fh:
+        fh.write(yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, width=1000))
+        
+    return config_file
+    
+def project_run_info_from_samplesheet(project, run_name, samplesheet, dest_project_dir, custom_config_file=None, fc_date=None, fc_name=None):
+    """Create a project-specific run_info configuration
+    """
+    # Create a yaml file based on the samplesheet
+    config_file = bcbio.solexa.samplesheet.csv2yaml(samplesheet)
+    # Parse the created configuration file
+    config = load_config(config_file)
+    # Remove the configuration file to avoid confusion
+    os.unlink(config_file)
+    # Get the 'standard' modifications to the configuration
+    default_custom = _default_custom_from_config(config)
+    # Apply the modifications to the configuration
+    config = override_with_custom_config(config,default_custom)
+    # Loop over the samples and attach references to the sample files
+    for sample in project.get('samples',[]):
+        # Get a custom configuration with sample file information
+        custom_config = _sample_files_custom_config(sample.get('sample_files',[]))
+        # Override the configuration with sample file
+        config = override_with_custom_config(config,custom_config)
+    # Override the configuration with the global custom config
+    if custom_config_file is not None:
+        custom_config = load_config(custom_config_file)
+        config = override_with_custom_config(config,custom_config)
+    
+    # Wrap the config in a dictionary as expected by bcbb
+    config = {'details': config}
+    # If fc_name and/or fc_date has been specfied, include them
+    if fc_date is not None:
+        config['fc_date'] = fc_date
+    if fc_name is not None:
+        config['fc_name'] = fc_name
+        
+    config_file = os.path.join(dest_project_dir, "{}-bcbb-config.yaml".format(run_name))
+    return dump_config(config, config_file)
+
+def post_process_config_for_project(run_name, dest_project_dir, global_pp_config_file):
+    """Modify the post process config to refer to the specific project and write it to 
+    the project folder
+    """
+    
+    # Parse the post process file
+    config = load_config(global_pp_config_file)
+    # Update galaxy config to point to the original location
+    config['galaxy_config'] = bcbio.utils.add_full_path(config['galaxy_config'],os.path.abspath(os.path.dirname(global_pp_config_file)))
+    # Add job name and output paths to the cluster platform arguments
+    if 'distributed' in config and 'platform_args' in config['distributed']:
+        slurm_out = "{}-bcbb.log".format(run_name)
+        config['distributed']['platform_args'] = "{} -J {} -o {} -D {}".format([config['distributed']['platform_args'],
+                                                                                run_name,
+                                                                                slurm_out,
+                                                                                dest_project_dir])
+    project_pp_config_file = os.path.join(dest_project_dir, "{}-post_process.yaml".format(run_name))
+    return dump_config(project_pp_config_file)
+
+def project_run_command(run_name, dest_project_dir, project_run_parameters):
+    """Write the command for re-running the analysis for the project to file
+    """
+    cmd = [os.path.basename(__file__),
+           "--only-run",
+           "--no-google-report"] + project_run_parameters
+    project_command_file = os.path.join(dest_project_dir, "{}-bcbb-command.txt".format(run_name))
+    with open(project_command_file,"w") as outh:
+        outh.write(" ".join(cmd))
+        outh.write("\n")
+    
+    return project_command_file
+
 def _sample_files_custom_config(sample_files):
     """Create a custom sample config to pass the file names
     """
-    fields = _parse_sample_filename(sample_files[0])
+    if len(sample_files) == 0:
+        return []
     
-    config = {'lane': fields['Lane']}
-    sample_config = {}
-    if pcs['Index'] != 'NoIndex':
-        sample_config['sequence'] = pcs['Index']
-        config['multiplex'] = [sample_config]
-    else:
-        sample_config = config
-    
-    sample_config['files'] = sample_files
+    config = []
+    for sample_file in sample_files:
+        fields = _parse_sample_filename(sample_file)
+        sample_config = [cfg for cfg in config if cfg['lane'] == fields['Lane']]
+        if len(sample_config) > 0:
+            sample_config = sample_config[0]
+        else:
+            sample_config = {'lane': fields['Lane']}
+            config.append(sample_config)
         
+        # If the lane is multiplexed
+        if fields['Index'] != 'NoIndex':
+            # Search for a matching index
+            plex = {'sequence': fields['Index']}
+            if 'multiplex' in sample_config:
+                multiplex = [mplx for mplx in sample_config['multiplex'] if mplx['sequence'] == plex['sequence']]
+                if len(multiplex) > 0:
+                    plex = multiplex[0]
+            else:
+                sample_config['multiplex'] = [plex]
+            sample_config = plex
+            
+        sample_config['files'] = sorted(sample_config.get('files',[]) + [sample_file])
+                
     return config
 
 def _parse_sample_filename(fname):
@@ -363,10 +536,7 @@ def _copy_basecall_stats(source_dir, destination_dir):
     
     # First create the directory in the destination
     dirname = os.path.join(destination_dir,os.path.basename(source_dir))
-    try:
-        os.mkdir(dirname)
-    except:
-        pass
+    safe_makedir(dirname)
     
     # List the files/directories to copy
     files = glob.glob(os.path.join(source_dir,"*.htm"))
@@ -405,7 +575,8 @@ def override_with_custom_config(org_config, custom_config):
             break
         
     return new_config
-       
+
+         
 def _setup_config_files(dst_dir,configs,post_process_config_file,fc_dir,sample_name="run",fc_date=None,fc_name=None):
     
     # Setup the data structure
@@ -441,7 +612,7 @@ def _setup_config_files(dst_dir,configs,post_process_config_file,fc_dir,sample_n
         fh.write("\n")   
     
     return [os.path.basename(local_post_process_file), dst_dir, fc_dir, os.path.basename(config_file)]
-    
+
 def bcbb_configuration_from_samplesheet(csv_samplesheet):
     """Parse an illumina csv-samplesheet and return a dictionary suitable for the bcbb-pipeline
     """
