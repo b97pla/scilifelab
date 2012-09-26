@@ -1,5 +1,18 @@
+import os
+from subprocess import Popen
 from mako.template import Template
 from data import files as data_files
+
+filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+
+def install_test_files():
+    for f in empty_files():
+        if not os.path.exists(os.path.join(filedir, f)):
+            print "Preparing test: touching file {}".format(f)
+            if not os.path.exists(os.path.dirname(os.path.join(filedir, f))):
+                os.makedirs(os.path.dirname(os.path.join(filedir, f)))
+                cmd_args = ['touch', os.path.join(filedir, f)]
+                proc = Popen(cmd_args, shell=False)
 
 def files():
     ## pre-casava result files
