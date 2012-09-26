@@ -12,7 +12,7 @@ LOG = backend.minimal_logger(__name__)
 class DistributedCommandHandler(command.CommandHandler):
     """ 
     This class is an implementation of the :ref:`ICommand
-    <pmtools.core.command>` interface.
+    <scilifelab.pm.core.command>` interface.
     """    
 
     class Meta:

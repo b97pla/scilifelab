@@ -24,7 +24,9 @@ app = PmApp('pm',
                           'scilifelab.pm.ext.ext_distributed',                        
                           'scilifelab.pm.ext.ext_bcbb',                        
                           'scilifelab.pm.ext.ext_hs_metrics',
-                          'scilifelab.pm.ext.ext_qc'],
+                          'scilifelab.pm.ext.ext_qc',
+                          'scilifelab.pm.ext.ext_couchdb'
+                          ],
             plugin_dir = PLUGINDIR,
             plugin_config_dir = PLUGINCONFIGDIR,
             )

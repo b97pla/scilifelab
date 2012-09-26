@@ -9,14 +9,18 @@ import couchdb
 from datetime import datetime
 import time
 
-from cement.core import backend, controller, handler
+from cement.core import backend, controller, handler, hook
 from scilifelab.pm.core.controller import AbstractBaseController
+from scilifelab.utils.timestamp import modified_within_days
 
 from bcbio.qc import FlowcellQCMetrics, QCMetrics, SampleQCMetrics, LaneQCMetrics, FlowcellRunMetrics, SampleRunMetrics
 
 class RunMetricsController(AbstractBaseController):
     """
-    Functionality for dealing with QC data
+    This class is an implementation of the :ref:`ICommand
+    <scilifelab.pm.core.command>` interface.
+
+    Functionality for dealing with QC data.
     """
     class Meta:
         label = 'qc'
@@ -24,13 +28,10 @@ class RunMetricsController(AbstractBaseController):
         arguments = [
             (['flowcell'], dict(help="Flowcell directory", nargs="?", default=None)),
             (['analysis'], dict(help="Root path to analysis folder", default=None, nargs="?")),
-            (['url'], dict(help="Database url (excluding http://)", nargs="?")),
-            (['--port'], dict(help="Database port. Default 5984", nargs="?", default="5984")),
-            (['--dbname'], dict(help="Database name", default="qc")),
             (['--pre_casava'], dict(help="Toggle casava structure", default=False, action="store_true")),
             (['--project'], dict(help="Project id", default=None, action="store", type=str)),
             (['--sample'], dict(help="Sample id", default=None, action="store", type=str)),
-            (['--mtime'], dict(help="Last modification time of directory: skip if older", default=1, action="store", type=int))
+            (['--mtime'], dict(help="Last modification time of directory (days): skip if older. Defaults to 1 day.", default=1, action="store", type=int))
             ]
 
     @controller.expose(hide=True)
@@ -57,6 +58,10 @@ class RunMetricsController(AbstractBaseController):
         m = re.search(pattern, self.pargs.flowcell)
         return (m.group(1), m.group(2))
 
+    ##############################
+    ## Old file collection functions
+    ## Will be removed when new statusdb structure in place
+    ##############################
     def _collect_casava_qc_old(self):
         qc_objects = []
         runinfo_csv = os.path.join(os.path.abspath(self.pargs.flowcell), "{}.csv".format(self._fc_id()))
@@ -161,7 +166,8 @@ class RunMetricsController(AbstractBaseController):
         except IOError as e:
             self.app.log.warn(str(e))
             raise e
-        print runinfo
+        
+        return qc_objects
 
     def _collect_casava_qc(self):
         qc_objects = []
@@ -174,9 +180,13 @@ class RunMetricsController(AbstractBaseController):
             self.app.log.warn(str(e))
             raise e
         fcdir = os.path.join(os.path.abspath(self.pargs.analysis), self.pargs.flowcell)
-        if time.time()  - os.path.getmtime(fcdir) > self.pargs.mtime * 3600 * 24:
-            self.app.log.info("{} not modified within mtime; skipping".format(fcdir))
-            return
+        (fc_date, fc_name) = self._fc_parts()
+        ## Check modification time
+        if modified_within_days(fcdir, self.pargs.mtime):
+            fc_kw = dict(path=fcdir, fc_date = fc_date, fc_name=fc_name)
+            fcobj = FlowcellRunMetrics(**fc_kw)
+            fcobj.parse_illumina_metrics(fullRTA=False)
+            qc_objects.append(fcobj)
 
         for sample in runinfo[1:]:
             d = dict(zip(runinfo[0], sample))
@@ -189,17 +199,10 @@ class RunMetricsController(AbstractBaseController):
             if not os.path.exists(sampledir):
                 self.app.log.warn("No such sample directory: {}".format(sampledir))
                 raise IOError(2, "No such sample directory: {}".format(sampledir), sampledir)
-            ## Check modification time
-            if time.time()  - os.path.getmtime(sampledir) > self.pargs.mtime * 3600 * 24:
-                continue
 
             sample_fcdir = os.path.join(sampledir, self._fc_fullname())
-            ## Check modification time
-            if time.time()  - os.path.getmtime(sample_fcdir) > self.pargs.mtime * 3600 * 24:
-                print "Modification within limit"
+            if not modified_within_days(sample_fcdir, self.pargs.mtime):
                 continue
-
-            (fc_date, fc_name) = self._fc_parts()
             runinfo_yaml_file = os.path.join(sample_fcdir, "{}-bcbb-config.yaml".format(d['SampleID']))
             if not os.path.exists(runinfo_yaml_file):
                 self.app.log.warn("No such yaml file for sample: {}".format(runinfo_yaml_file))
@@ -213,22 +216,13 @@ class RunMetricsController(AbstractBaseController):
             obj.parse_bc_metrics()
             obj.read_fastqc_metrics()
             qc_objects.append(obj)
-            
-        fcdir = os.path.join(os.path.abspath(self.pargs.analysis), self.pargs.flowcell)
-        if time.time()  - os.path.getmtime(fcdir) > self.pargs.mtime * 3600 * 24:
-            self.app.log.info("{} not modified within mtime; skipping".format(fcdir))
-            return
-        
-        fc_kw = dict(path=fcdir, fc_date = fc_date, fc_name=fc_name)
-        fcobj = FlowcellRunMetrics(**fc_kw)
-        fcobj.parse_illumina_metrics(fullRTA=False)
-        qc_objects.append(fcobj)
         return qc_objects
 
     @controller.expose(help="Upload run metrics to statusdb")
     def upload_qc(self):
         if not self._check_pargs(['flowcell', 'analysis', 'url']):
             return
+        print self.app.pargs
         runinfo_csv = os.path.join(os.path.abspath(self.pargs.flowcell), "{}.csv".format(self._fc_id()))
         runinfo_yaml = os.path.join(os.path.abspath(self.pargs.flowcell), "run_info.yaml")
         if os.path.exists(runinfo_yaml):
@@ -237,17 +231,15 @@ class RunMetricsController(AbstractBaseController):
         else:
             self.log.info("Assuming casava based file structure for {}".format(self._fc_id()))
             qc_objects = self._collect_casava_qc()
-        if qc_objects is None:
+        if len(qc_objects) == 0:
+            self.log.info("No out-of-date qc objects for {}".format(self._fc_id()))
             return
-        try:
-            statusdb_url="http://{}:{}".format(self.pargs.url, self.pargs.port)
-            couch = couchdb.Server(url=statusdb_url)
-        except:
-            self.app.log.warn("Connecting to server at {} failed" % statusdb_url)
+        else:
+            self.log.info("Retrieved {} updated qc objects".format(len(qc_objects)))
+        self.app.cmd.connect(self.pargs.url, self.pargs.port)
+        db = self.app.cmd.db("qc")
+        if not db:
             return
-        self.app.log.info("Connecting to server at {} succeeded".format(statusdb_url))
-        #db=couch['qc']
-
         for obj in qc_objects:
             if self.app.pargs.debug:
                 self.log.info(obj)
@@ -255,6 +247,18 @@ class RunMetricsController(AbstractBaseController):
                 pass
             #self._save_obj(db, obj, statusdb_url)
 
+def set_couchdb_handler(app):
+    """
+    Overrides the configured command handler if ``--couchdb`` is passed at the
+    command line.
+    
+    :param app: The application object.
+    
+    """
+    if not '--couchdb' in app._meta.argv:
+        app._meta.argv.append('--couchdb')
 
 def load():
+    """Called by the framework when the extension is 'loaded'."""
+    hook.register('pre_run', set_couchdb_handler)
     handler.register(RunMetricsController)
