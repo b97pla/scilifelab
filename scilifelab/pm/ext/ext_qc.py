@@ -7,6 +7,7 @@ import csv
 import yaml
 import couchdb
 from datetime import datetime
+import time
 
 from cement.core import backend, controller, handler
 from scilifelab.pm.core.controller import AbstractBaseController
@@ -172,14 +173,10 @@ class RunMetricsController(AbstractBaseController):
         except IOError as e:
             self.app.log.warn(str(e))
             raise e
-
-        try:
-            with open(runinfo_csv) as fh:
-                runinfo_reader = csv.reader(fh)
-                runinfo = [x for x in runinfo_reader]
-        except IOError as e:
-            self.app.log.warn(str(e))
-            raise e
+        fcdir = os.path.join(os.path.abspath(self.pargs.analysis), self.pargs.flowcell)
+        if time.time()  - os.path.getmtime(fcdir) > self.pargs.mtime * 3600 * 24:
+            self.app.log.info("{} not modified within mtime; skipping".format(fcdir))
+            return
 
         for sample in runinfo[1:]:
             d = dict(zip(runinfo[0], sample))
@@ -193,9 +190,15 @@ class RunMetricsController(AbstractBaseController):
                 self.app.log.warn("No such sample directory: {}".format(sampledir))
                 raise IOError(2, "No such sample directory: {}".format(sampledir), sampledir)
             ## Check modification time
-            print "Modification time: " + str( os.path.getmtime(sampledir))
+            if time.time()  - os.path.getmtime(sampledir) > self.pargs.mtime * 3600 * 24:
+                continue
 
             sample_fcdir = os.path.join(sampledir, self._fc_fullname())
+            ## Check modification time
+            if time.time()  - os.path.getmtime(sample_fcdir) > self.pargs.mtime * 3600 * 24:
+                print "Modification within limit"
+                continue
+
             (fc_date, fc_name) = self._fc_parts()
             runinfo_yaml_file = os.path.join(sample_fcdir, "{}-bcbb-config.yaml".format(d['SampleID']))
             if not os.path.exists(runinfo_yaml_file):
@@ -212,6 +215,10 @@ class RunMetricsController(AbstractBaseController):
             qc_objects.append(obj)
             
         fcdir = os.path.join(os.path.abspath(self.pargs.analysis), self.pargs.flowcell)
+        if time.time()  - os.path.getmtime(fcdir) > self.pargs.mtime * 3600 * 24:
+            self.app.log.info("{} not modified within mtime; skipping".format(fcdir))
+            return
+        
         fc_kw = dict(path=fcdir, fc_date = fc_date, fc_name=fc_name)
         fcobj = FlowcellRunMetrics(**fc_kw)
         fcobj.parse_illumina_metrics(fullRTA=False)
