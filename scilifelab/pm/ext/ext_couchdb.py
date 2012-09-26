@@ -8,6 +8,7 @@ from cement.core import backend, handler, hook
 
 from scilifelab.pm.core import command
 from scilifelab.utils.http import check_url
+from scilifelab.utils.timestamp import utc_time
 
 LOG = backend.minimal_logger(__name__)
 
@@ -29,32 +30,104 @@ class CouchdbCommandHandler(command.CommandHandler):
         conn = None
         """The database connection"""
 
+        url = None
+        """The database url"""
+
+        views = {}
+        """Temporary views for speeding up update functions"""
+
+    ### Must be present
+    def command(self):
+        pass
+
     def connect(self, url, port="5984"):
         def runpipe():
-            db_url="http://{}:{}".format(url,port)
-            if not check_url(db_url):
-                self.app.log.warn("Connecting to server at {} failed. No such url." % db_url)
+            self._meta.url="http://{}:{}".format(url,port)
+            if not check_url(self._meta.url):
+                self.app.log.warn("Connecting to server at {} failed. No such url." % self._meta.url)
                 return
-            self.conn = couchdb.Server(url=db_url)
-            self.app.log.info("Connecting to server at {} succeeded".format(url))
+            self._meta.conn = couchdb.Server(url=self._meta.url)
+            self.app.log.info("Connecting to server at {} succeeded".format(self._meta.url))
         return self.dry("Connecting to database @{}:{}".format(url, port), runpipe)
 
-    def db(self, dbname=None):
-        if not dbname:
-            return
-        try:
-            db = self.conn[dbname]
-        except:
-            self.app.log.warn("No such database {}".format(dbname))
-            return False
-        return db
-        
+    def db(self, dbname):
+        """Get database <dbname>.
 
-    def command(self, cmd_args, capture=True, ignore_error=False, cwd=None, **kw):
+        :param dbname: Database name
+
+        :returns: database on success, otherwise False
+        """
         def runpipe():
-            pass
-        return self.dry("Connecting to database @{}:{}".format(url, port), runpipe)
+            try:
+                db = self._meta.conn[dbname]
+            except:
+                self.app.log.warn("No such database {} ".format(dbname))
+                return False
+            return db
+        return self.dry("Retrieving database {} from {}".format(dbname, self._meta.url), runpipe)
 
+    def save(self, dbname, obj, update_fn=None):
+        """Save/update database object <obj> in database <dbname>. If
+        <obj> already exists and <update_fn> is passed, update will
+        only take place if object has been modified
+
+        :param dbname: database name
+        :param obj: database object to save
+        :param update_fn: function that operates on object and makes sure it doesn't already exist
+        """
+        def runpipe():
+            db = self.db(dbname)
+            if not update_fn:
+                db.save(obj)
+            else:
+                new_obj = update_fn(db, obj)
+                if not new_obj is None:
+                    self.app.log.info("Saving object {} ".format(repr(new_obj)))
+                    db.save(new_obj)
+                else:
+                    self.app.log.info("Object {} present and not in need of updating".format(repr(obj)))
+        return self.dry("Saving object {}".format(repr(obj)), runpipe)
+
+    def get_view(self, dbname, design, name):
+        """Get view from a database <dbname> with design document <design>, named <name>
+
+        :param dbname: database name
+        :param design: design document
+        :param name: view name
+        """
+        db = self.db(dbname)
+        return db.view("{}/{}".format(design, name))
+
+
+    def _view(self, dbname, key):
+        """Create or retrieve a 'view' in database <dbname> that maps <field> to _id and _rev.
+        
+        :param dbname: database name
+        :param key: database key
+
+        """
+        db = self.db(dbname)
+        k = "{}_{}".format(dbname, key)
+        if not self._meta.views.has_key(k):
+            self.app.log.info("generating view in database '{}' for key '{}'".format(dbname, key))
+            self._meta.views[k] = {}
+            for dbid in db:
+                dbobj = db.get(dbid)
+                value = dbobj.get(k)
+                self._meta.views[k][value] = (dbobj.get("_id"), dbobj.get("_rev"))
+        return self._meta.views[k]
+
+    def _get(self, dbname, key, query):
+        """Get a field from a view where field == <query>.
+
+        :param dbname: database name
+        :param key: database key
+        :param query: query
+        """
+        db = self.db(dbname)
+        view = self._view(dbname, key)
+        return view.get(query, None)
+                
 def add_shared_couchdb_options(app):
     """
     Adds shared couchdb arguments to the argument object.
@@ -62,7 +135,7 @@ def add_shared_couchdb_options(app):
     :param app: The application object.
     
     """
-    app.args.add_argument('url', help="Database url (excluding http://)", nargs="?", type=str)
+    app.args.add_argument('--url', help="Database url (excluding http://)", nargs="?", type=str)
     app.args.add_argument('--port', help="Database port. Default 5984", nargs="?", default="5984", type=str)
     app.args.add_argument('--dbname', help="Database name", default=None, type=str)
 

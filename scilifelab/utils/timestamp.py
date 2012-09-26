@@ -5,7 +5,10 @@ import os
 from datetime import datetime
 import time
 
-
+def utc_time():
+    """Make an utc_time with appended 'Z'"""
+    return str(datetime.utcnow()) + 'Z'
+    
 def modified_within_days(item, n_days):
     """Check if file/directory has been modified within n days.
 

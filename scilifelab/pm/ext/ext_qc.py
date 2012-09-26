@@ -8,6 +8,7 @@ import yaml
 import couchdb
 from datetime import datetime
 import time
+from scilifelab.utils.timestamp import utc_time
 
 from cement.core import backend, controller, handler, hook
 from scilifelab.pm.core.controller import AbstractBaseController
@@ -173,6 +174,10 @@ class RunMetricsController(AbstractBaseController):
             fc_kw = dict(path=fcdir, fc_date = fc_date, fc_name=fc_name)
             fcobj = FlowcellRunMetrics(**fc_kw)
             fcobj.parse_illumina_metrics(fullRTA=False)
+            fcobj.parse_bc_metrics()
+            fcobj.parse_filter_metrics()
+            fcobj.parse_samplesheet_csv()
+            fcobj.parse_run_info_yaml()
             qc_objects.append(fcobj)
         for info in runinfo:
             for sample in info["multiplex"]:
@@ -204,6 +209,9 @@ class RunMetricsController(AbstractBaseController):
             fc_kw = dict(path=fcdir, fc_date = fc_date, fc_name=fc_name)
             fcobj = FlowcellRunMetrics(**fc_kw)
             fcobj.parse_illumina_metrics(fullRTA=False)
+            fcobj.parse_bc_metrics()
+            fcobj.parse_samplesheet_csv()
+            fcobj.parse_run_info_yaml()
             qc_objects.append(fcobj)
 
         for sample in runinfo[1:]:
@@ -253,28 +261,54 @@ class RunMetricsController(AbstractBaseController):
             return
         else:
             self.log.info("Retrieved {} updated qc objects".format(len(qc_objects)))
+
+        ## Make sure couchdb handler is set
+        if not '--couchdb' in self.app._meta.argv:
+            self.app._meta.cmd_handler = 'couchdb'
+            self.app._setup_cmd_handler()
         self.app.cmd.connect(self.pargs.url, self.pargs.port)
         db = self.app.cmd.db("qc")
-        if not db:
+        if not db and not self.pargs.dry_run:
             return
         for obj in qc_objects:
             if self.app.pargs.debug:
                 self.log.info(obj)
-            else:
-                pass
-            #self._save_obj(db, obj, statusdb_url)
+                continue
+            if isinstance(obj, FlowcellRunMetrics):
+                self.app.cmd.save("flowcells", obj, update_fn)
+            if isinstance(obj, SampleRunMetrics):
+                self.app.cmd.save("samples", obj, update_fn)
 
-def set_couchdb_handler(app):
-    """
-    Set ``--couchdb`` if not in command line.
-    
-    :param app: The application object.
-    
-    """
-    if not '--couchdb' in app._meta.argv:
-        app._meta.argv.append('--couchdb')
+def update_fn(db, obj):
+    t_utc = utc_time()
+    def equal(a, b):
+        a_keys = [str(x) for x in a.keys() if x not in ["_id", "_rev", "creation_time", "modification_time"]]
+        b_keys = [str(x) for x in b.keys() if x not in ["_id", "_rev", "creation_time", "modification_time"]]
+        keys = list(set(a_keys + b_keys))
+        return {k:a.get(k, None) for k in keys} == {k:b.get(k, None) for k in keys}
+
+    if isinstance(obj, FlowcellRunMetrics):
+        view = db.view("names/id_to_name")
+    if isinstance(obj, SampleRunMetrics):
+        view = db.view("names/id_to_name")
+
+    d_view = {k.value:k for k in view}
+    dbid =  d_view.get(obj["name"], None)
+    dbobj = None
+    if dbid:
+        dbobj = db.get(dbid.id, None)
+    if dbobj is None:
+        obj["creation_time"] = t_utc
+        return obj
+    if equal(obj, dbobj):
+        return None
+    else:
+        obj["creation_time"] = dbobj.get("creation_time")
+        obj["modification_time"] = t_utc
+        obj["_rev"] = dbobj.get("_rev")
+        obj["_id"] = dbobj.get("_id")
+        return obj
 
 def load():
     """Called by the framework when the extension is 'loaded'."""
-    hook.register('pre_run', set_couchdb_handler)
     handler.register(RunMetricsController)
