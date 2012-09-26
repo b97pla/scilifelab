@@ -13,6 +13,10 @@ filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 flowcell = "120829_SN0001_0001_AA001AAAXX"
 fc_dir = os.path.join(filedir, "data", "analysis", flowcell)
 runinfo = os.path.join(filedir, "data", "archive", flowcell, "run_info.yaml")
+flowcell_casava = "120924_SN0002_0003_CC003CCCXX"
+fc_dir_casava = os.path.join(filedir, "data", "analysis", flowcell_casava)
+samplesheet = os.path.join(filedir, "data", "archive", flowcell_casava, "C003CCCXX.csv")
+
 
 class PmFlowcellTest(PmTest):
     """Test flowcell object functionality"""
@@ -27,7 +31,6 @@ class PmFlowcellTest(PmTest):
         self.eq(newfc.projects(), ['J.Doe_00_01'])
         self.eq(os.path.dirname(fc.filename), os.path.abspath(os.path.dirname(runinfo)))
         self.eq(fc.filename, os.path.abspath(runinfo))
-
         
     def test_2_load_flowcell(self):
         """Create object and load run information"""
@@ -82,3 +85,11 @@ class PmFlowcellTest(PmTest):
         print fc.as_yaml()
         print new_fc.data
         print new_fc.as_yaml()
+
+
+    def test_8_get_flowcell_csv(self):
+        """Test to load a flowcell as a csv"""
+        fc = Flowcell(samplesheet)
+        print fc
+        print fc.data
+        print fc.as_yaml()

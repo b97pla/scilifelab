@@ -58,12 +58,13 @@ class QCMetricsController(AbstractBaseController):
     def _collect_casava_qc_old(self):
         qc_objects = []
         runinfo_csv = os.path.join(os.path.abspath(self.pargs.flowcell), "{}.csv".format(self._fc_id()))
-        if not os.path.exists(runinfo_csv):
-            self.app.log.warn("No such file {}".format(runinfo_csv))
-            raise IOError
-        with open(runinfo_csv) as fh:
-            runinfo_reader = csv.reader(fh)
-            runinfo = [x for x in runinfo_reader]
+        try:
+            with open(runinfo_csv) as fh:
+                runinfo_reader = csv.reader(fh)
+                runinfo = [x for x in runinfo_reader]
+        except IOError as e:
+            self.app.log.warn(str(e))
+            raise e
 
         for sample in runinfo[1:]:
             d = dict(zip(runinfo[0], sample))
@@ -75,13 +76,13 @@ class QCMetricsController(AbstractBaseController):
             sampledir = os.path.join(os.path.abspath(self.pargs.analysis), d['SampleProject'].replace("__", "."), d['SampleID'])
             if not os.path.exists(sampledir):
                 self.app.log.warn("No such sample directory: {}".format(sampledir))
-                raise IOError
+                raise IOError(2, "No such sample directory: {}".format(sampledir), sampledir)
             sample_fcdir = os.path.join(sampledir, self._fc_fullname())
             (fc_date, fc_name) = self._fc_parts()
             runinfo_yaml_file = os.path.join(sample_fcdir, "{}-bcbb-config.yaml".format(d['SampleID']))
             if not os.path.exists(runinfo_yaml_file):
                 self.app.log.warn("No such yaml file for sample: {}".format(runinfo_yaml_file))
-                raise IOError
+                raise IOError(2, "No such yaml file for sample: {}".format(sampledir), sampledir)
             with open(runinfo_yaml_file) as fh:
                 runinfo_yaml = yaml.load(fh)
             sample_kw = dict(path=sample_fcdir, flowcell=fc_name, date=fc_date, lane=d['Lane'], barcode_name=d['SampleID'], sample_prj=d['SampleProject'].replace("__", "."), barcode_id=runinfo_yaml['details'][0]['multiplex'][0]['barcode_id'], sequence=runinfo_yaml['details'][0]['multiplex'][0]['sequence'])
@@ -151,17 +152,33 @@ class QCMetricsController(AbstractBaseController):
     ##############################
 
     def _collect_pre_casava_qc(self):
-        return []
-
+        qc_objects = []
+        runinfo_yaml = os.path.join(os.path.abspath(self.pargs.flowcell), "run_info.yaml")
+        try:
+            with open(runinfo_yaml) as fh:
+                pass
+        except IOError as e:
+            self.app.log.warn(str(e))
+            raise e
+        
     def _collect_casava_qc(self):
         qc_objects = []
         runinfo_csv = os.path.join(os.path.abspath(self.pargs.flowcell), "{}.csv".format(self._fc_id()))
-        if not os.path.exists(runinfo_csv):
-            self.app.log.warn("No such file {}".format(runinfo_csv))
-            raise IOError
-        with open(runinfo_csv) as fh:
-            runinfo_reader = csv.reader(fh)
-            runinfo = [x for x in runinfo_reader]
+        try:
+            with open(runinfo_csv) as fh:
+                runinfo_reader = csv.reader(fh)
+                runinfo = [x for x in runinfo_reader]
+        except IOError as e:
+            self.app.log.warn(str(e))
+            raise e
+
+        try:
+            with open(runinfo_csv) as fh:
+                runinfo_reader = csv.reader(fh)
+                runinfo = [x for x in runinfo_reader]
+        except IOError as e:
+            self.app.log.warn(str(e))
+            raise e
 
         for sample in runinfo[1:]:
             d = dict(zip(runinfo[0], sample))
@@ -173,13 +190,13 @@ class QCMetricsController(AbstractBaseController):
             sampledir = os.path.join(os.path.abspath(self.pargs.analysis), d['SampleProject'].replace("__", "."), d['SampleID'])
             if not os.path.exists(sampledir):
                 self.app.log.warn("No such sample directory: {}".format(sampledir))
-                raise IOError
+                raise IOError(2, "No such sample directory: {}".format(sampledir), sampledir)
             sample_fcdir = os.path.join(sampledir, self._fc_fullname())
             (fc_date, fc_name) = self._fc_parts()
             runinfo_yaml_file = os.path.join(sample_fcdir, "{}-bcbb-config.yaml".format(d['SampleID']))
             if not os.path.exists(runinfo_yaml_file):
                 self.app.log.warn("No such yaml file for sample: {}".format(runinfo_yaml_file))
-                raise IOError
+                raise IOError(2, "No such yaml file for sample: {}".format(runinfo_yaml_file), runinfo_yaml_file)
             with open(runinfo_yaml_file) as fh:
                 runinfo_yaml = yaml.load(fh)
             sample_kw = dict(path=sample_fcdir, flowcell=fc_name, date=fc_date, lane=d['Lane'], barcode_name=d['SampleID'], sample_prj=d['SampleProject'].replace("__", "."), barcode_id=runinfo_yaml['details'][0]['multiplex'][0]['barcode_id'], sequence=runinfo_yaml['details'][0]['multiplex'][0]['sequence'])
