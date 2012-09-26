@@ -166,7 +166,25 @@ class RunMetricsController(AbstractBaseController):
         except IOError as e:
             self.app.log.warn(str(e))
             raise e
-        
+        fcdir = os.path.abspath(self.pargs.flowcell)
+        (fc_date, fc_name) = self._fc_parts()
+        ## Check modification time
+        if modified_within_days(fcdir, self.pargs.mtime):
+            fc_kw = dict(path=fcdir, fc_date = fc_date, fc_name=fc_name)
+            fcobj = FlowcellRunMetrics(**fc_kw)
+            fcobj.parse_illumina_metrics(fullRTA=False)
+            qc_objects.append(fcobj)
+        for info in runinfo:
+            for sample in info["multiplex"]:
+                sample.update({k: info.get(k, None) for k in ('analysis', 'description', 'flowcell_id', 'lane')})
+                sample_kw = dict(path=fcdir, flowcell=fc_name, date=fc_date, lane=sample['lane'], barcode_name=sample['name'], sample_prj=sample['sample_prj'],
+                                 barcode_id=sample['barcode_id'], sequence=sample['sequence'])
+                obj = SampleRunMetrics(**sample_kw)
+                obj.read_picard_metrics()
+                obj.parse_fastq_screen()
+                obj.parse_bc_metrics()
+                obj.read_fastqc_metrics()
+                qc_objects.append(obj)
         return qc_objects
 
     def _collect_casava_qc(self):
@@ -222,7 +240,6 @@ class RunMetricsController(AbstractBaseController):
     def upload_qc(self):
         if not self._check_pargs(['flowcell', 'analysis', 'url']):
             return
-        print self.app.pargs
         runinfo_csv = os.path.join(os.path.abspath(self.pargs.flowcell), "{}.csv".format(self._fc_id()))
         runinfo_yaml = os.path.join(os.path.abspath(self.pargs.flowcell), "run_info.yaml")
         if os.path.exists(runinfo_yaml):
@@ -249,8 +266,7 @@ class RunMetricsController(AbstractBaseController):
 
 def set_couchdb_handler(app):
     """
-    Overrides the configured command handler if ``--couchdb`` is passed at the
-    command line.
+    Set ``--couchdb`` if not in command line.
     
     :param app: The application object.
     
