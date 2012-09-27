@@ -1,7 +1,6 @@
-
 import os
 import sys
-import fastq_utils
+import scilifelab.utils.fastq_utils
 import argparse
 
 PHRED_OFFSET = 64
