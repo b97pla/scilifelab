@@ -164,6 +164,7 @@ class AbstractExtendedBaseController(AbstractBaseController):
             self._meta.file_pat += [".intervals", ".bam", ".bai", ".vcf", ".idx"]
             self._meta.include_dirs += ["realign-split", "variants-split"]
         if self.pargs.tmp:
+            self._meta.file_pat += [".idx", ".vcf", ".bai", ".bam", ".idx", ".pdf"]
             self._meta.include_dirs += ["tmp", "tx"]
 
         ## Setup zip program
@@ -198,7 +199,7 @@ class AbstractExtendedBaseController(AbstractBaseController):
                 return
             return re.search(pattern , f) != None
 
-        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), clean_filter)
+        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), clean_filter, include_dirs="|".join(self._meta.include_dirs))
         if len(flist) == 0:
             self.app.log.info("No files matching pattern {} found".format(pattern))
             return

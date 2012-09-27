@@ -276,12 +276,10 @@ def add_casava_results(runinfo):
             tmp.append(Template("data/analysis/${sample_prj}/${name}/120924_CC003CCCXX/nophix/${lane}_120924_CC003CCCXX_${barcode_id}_nophix${ext}").render(**k))
     return tmp
 
-
-
-
 ## Add project analyses
 def add_project_analyses():
     k={}
+    ## final results data
     file_types = ["-dup-gatkrecal-realign-insert.pdf","-dup-gatkrecal-realign-summary.aux","-dup-gatkrecal-realign-summary.log","-dup-gatkrecal-realign-summary.pdf","-dup-gatkrecal-realign-summary.tex",
                   "-dup-gatkrecal-realign-variants-combined-phased-annotated.vcf","-dup-gatkrecal-realign-variants-combined-phased-effects.tsv","-dup-gatkrecal-realign-variants-combined-phased-effects.vcf",
                   "-dup-gatkrecal-realign-variants-combined-phased-effects.vcf.idx","-dup-gatkrecal-realign-variants-combined-phased.eval","-dup-gatkrecal-realign-variants-combined-phased.vcf",
@@ -302,6 +300,7 @@ def add_project_analyses():
         tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_2/1_120924_CC003CCCXX_2-sort${ext}").render(**k))
 
 
+    ## realign-split data
     file_types = ["-chr1-realign-subsetchr1.bam","-chr1-realign-subsetchr1.bam.bai","-chr1-realign.bam","-chr1-realign.intervals",
                   "-chr10-realign-subsetchr10.bam","-chr10-realign-subsetchr10.bam.bai","-chr10-realign.bam","-chr10-realign.intervals"]
 
@@ -311,8 +310,17 @@ def add_project_analyses():
         tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_1/1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-split/1_120924_CC003CCCXX-sort-dup-gatkrecal${ext}").render(**k))
         tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_2/1_120924_CC003CCCXX_2-sort-dup-gatkrecal-realign-split/1_120924_CC003CCCXX-sort-dup-gatkrecal${ext}").render(**k))
         tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_2/1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-split/1_120924_CC003CCCXX-sort-dup-gatkrecal${ext}").render(**k))
-        
 
+    file_types = ["-chr1-realign.bai","-chr10-realign.bai"]
+
+    for x in file_types:
+        k.update(ext=x)
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_1/1_120924_CC003CCCXX_2-sort-dup-gatkrecal-realign-split/tx/1_120924_CC003CCCXX-sort-dup-gatkrecal${ext}").render(**k))
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_1/1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-split/tx/1_120924_CC003CCCXX-sort-dup-gatkrecal${ext}").render(**k))
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_2/1_120924_CC003CCCXX_2-sort-dup-gatkrecal-realign-split/tx/1_120924_CC003CCCXX-sort-dup-gatkrecal${ext}").render(**k))
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_2/1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-split/tx/1_120924_CC003CCCXX-sort-dup-gatkrecal${ext}").render(**k))
+        
+    ## variants-split data
     file_types = ["-chr1-variants.vcf","-chr1-variants.vcf.idx", "-chr10-variants.vcf", "-chr10-variants.vcf.idx"]
     for x in file_types:
         k.update(ext=x)
@@ -320,5 +328,13 @@ def add_project_analyses():
         tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_1/1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-variants-split/1_120924_CC003CCCXX-sort-dup-gatkrecal-realign${ext}").render(**k))
         tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_2/1_120924_CC003CCCXX_2-sort-dup-gatkrecal-realign-variants-split/1_120924_CC003CCCXX-sort-dup-gatkrecal-realign${ext}").render(**k))
         tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_2/1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-variants-split/1_120924_CC003CCCXX-sort-dup-gatkrecal-realign${ext}").render(**k))
+
+    file_types = ["-chr1-variants.vcf.idx","-chr10-variants.vcf.idx"]
+    for x in file_types:
+        k.update(ext=x)
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_1/1_120924_CC003CCCXX_2-sort-dup-gatkrecal-realign-variants-split/tx/1_120924_CC003CCCXX-sort-dup-gatkrecal${ext}").render(**k))
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_1/1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-variants-split/tx/1_120924_CC003CCCXX-sort-dup-gatkrecal${ext}").render(**k))
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_2/1_120924_CC003CCCXX_2-sort-dup-gatkrecal-realign-variants-split/tx/1_120924_CC003CCCXX-sort-dup-gatkrecal${ext}").render(**k))
+        tmp.append(Template("data/projects/j_doe_00_04/intermediate/analysis_2/1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-variants-split/tx/1_120924_CC003CCCXX-sort-dup-gatkrecal${ext}").render(**k))
 
     return tmp
