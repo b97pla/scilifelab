@@ -182,6 +182,8 @@ class RunMetricsController(AbstractBaseController):
             fcobj.parse_samplesheet_csv()
             fcobj.parse_run_info_yaml()
             qc_objects.append(fcobj)
+        else:
+            return qc_objects
         for info in runinfo:
             if not info.get("multiplex", None):
                 self.app.log.warn("No multiplex information for lane {}".format(info.get("lane")))
@@ -230,9 +232,11 @@ class RunMetricsController(AbstractBaseController):
             sampledir = os.path.join(os.path.abspath(self.pargs.analysis), d['SampleProject'].replace("__", "."), d['SampleID'])
             if not os.path.exists(sampledir):
                 self.app.log.warn("No such sample directory: {}".format(sampledir))
-                raise IOError(2, "No such sample directory: {}".format(sampledir), sampledir)
-
+                continue
             sample_fcdir = os.path.join(sampledir, self._fc_fullname())
+            if not os.path.exists(sample_fcdir):
+                self.app.log.warn("No such sample flowcell directory: {}".format(sample_fcdir))
+                continue
             if not modified_within_days(sample_fcdir, self.pargs.mtime):
                 continue
             runinfo_yaml_file = os.path.join(sample_fcdir, "{}-bcbb-config.yaml".format(d['SampleID']))
