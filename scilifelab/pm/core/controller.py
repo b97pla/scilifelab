@@ -8,7 +8,7 @@ import re
 from cement.core import interface, handler, controller, backend
 
 from scilifelab.pm.lib.help import PmHelpFormatter
-from scilifelab.pm.utils.misc import filtered_output, query_yes_no, filtered_walk
+from scilifelab.utils.misc import filtered_output, query_yes_no, filtered_walk
 
 LOG = backend.minimal_logger(__name__)
 
@@ -120,6 +120,7 @@ class AbstractExtendedBaseController(AbstractBaseController):
         compress_prog = "gzip"
         compress_suffix = ".gz"
         file_pat = []
+        include_dirs = []
         root_path = None
         path_id = None
 
@@ -130,6 +131,8 @@ class AbstractExtendedBaseController(AbstractBaseController):
         self._meta.arguments.append((['--fastq'], dict(help="Workon fastq files", default=False, action="store_true")))
         self._meta.arguments.append((['--fastqbam'], dict(help="Workon fastq-fastq.bam files", default=False, action="store_true")))
         self._meta.arguments.append((['--pileup'], dict(help="Workon pileup files", default=False, action="store_true")))
+        self._meta.arguments.append((['--split'], dict(help="Workon *-split directories", default=False, action="store_true")))
+        self._meta.arguments.append((['--tmp'], dict(help="Workon staging (tx) and tmp directories", default=False, action="store_true")))
         self._meta.arguments.append((['--txt'], dict(help="Workon txt files", default=False, action="store_true")))
         self._meta.arguments.append((['--move'], dict(help="Transfer file with move", default=False, action="store_true")))
         self._meta.arguments.append((['--copy'], dict(help="Transfer file with copy (default)", default=True, action="store_true")))
@@ -157,7 +160,11 @@ class AbstractExtendedBaseController(AbstractBaseController):
             self._meta.file_pat += ["fastq-fastq.bam"]
         if self.pargs.sam:
             self._meta.file_pat += [".sam"]
-
+        if self.pargs.split:
+            self._meta.file_pat += [".intervals", ".bam", ".bai", ".vcf", ".idx"]
+            self._meta.include_dirs += ["realign-split", "variants-split"]
+        if self.pargs.tmp:
+            self._meta.include_dirs += ["tmp", "tx"]
 
         ## Setup zip program
         if self.pargs.pbzip2:

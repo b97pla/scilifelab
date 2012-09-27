@@ -49,7 +49,7 @@ import yaml
 
 from cement.core import controller, hook
 from scilifelab.pm.core.controller import AbstractExtendedBaseController, AbstractBaseController
-from scilifelab.pm.utils.misc import query_yes_no, filtered_walk, walk
+from scilifelab.utils.misc import query_yes_no, filtered_walk, walk
 
 ## Main project controller
 class ProjectController(AbstractExtendedBaseController):

@@ -11,7 +11,7 @@ import csv
 import glob
 import copy
 from cStringIO import StringIO
-from scilifelab.pm.utils.misc import filtered_walk
+from scilifelab.utils.misc import filtered_walk
 
 ## FIX ME: what should be returned from object functions, and what
 ## should be done behind the scenes?

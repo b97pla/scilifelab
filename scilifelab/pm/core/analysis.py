@@ -7,8 +7,8 @@ import os
 import re
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractExtendedBaseController
-from scilifelab.pm.utils.misc import query_yes_no, filtered_walk
-from scilifelab.pm.lib.flowcell import Flowcell
+from scilifelab.utils.misc import query_yes_no, filtered_walk
+from scilifelab.bcbio.flowcell import Flowcell
 
 ## Main analysis controller
 class AnalysisController(AbstractExtendedBaseController):
