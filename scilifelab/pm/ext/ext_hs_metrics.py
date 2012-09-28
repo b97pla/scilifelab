@@ -6,8 +6,8 @@ import os
 import glob
 from cement.core import backend, controller, handler
 from scilifelab.pm.core.controller import AbstractBaseController
-from scilifelab.pm.lib.flowcell import Flowcell
-from scilifelab.pm.utils.misc import query_yes_no
+from scilifelab.bcbio.flowcell import Flowcell
+from scilifelab.utils.misc import query_yes_no
 
 ## Auxiliary functions - move to lib or utils
 def get_files(path, fc, ftype, ext=".bam", project=None, lane=None):

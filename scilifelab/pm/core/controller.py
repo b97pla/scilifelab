@@ -8,7 +8,7 @@ import re
 from cement.core import interface, handler, controller, backend
 
 from scilifelab.pm.lib.help import PmHelpFormatter
-from scilifelab.pm.utils.misc import filtered_output, query_yes_no, filtered_walk
+from scilifelab.utils.misc import filtered_output, query_yes_no, filtered_walk
 
 LOG = backend.minimal_logger(__name__)
 
@@ -24,6 +24,7 @@ class AbstractBaseController(controller.CementBaseController):
     def _setup(self, base_app):
         self._meta.arguments.append( (['-n', '--dry_run'], dict(help="dry_run - don't actually do anything", action="store_true", default=False)) )
         self._meta.arguments.append((['--force'], dict(help="force execution", action="store_true", default=False)))
+        self._meta.arguments.append((['--verbose'], dict(help="verbose mode", action="store_true", default=False)))
         self._meta.arguments.append((['--java_opts'], dict(help="java options", action="store", default="Xmx3g")))
         self._meta.arguments.append((['--input_file'], dict(help="Run on specific input file", default=None)))
         super(AbstractBaseController, self)._setup(base_app)
@@ -119,15 +120,19 @@ class AbstractExtendedBaseController(AbstractBaseController):
         compress_prog = "gzip"
         compress_suffix = ".gz"
         file_pat = []
+        include_dirs = []
         root_path = None
         path_id = None
 
     def _setup(self, base_app):
         self._meta.arguments.append((['--pbzip2'], dict(help="Use pbzip2 as compressing device", default=False, action="store_true")))
         self._meta.arguments.append((['--pigz'], dict(help="Use pigz as compressing device", default=False, action="store_true")))
+        self._meta.arguments.append((['--sam'], dict(help="Workon fastq files", default=False, action="store_true")))
         self._meta.arguments.append((['--fastq'], dict(help="Workon fastq files", default=False, action="store_true")))
         self._meta.arguments.append((['--fastqbam'], dict(help="Workon fastq-fastq.bam files", default=False, action="store_true")))
         self._meta.arguments.append((['--pileup'], dict(help="Workon pileup files", default=False, action="store_true")))
+        self._meta.arguments.append((['--split'], dict(help="Workon *-split directories", default=False, action="store_true")))
+        self._meta.arguments.append((['--tmp'], dict(help="Workon staging (tx) and tmp directories", default=False, action="store_true")))
         self._meta.arguments.append((['--txt'], dict(help="Workon txt files", default=False, action="store_true")))
         self._meta.arguments.append((['--move'], dict(help="Transfer file with move", default=False, action="store_true")))
         self._meta.arguments.append((['--copy'], dict(help="Transfer file with copy (default)", default=True, action="store_true")))
@@ -153,6 +158,14 @@ class AbstractExtendedBaseController(AbstractBaseController):
             self._meta.file_pat += [".txt"]
         if self.pargs.fastqbam:
             self._meta.file_pat += ["fastq-fastq.bam"]
+        if self.pargs.sam:
+            self._meta.file_pat += [".sam"]
+        if self.pargs.split:
+            self._meta.file_pat += [".intervals", ".bam", ".bai", ".vcf", ".idx"]
+            self._meta.include_dirs += ["realign-split", "variants-split"]
+        if self.pargs.tmp:
+            self._meta.file_pat += [".idx", ".vcf", ".bai", ".bam", ".idx", ".pdf"]
+            self._meta.include_dirs += ["tmp", "tx"]
 
         ## Setup zip program
         if self.pargs.pbzip2:
@@ -186,7 +199,7 @@ class AbstractExtendedBaseController(AbstractBaseController):
                 return
             return re.search(pattern , f) != None
 
-        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), clean_filter)
+        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), clean_filter, include_dirs="|".join(self._meta.include_dirs))
         if len(flist) == 0:
             self.app.log.info("No files matching pattern {} found".format(pattern))
             return

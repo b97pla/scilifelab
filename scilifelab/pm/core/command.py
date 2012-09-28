@@ -95,10 +95,10 @@ class CommandHandler(handler.CementBaseHandler):
         :param *kw: keyword arguments to pass to function
         """
         if self.app.pargs.dry_run:
-            ##print >> sys.stderr, "(DRY_RUN): " + message + "\n"
             self.app._output_data["stderr"].write("(DRY_RUN): " + message + "\n")
             return
-        self.app.log.info(message)
+        if self.app.pargs.verbose:
+            self.app.log.info(message)
         return func(*args, **kw)
 
     def safe_makedir(self, dname):
@@ -137,14 +137,17 @@ class CommandHandler(handler.CementBaseHandler):
             deliver_fn(src, tgt)
         return self.dry("{} file {} to {}".format(deliver_fn.__name__, src, tgt), runpipe) 
 
-    def write(self, fn, data):
+    def write(self, fn, data=None):
         """Wrapper for writing data to a file.
 
         :param fn: file name <str>
         :param data: data structure to write as <str>
         """
         def runpipe():
-            if data is None:
+            if fn is None:
+                return
+            if os.path.exists(fn):
+                self.app.log.warn("not overwriting existing file {}".format(fn))
                 return
             with open (fn, "w") as fh:
                 fh.write(data)
@@ -163,3 +166,25 @@ class CommandHandler(handler.CementBaseHandler):
                 return
             os.unlink(fh)
         return self.dry("removing file {}".format(fh), runpipe)
+
+    def safe_rmdir(self, d):
+        """Wrapper for removing directories. Directory structure
+        should be empty of files, possibly containing subdirectories.
+
+        :param d: directory
+        """
+        def runpipe():
+            if d is None:
+                return
+            if not os.path.exists(d):
+                self.app.log.warn("not going to remove non-existant directory {}".format(d))
+                return
+            dirlist = []
+            for root, dirs, files in os.walk(d):
+                dirlist.extend([os.path.join(root, x) for x in dirs])
+            for x in dirlist:
+                try:
+                    os.removedirs(x)
+                except:
+                    pass
+        return self.dry("removing directory {}".format(d), runpipe)

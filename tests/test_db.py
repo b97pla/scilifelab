@@ -49,4 +49,3 @@ class TestDbConnection(unittest.TestCase):
         samples = sample_con.get_samples(fc_id=self.examples["flowcell"], sample_prj=self.examples["project"])
         print len(samples)
                 
-

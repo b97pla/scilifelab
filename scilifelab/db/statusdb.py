@@ -59,7 +59,6 @@ class SampleRunMetricsConnection(Couch):
         self.log.info("retrieving samples subset by flowcell '{}' and sample_prj '{}'".format(fc_id, sample_prj))
         sample_ids = self.get_sample_ids(fc_id, sample_prj)
         return [self.db.get(x) for x in sample_ids]
-        
     def set_db(self):
         """Make sure we don't change db from samples"""
         pass

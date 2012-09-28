@@ -56,14 +56,14 @@ class PmTest(test.CementTestCase):
 
     def setUp(self):
         ## setup empty files 
-        for k,v in data_files.items():
+        for k,v in data_files().items():
             if not os.path.exists(os.path.join(filedir, k)):
                 if not os.path.exists(os.path.dirname(os.path.join(filedir, k))):
                     os.makedirs(os.path.dirname(os.path.join(filedir, k)))
                 with open(os.path.join(filedir, k), "w") as fh:
                     print "Preparing test: writing to file {}".format(k)
                     fh.write(v)
-        for f in empty_files:
+        for f in empty_files():
             if not os.path.exists(os.path.join(filedir, f)):
                 print "Preparing test: touching file {}".format(f)
                 if not os.path.exists(os.path.dirname(os.path.join(filedir, f))):
