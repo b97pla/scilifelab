@@ -11,7 +11,7 @@ setup(name = "scilifelab",
       description = "Useful scripts for use at SciLifeLab",
       license = "MIT",
       namespace_packages=["scilifelab"],
-      scripts = glob.glob('scripts/*.py',),
+      scripts = glob.glob('scripts/*.py') + ['scripts/pm'],
                  #'scripts/bcbb_helpers/*.py,
       install_requires = [
           "bcbio-nextgen >= 0.2",
