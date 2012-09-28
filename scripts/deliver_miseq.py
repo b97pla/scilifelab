@@ -8,113 +8,58 @@ import ConfigParser
 import subprocess
 import stat
 import logbook
-import copy
 from optparse import OptionParser
 from hashlib import md5
-from miseq_data import MiSeqRun
 
 from bcbio.utils import safe_makedir
 from bcbio.pipeline.config_loader import load_config
 
-DEFAULT_CONF = {
-                "transfer_db": os.path.join("~","log","miseq_transferred.db"),
-                "logfile": os.path.join("~","log","miseq_deliveries.log"),
-                "samplesheet_name": "SampleSheet.csv",
-                "fastq_path": os.path.join("Data","Intensities","BaseCalls"),
-                "project_root": os.path.join("/proj"),
-                "uppnexid_field": "Description",
-                "smtp_host": "smtp.uu.se",
-                "smtp_port": 25,
-                "email_recipient": "seqmaster@scilifelab.se",
-                "force": false,
-                "dryrun": false
-                }
+DEFAULT_DB = os.path.join("~","log","miseq_transferred.db")
+DEFAULT_LOGFILE = os.path.join("~","log","miseq_deliveries.log")
+DEFAULT_SS_NAME = "SampleSheet.csv"
+DEFAULT_FQ_LOCATION = os.path.join("Data","Intensities","BaseCalls")
+DEFAULT_PROJECT_ROOT = os.path.join("/proj")
+DEFAULT_UPPNEXID_FIELD = "Description"
+DEFAULT_SMTP_HOST = "smtp.uu.se"
+DEFAULT_SMTP_PORT = 25
+DEFAULT_RECIPIENT = "seqmaster@scilifelab.se"
 
 LOG_NAME = "Miseq Delivery"
 logger2 = logbook.Logger(LOG_NAME)
 
-def update_config_with_local(config, local):
-    cconf = copy.deepcopy(config)
-    for key in local.keys():
-        if local[key] is not None:
-            cconf[key] = local[key]
-    return cconf
+def main(input_path, transferred_db, run_folder, uppnexid, samplesheet, logfile, email_notification, config_file, force, dryrun):
     
-
-def process_run_folder(run_folder, transferred_db, force=false, dry_run=false):
-                
-    # Skip this folder if it has already been processed
-    logger2.info("Processing %s" % run_folder)
-    if _is_processed(run_folder,transferred_db) and not force:
-        logger2.info("%s has already been processed, skipping" % run_folder) 
-        return
- 
-    # Create a MiSeqRun object from the run_folder
-    miseqrun = MiSeqRun(run_folder)
-    
-    
-                # Locate the samplesheet and pasre the uppnex id if necessary
-                if uppnexid is None:
-                    local_samplesheet = samplesheet
-                    if local_samplesheet is None: local_samplesheet = os.path.join(input_path,folder,config.get("samplesheet_name",DEFAULT_SS_NAME))
-                    assert os.path.exists(local_samplesheet), "Could not find expected sample sheet %s" % local_samplesheet
-                    local_uppnexid = _fetch_uppnexid(local_samplesheet, config.get("uppnexid_field",DEFAULT_UPPNEXID_FIELD))
-                    assert local_uppnexid is not None and len(local_uppnexid) > 0, "Could not parse Uppnex ID for project from samplesheet %s" % local_samplesheet
-                else:
-                    local_uppnexid = uppnexid
-                    
-                logger2.info("Will deliver to inbox of project %s" % local_uppnexid)
-                   
-    
-            
-
-def main(input_path, transferred_db=None, run_folder=None, uppnexid=None, samplesheet=None, logfile=None, email_notification=None, config_file=None, force=None, dryrun=None):
-
-    local_conf = update_config_with_local(DEFAULT_CONF, 
-    
-    
-    config = DEFAULT_CONF
+    config = {}
     if config_file is not None:
-        config = update_config_with_local(config,load_config(config_file))
-    config = update_config_with_local(config,{
-                                              "transfer_db": transferred_db,
-                                              "logfile": logfile,
-                                              "samplesheet_name": samplesheet,
-                                              "uppnexid": uppnexid,
-                                              "run_folder": run_folder,
-                                              "email_recipient": email_notification,
-                                              "force": force,
-                                              "dryrun": dryrun
-                                              }
-                                      )
+        config = load_config(config_file)
+    
+    if logfile is None:
+        logfile = config.get("logfile",os.path.normpath(os.path.expanduser(DEFAULT_LOGFILE)))
     
     email_handler = None
     # Don't write dry runs to log
-    dryrun = config["dryrun"]
     if dryrun:
         handler = logbook.StreamHandler(sys.stdout)
     else:
-        # Log to the logfile
-        logfile = config["logfile"]
         if not os.path.exists(logfile):
             safe_makedir(os.path.dirname(logfile))
             open(logfile,"w").close()
         handler = logbook.FileHandler(logfile)
         
-        # If email recipients were specified, setup logging via email
-        recipients = config["email_recipient"].split(",")
+        if email_notification is None:
+            email_notification = config.get("email_recipient",DEFAULT_RECIPIENT)
+        recipients = email_notification.split(",")
         if len(recipients) > 0:
             email_handler = logbook.MailHandler("seqmaster@scilifelab.se", recipients, 
-                                                server_addr=[config["smtp_host"],config["smtp_port"]],
+                                                server_addr=[config.get("smtp_host",DEFAULT_SMTP_HOST),config.get("smtp_port",DEFAULT_SMTP_PORT)],
                                                 format_string=u'''Subject: [MiSeq delivery] {record.extra[run]}\n\n {record.message}''')
-                                          
+                
     with handler.applicationbound():
         
         if dryrun:
             logger2.info("This is just a dry-run. Nothing will be delivered and no directories will be created/changed")
             
         # If no run folder was specified, try with the folders in the input_path
-        run_folder = config.get("run_folder",None)
         if run_folder is None:    
             pat = "*_M*_AMS*"
             folders = [os.path.relpath(os.path.normpath(file),input_path) for file in glob.glob(os.path.join(input_path,pat))]
@@ -126,8 +71,10 @@ def main(input_path, transferred_db=None, run_folder=None, uppnexid=None, sample
         logger2.info("Will process %s folders: %s" % (len(folders),folders))
         
         # Parse the supplied db of transferred flowcells, or a db in the default location if present
-        transferred_db = os.path.normpath(os.path.expanduser(config["transfer_db"])) 
-        assert os.path.exists(transferred_db), "Could not locate transferred_db (expected %s)" % transferred_db
+        if transferred_db is None:
+            transferred_db = os.path.normpath(config.get("transfer_db",os.path.expanduser(DEFAULT_DB))) 
+            assert os.path.exists(transferred_db), "Could not locate transferred_db (expected %s)" % transferred_db
+        
         logger2.info("Transferred db is %s" % transferred_db)
         
         # Process each run folder
@@ -154,8 +101,11 @@ def main(input_path, transferred_db=None, run_folder=None, uppnexid=None, sample
                 logger2.info("Will deliver to inbox of project %s" % local_uppnexid)
                 
                 # Locate the fastq-files to be delivered
-                pat = os.path.join(input_path,folder,config.get("fastq_path",DEFAULT_FQ_LOCATION),"*.fastq*")
+                pat = os.path.join(input_path,folder,config.get("fastq_path",DEFAULT_FQ_LOCATION),"*.fastq.gz")
                 fq_files = glob.glob(pat)
+                # Also search directly in the folder
+                pat = os.path.join(input_path,folder,"*.fastq.gz")
+                fq_files.extend(glob.glob(pat))
                 assert len(fq_files) > 0, "Could not locate fastq files for folder %s using pattern %s" % (folder,pat)
                 
                 logger2.info("Found %s fastq files to deliver: %s" % (len(fq_files),fq_files))
