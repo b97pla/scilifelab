@@ -76,7 +76,7 @@ def generate_samplesheet_data(barcode=generate_fc_barcode(), no_lanes=8, no_proj
                                  project_name])
     return csv_data
 
-def generate_run_samplesheet(barcode=generate_fc_barcode(), dst_file=None, no_lanes=8, no_projects=2, no_samples=2, genome_build='hg19'):
+def generate_run_samplesheet(barcode=generate_fc_barcode(), dst_file=None):
     return _write_samplesheet(generate_samplesheet_data(barcode),dst_file)
 
 def _parse_samplesheet(samplesheet):
