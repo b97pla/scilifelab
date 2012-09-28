@@ -1,0 +1,48 @@
+#!/usr/bin/env python
+import os
+import sys
+from cement.core import foundation, handler
+from scilifelab.pm.lib.config import config_defaults
+from scilifelab.pm import PmApp
+from scilifelab.pm.core.controller import PmController
+from scilifelab.pm.core.output import PmOutputHandler
+from scilifelab.pm.core.project import ProjectController, BcbioRunController
+from scilifelab.pm.core.archive import ArchiveController
+from scilifelab.pm.core.analysis import AnalysisController
+from scilifelab.pm.core.deliver import DeliveryController
+
+CONFIGFILE=os.path.join(os.getenv("HOME"), ".pm", "pm.conf")
+PLUGINDIR=os.path.join(os.getenv("HOME"), ".pm", "plugins")
+PLUGINCONFIGDIR=os.path.join(os.getenv("HOME"), ".pm", "plugins.d")
+
+app = PmApp('pm', 
+            base_controller = PmController, 
+            config_defaults = config_defaults,
+            output_handler = PmOutputHandler, 
+            config_files = [CONFIGFILE], 
+            extensions = ['json',
+                          'scilifelab.pm.ext.ext_distributed',                        
+                          'scilifelab.pm.ext.ext_bcbb',                        
+                          'scilifelab.pm.ext.ext_hs_metrics',
+                          'scilifelab.pm.ext.ext_qc'],
+            plugin_dir = PLUGINDIR,
+            plugin_config_dir = PLUGINCONFIGDIR,
+            )
+
+try:
+    handler.register(ProjectController)
+    handler.register(ArchiveController)
+    handler.register(AnalysisController)
+    handler.register(DeliveryController)
+    handler.register(BcbioRunController)
+    app.setup()
+    try:
+        app.config.parse_file(CONFIGFILE)
+    except:
+        app.log.warn("No config file %s; please create and set relevant config sections" % CONFIGFILE)
+        sys.exit()
+    app.run()
+    app.render(app._output_data)
+
+finally:
+    app.close()

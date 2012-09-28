@@ -9,8 +9,8 @@ import couchdb
 from platform import node as host_name
 
 def main():
-    parser = argparse.ArgumentParser(description="Formats file system information as a dict, \
-        and sends is to a given CouchDB.")
+    parser = argparse.ArgumentParser(description="Formats file system \
+        information as a dict, and sends it to a given CouchDB.")
 
     parser.add_argument("--server", dest="server", action="store", default="", \
         help="Address to the CouchDB server.")
