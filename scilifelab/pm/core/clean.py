@@ -19,11 +19,11 @@ Log = backend.minimal_logger(__name__)
 
 ## Main production controller
 class CleanController(AbstractBaseController):
-    """Provides basic functions for cleaning up analysis/project folders"""
+    """Provides basic functions for cleaning up production/project folders"""
     class Meta:
         label = 'clean'
         stacked_on = None
-        description = 'Functionality for cleaning up analysis/project folders'
+        description = 'Functionality for cleaning up production/project folders'
         interface = controller.IController
         arguments = [
             (['id'], dict(help="Flowcell id/project id", action="store", default=None)),
@@ -60,8 +60,8 @@ class CleanController(AbstractBaseController):
         for root, dirs, files in os.walk(os.path.join(self.config.get("projects", "root"), "projects")):
             flist = flist + filter(keep, files)
                   
-    @controller.expose(help="perform clean operation on a flowcell in analysis folder")
-    def analysis(self):
+    @controller.expose(help="perform clean operation on a flowcell in production folder")
+    def production(self):
         self._not_implemented()
         print "FIXME: implement Mayas code here"
 

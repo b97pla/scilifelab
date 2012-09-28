@@ -140,8 +140,8 @@ class ProjectController(AbstractExtendedBaseController):
         self._not_implemented()
         
     ## NOTE: this is a temporary workaround for cases where data has
-    ## been removed from analysis directory
-    @controller.expose(help="Transfer project data to customer. Temporary fix for cases where data has been removed from analysis directory.")
+    ## been removed from production directory
+    @controller.expose(help="Transfer project data to customer. Temporary fix for cases where data has been removed from production directory.")
     def transfer(self):
         if not self.pargs.flowcell:
             self.log.warn("No flowcellid provided. Please provide a flowcellid from which to deliver. Available options are:\n\t{}".format("\n\t".join(self._flowcells())))
