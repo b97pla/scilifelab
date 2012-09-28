@@ -295,8 +295,8 @@ class PmController(controller.CementBaseController):
     [archive]
     root = /path/to/archive
 
-    [analysis]
-    root = /path/to/illumina
+    [production]
+    root = /path/to/production
 
     [log]
     level = INFO

@@ -11,7 +11,7 @@ from scilifelab.utils.misc import query_yes_no
 
 ## Auxiliary functions - move to lib or utils
 def get_files(path, fc, ftype, ext=".bam", project=None, lane=None):
-    """Get files from an analysis"""
+    """Get files from production"""
     info = fc.subset("sample_prj", project)
     files = []
     for l in info.lanes():
@@ -34,7 +34,7 @@ class HsMetricsController(AbstractBaseController):
         label = 'hs_metrics_extension'
         """The string identifier of this handler"""
         description = 'Extension for running hs_metrics'
-        stacked_on = 'analysis'
+        stacked_on = 'production'
         arguments = [
             (['--region_file'], dict(help="Region definition file", default=None)),
             ## FIX ME: This should be called bcbb_file_type and be loaded via an extension
@@ -47,10 +47,10 @@ class HsMetricsController(AbstractBaseController):
             return
         self.log.info("hs_metrics: This is a temporary solution for calculating hs metrics for samples using picard tools")
         fc = Flowcell()
-        fc.load([os.path.join(x, self.pargs.flowcell) for x in [self.config.get("archive", "root"), self.config.get("analysis", "root")]])
+        fc.load([os.path.join(x, self.pargs.flowcell) for x in [self.config.get("archive", "root"), self.config.get("production", "root")]])
         if not fc:
             return
-        flist = get_files(os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell), fc, ftype=self.pargs.hs_file_type, project=self.pargs.project)
+        flist = get_files(os.path.join(self.config.get("production", "root"), self.pargs.flowcell), fc, ftype=self.pargs.hs_file_type, project=self.pargs.project)
         if self.pargs.input_file:
             flist = [os.path.abspath(self.pargs.input_file)]
         if not query_yes_no("Going to run hs_metrics on {} files. Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):

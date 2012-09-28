@@ -1,5 +1,5 @@
 """
-Pm analysis module
+Pm production module
 """
 
 import sys
@@ -10,14 +10,14 @@ from scilifelab.pm.core.controller import AbstractExtendedBaseController
 from scilifelab.utils.misc import query_yes_no, filtered_walk
 from scilifelab.bcbio.flowcell import Flowcell
 
-## Main analysis controller
-class AnalysisController(AbstractExtendedBaseController):
+## Main production controller
+class ProductionController(AbstractExtendedBaseController):
     """
-    Functionality for analysis management.
+    Functionality for production management.
     """
     class Meta:
-        label = 'analysis'
-        description = 'Manage analysis'
+        label = 'production'
+        description = 'Manage production'
         arguments = [
             (['project'], dict(help="Project id", nargs="?", default=None)),
             (['-f', '--flowcell'], dict(help="Flowcell id")),
@@ -30,8 +30,8 @@ class AnalysisController(AbstractExtendedBaseController):
 
     def _process_args(self):
         # Set root path for parent class
-        self._meta.root_path = self.app.config.get("analysis", "root")
-        assert os.path.exists(self._meta.root_path), "No such directory {}; check your analysis config".format(self._meta.root_path)
+        self._meta.root_path = self.app.config.get("production", "root")
+        assert os.path.exists(self._meta.root_path), "No such directory {}; check your production config".format(self._meta.root_path)
         ## Set path_id for parent class
         if self.pargs.flowcell:
             self._meta.path_id = self.pargs.flowcell
@@ -43,7 +43,7 @@ class AnalysisController(AbstractExtendedBaseController):
         ## This is a bug; how will this work when processing casava-folders?!?
         if self.command == "hs_metrics":
             self._meta.path_id = self.pargs.flowcell
-        super(AnalysisController, self)._process_args()
+        super(ProductionController, self)._process_args()
 
     @controller.expose(help="List runinfo contents")
     def runinfo(self):
@@ -123,8 +123,8 @@ class AnalysisController(AbstractExtendedBaseController):
         if not self._check_pargs(["project", "flowcell"]):
             return
         fc = Flowcell()
-        fc.load([os.path.join(x, self.pargs.flowcell) for x in [self.config.get("archive", "root"), self.config.get("analysis", "root")]])
-        indir = os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell)
+        fc.load([os.path.join(x, self.pargs.flowcell) for x in [self.config.get("archive", "root"), self.config.get("production", "root")]])
+        indir = os.path.join(self.config.get("production", "root"), self.pargs.flowcell)
         if not fc:
             self.log.warn("No run information available for {}".format(self.pargs.flowcell))
             return

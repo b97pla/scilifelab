@@ -28,6 +28,7 @@ class RunMetricsController(AbstractBaseController):
         description = "Extension for dealing with QC data"
         arguments = [
             (['flowcell'], dict(help="Flowcell directory", nargs="?", default=None)),
+            ## FIXME: analysis is a confusing name
             (['analysis'], dict(help="Root path to analysis folder", default=None, nargs="?")),
             (['--pre_casava'], dict(help="Toggle casava structure", default=False, action="store_true")),
             (['--project'], dict(help="Project id", default=None, action="store", type=str)),
