@@ -2,7 +2,7 @@ import os
 import unittest
 import ConfigParser
 from scilifelab.report.rl import make_example_note
-from scilifelab.db.statusdb import SampleRunMetricsConnection
+from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection
 
 filedir = os.path.abspath(os.path.realpath(os.path.dirname(__file__)))
 
@@ -21,8 +21,16 @@ parameters = {
     "avg_quality_score" : None,
     "ordered_amount" : None,
     "success" : None,
+    "project_name" : None,
 }
 
+## key mapping from sample_run_metrics to parameter keys
+srm_to_parameter = {"project_name":"sample_prj", "FC_id":"flowcell", 
+                    "scilifelab_name":"barcode_name"}
+## mapping project_summary to parameter keys
+ps_to_parameter = {"":""}
+
+## Data dicts
 error_rates = {}
 qvs = {}
 
@@ -55,9 +63,12 @@ class TestSampleDeliveryNote(unittest.TestCase):
     def test_2_make_note(self):
         """Make a note subset by example flowcell and project"""
         s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
+        fc_con = FlowcellRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
         samples = s_con.get_samples(self.examples["flowcell"], self.examples["project"])
-        for s in samples:
-            s_param = parameters
-            print s_param
-            s_param.update(s)
-            print s_param
+        fc = "{}_{}".format(samples[0]["date"], samples[0]["flowcell"])
+        fc_id = fc_con.get_phix_error_rate(str(fc))
+        # for s in samples:
+        #     s_param = parameters
+        #     print s_param
+        #     s_param.update({s})
+        #     print s_param

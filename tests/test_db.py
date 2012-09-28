@@ -28,11 +28,13 @@ class TestDbConnection(unittest.TestCase):
         self.assertEqual(sample_con.url, "http://{}:5984".format(self.url))
 
     def test_2_get_flowcell(self):
+        """Test getting a flowcell for a given sample"""
         sample_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
         fc = sample_con.get_entry(self.examples["sample"], "flowcell")
         self.assertEqual(str(fc), self.examples["flowcell"])
 
     def test_3_get_sample_ids(self):
+        """Test getting sample ids given flowcell and sample_prj"""
         sample_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
         sample_ids = sample_con.get_sample_ids(fc_id=self.examples["flowcell"])
         print len(sample_ids)
@@ -40,6 +42,7 @@ class TestDbConnection(unittest.TestCase):
         print len(sample_ids)
 
     def test_4_get_samples(self):
+        """Test getting samples given flowcell and sample_prj."""
         sample_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
         samples = sample_con.get_samples(fc_id=self.examples["flowcell"])
         print len(samples)

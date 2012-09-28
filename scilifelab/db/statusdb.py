@@ -14,19 +14,24 @@ class SampleRunMetricsConnection(Couch):
         self.name_proj_view = {k.key:k for k in self.db.view("names/name_proj", reduce=False)}
         self.name_fc_proj_view = {k.key:k for k in self.db.view("names/name_fc_proj", reduce=False)}
 
-    def get_entry(self, sample_name, entry):
-        """Retrieve entry from db for a given sample name.
 
-        :param sample_name: sample name
-        :param entry: database field
+    def get_entry(self, name, field=None):
+        """Retrieve entry from db for a given name, subset to field if
+        that value is passed.
+
+        :param name: unique name
+        :param field: database field
 
         :returns: value if entry exists, None otherwise
         """
-        self.log.info("retrieving entry '{}' for sample '{}'".format(entry, sample_name))
-        if not self.name_view.get(sample_name, None) is None:
-            return self.db.get(self.name_view.get(sample_name))[entry]
-        self.log.warn("no entry '{}' for sample '{}'".format(entry, sample_name))
-        return None
+        self.log.info("retrieving entry in field '{}' for name '{}'".format(field, name))
+        if self.name_view.get(name, None) is None:
+            self.log.warn("no field '{}' for name '{}'".format(field, name))
+            return None
+        if field:
+            return self.db.get(self.name_view.get(name))[field]
+        else:
+            return self.db.get(self.name_view.get(name))
 
     def get_sample_ids(self, fc_id, sample_prj=None):
         """Retrieve sample ids subset by fc_id and possibly sample_prj
@@ -54,19 +59,70 @@ class SampleRunMetricsConnection(Couch):
         self.log.info("retrieving samples subset by flowcell '{}' and sample_prj '{}'".format(fc_id, sample_prj))
         sample_ids = self.get_sample_ids(fc_id, sample_prj)
         return [self.db.get(x) for x in sample_ids]
-
+        
     def set_db(self):
         """Make sure we don't change db from samples"""
         pass
 
 class FlowcellRunMetricsConnection(Couch):
     def __init__(self, **kwargs):
-        self.name_view = "names/name"
-        super(SampleRunMetricsConnection, self).__init__(**kwargs)
+        super(FlowcellRunMetricsConnection, self).__init__(**kwargs)
         self.db = self.con["flowcells"]
+        self.name_view = {k.key:k.id for k in self.db.view("names/name", reduce=False)}
 
+    def set_db(self):
+        """Make sure we don't change db from flowcells"""
+        pass
+
+    def get_entry(self, name, field=None):
+        """Retrieve entry from db for a given name, subset to field if
+        that value is passed.
+        """
+        self.log.info("retrieving field entry in field '{}' for name '{}'".format(field, name))
+        if self.name_view.get(name, None) is None:
+            self.log.warn("no field '{}' for name '{}'".format(field, name))
+            return None
+        if field:
+            return self.db.get(self.name_view.get(name))[field]
+        else:
+            return self.db.get(self.name_view.get(name))
+
+    def get_phix_error_rate(self, name, avg=True):
+        """Get phix error rate"""
+        fc = self.get_entry(name)
+        phix_r1 = float(fc['key']['metrics']['illumina']['Summary']['read1'][lane]['ErrRatePhiX']) 
+       phix_r2 = float(fc['key']['metrics']['illumina']['Summary']['read3'][lane]['ErrRatePhiX'])
+
+        return fc
+        
 
 class ProjectSummary(Couch):
     def __init__(self, **kwargs):
+        super(ProjectSummary, self).__init__(**kwargs)
+        self.db = self.con["projects"]
+
+        
+    def get_entry(self, name, field=None):
+        """Retrieve entry from db for a given name, subset to field if
+        that value is passed.
+
+        :param name: unique name
+        :param field: database field
+
+        :returns: value if entry exists, None otherwise
+        """
+        self.log.info("retrieving field entry in field '{}' for name '{}'".format(field, name))
+        if self.name_view.get(name, None) is None:
+            self.log.warn("no field '{}' for name '{}'".format(field, name))
+            return None
+        if field:
+            return self.db.get(self.name_view.get(name))[field]
+        else:
+            return self.db.get(self.name_view.get(name))
+
+
+
+    def set_db(self):
+        """Make sure we don't change db from projects"""
         pass
 
