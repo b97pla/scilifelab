@@ -1,5 +1,5 @@
 """
-Test analysis subcontroller
+Test production subcontroller
 """
 
 import os
@@ -8,16 +8,16 @@ import shutil
 from cement.core import handler
 from cement.utils import shell
 from test_default import PmTest
-from scilifelab.pm.core.analysis import AnalysisController
+from scilifelab.pm.core.production import ProductionController
 from scilifelab.pm.utils.misc import walk
 
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 delivery_dir = os.path.abspath(os.path.join(filedir, "data", "projects", "j_doe_00_01", "data"))
 intermediate_delivery_dir = os.path.abspath(os.path.join(filedir, "data", "projects", "j_doe_00_01", "intermediate"))
 
-class PmAnalysisTest(PmTest):
+class PmProductionTest(PmTest):
     def setUp(self):
-        super(PmAnalysisTest, self).setUp()
+        super(PmProductionTest, self).setUp()
         if os.path.exists(delivery_dir):
             flist = walk(os.path.join(delivery_dir))
             for x in flist:
@@ -25,23 +25,23 @@ class PmAnalysisTest(PmTest):
             shutil.rmtree(delivery_dir)
         
     def test_1_ls(self):
-        self.app = self.make_app(argv = ['analysis', 'ls'])
-        handler.register(AnalysisController)
+        self.app = self.make_app(argv = ['production', 'ls'])
+        handler.register(ProductionController)
         self._run_app()
         self.eq(self.app._output_data['stdout'].getvalue(), '120829_SN0001_0001_AA001AAAXX\n120829_SN0001_0002_BB001BBBXX\n120924_SN0002_0003_CC003CCCXX\nJ.Doe_00_04\nJ.Doe_00_05\nJ.Doe_00_06')
 
     def test_3_from_pre_to_casava_transfer(self):
         """Test from pre-casava to casava transfer to project directory"""
-        self.app = self.make_app(argv = ['analysis', 'transfer', 'J.Doe_00_01', '-f', '120829_SN0001_0001_AA001AAAXX', '--from_pre_casava'])
-        handler.register(AnalysisController)
+        self.app = self.make_app(argv = ['production', 'transfer', 'J.Doe_00_01', '-f', '120829_SN0001_0001_AA001AAAXX', '--from_pre_casava'])
+        handler.register(ProductionController)
         self._run_app()
         res = shell.exec_cmd(["ls", "-1", os.path.join(delivery_dir, "P1_101F_index1", "120829_AA001AAAXX")])
         self.eq(['1_120829_AA001AAAXX_barcode', '1_120829_AA001AAAXX_nophix_1-sort-dup.align_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.bam', '1_120829_AA001AAAXX_nophix_1-sort-dup.dup_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.insert_metrics', '1_120829_AA001AAAXX_nophix_1-sort.bam', 'P1_101F_index1-bcbb-config.yaml', 'alignments'], res[0].split())
     
     def test_4_from_pre_to_pre_casava_transfer(self):
         """Test pre_casava transfer to project directory"""
-        self.app = self.make_app(argv = ['analysis', 'transfer', 'J.Doe_00_01', '-f', '120829_SN0001_0001_AA001AAAXX', '--from_pre_casava', '--to_pre_casava', '--quiet'])
-        handler.register(AnalysisController)
+        self.app = self.make_app(argv = ['production', 'transfer', 'J.Doe_00_01', '-f', '120829_SN0001_0001_AA001AAAXX', '--from_pre_casava', '--to_pre_casava', '--quiet'])
+        handler.register(ProductionController)
         self._run_app()
         ## Assert data output
         res = shell.exec_cmd(["ls", "-1", os.path.join(delivery_dir, "120829_AA001AAAXX", "1_120829_AA001AAAXX_barcode")])
@@ -66,20 +66,20 @@ class PmAnalysisTest(PmTest):
 
     def test_5_quiet(self):
         """Test pre_casava delivery to project directory with quiet flag"""
-        self.app = self.make_app(argv = ['analysis', 'transfer',  'J.Doe_00_01', '-f', '120829_SN0001_0001_AA001AAAXX', '--from_pre_casava', '--to_pre_casava', '--quiet'])
-        handler.register(AnalysisController)
+        self.app = self.make_app(argv = ['production', 'transfer',  'J.Doe_00_01', '-f', '120829_SN0001_0001_AA001AAAXX', '--from_pre_casava', '--to_pre_casava', '--quiet'])
+        handler.register(ProductionController)
         self._run_app()
 
     def test_6_from_casava_to_casava_transfer(self):
         """Test from casava to casava transfer to project directory"""
-        self.app = self.make_app(argv = ['analysis', 'transfer', 'J.Doe_00_04'])
-        handler.register(AnalysisController)
+        self.app = self.make_app(argv = ['production', 'transfer', 'J.Doe_00_04'])
+        handler.register(ProductionController)
         self._run_app()
 
     def test_7_from_casava_to_casava_transfer(self):
         """Test from casava to casava transfer to custom project directory"""
-        self.app = self.make_app(argv = ['analysis', 'transfer', 'J.Doe_00_04', '--transfer_dir', 'j_doe_00_04_custom'])
-        handler.register(AnalysisController)
+        self.app = self.make_app(argv = ['production', 'transfer', 'J.Doe_00_04', '--transfer_dir', 'j_doe_00_04_custom'])
+        handler.register(ProductionController)
         self._run_app()
         delivery_dir = os.path.abspath(os.path.join(filedir, "data", "projects", "j_doe_00_04_custom", "data"))
         with open(os.path.join(delivery_dir, "P001_101_index3", "120924_CC003CCCXX", "P001_101_index3-bcbb-config.yaml")) as fh:
