@@ -4,7 +4,7 @@ def files():
 
     files = {
         ### Old-school project analysis data
-        'data/analysis/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_barcode/1_120829_AA001AAAXX_nophix.bc_metrics' : 
+        'data/production/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_barcode/1_120829_AA001AAAXX_nophix.bc_metrics' : 
         """1       19756915
 2       18724985
 3       21948744
@@ -14,7 +14,7 @@ def files():
 12	23252366
 unmatched       9289601
 """,
-        'data/analysis/120829_SN0001_0001_AA001AAAXX/2_120829_AA001AAAXX_barcode/2_120829_AA001AAAXX_nophix.bc_metrics' :
+        'data/production/120829_SN0001_0001_AA001AAAXX/2_120829_AA001AAAXX_barcode/2_120829_AA001AAAXX_nophix.bc_metrics' :
             """5       19235231
 7       10232523
 17       2194
@@ -186,12 +186,12 @@ C003CCCXX,2,P003_101_index1,hg19,AGTGCG,J__Doe_00_06,N,R1,NN,J__Doe_00_06
 C003CCCXX,2,P003_102_index2,hg19,TGTGCG,J__Doe_00_06,N,R1,NN,J__Doe_00_06
 C003CCCXX,2,P003_103_index6,hg19,CGTTAA,J__Doe_00_06,N,R1,NN,J__Doe_00_06""",
         ### Casava analysis data structures
-        'data/analysis/120924_SN0002_0003_CC003CCCXX/1_120924_CC003CCCXX.bc_metrics':
+        'data/production/120924_SN0002_0003_CC003CCCXX/1_120924_CC003CCCXX.bc_metrics':
             """7       22463443        TGACCA  P001_101_index3
 2       63340036        ACAGTG  P001_102_index6
 unmatched       2326234 Undetermined    lane1
 """,
-        'data/analysis/120924_SN0002_0003_CC003CCCXX/2_120924_CC003CCCXX.bc_metrics':
+        'data/production/120924_SN0002_0003_CC003CCCXX/2_120924_CC003CCCXX.bc_metrics':
             """5       2246343        TGACCA  P002_101_index3
 7       6334036        ACAGTG  P002_102_index6
 3       4495853        TGGTCA  P002_103_index8
@@ -214,7 +214,7 @@ def add_casava_samples(runinfo):
             continue
         k = {'lane':v[1], 'name':v[2], 'sample_prj':v[9].replace("__", "."), 'sequence':v[4], 'barcode_id':bcids[i]}
         i = i + 1
-        tmp["data/analysis/{}/{}/120924_CC003CCCXX/{}-bcbb-config.yaml".format(v[5].replace("__", "."), v[2], v[2])] = Template("""details:
+        tmp["data/production/{}/{}/120924_CC003CCCXX/{}-bcbb-config.yaml".format(v[5].replace("__", "."), v[2], v[2])] = Template("""details:
 - analysis: Standard
   description: Lane ${lane}, ${sample_prj}
   flowcell_id: CC003CCCXX

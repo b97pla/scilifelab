@@ -8,7 +8,7 @@ from cement.core import handler
 from cement.utils import shell, test
 from test_default import PmTest, safe_makedir
 from scilifelab.pm.core.project import ProjectController, ProjectRmController
-from scilifelab.pm.core.analysis import AnalysisController
+from scilifelab.pm.core.production import ProductionController
 from scilifelab.pm.utils.misc import walk
 
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
@@ -135,8 +135,8 @@ class ProjectTest(PmTest):
 
     def test_8_purge_alignments_dry(self):
         """Test purging alignments of sam files, dry run"""
-        self.app = self.make_app(argv = ['analysis', 'transfer', 'J.Doe_00_04', '--quiet'])
-        handler.register(AnalysisController)
+        self.app = self.make_app(argv = ['production', 'transfer', 'J.Doe_00_04', '--quiet'])
+        handler.register(ProductionController)
         self._run_app()
         self.app = self.make_app(argv = ['project', 'purge_alignments', 'j_doe_00_04', 'analysis_1', '-n', '--force'])
         handler.register(ProjectController)
@@ -149,8 +149,8 @@ class ProjectTest(PmTest):
         
     def test_8_purge_alignments(self):
         """Test purging alignments of sam files"""
-        self.app = self.make_app(argv = ['analysis', 'transfer', 'J.Doe_00_04', '--quiet'])
-        handler.register(AnalysisController)
+        self.app = self.make_app(argv = ['production', 'transfer', 'J.Doe_00_04', '--quiet'])
+        handler.register(ProductionController)
         self._run_app()
         self.app = self.make_app(argv = ['project', 'purge_alignments', 'j_doe_00_04', 'analysis_1', '--force'])
         handler.register(ProjectController)
