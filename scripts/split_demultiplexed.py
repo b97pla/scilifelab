@@ -6,8 +6,8 @@ import os
 import csv
 import re
 import operator
-from scilifelab.scripts.miseq_data import (MiSeqSampleSheet, group_fastq_files)
-from scilifelab.utilities.fastq_utils import (FastQParser, FastQWriter)
+from scilifelab.miseq import (MiSeqSampleSheet, group_fastq_files)
+from scilifelab.utils.fastq_utils import (FastQParser, FastQWriter)
  
 from optparse import OptionParser
 

@@ -9,7 +9,6 @@ import subprocess
 import copy
 import tempfile
 import argparse
-
 import bcbio.solexa.flowcell
 import bcbio.solexa.samplesheet
 from bcbio.pipeline.config_loader import load_config
@@ -290,7 +289,6 @@ def _setup_config_files(dst_dir,configs,post_process_config_file,fc_dir,sample_n
     if 'distributed' in local_post_process and 'platform_args' in local_post_process['distributed']:
         slurm_out = "%s-bcbb.log" % sample_name
         local_post_process['distributed']['platform_args'] = "%s -J %s -o %s -D %s" % (local_post_process['distributed']['platform_args'], sample_name, slurm_out, dst_dir)
-            
     local_post_process_file = os.path.join(dst_dir,"%s-post_process.yaml" % sample_name)
     with open(local_post_process_file,'w') as fh:
         fh.write(yaml.safe_dump(local_post_process, default_flow_style=False, allow_unicode=True, width=1000))
@@ -325,6 +323,7 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet):
             else:
                 plex['analysis'] = 'Align_standard'
                 
+
     # Remove the yaml file, we will write a new one later
     os.remove(yaml_file)
     
@@ -411,3 +410,4 @@ if __name__ == "__main__":
     main(args.config,args.fcdir,args.custom_config,args.only_run,args.only_setup,args.ignore_casava)
     if not args.no_google_report:
         report_to_gdocs(args.fcdir, args.config)
+
