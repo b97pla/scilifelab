@@ -9,9 +9,23 @@ filedir = os.path.abspath(os.path.realpath(os.path.dirname(__file__)))
 ## Cutoffs
 cutoffs = {
     "phix_err_cutoff" : 2.0,
-    
-
     }
+
+## parameters
+parameters = {
+    "customer_reference": None,
+    "FC_id" : None,
+    "scilifelab_name" : None,
+    "rounded_read_count" : None,
+    "phix_error_rate" : None,
+    "avg_quality_score" : None,
+    "ordered_amount" : None,
+    "success" : None,
+}
+
+error_rates = {}
+qvs = {}
+
 
 
 class TestSampleDeliveryNote(unittest.TestCase):
@@ -34,8 +48,16 @@ class TestSampleDeliveryNote(unittest.TestCase):
 
 
     def test_1_make_example_note(self):
+        """Make example note"""
         make_example_note(os.path.join(filedir, "test.pdf"))
 
 
     def test_2_make_note(self):
-        
+        """Make a note subset by example flowcell and project"""
+        s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
+        samples = s_con.get_samples(self.examples["flowcell"], self.examples["project"])
+        for s in samples:
+            s_param = parameters
+            print s_param
+            s_param.update(s)
+            print s_param
