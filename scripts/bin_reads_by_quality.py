@@ -4,8 +4,6 @@ import sys
 import fastq_utils
 import argparse
 
-PHRED_OFFSET = 64
-
 def main():
     
     parser = argparse.ArgumentParser(description="Filter reads from a pair of FastQ files based on the average quality."\
