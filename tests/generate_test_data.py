@@ -3,6 +3,7 @@ import tempfile
 import random
 import datetime
 import string
+import copy
 
 def generate_fc_barcode():
     """Generate a flowcell barcode on the format ABC123CXX
@@ -12,8 +13,8 @@ def generate_fc_barcode():
 def generate_run_id(fc_barcode=generate_fc_barcode()):
     """Generate a run identifier
     """
-    return "{}_SN{}_0{}_{}{}".format(datetime.date.today().strftime("%y%m%d"),
-                                           random.randint(101,9999),
+    return "{}_{}_0{}_{}{}".format(datetime.date.today().strftime("%y%m%d"),
+                                           generate_instrument(),
                                            random.randint(101,999),
                                            random.choice("AB"),
                                            fc_barcode)
@@ -36,10 +37,15 @@ def generate_sample(project_id=random.randint(500,999)):
                     ["","A","B","C","F"][random.randint(0,4)],
                     random.randint(1,24))
 
+def generate_nucleotide_sequence(**kwargs):
+    """Generate a random string of specified length and nucleotides sampled from the specified alphabet
+    """
+    return ''.join([random.choice(kwargs.get('alphabet','ACGT')) for i in xrange(kwargs.get('sequence_length',101))])
+
 def generate_barcode(len=6):
     """Generate a nucleotide barcode
     """
-    return "".join([random.choice("ACGT") for i in xrange(len)])
+    return generate_nucleotide_sequence(sequence_length=len)
 
 def generate_sample_file(sample_name=generate_sample(), barcode=None, lane=random.randint(1,8), readno=1):
     """Generate a Casava 1.8+-style sample file name
@@ -50,6 +56,33 @@ def generate_sample_file(sample_name=generate_sample(), barcode=None, lane=rando
                                                 barcode,
                                                 lane,
                                                 readno)
+
+def generate_instrument(prefix="SN"):
+    """Generate an instrument identifier
+    """
+    return "{}{}".format(prefix,str(random.randint(101,9999)))
+
+def generate_fastq_header(**kwargs):
+    """Generate a fastq header on the CASAVA 1.8+ format:
+    @<instrument>:<run number>:<flowcell ID>:<lane>:<tile>:<x- pos>:<y-pos> <read>:<is filtered>:<control number>:<index sequence>
+    """
+    
+    return "@{} {}".format(':'.join([kwargs.get('instrument',generate_instrument()),
+                                      str(kwargs.get('run_number',random.randint(101,9999))),
+                                      kwargs.get('fcid',generate_fc_barcode()),
+                                      str(kwargs.get('lane',random.randint(1,8))),
+                                      str(kwargs.get('tile',random.randint(1101,2316))),
+                                      str(kwargs.get('xpos',random.randint(1001,9999))),
+                                      str(kwargs.get('ypos',random.randint(1001,9999)))]),
+                            ':'.join([str(kwargs.get('read',random.randint(1,2))),
+                                      kwargs.get('is_filtered','N'),
+                                      str(kwargs.get('control',0)),
+                                      kwargs.get('index',generate_barcode())]))
+
+def generate_quality_sequence(**kwargs):
+    """Generate a random quality string with the specified length and in the specified span with the specified ascii offset
+    """
+    return ''.join([chr(random.randint(kwargs.get('qlow',0),kwargs.get('qhigh',40))+kwargs.get('ascii_offset',33)) for i in xrange(kwargs.get('sequence_length',101))])
 
 def generate_samplesheet_data(barcode=generate_fc_barcode(), no_lanes=8, no_projects=2, no_samples=2, genome_build='hg19'):
         
@@ -108,3 +141,17 @@ def _write_samplesheet(csv_data, dst_file=None):
             out_handle.write("\n")
     return dst_file
    
+def generate_fastq_record(**kwargs):
+    """Generate a fastq record. If the optional parameter 'pair' is True, generate a pair sequence as well
+    """
+    record = [generate_fastq_header(**kwargs),
+              generate_nucleotide_sequence(**kwargs),
+              '+',
+              generate_quality_sequence(**kwargs)]
+    if kwargs.get('pair',False):
+        record[0] = record[0].replace(' 2:',' 1:')
+        record += [record[0].replace(' 1:',' 2:'),
+                   generate_nucleotide_sequence(**kwargs),
+                   '+',
+                   generate_quality_sequence(**kwargs)]
+    return record

@@ -7,13 +7,52 @@ import random
 import string
 import bcbio.utils as utils
 import tests.generate_test_data as td
+import scilifelab.illumina as illumina
 from scilifelab.illumina import IlluminaRun
-
 
 class TestIllumina(unittest.TestCase):
     
-    def setUp(self): 
+    def setUp(self):
         self.rootdir = tempfile.mkdtemp(prefix="test_illumina_")
+        
+    def tearDown(self):
+        shutil.rmtree(self.rootdir)
+    
+    def test_demultiplex_fastq(self):
+        """Demultiplex a test fastq file
+        """
+        
+        # Generate some test fastq_files
+        indexes = {td.generate_barcode(): [],
+                   td.generate_barcode(): [],
+                   td.generate_barcode(): []}
+        args = {'instrument': td.generate_instrument(),
+                'run_number': random.randint(101,9999),
+                'fcid': td.generate_fc_barcode(),
+                'lane': 1,
+                'pair': True}
+        fd, f1 = tempfile.mkstemp(suffix="_R1.fastq", dir=self.rootdir)
+        os.close(fd) 
+        f2 = f1.replace("_R1","_R2")
+        f1h = open(f1,"w")
+        f2h = open(f2,"w")
+        for n in range(1000):
+            args['index'] = random.choice(indexes.keys()) 
+            record = td.generate_fastq_record(**args)
+            indexes[args['index']].append(record[0])
+            f1h.write("\n".join(record[0:4]))
+            f1h.write("\n")
+            f2h.write("\n".join(record[4:]))
+            f2h.write("\n")
+        f1h.close()
+        f2h.close()
+        
+        
+        
+class TestIlluminaRun(unittest.TestCase):
+    
+    def setUp(self): 
+        self.rootdir = tempfile.mkdtemp(prefix="test_illumina_run_")
         
     def tearDown(self):
         shutil.rmtree(self.rootdir)

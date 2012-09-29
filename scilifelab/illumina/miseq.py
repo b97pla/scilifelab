@@ -2,7 +2,7 @@
 A module for handling MiSeq-specificfiles and folders
 """
 
-class MiSeq(IlluminaRun):
+class MiSeqRun(IlluminaRun):
     
     def __init__(self):
         pass
