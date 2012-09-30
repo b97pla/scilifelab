@@ -37,15 +37,15 @@ class TestDbConnection(unittest.TestCase):
         """Test getting sample ids given flowcell and sample_prj"""
         sample_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
         sample_ids = sample_con.get_sample_ids(fc_id=self.examples["flowcell"])
-        print len(sample_ids)
+        print "Number of samples before subsetting: " + str(len(sample_ids))
         sample_ids = sample_con.get_sample_ids(fc_id=self.examples["flowcell"], sample_prj=self.examples["project"])
-        print len(sample_ids)
+        print "Number of samples after subsetting: " + str(len(sample_ids))
 
     def test_4_get_samples(self):
         """Test getting samples given flowcell and sample_prj."""
         sample_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
         samples = sample_con.get_samples(fc_id=self.examples["flowcell"])
-        print len(samples)
+        print "Number of samples before subsetting: " + str(len(samples))
         samples = sample_con.get_samples(fc_id=self.examples["flowcell"], sample_prj=self.examples["project"])
-        print len(samples)
+        print "Number of samples after subsetting: " + str(len(samples))
                 

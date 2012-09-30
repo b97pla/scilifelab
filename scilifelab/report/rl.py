@@ -65,8 +65,67 @@ ${avg_quality_score}."""))
     
     paragraphs["Comments"] = dict(style=h3,
                                   tpl = Template("${success}"))
-                                  
     return paragraphs
+
+def sample_note_headers():
+    headers = OrderedDict()
+    headers["Raw data delivery note"] = h1
+    headers["SciLifeLab Stockholm"]   = h2
+    headers["{:%B %d, %Y}".format(datetime.now())] = h2
+    return headers
+
+def project_note_paragraphs():
+# This is basically a template of ('headline', 'content') pairs.
+# Use dictionary based python string formatting to fill out variables.
+    paragraphs = OrderedDict()
+    paragraphs["Project name"] = dict(style=h1, tpl=Template("${project_name} (${customer_reference})"))
+    
+    paragraphs["UPPNEX project id"] = dict(style=h1, tpl=Template("${uppnex_project_id}"))
+    
+    paragraphs["Sequence data directories"] = dict(style=h1, tpl=Template("/proj/${uppnex_project_id}/INBOX/${project_name}/"))
+    
+    paragraphs["Samples"] = dict(style=h1, tpl=Template(""))
+    
+    paragraphs["Comments"] = dict(style=h1, tpl=Template("${finished}"))
+    
+    paragraphs["Information"] = OrderedDict()
+    
+    paragraphs["Information"]["Naming conventions"] = dict(
+        style=h3,
+        tpl=Template("""The data is delivered in fastq format using Illumina 1.8
+quality scores. There will be one file for the forward reads and
+one file for the reverse reads. More information on our naming
+conventions can be found at
+http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf."""))
+    
+    paragraphs["Information"]["Data access at UPPMAX"] = dict(
+        style=h3,
+        tpl=Template("""Data from the sequencing will be uploaded to the UPPNEX (UPPMAX Next
+Generation sequence Cluster & Storage, www.uppmax.uu.se), from which
+the user can access it. If you have problems to access your data,
+please contact SciLifeLab genomics_support@scilifelab.se. If you have
+questions regarding UPPNEX, please contact support@uppmax.uu.se.
+Information on how to access your data can be found at
+http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf."""))
+    
+    paragraphs["Information"]["Acknowledgement"] = dict(
+        style=h3,
+        tpl=Template("""Please notify us when you publish using data
+produced at Science For Life Laboratory (SciLifeLab)
+Stockholm. To acknowledge SciLifeLab Stockholm in your
+'article, you can use a sentence like "The authors would like
+to acknowledge ' support from Science for Life Laboratory,
+the national infrastructure SNISS, and Uppmax for providing
+assistance in massively parallel sequencing and
+'computational infrastructure.""" ))
+    return paragraphs
+
+def project_note_headers():
+    headers = OrderedDict()
+    headers["Project status note"] = h1
+    headers["SciLifeLab Stockholm"]   = h2
+    headers["{:%B %d, %Y}".format(datetime.now())] = h2
+    return headers
 
 def formatted_page(canvas, doc):
     """Page format for a document, which adds headers and footers and the like
@@ -76,7 +135,60 @@ def formatted_page(canvas, doc):
     canvas.drawImage(str(sll_logo), 2 * cm, defaultPageSize[1] - 2 * cm, 4 * cm, 1.25 * cm)
     canvas.restoreState()
 
-def make_note(outfile, headers, paragraphs, **kw):
+def make_project_note(outfile, headers, paragraphs, **kw):
+    """Builds a pdf file named outfile based on headers and
+    paragraphs, formatted according to parameters in kw.
+
+    :param outfile: outfile name
+    :param headers: <OrderedDict> of headers
+    :param paragraphs: <OrderedDict> of paragraphs
+    :param kw: keyword arguments for formatting
+    """
+    story = []
+    [story.append(Paragraph(x, headers[x])) for x in headers.keys()]
+
+    for headline, paragraph in paragraphs.items():
+        story.append(Paragraph(headline, paragraph.get("style", h3)))
+        if not paragraph.has_key("tpl"):
+            for sub_headline, sub_paragraph in paragraph.items():
+                story.append(Paragraph(sub_headline, paragraph.get("style", h4)))
+                story.append(Paragraph(sub_paragraph.get("tpl").render(**kw),  p))
+        else:
+            story.append(Paragraph(paragraph.get("tpl").render(**kw), p))
+        # if headline == 'Samples': 
+        #     data = parameters['sample_table']
+        #     t=Table(data,5*[1.25*inch], len(data)*[0.25*inch])
+        #     t.setStyle(TableStyle([('ALIGN',(1,1),(-2,-2),'RIGHT'),
+        #                ('VALIGN',(0,0),(0,-1),'TOP'),
+        #                ('ALIGN',(0,-1),(-1,-1),'CENTER'),
+        #                ('VALIGN',(0,-1),(-1,-1),'MIDDLE'),
+        #                ('INNERGRID', (0,0), (-1,-1), 0.25, colors.black),
+        #                ('BOX', (0,0), (-1,-1), 0.25, colors.black),
+        #                ]))
+        #     story.append(t)
+
+    doc = SimpleDocTemplate(outfile)
+    doc.build(story, onFirstPage=formatted_page, onLaterPages=formatted_page)
+    return doc
+
+def make_example_project_note(outfile):
+    """Make a note with some simple nonsensical data. Looking at this function
+    and running it to make a PDF should give an idea about the structure of the
+    script.
+    """
+    headers = project_note_headers()
+    paragraphs = project_note_paragraphs()
+    kw = {
+    "project_name": "A_test",
+    "customer_reference": "Some_test",
+    "uppnex_project_id": "b2013444",
+    "finished":None,
+    }
+
+    make_project_note(outfile, headers, paragraphs, **kw)
+
+
+def make_sample_note(outfile, headers, paragraphs, **kw):
     """Builds a pdf file named outfile based on headers and
     paragraphs, formatted according to parameters in kw.
 
@@ -101,15 +213,12 @@ def make_note(outfile, headers, paragraphs, **kw):
     doc.build(story, onFirstPage=formatted_page, onLaterPages=formatted_page)
     return doc
 
-def make_example_note(outfile):
+def make_example_sample_note(outfile):
     """Make a note with some simple nonsensical data. Looking at this function
     and running it to make a PDF should give an idea about the structure of the
     script.
     """
-    headers = OrderedDict()
-    headers["Raw data delivery note"] = h1
-    headers["SciLifeLab Stockholm"]   = h2
-    headers["{:%B %d, %Y}".format(datetime.now())] = h2
+    headers = sample_note_headers()
     paragraphs = sample_note_paragraphs()
     kw = {
         "project_name": "A_test",
@@ -126,16 +235,4 @@ def make_example_note(outfile):
         "success": "How should I know if it was successful or not?",
         }
 
-    make_note(outfile, headers, paragraphs,**kw)
-
-def calc_avg_qv(counts):
-    qv = 2
-    qsum = 0
-    seqsum = 0
-    for v in counts:
-        qsum += qv * float(v)
-        seqsum += float(v)
-        qv += 1
-    avg_q = qsum / seqsum
-    return round(avg_q, 1)
-
+    make_note(outfile, headers, paragraphs, **kw)

@@ -790,7 +790,7 @@ class FlowcellRunMetrics(RunMetrics):
         self["name"] = "{}_{}".format(fc_date, fc_name)
         self["RunInfo"] = {"Id" : self["name"], "Flowcell":fc_name, "Date": fc_date, "Instrument": "NA"}
         self["run_info_yaml"] = {}
-        self["run_info_csv"] = {}
+        self["samplesheet_csv"] = {}
         self._lanes = [1,2,3,4,5,6,7,8]
         self["lanes"] = {str(k):{"lane":str(k), "filter_metrics":{}, "bc_metrics":{}} for k in self._lanes}
         self._parseRunInfo(runinfo)
@@ -820,7 +820,7 @@ class FlowcellRunMetrics(RunMetrics):
             fp = open(infile)
             runinfo = json.dumps([x for x in csv.reader(fp)])
             fp.close()
-            self["run_info_csv"] = runinfo
+            self["samplesheet_csv"] = runinfo
         except:
             self.log.warn("No such file {}".format(infile))
             
