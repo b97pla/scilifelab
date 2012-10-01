@@ -80,4 +80,4 @@ class TestSampleDeliveryNote(unittest.TestCase):
             if project:
                 s_param.update({key:project[ps_to_parameter[key]] for key in ps_to_parameter.keys() })
             s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None})
-            make_sample_note("{}.pdf".format(s["barcode_name"]), headers, paragraphs, **s_param)
+            make_note("{}.pdf".format(s["barcode_name"]), headers, paragraphs, **s_param)

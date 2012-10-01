@@ -33,6 +33,12 @@ class CouchdbCommandHandler(command.CommandHandler):
         url = None
         """The database url"""
 
+        user = None
+        """The user"""
+        
+        pw = None
+        """The password used to connect"""
+
         views = {}
         """Temporary views for speeding up update functions"""
 
@@ -138,6 +144,9 @@ def add_shared_couchdb_options(app):
     app.args.add_argument('--url', help="Database url (excluding http://)", nargs="?", type=str)
     app.args.add_argument('--port', help="Database port. Default 5984", nargs="?", default="5984", type=str)
     app.args.add_argument('--dbname', help="Database name", default=None, type=str)
+    app.args.add_argument('--user', help="Database user", nargs="?", default=None, type=str)
+    app.args.add_argument('--password', help="Database password", default=None, type=str)
+
 
 def add_couchdb_option(app):
     """
