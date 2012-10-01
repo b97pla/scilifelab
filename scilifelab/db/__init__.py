@@ -24,6 +24,9 @@ class Couch(Database):
     def __init__(self, log=None, **kwargs):
         self.db = None
         self.url = None
+        self.url_string = None
+        self.user = None
+        self.pw = None
         if log:
             self.log = log
         super(Couch, self).__init__(**kwargs)
@@ -32,12 +35,15 @@ class Couch(Database):
         if not username or not password or not url:
             self.log.warn("please supply username, password, and url")
             return None
+        self.rawurl = url
         self.url = "http://{}:{}".format(url, port)
         if not check_url(self.url):
             self.log.warn("No such url {}".format(self.url))
             return None
         self.con = couchdb.Server(url=self.url)
         self.log.info("Connected to server @{}".format(self.url))
+        self.user = username
+        self.pw = password
 
     def set_db(self, dbname):
         """Set database to use

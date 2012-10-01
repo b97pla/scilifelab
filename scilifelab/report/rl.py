@@ -67,30 +67,44 @@ ${avg_quality_score}."""))
     return paragraphs
 
 def sample_note_headers():
+    """Get headers for sample notes."""
     headers = OrderedDict()
     headers["Raw data delivery note"] = h1
     headers["SciLifeLab Stockholm"]   = h2
     headers["{:%B %d, %Y}".format(datetime.now())] = h2
     return headers
 
+def make_sample_table(data):
+    """Format sample table"""
+    t=Table(data,5*[1.25*inch], len(data)*[0.25*inch])
+    t.setStyle(TableStyle([('ALIGN',(1,1),(-2,-2),'RIGHT'),
+                           ('VALIGN',(0,0),(0,-1),'TOP'),
+                           ('ALIGN',(0,-1),(-1,-1),'CENTER'),
+                           ('VALIGN',(0,-1),(-1,-1),'MIDDLE'),
+                           ('INNERGRID', (0,0), (-1,-1), 0.25, colors.black),
+                           ('BOX', (0,0), (-1,-1), 0.25, colors.black),
+                           ]))
+    return t
+
+
+
 def project_note_paragraphs():
-# This is basically a template of ('headline', 'content') pairs.
-# Use dictionary based python string formatting to fill out variables.
+    """Get paragraphs for project notes."""
     paragraphs = OrderedDict()
-    paragraphs["Project name"] = dict(style=h1, tpl=Template("${project_name} (${customer_reference})"))
+    paragraphs["Project name"] = dict(style=h3, tpl=Template("${project_name} (${customer_reference})"))
     
-    paragraphs["UPPNEX project id"] = dict(style=h1, tpl=Template("${uppnex_project_id}"))
+    paragraphs["UPPNEX project id"] = dict(style=h3, tpl=Template("${uppnex_project_id}"))
     
-    paragraphs["Sequence data directories"] = dict(style=h1, tpl=Template("/proj/${uppnex_project_id}/INBOX/${project_name}/"))
+    paragraphs["Sequence data directories"] = dict(style=h3, tpl=Template("/proj/${uppnex_project_id}/INBOX/${project_name}/"))
     
-    paragraphs["Samples"] = dict(style=h1, tpl=Template(""))
+    paragraphs["Samples"] = dict(style=h3, tpl=Template(""))
     
-    paragraphs["Comments"] = dict(style=h1, tpl=Template("${finished}"))
+    paragraphs["Comments"] = dict(style=h3, tpl=Template("${finished}"))
     
     paragraphs["Information"] = OrderedDict()
     
     paragraphs["Information"]["Naming conventions"] = dict(
-        style=h3,
+        style=h4,
         tpl=Template("""The data is delivered in fastq format using Illumina 1.8
 quality scores. There will be one file for the forward reads and
 one file for the reverse reads. More information on our naming
@@ -98,7 +112,7 @@ conventions can be found at
 http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf."""))
     
     paragraphs["Information"]["Data access at UPPMAX"] = dict(
-        style=h3,
+        style=h4,
         tpl=Template("""Data from the sequencing will be uploaded to the UPPNEX (UPPMAX Next
 Generation sequence Cluster & Storage, www.uppmax.uu.se), from which
 the user can access it. If you have problems to access your data,
@@ -108,7 +122,7 @@ Information on how to access your data can be found at
 http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf."""))
     
     paragraphs["Information"]["Acknowledgement"] = dict(
-        style=h3,
+        style=h4,
         tpl=Template("""Please notify us when you publish using data
 produced at Science For Life Laboratory (SciLifeLab)
 Stockholm. To acknowledge SciLifeLab Stockholm in your
@@ -120,6 +134,7 @@ assistance in massively parallel sequencing and
     return paragraphs
 
 def project_note_headers():
+    """Get headers for sample notes."""
     headers = OrderedDict()
     headers["Project status note"] = h1
     headers["SciLifeLab Stockholm"]   = h2
@@ -153,7 +168,12 @@ def make_note(outfile, headers, paragraphs, **kw):
                 story.append(Paragraph(sub_headline, paragraph.get("style", h4)))
                 story.append(Paragraph(sub_paragraph.get("tpl").render(**kw),  p))
         else:
-            story.append(Paragraph(paragraph.get("tpl").render(**kw), p))
+            if isinstance(paragraph.get("tpl"), Template):
+                story.append(Paragraph(paragraph.get("tpl").render(**kw), p))
+            elif isinstance(paragraph.get("tpl"), Table):
+                story.append(paragraph.get("tpl"))
+            else:
+                pass
 
     doc = SimpleDocTemplate(outfile)
     doc.build(story, onFirstPage=formatted_page, onLaterPages=formatted_page)

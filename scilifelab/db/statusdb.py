@@ -23,7 +23,7 @@ class SampleRunMetricsConnection(Couch):
 
         :returns: value if entry exists, None otherwise
         """
-        self.log.info("retrieving entry in field '{}' for name '{}'".format(field, name))
+        self.log.debug("retrieving entry in field '{}' for name '{}'".format(field, name))
         if self.name_view.get(name, None) is None:
             self.log.warn("no field '{}' for name '{}'".format(field, name))
             return None
@@ -40,7 +40,7 @@ class SampleRunMetricsConnection(Couch):
 
         :returns sample_ids: list of couchdb sample ids
         """
-        self.log.info("retrieving sample ids subset by flowcell '{}' and sample_prj '{}'".format(fc_id, sample_prj))
+        self.log.debug("retrieving sample ids subset by flowcell '{}' and sample_prj '{}'".format(fc_id, sample_prj))
         sample_ids = [self.name_fc_view[k].id for k in self.name_fc_view.keys() if self.name_fc_view[k].value == fc_id]
         if sample_prj:
             prj_sample_ids = [self.name_fc_view[k].id for k in self.name_proj_view.keys() if self.name_proj_view[k].value == sample_prj]
@@ -55,7 +55,7 @@ class SampleRunMetricsConnection(Couch):
 
         :returns samples: list of samples
         """
-        self.log.info("retrieving samples subset by flowcell '{}' and sample_prj '{}'".format(fc_id, sample_prj))
+        self.log.debug("retrieving samples subset by flowcell '{}' and sample_prj '{}'".format(fc_id, sample_prj))
         sample_ids = self.get_sample_ids(fc_id, sample_prj)
         return [self.db.get(x) for x in sample_ids]
 
@@ -98,7 +98,7 @@ class FlowcellRunMetricsConnection(Couch):
         """Retrieve entry from db for a given name, subset to field if
         that value is passed.
         """
-        self.log.info("retrieving field entry in field '{}' for name '{}'".format(field, name))
+        self.log.debug("retrieving field entry in field '{}' for name '{}'".format(field, name))
         if self.name_view.get(name, None) is None:
             self.log.warn("no field '{}' for name '{}'".format(field, name))
             return None
@@ -117,10 +117,11 @@ class FlowcellRunMetricsConnection(Couch):
         else:
             return (phix_r1, phix_r2)/2
 
-class ProjectSummary(Couch):
+class ProjectSummaryConnection(Couch):
     def __init__(self, **kwargs):
-        super(ProjectSummary, self).__init__(**kwargs)
+        super(ProjectSummaryConnection, self).__init__(**kwargs)
         self.db = self.con["projects"]
+        self.name_view = {k.key:k.id for k in self.db.view("project/project_id", reduce=False)}
 
     def get_entry(self, name, field=None):
         """Retrieve entry from db for a given name, subset to field if
@@ -131,7 +132,7 @@ class ProjectSummary(Couch):
 
         :returns: value if entry exists, None otherwise
         """
-        self.log.info("retrieving field entry in field '{}' for name '{}'".format(field, name))
+        self.log.debug("retrieving field entry in field '{}' for name '{}'".format(field, name))
         if self.name_view.get(name, None) is None:
             self.log.warn("no field '{}' for name '{}'".format(field, name))
             return None
@@ -144,6 +145,38 @@ class ProjectSummary(Couch):
         """Make sure we don't change db from projects"""
         pass
 
+    def map_sample_run_names(self, project_id, fc_id):
+        """Map sample run names for a project subset by fc_id to
+        sample name defined by project.
+
+        :param project_id: flowcell id
+        :param fc_id: flowcell id
+
+        :returns: dict with key sample run name and value dict with keys 'sample_id' and 'project_sample'
+        """
+        project = self.get_entry(project_id)
+        project_samples = project.get('samples', None)
+        s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.rawurl)
+        sample_run_samples = s_con.get_samples(fc_id, project_id)
+
+        ## FIX ME: Mapping must be much more general to account for anomalous cases
+        def sample_map_fn(sample_run_name, project_sample_name):
+            """Mapping from project summary sample id to run info sample id"""
+            if str(sample_run_name).startswith(str(project_sample_name)):
+                return True
+            ## Add cases here
+            return False
+
+        sample_map = {}
+        for x in sample_run_samples:
+            sample_map[x["name"]] = None
+            for y in project_samples.keys():
+                if sample_map_fn(x["barcode_name"], y):
+                    sample_map[str(x["name"])] = {'sample_id':x["_id"], 'project_sample':y}
+        for x in sample_map:
+            if x is None:
+                self.log.warn("No mapping from name to sample for {}".format(x))
+        return sample_map
 
 class ProjectQCSummaryConnection(Couch):
     """ProjectQCSummary. Connection to old QC database.
@@ -163,7 +196,7 @@ class ProjectQCSummaryConnection(Couch):
 
         :returns: value if entry exists, None otherwise
         """
-        self.log.info("retrieving field entry in field '{}' for name '{}'".format(field, name))
+        self.log.debug("retrieving field entry in field '{}' for name '{}'".format(field, name))
         if self.name_view.get(name, None) is None:
             self.log.warn("no entry with name '{}'".format(name))
             return None
@@ -184,6 +217,36 @@ class ProjectQCSummaryConnection(Couch):
         :returns: customer name if it exists, None otherwise
         """
         pass
+
+    def map_sample_run_names(self, project_id, fc_id):
+        """Map sample run names for a project subset by fc_id to
+        sample name defined by project.
+
+        :param project_id: flowcell id
+        :param fc_id: flowcell id
+
+        :returns: dict with key sample run name and value project sample name
+        """
+        project = self.get_entry(project_id)
+        project_samples = project['Samples']
+        s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.rawurl)
+        sample_run_samples = s_con.get_samples(fc_id, project_id)
+
+        ## FIX ME: Mapping must be much more general to account for anomalous cases
+        def sample_map_fn(sample_run_name, project_sample_name):
+            """Mapping from project summary sample id to run info sample id"""
+            if str(sample_run_name).startswith(str(project_sample_name)):
+                return True
+            ## Add cases here
+            return False
+
+        sample_map = {}
+        for x in sample_run_samples:
+            sample_map[x["barcode_name"]] = None
+            for y in project_samples.keys():
+                if sample_map_fn(x["barcode_name"], y):
+                    sample_map[str(x["barcode_name"])] = y
+        return sample_map
 
     def get_samples(self):
         """Get samples defined in ProjectQCSummary document.
