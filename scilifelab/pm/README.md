@@ -16,9 +16,9 @@ working with projects at scilife
     pm archive runinfo FLOWCELLID -t
     pm project ls -h
     pm project ls PROJECTID
-    pm analysis status
-    pm analysis status FLOWCELLID
-    pm analysis clean FLOWCELLID -p projectid
+    pm production status
+    pm production status FLOWCELLID
+    pm production clean FLOWCELLID -p projectid
     
 # Motivation #
 
@@ -28,7 +28,7 @@ environment. Sure, there are a number of scripts that do this and
 that, but it's not always easy to know where they are, or what they
 do. I felt we needed a common entry point that gathers all relevant
 functionality for standardized, repeatable tasks, such as
-compressing/cleaning files in analysis folders, setting up project
+compressing/cleaning files in production folders, setting up project
 folders with a common directory structure, or listing the contents of
 a project in a given way. In addition, any operation that tampers with
 the files in the production environment should be logged.

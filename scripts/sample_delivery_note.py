@@ -3,9 +3,9 @@ The script uses reportlab for PDF, for which a user guide can be found here:
 http://www.reportlab.com/software/opensource/rl-toolkit/guide/
 """
 
-import sys 
+import sys
 import couchdb
-import optparse 
+import optparse
 
 from datetime import datetime
 from collections import OrderedDict
@@ -52,7 +52,7 @@ paragraphs["Results"] = "{rounded_read_count} million reads in lane with PhiX " 
 
 paragraphs["Comments"] = "{success}"
 
-# Move Information section to Project Status Report 
+# Move Information section to Project Status Report
 
 #paragraphs["Information"] = OrderedDict()
 
@@ -80,17 +80,17 @@ paragraphs["Comments"] = "{success}"
 
 def formatted_page(canvas, doc):
     """Page format for a document, which adds headers and footers and the like
-    which should be on every page of the delivery note.
-    """
+which should be on every page of the delivery note.
+"""
     canvas.saveState()
     canvas.drawImage("sll_logo.gif", 2 * cm, defaultPageSize[1] - 2 * cm, 4 * cm, 1.25 * cm)
     canvas.restoreState()
 
 def make_note(parameters):
     """Builds a pdf note based on the passed dictionary of parameters.
-    For the structure of the parameters, see the code of the function
-    make_example_note.
-    """
+For the structure of the parameters, see the code of the function
+make_example_note.
+"""
     story = []
     story.append(Paragraph("Raw data delivery note", h1))
     story.append(Paragraph("SciLifeLab Stockholm", h2))
@@ -121,9 +121,9 @@ def calc_avg_qv(counts):
 
 def make_example_note():
     """Make a note with some simple nonsensical data. Looking at this function
-    and running it to make a PDF should give an idea about the structure of the
-    script.
-    """
+and running it to make a PDF should give an idea about the structure of the
+script.
+"""
     parameters = {
     "project_name": "A_test",
     "customer_reference": "Some_test",
@@ -144,9 +144,9 @@ def make_example_note():
 def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
     # Warning: ugliness ahead! :-)
     # Temp views for FlowcellQCMetrics and ProjectSummary while we wait for permanent ones
-    fc_map_fun = '''function(doc) { if (doc.entity_type == "FlowcellQCMetrics") emit(doc, null);}'''                       
-    ps_map_fun = '''function(doc) { if (doc.Entity_type == "ProjectSummary") emit(doc, null);}'''                       
-    s_map_fun = '''function(doc) { if (doc.entity_type == "SampleQCMetrics") emit(doc, null);}'''                       
+    fc_map_fun = '''function(doc) { if (doc.entity_type == "FlowcellQCMetrics") emit(doc, null);}'''
+    ps_map_fun = '''function(doc) { if (doc.Entity_type == "ProjectSummary") emit(doc, null);}'''
+    s_map_fun = '''function(doc) { if (doc.entity_type == "SampleQCMetrics") emit(doc, null);}'''
     
     parameters = {}
     phix_err_cutoff = 2.0
@@ -160,8 +160,8 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
     qvs = {}
     for r in results:
         obj = r['key']
-        if obj.has_key('sample_prj'): 
-            if obj['flowcell'] == fc: 
+        if obj.has_key('sample_prj'):
+            if obj['flowcell'] == fc:
                 found_fc = True
                 avail_proj.add(obj['sample_prj'])
             if obj['sample_prj'] == prj and obj['flowcell'] == fc: # We have the correct flow cell and project ID
@@ -179,7 +179,7 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                     parameters['project_name'] = obj['sample_prj']
 
                     # Customer reference (can be manually provided by user)
-                    if (opts.customer_ref != "N/A"): 
+                    if (opts.customer_ref != "N/A"):
                         parameters['customer_reference'] = opts.customer_ref
                         print "DEBUG: Customer reference taken from command-line"
                     else:
@@ -207,7 +207,7 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                     parameters['start_date'] = obj['date']
 
                     # Ordered amount (can be manually provided by user)
-                    if (opts.ordered_million != "N/A"): 
+                    if (opts.ordered_million != "N/A"):
                         parameters['ordered_amount'] = opts.ordered_million
                     else:
                         ordered_amnt = "N/A"
@@ -229,20 +229,20 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                     # Customer sample name
                     try:
                         cust_name = "no customer sample name given"
-                        if (obj['customer_sample_name']): 
+                        if (obj['customer_sample_name']):
                             cust_name = obj['customer_sample_name']
                             print " DEBUG --- found customer sample name in SampleQCMetrics: ", cust_name
                         else:
                             print " DEBUG --- found no customer sample name corresponding to SciLife ID ", parameters['scilifelab_name'], " in SampleQCMetrics; trying ProjectSummary document ..."
                             results = qc.query(ps_map_fun)
-                            for r in results: 
+                            for r in results:
                                 if prj == r['key']['Project_id']:
                                     slist = r['key']['Samples']
                                     for s in slist.keys():
                                         without_index = "_".join(parameters['scilifelab_name'].split("_")[0:-1])
                                         if slist[s].has_key('scilife_name'):
                                             if slist[s]['scilife_name'] == without_index:
-                                                if slist[s].has_key('customer_name'): 
+                                                if slist[s].has_key('customer_name'):
                                                     cust_name = slist[s]['customer_name']
                                                     print "Found customer sample name ", cust_name, " corresponding to ", slist[s]['scilife_name'], " or ", parameters['scilifelab_name']
                                                 else: print "WARNING: Did not find customer sample name corresponding to ", slist[s]['scilife_name']," in ProjectSummary document"
@@ -276,7 +276,7 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
                             phix_avg = (phix_r1 + phix_r2)/2
                     parameters['phix_error_rate'] = str(phix_avg)
                     error_rates[parameters['scilifelab_name']] = parameters['phix_error_rate']
-                    # Average QV 
+                    # Average QV
                     # print "DEBUG: ", obj['metrics']['fastqc']
                     avg_qv = "N/A"
                     try:
@@ -323,16 +323,16 @@ def make_notes_for_fc_proj(fc="BC0HYUACXX", prj="J.Lindberg_12_01", opts=None):
         for r in res:
             sqm.add(r['key']['flowcell'])
         for f in sorted(sqm): print f
-    elif not found_proj_for_fc:    
+    elif not found_proj_for_fc:
         print "Could not find specified project in this flow cell. Available projects for flow cell:"
         for i in avail_proj: print i
             
 def main():
-    usage = """ Generate sample-centered delivery notes for a specific run, in a specific project, based on information in StatusDB. 
+    usage = """ Generate sample-centered delivery notes for a specific run, in a specific project, based on information in StatusDB.
 
 Usage:
 
-python sample_delivery_note.py <project ID (e g J.Lindberg_12_01> <flow cell ID (e g BC0HYUACXX)> 
+python sample_delivery_note.py <project ID (e g J.Lindberg_12_01> <flow cell ID (e g BC0HYUACXX)>
 
 The two first options are mandatory (kind of ... the program will just generate an example note if they are omitted). There are further flags you can use:
 
@@ -364,12 +364,11 @@ The two first options are mandatory (kind of ... the program will just generate 
             fc = fc[-10:]
             print "Flow cell ID not in expected format, I'll take a chance and use the 10 last characters: ", fc
         elif len(fc) < 10:
-            sys.exit("Flow cell ID too short, exiting")    
+            sys.exit("Flow cell ID too short, exiting")
 
         print "Attempting to generate notes for each sample in project ", proj, " for flow cell ", fc
         p = make_notes_for_fc_proj(fc, proj,opts)
 
 if __name__ == "__main__":
     main()
-
 

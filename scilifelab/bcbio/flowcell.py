@@ -11,7 +11,7 @@ import csv
 import glob
 import copy
 from cStringIO import StringIO
-from scilifelab.pm.utils.misc import filtered_walk
+from scilifelab.utils.misc import filtered_walk
 
 ## FIX ME: what should be returned from object functions, and what
 ## should be done behind the scenes?
@@ -152,6 +152,12 @@ class Flowcell(object):
     def _yaml_to_tab(self, runinfo_yaml):
         """Convert yaml to internal representation"""
         out = []
+        if isinstance(runinfo_yaml, dict):
+            if runinfo_yaml.has_key("fc_date"):
+                self.fc_date = runinfo_yaml["fc_date"]
+            if runinfo_yaml.has_key("fc_name"):
+                self.fc_name = runinfo_yaml["fc_name"]
+            runinfo_yaml = runinfo_yaml['details']
         for info in runinfo_yaml:
             self.lane_files[info.get('lane', None)] = []
             laneinfo = [info.get(x.replace("lane_", "")) for x in self._keys['lane']]
@@ -180,6 +186,7 @@ class Flowcell(object):
             d_mp["description"] = d_mp.get("description", "{}_{}".format(str(d_mp.get("sample_prj", None)), str(d_mp.get("name", None))))
             if d_mp.get("files", None):
                 d_mp["files"] = list(set(d_mp["files"]))
+                d_mp["files"].sort()
             if not self.unique_lanes:
                 yaml_out[d['lane']]["multiplex"].append(d_mp)
             else:
@@ -256,6 +263,8 @@ class Flowcell(object):
         pruned_fc.filename = self.filename.replace(".yaml", "-pruned.yaml")
         pruned_fc._set_sample_dict()
         pruned_fc.lane_files = dict((x, self.lane_files[x]) for x in pruned_fc.lanes())
+        pruned_fc.fc_date = self.fc_date
+        pruned_fc.fc_name = self.fc_name
         return pruned_fc
 
     def load(self, paths, runinfo="run_info.yaml"):
@@ -295,6 +304,11 @@ class Flowcell(object):
         for sample in self:
             pattern = "{}_[0-9]+_.?{}(_nophix)?_{}*{}".format(sample['lane'], sample['flowcell_id'], sample['barcode_id'], ext)
             glob_pfx.append(pattern)
+            # Catch sample files for casava
+            glob_pfx.append("^{}-.*\.*")
+        # Catch pipeline output
+        glob_pfx.append("^[0-1][0-9].*\.txt")
+        glob_pfx.append("^bcbb_software_versions\.txt")
         return glob_pfx
         
     def glob_pfx_re(self, ext=""):
@@ -322,6 +336,10 @@ class Flowcell(object):
     # 1_120829_AA001AAAXX_nophix_1-sort-dup.insert_metrics
     # 1_120829_AA001AAAXX_nophix_1-sort.bam
     def classify_file(self, f):
+        """Classify file by lane and sample.
+
+        FIXME: does not work with casava folder and sample naming structure
+        """
         re_lane = re.compile('^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?\.(filter|bc)_metrics|^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_[12]_fastq.txt')
         m_lane = re_lane.search(os.path.basename(f))
         if m_lane:
@@ -347,7 +365,9 @@ class Flowcell(object):
         return
 
     def collect_files(self, path, project=None):
-        """Collect files for a given project"""
+        """Collect files for a given project.
+
+        FIXME: does not work entirely for casava-like folder structure"""
         if project:
             fc = self.subset("sample_prj", project)
         else:
