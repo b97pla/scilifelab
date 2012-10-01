@@ -1,6 +1,5 @@
-"""
-statusdb.py
-"""
+"""Database backend for connecting to statusdb"""
+
 from itertools import izip
 from scilifelab.db import Couch
     

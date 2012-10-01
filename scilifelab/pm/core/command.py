@@ -1,7 +1,4 @@
-"""
-pmtools command core module.
-
-"""
+"""pmtools command core module."""
 import os
 import sys
 import shutil

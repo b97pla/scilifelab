@@ -1,3 +1,4 @@
+"""bcbio qc module. Parsers for collecting qc metrics."""
 import os
 import sys
 import re

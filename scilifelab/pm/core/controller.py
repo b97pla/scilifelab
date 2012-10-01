@@ -1,6 +1,4 @@
-"""
-Pm Controller Module
-"""
+"""Pm Controller Module"""
 import os
 import sys
 import re

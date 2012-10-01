@@ -1,7 +1,7 @@
 .. _scilifelab.utils.timestamp:
 
 :mod:`scilifelab.utils.timestamp`
-------------------------
+----------------------------------
 
 .. automodule:: scilifelab.utils.timestamp
     :members:

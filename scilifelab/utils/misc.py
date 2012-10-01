@@ -1,7 +1,4 @@
-"""
-Pm Misc Module
-
-"""
+"""Miscallaneous module"""
 import sys
 import os
 import re
@@ -19,9 +16,9 @@ def query_yes_no(question, default="yes", force=False):
     
     The "answer" return value is one of "yes" or "no".
     
-    :param question:
-    :param default:
-    :param force:
+    :param question: the displayed question
+    :param default: the default answer
+    :param force: set answer to default
     :returns: yes or no
     """
     valid = {"yes":True,   "y":True,  "ye":True,

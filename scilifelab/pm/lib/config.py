@@ -1,6 +1,4 @@
-"""
-Configuration settings
-"""
+"""Configuration settings"""
 
 import os
 from cement.core import backend

@@ -1,3 +1,4 @@
+"""Database module"""
 import os
 import sys
 import couchdb
