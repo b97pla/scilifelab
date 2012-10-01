@@ -49,7 +49,7 @@ import yaml
 
 from cement.core import controller, hook
 from scilifelab.pm.core.controller import AbstractExtendedBaseController, AbstractBaseController
-from scilifelab.pm.utils.misc import query_yes_no, filtered_walk
+from scilifelab.utils.misc import query_yes_no, filtered_walk, walk
 
 ## Main project controller
 class ProjectController(AbstractExtendedBaseController):
@@ -71,12 +71,17 @@ class ProjectController(AbstractExtendedBaseController):
         flowcelldir = None
 
     ## Remember: need to do argument processing here also for stacked controllers
+    ## FIX ME: _process_args should be called in the stacked controller
     def _process_args(self):
         # setup project search space
         if self.app.pargs.finished:
             self._meta.project_root = self.app.config.get("project", "finished")
         else:
             self._meta.project_root = self.app.config.get("project", "root")
+
+        # If rm function set intermediate
+        if self.command == "rm":
+            self.pargs.intermediate = True
 
         # Set root path for parent class
         self._meta.root_path = self._meta.project_root
@@ -135,13 +140,77 @@ class ProjectController(AbstractExtendedBaseController):
         self._not_implemented()
         
     ## NOTE: this is a temporary workaround for cases where data has
-    ## been removed from analysis directory
-    @controller.expose(help="Transfer project data to customer. Temporary fix for cases where data has been removed from analysis directory.")
+    ## been removed from production directory
+    @controller.expose(help="Transfer project data to customer. Temporary fix for cases where data has been removed from production directory.")
     def transfer(self):
         if not self.pargs.flowcell:
             self.log.warn("No flowcellid provided. Please provide a flowcellid from which to deliver. Available options are:\n\t{}".format("\n\t".join(self._flowcells())))
             return
-        
+
+    ## purge_alignments
+    @controller.expose(help="purge alignments in project folders")
+    def purge_alignments(self):
+        """Cleanup sam and bam files. In some cases, sam files
+        persist. If the corresponding bam file exists, replace the sam
+        file contents with a message that the file has been removed to
+        save space.
+        """
+        pattern = ".sam$"
+        def purge_filter(f):
+            if not pattern:
+                return
+            return re.search(pattern, f) != None
+
+        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), purge_filter)
+        if len(flist) == 0:
+            self.app.log.info("No sam files found")
+            return
+        if len(flist) > 0 and not query_yes_no("Going to remove/cleanup {} sam files ({}...). Are you sure you want to continue?".format(len(flist), ",".join([os.path.basename(x) for x in flist[0:10]])), force=self.pargs.force):
+            return
+        for f in flist:
+            self.app.log.info("Purging sam file {}".format(f))
+            self.app.cmd.safe_unlink(f)
+            if os.path.exists(f.replace(".sam", ".bam")):
+                self.app.cmd.write(f, "File removed to save disk space: SAM converted to BAM")
+
+        ## Find bam files in alignments subfolders
+        pattern = ".bam$"
+        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), purge_filter, include_dirs="alignments")
+        for f in flist:
+            f_tgt = [f.replace(".bam", "-sort.bam"), os.path.join(os.path.dirname(os.path.dirname(f)),os.path.basename(f) )]
+            for tgt in f_tgt:
+                if os.path.exists(tgt):
+                    self.app.log.info("Purging bam file {}".format(f))
+                    self.app.cmd.safe_unlink(f)
+                    self.app.cmd.write(f, "File removed to save disk space: Moved to {}".format(os.path.abspath(tgt)))
+
+class ProjectRmController(AbstractBaseController):
+    class Meta:
+        label = 'projectrm'
+        description = 'Functionality for removing analyses from intermediate folders'
+        arguments = [
+            (['analysis_id'], dict(help="analysis name in intermediate", action="store", default=None, nargs="?", type=str)),
+            ]
+        stacked_on = 'project'
+
+    @controller.expose(help="Remove analyses from project intermediate subfolder")
+    def rm(self):
+        if not self._check_pargs(["project",  "analysis_id"]):
+            return
+        indir = os.path.join(self.app.controller._meta.project_root, self.app.controller._meta.path_id, self.pargs.analysis_id)
+        assert os.path.exists(indir), "No such analysis {} for project {}".format(self.pargs.analysis_id, self.pargs.project)
+        try:
+            flist = walk(indir)
+        except IOError as e:
+            self.app.log.warn(str(e))
+            raise e
+        if len(flist) > 0 and not query_yes_no("Going to remove all contents ({} files) of analysis {} for project {}... Are you sure you want to continue?".format(len(flist), self.pargs.analysis_id, self.pargs.project), force=self.pargs.force):
+            return
+        for f in flist:
+            self.app.cmd.safe_unlink(f)
+        self.app.log.info("removing {}".format(indir))
+        self.app.cmd.safe_rmdir(indir)
+
 
 class BcbioRunController(AbstractBaseController):
     class Meta:

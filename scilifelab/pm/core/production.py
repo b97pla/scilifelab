@@ -1,5 +1,5 @@
 """
-Pm analysis module
+Pm production module
 """
 
 import sys
@@ -7,17 +7,17 @@ import os
 import re
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractExtendedBaseController
+from scilifelab.utils.misc import query_yes_no, filtered_walk
+from scilifelab.bcbio.flowcell import Flowcell
 
-from scilifelab.pm.lib.flowcell import Flowcell
-
-## Main analysis controller
-class AnalysisController(AbstractExtendedBaseController):
+## Main production controller
+class ProductionController(AbstractExtendedBaseController):
     """
-    Functionality for analysis management.
+    Functionality for production management.
     """
     class Meta:
-        label = 'analysis'
-        description = 'Manage analysis'
+        label = 'production'
+        description = 'Manage production'
         arguments = [
             (['project'], dict(help="Project id", nargs="?", default=None)),
             (['-f', '--flowcell'], dict(help="Flowcell id")),
@@ -30,8 +30,8 @@ class AnalysisController(AbstractExtendedBaseController):
 
     def _process_args(self):
         # Set root path for parent class
-        self._meta.root_path = self.app.config.get("analysis", "root")
-        assert os.path.exists(self._meta.root_path), "No such directory {}; check your analysis config".format(self._meta.root_path)
+        self._meta.root_path = self.app.config.get("production", "root")
+        assert os.path.exists(self._meta.root_path), "No such directory {}; check your production config".format(self._meta.root_path)
         ## Set path_id for parent class
         if self.pargs.flowcell:
             self._meta.path_id = self.pargs.flowcell
@@ -43,7 +43,7 @@ class AnalysisController(AbstractExtendedBaseController):
         ## This is a bug; how will this work when processing casava-folders?!?
         if self.command == "hs_metrics":
             self._meta.path_id = self.pargs.flowcell
-        super(AnalysisController, self)._process_args()
+        super(ProductionController, self)._process_args()
 
     @controller.expose(help="List runinfo contents")
     def runinfo(self):
@@ -61,9 +61,22 @@ class AnalysisController(AbstractExtendedBaseController):
         """Get information from casava structure"""
         if not self._check_pargs(["project"]):
             return
-
+        fc_list = []
+        pattern = "-bcbb-config.yaml$"
+        def bcbb_yaml_filter(f):
+            return re.search(pattern, f) != None
+        samples = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), bcbb_yaml_filter)
+        for s in samples:
+            fc = Flowcell(s)
+            fc_new = fc.subset("sample_prj", self.pargs.project)
+            fc_new.collect_files(os.path.dirname(s))        
+            fc_list.append(fc_new)
+        return fc_list
+            
     def _to_casava_structure(self, fc):
         outdir_pfx = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data"))
+        if self.pargs.transfer_dir:
+           outdir_pfx = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.transfer_dir, "data"))
         for sample in fc:
             key = "{}_{}".format(sample['lane'], sample['barcode_id'])
             sources = {"files":sample['files'], "results":sample['results']}
@@ -85,6 +98,9 @@ class AnalysisController(AbstractExtendedBaseController):
     def _to_pre_casava_structure(self, fc):
         dirs = {"data":os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data", fc.fc_id())),
                 "intermediate":os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "intermediate", fc.fc_id()))}
+        if self.pargs.transfer_dir:
+           dirs["data"] = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.transfer_dir, "data", fc.fc_id()))
+           dirs["intermediate"] = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.transfer_dir, "intermediate", fc.fc_id()))
         self._make_output_dirs(dirs)
         fc_new = fc
         for sample in fc:
@@ -107,8 +123,8 @@ class AnalysisController(AbstractExtendedBaseController):
         if not self._check_pargs(["project", "flowcell"]):
             return
         fc = Flowcell()
-        fc.load([os.path.join(x, self.pargs.flowcell) for x in [self.config.get("archive", "root"), self.config.get("analysis", "root")]])
-        indir = os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell)
+        fc.load([os.path.join(x, self.pargs.flowcell) for x in [self.config.get("archive", "root"), self.config.get("production", "root")]])
+        indir = os.path.join(self.config.get("production", "root"), self.pargs.flowcell)
         if not fc:
             self.log.warn("No run information available for {}".format(self.pargs.flowcell))
             return
@@ -145,7 +161,12 @@ class AnalysisController(AbstractExtendedBaseController):
         if self.pargs.to_pre_casava:
             self._to_pre_casava_structure(fc)
         else:
-            self._to_casava_structure(fc)
+            if isinstance(fc, list):
+                for f in fc:
+                    self._to_casava_structure(f)
+            else:
+                self._to_casava_structure(fc)
+
 
         ## Fix lane_files for pre_casava output
         ## if self.pargs.pre_casava:

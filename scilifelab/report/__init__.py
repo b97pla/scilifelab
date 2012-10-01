@@ -1,7 +1,7 @@
 """
 Reporting utilities
 """
-
+import os
 import sys
 from mako.template import Template
 from collections import OrderedDict
@@ -16,49 +16,14 @@ from reportlab.rl_config import defaultPageSize
 
 FILEPATH=os.path.dirname(os.path.realpath(__file__))
 
-styles = getSampleStyleSheet()
-p = styles['Normal']
-h1 = styles['Heading1']
-h2 = styles['Heading2']
-h3 = styles['Heading3']
-h4 = styles['Heading4']
-
-def formatted_page(canvas, doc):
-    """Page format for a document, which adds headers and footers and the like
-    which should be on every page of the delivery note.
-    """
-    canvas.saveState()
-    canvas.drawImage(os.path.join(FILEPATH, os.pardir, "data", "grf", "sll_logo.gif"), 2 * cm, defaultPageSize[1] - 2 * cm, 4 * cm, 1.25 * cm)
-    canvas.restoreState()
-
-def make_note(**header, **paragraphs, **kw):
-    """Builds a pdf note based on the passed dictionary of parameters.
-    For the structure of the parameters, see the code of the function
-    make_example_note.
-    """
-    story = []
-    [story.append(Paragraph(x, header[x]))]
-
-    for headline, paragraph in paragraphs.items():
-        story.append(Paragraph(headline, h3))
-        if isinstance(paragraph, dict):
-            for sub_headline, sub_paragraph in paragraph.items():
-                story.append(Paragraph(sub_headline, h4))
-                story.append(Paragraph(sub_paragraph, p))
+def sequencing_success(parameters, cutoffs):
+    success_message = ''
+    try:
+        if float(parameters['phix_error_rate']) < cutoffs['phix_err_cutoff'] and float(parameters['rounded_read_count']) > float(parameters['ordered_amount']):
+            success_message += "Successful run."
         else:
-            story.append(Paragraph(paragraph.format(**parameters), p))
-
-    doc = SimpleDocTemplate("{scilifelab_name}_note.pdf".format(**parameters))
-    doc.build(story, onFirstPage=formatted_page, onLaterPages=formatted_page)
-
-def calc_avg_qv(counts):
-    qv = 2
-    qsum = 0
-    seqsum = 0
-    for v in counts:
-        qsum += qv * float(v)
-        seqsum += float(v)
-        qv += 1
-    avg_q = qsum / seqsum
-    return round(avg_q, 1)
-
+            if float(parameters['phix_error_rate']) > cutoffs['phix_err_cutoff']: success_message += "High average error rate."
+            if float(parameters['rounded_read_count']) < float(parameters['ordered_amount']): success_message += "The yield may be lower than expected."
+    except:
+        success_message = "Could not assess success or failure of run."
+    return success_message

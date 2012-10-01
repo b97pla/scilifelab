@@ -7,8 +7,8 @@ from empty_files import files as empty_files
 
 ## Set default configuration
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
-config_defaults = backend.defaults('analysis', 'archive', 'config', 'project','log')
-config_defaults['analysis']['root']  = os.path.join(filedir, "data", "analysis")
+config_defaults = backend.defaults('production', 'archive', 'config', 'project','log')
+config_defaults['production']['root']  = os.path.join(filedir, "data", "production")
 config_defaults['archive']['root']  = os.path.join(filedir, "data", "archive")
 config_defaults['project']['root']  = os.path.join(filedir, "data", "projects")
 config_defaults['project']['repos']  = os.path.join(filedir, "data", "repos")
@@ -56,14 +56,14 @@ class PmTest(test.CementTestCase):
 
     def setUp(self):
         ## setup empty files 
-        for k,v in data_files.items():
+        for k,v in data_files().items():
             if not os.path.exists(os.path.join(filedir, k)):
                 if not os.path.exists(os.path.dirname(os.path.join(filedir, k))):
                     os.makedirs(os.path.dirname(os.path.join(filedir, k)))
                 with open(os.path.join(filedir, k), "w") as fh:
                     print "Preparing test: writing to file {}".format(k)
                     fh.write(v)
-        for f in empty_files:
+        for f in empty_files():
             if not os.path.exists(os.path.join(filedir, f)):
                 print "Preparing test: touching file {}".format(f)
                 if not os.path.exists(os.path.dirname(os.path.join(filedir, f))):
