@@ -2,7 +2,7 @@ import os
 import unittest
 import ConfigParser
 from scilifelab.report import sequencing_success
-from scilifelab.report.rl import make_example_sample_note, make_sample_note, sample_note_paragraphs, sample_note_headers
+from scilifelab.report.rl import make_example_sample_note, make_note, sample_note_paragraphs, sample_note_headers
 from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectQCSummaryConnection
 
 filedir = os.path.abspath(os.path.realpath(os.path.dirname(__file__)))

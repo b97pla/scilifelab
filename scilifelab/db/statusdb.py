@@ -183,4 +183,12 @@ class ProjectQCSummaryConnection(Couch):
 
         :returns: customer name if it exists, None otherwise
         """
+        pass
+
+    def get_samples(self):
+        """Get samples defined in ProjectQCSummary document.
+
+        :returns: list of sample names
+        """
+        pass
         

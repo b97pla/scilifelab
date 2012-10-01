@@ -23,7 +23,6 @@ from reportlab.rl_config import defaultPageSize
 FILEPATH=os.path.dirname(os.path.realpath(__file__))
 sll_logo = os.path.join(FILEPATH, os.pardir, "data", "grf", "sll_logo.gif")
 
-
 styles = getSampleStyleSheet()
 p = styles['Normal']
 h1 = styles['Heading1']
@@ -135,7 +134,7 @@ def formatted_page(canvas, doc):
     canvas.drawImage(str(sll_logo), 2 * cm, defaultPageSize[1] - 2 * cm, 4 * cm, 1.25 * cm)
     canvas.restoreState()
 
-def make_project_note(outfile, headers, paragraphs, **kw):
+def make_note(outfile, headers, paragraphs, **kw):
     """Builds a pdf file named outfile based on headers and
     paragraphs, formatted according to parameters in kw.
 
@@ -155,21 +154,11 @@ def make_project_note(outfile, headers, paragraphs, **kw):
                 story.append(Paragraph(sub_paragraph.get("tpl").render(**kw),  p))
         else:
             story.append(Paragraph(paragraph.get("tpl").render(**kw), p))
-        # if headline == 'Samples': 
-        #     data = parameters['sample_table']
-        #     t=Table(data,5*[1.25*inch], len(data)*[0.25*inch])
-        #     t.setStyle(TableStyle([('ALIGN',(1,1),(-2,-2),'RIGHT'),
-        #                ('VALIGN',(0,0),(0,-1),'TOP'),
-        #                ('ALIGN',(0,-1),(-1,-1),'CENTER'),
-        #                ('VALIGN',(0,-1),(-1,-1),'MIDDLE'),
-        #                ('INNERGRID', (0,0), (-1,-1), 0.25, colors.black),
-        #                ('BOX', (0,0), (-1,-1), 0.25, colors.black),
-        #                ]))
-        #     story.append(t)
 
     doc = SimpleDocTemplate(outfile)
     doc.build(story, onFirstPage=formatted_page, onLaterPages=formatted_page)
     return doc
+
 
 def make_example_project_note(outfile):
     """Make a note with some simple nonsensical data. Looking at this function
@@ -185,33 +174,8 @@ def make_example_project_note(outfile):
     "finished":None,
     }
 
-    make_project_note(outfile, headers, paragraphs, **kw)
+    make_note(outfile, headers, paragraphs, **kw)
 
-
-def make_sample_note(outfile, headers, paragraphs, **kw):
-    """Builds a pdf file named outfile based on headers and
-    paragraphs, formatted according to parameters in kw.
-
-    :param outfile: outfile name
-    :param headers: <OrderedDict> of headers
-    :param paragraphs: <OrderedDict> of paragraphs
-    :param kw: keyword arguments for formatting
-    """
-    story = []
-    [story.append(Paragraph(x, headers[x])) for x in headers.keys()]
-
-    for headline, paragraph in paragraphs.items():
-        story.append(Paragraph(headline, paragraph.get("style", h3)))
-        if isinstance(paragraph.get("tpl"), dict):
-            for sub_headline, sub_paragraph in paragraph.items():
-                story.append(Paragraph(sub_headline, paragraph.get("style", h4)))
-                story.append(Paragraph(sub_paragraph.get("tpl").render(**kw),  p))
-        else:
-            story.append(Paragraph(str(paragraph.get("tpl").render(**kw)), p))
-
-    doc = SimpleDocTemplate(outfile)
-    doc.build(story, onFirstPage=formatted_page, onLaterPages=formatted_page)
-    return doc
 
 def make_example_sample_note(outfile):
     """Make a note with some simple nonsensical data. Looking at this function
