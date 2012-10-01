@@ -1,14 +1,4 @@
-"""
-Pm deliver module
-
-Perform data delivery.
-
-Commands:
-
-         sample_status
-         project_status
-"""
-
+"""Pm deliver module"""
 import os
 import shutil
 
@@ -70,9 +60,9 @@ class DeliveryReportController(AbstractBaseController):
         ## parameters
         parameters = {
             "project_name" : None,
-            "customer_reference": None,
-            "uppnex_project_id" : None,
-            "ordered_amount" : None,
+            "customer_reference": self.pargs.customer_reference,
+            "uppnex_project_id" : self.pargs.uppmax_id,
+            "ordered_amount" : self.pargs.ordered_million_reads,
             "start_date" : None,
             "FC_id" : None,
             "scilifelab_name" : None,
@@ -133,8 +123,8 @@ class DeliveryReportController(AbstractBaseController):
         ## parameters
         parameters = {
             "project_name" : None,
-            "customer_reference": None,
-            "uppnex_project_id" : None,
+            "customer_reference": self.pargs.customer_reference,
+            "uppnex_project_id" : self.pargs.uppmax_id,
             "finished":None,
             }
         ## key mapping from sample_run_metrics to parameter keys
@@ -156,6 +146,8 @@ class DeliveryReportController(AbstractBaseController):
         project = p_con.get_entry(self.pargs.project_id)
         if project:
             ordered_amount = p_con.get_ordered_amount(self.pargs.project_id)
+        else:
+            ordered_amount = self.pargs.ordered_million_reads
 
         ## Start collecting the data
         sample_table = []

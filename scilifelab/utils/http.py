@@ -1,6 +1,4 @@
-"""
-Utilities for working with urls
-"""
+"""Utilities for working with urls"""
 import httplib
 import urlparse
 

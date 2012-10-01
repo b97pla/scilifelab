@@ -10,9 +10,7 @@ setup(name = "scilifelab",
       author_email = "genomics_support@scilifelab.se",
       description = "Useful scripts for use at SciLifeLab",
       license = "MIT",
-      #namespace_packages=["scilifelab"],
       scripts = glob.glob('scripts/*.py') + ['scripts/pm', 'scripts/pm-deliver'],
-                 #'scripts/bcbb_helpers/*.py,
       install_requires = [
         "bcbio-nextgen >= 0.2",
         "drmaa >= 0.5",
@@ -25,11 +23,8 @@ setup(name = "scilifelab",
         ],
       test_suite = 'nose.collector',
       packages=find_packages(exclude=['tests']),
-      ## package_data: install data/templates needed by modules
       package_data = {'scilifelab':[
-            'pm/templates/tpl/make/*',
             'data/grf/*',
-            #'sbatch/*' # should be deprecated by python-drmaa, not even installing it...
             ]}
       )
 

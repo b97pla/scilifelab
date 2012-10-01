@@ -1,6 +1,4 @@
-"""
-hs_metrics extension
-"""
+"""hs_metrics extension"""
 import os
 
 import glob

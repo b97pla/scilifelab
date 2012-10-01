@@ -1,6 +1,4 @@
-"""
-ext_qc.py
-"""
+"""QC extension"""
 import os
 import re
 import csv

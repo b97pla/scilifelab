@@ -1,6 +1,4 @@
-"""
-Reporting utilities
-"""
+"""Reporting utilities module"""
 import os
 import sys
 from mako.template import Template

@@ -1,13 +1,10 @@
-.. _pmtools:
+.. _scilifelab.pm:
 
-:mod:`pmtools`
+:mod:`scilifelab.pm`
 ----------------------------------
 
-.. automodule:: pmtools
+.. automodule:: scilifelab.pm
     :members:
     :undoc-members:
     :private-members:
     :show-inheritance:
-
-
-

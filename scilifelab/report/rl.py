@@ -1,8 +1,4 @@
-"""
-rl.py
-
-Format reportlab documents
-"""
+"""Reportlab module for generating pdf documents"""
 
 import sys
 import os
