@@ -3,7 +3,7 @@ import unittest
 import ConfigParser
 from scilifelab.report import sequencing_success
 from scilifelab.report.rl import make_example_sample_note, make_note, sample_note_paragraphs, sample_note_headers
-from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectQCSummaryConnection
+from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectSummaryConnection
 
 filedir = os.path.abspath(os.path.realpath(os.path.dirname(__file__)))
 
@@ -63,7 +63,7 @@ class TestSampleDeliveryNote(unittest.TestCase):
         """Make a note subset by example flowcell and project"""
         s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
         fc_con = FlowcellRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
-        p_con = ProjectQCSummaryConnection(username=self.user, password=self.pw, url=self.url)
+        p_con = ProjectSummaryConnection(username=self.user, password=self.pw, url=self.url)
         paragraphs = sample_note_paragraphs()
         headers = sample_note_headers()
         samples = s_con.get_samples(self.examples["flowcell"], self.examples["project"])

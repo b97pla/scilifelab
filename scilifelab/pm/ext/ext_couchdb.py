@@ -88,7 +88,7 @@ class CouchdbCommandHandler(command.CommandHandler):
             else:
                 new_obj = update_fn(db, obj)
                 if not new_obj is None:
-                    self.app.log.info("Saving object {} ".format(repr(new_obj)))
+                    self.app.log.info("Saving object {} with id {}".format(repr(new_obj), new_obj["_id"]))
                     db.save(new_obj)
                 else:
                     self.app.log.info("Object {} present and not in need of updating".format(repr(obj)))
