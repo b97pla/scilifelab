@@ -9,7 +9,6 @@ from scilifelab.pm.core.output import PmOutputHandler
 from scilifelab.pm.core.project import ProjectController, BcbioRunController, ProjectRmController
 from scilifelab.pm.core.archive import ArchiveController
 from scilifelab.pm.core.production import ProductionController
-from scilifelab.pm.core.deliver import DeliveryController
 
 CONFIGFILE=os.path.join(os.getenv("HOME"), ".pm", "pm.conf")
 PLUGINDIR=os.path.join(os.getenv("HOME"), ".pm", "plugins")
@@ -35,7 +34,6 @@ try:
     handler.register(ProjectController)
     handler.register(ArchiveController)
     handler.register(ProductionController)
-    handler.register(DeliveryController)
     handler.register(BcbioRunController)
     handler.register(ProjectRmController)
     app.setup()

@@ -11,7 +11,7 @@ Installation is as simple as
    python setup.py install
 
 If you are running several virtual environments, where one (e.g.
-`devel`) is used for development, you can install a development
+``devel``) is used for development, you can install a development
 version by running
 
 .. code:: bash
@@ -23,14 +23,14 @@ version by running
 Documentation
 --------------
 
-Docs are located in the `doc` directory. To install, cd to `doc` and
-run
+Docs are located in the ``doc`` directory. To install, cd to ``doc``
+and run
 
 .. code:: bash
 
    make html
 
-Documentation output is found in `build`.
+Documentation output is found in ``build``.
 
 
 Running the tests

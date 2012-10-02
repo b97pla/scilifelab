@@ -11,7 +11,6 @@ examples.
    configuration
    logging
    distributed_execution
-   archive
-   production
-   project
+   pm
    adding_code
+   examples
