@@ -23,7 +23,6 @@ def sequencing_success(parameters, cutoffs):
     :returns: string
     """
     success_message = ''
-    print parameters
     try:
         if float(parameters['phix_error_rate']) < cutoffs['phix_err_cutoff'] and float(parameters['rounded_read_count']) > float(parameters['ordered_amount']):
             success_message += "Successful run."
