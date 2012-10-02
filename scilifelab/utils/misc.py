@@ -71,9 +71,11 @@ def filtered_walk(rootdir, filter_fn, include_dirs=None, exclude_dirs=None):
     """
     flist = []
     for root, dirs, files in os.walk(rootdir):
-        if include_dirs and not os.path.basename(root) in include_dirs:
+        print os.path.split(root)
+        print exclude_dirs
+        if include_dirs and len(set(os.path.split(root)).intersection(set(include_dirs))) == 0:
             continue
-        if exclude_dirs and os.path.basename(root) in exclude_dirs:
+        if exclude_dirs and len(set(os.path.split(root)).intersection(set(exclude_dirs))) > 0:
             continue
         flist = flist + [os.path.join(root, x) for x in filter(filter_fn, files)]
     return flist
