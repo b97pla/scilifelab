@@ -132,7 +132,7 @@ class ProjectController(AbstractExtendedBaseController):
 
         ## Find bam files in alignments subfolders
         pattern = ".bam$"
-        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), purge_filter, include_dirs="alignments")
+        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), purge_filter, include_dirs=["alignments"])
         for f in flist:
             f_tgt = [f.replace(".bam", "-sort.bam"), os.path.join(os.path.dirname(os.path.dirname(f)),os.path.basename(f) )]
             for tgt in f_tgt:
