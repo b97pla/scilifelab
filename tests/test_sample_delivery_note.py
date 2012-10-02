@@ -32,7 +32,7 @@ parameters = {
 srm_to_parameter = {"project_name":"sample_prj", "FC_id":"flowcell", 
                     "scilifelab_name":"barcode_name", "start_date":"date", "rounded_read_count":"bc_count"}
 ## mapping project_summary to parameter keys
-ps_to_parameter = {"customer_reference":"Customer_reference", "uppnex_project_id":"Uppnex_id", "ordered_amount": "Min_M_reads_per_sample_ordered"}
+ps_to_parameter = {"customer_reference":"customer_reference", "uppnex_project_id":"uppnex_id"}
 
 ## Data dicts
 error_rates = {}
@@ -57,7 +57,7 @@ class TestSampleDeliveryNote(unittest.TestCase):
 
     def test_1_make_example_note(self):
         """Make example note"""
-        make_example_note(os.path.join(filedir, "test.pdf"))
+        make_example_sample_note(os.path.join(filedir, "test.pdf"))
 
     def test_2_make_note(self):
         """Make a note subset by example flowcell and project"""
@@ -68,6 +68,7 @@ class TestSampleDeliveryNote(unittest.TestCase):
         headers = sample_note_headers()
         samples = s_con.get_samples(self.examples["flowcell"], self.examples["project"])
         project = p_con.get_entry(self.examples["project"])
+        sample_map = p_con.map_sample_run_names(self.examples["project"], self.examples["flowcell"])
         for s in samples:
             s_param = parameters
             s_param.update({key:s[srm_to_parameter[key]] for key in srm_to_parameter.keys()})
@@ -76,8 +77,10 @@ class TestSampleDeliveryNote(unittest.TestCase):
             s_param['avg_quality_score'] = s_con.calc_avg_qv(s["name"])
             s_param['rounded_read_count'] = round(float(s_param['rounded_read_count'])/1e6,1) if s_param['rounded_read_count'] else None
             s_param['success'] = sequencing_success(s_param, cutoffs)
+            s_param['customer_name'] = project['samples'][sample_map[s["name"]]['project_sample']].get('customer_name', None)
             ## Set success of run
             if project:
+                s_param['ordered_amount'] = p_con.get_ordered_amount(self.examples["project"])
                 s_param.update({key:project[ps_to_parameter[key]] for key in ps_to_parameter.keys() })
             s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None})
             make_note("{}.pdf".format(s["barcode_name"]), headers, paragraphs, **s_param)
