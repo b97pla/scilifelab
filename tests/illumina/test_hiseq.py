@@ -56,4 +56,53 @@ class TestHiSeqRun(unittest.TestCase):
                                  [d[col] for col in HiSeqRun._samplesheet_header()],
                                  "Parsed data row does not match entry in generated samplesheet")
         
+    
+    def test_get_project_names(self):
+        """Get the projects from a samplesheet
+        """
+        # Assert that an empty file returns an empty list
+        fh, ssheet = tempfile.mkstemp(dir=self.rootdir, suffix=".csv")
+        os.close(fh)
+        self.assertListEqual([],HiSeqRun.get_project_names(ssheet),
+                             "The list of projects for an empty file is not empty")
         
+        # Generate artificial samplesheet data
+        data = td.generate_samplesheet_data()
+        projects = {}
+        for d in data:
+            projects[d[-1]] = 1
+        
+        # Write the data to a samplesheet
+        td._write_samplesheet(data,ssheet)
+         
+        # Assert that the list of projects returned is the same that we generated
+        self.assertListEqual(sorted(projects.keys()),sorted(HiSeqRun.get_project_names(ssheet)),
+                             "The list of projects does not match the original list")
+        
+
+    def test_get_project_sample_ids(self):
+        """Test that getting the project samples from a samplesheet behaves as expected
+        """
+        
+        # Generate artificial samplesheet data
+        data = td.generate_samplesheet_data()
+        fh, ssheet = tempfile.mkstemp(dir=self.rootdir, suffix=".csv")
+        os.close(fh)
+        td._write_samplesheet(data,ssheet)
+         
+        # Assert that getting samples for a non-existing project returns an empty list
+        self.assertListEqual([],HiSeqRun.get_project_sample_ids(ssheet,td.generate_project()),
+                             "Getting samples for a non-existing project returned unexpected output")
+        
+        # Iterate over the projects and assert that the returned samples are correct
+        samples = {}
+        for row in data:
+            if row[9] not in samples:
+                samples[row[9]] = []
+            samples[row[9]].append(row[2])
+        
+        for proj, sample in samples.items():
+            self.assertListEqual(sorted(sample),sorted(HiSeqRun.get_project_sample_ids(ssheet,proj)),
+                                 "The returned list of samples did not match the original")
+
+    

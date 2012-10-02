@@ -5,7 +5,13 @@ import csv
 import scilifelab.illumina as illumina
 
 class HiSeqRun(illumina.IlluminaRun):
-    pass
+    
+    def __init__(self, base, samplesheet=None):
+        self.base = base
+        if samplesheet is None:
+            samplesheet = illumina.IlluminaRun.get_samplesheet(self.base)
+        self.samplesheet = samplesheet
+        self.project_names = get_project_names(self.samplesheet)
 
     @staticmethod
     def _samplesheet_header():
@@ -44,4 +50,20 @@ class HiSeqRun(illumina.IlluminaRun):
             csvw.writerow(HiSeqRun._samplesheet_header())
             csvw.writerows(sdata)
         return samplesheet
+    
+    @staticmethod
+    def get_project_names(samplesheet):
+        """List the projects available in the samplesheet. Optionally filter by project name.
+        """ 
+        return sorted(list(set([e['SampleProject'].replace("__",".") for e in HiSeqRun.parse_samplesheet(samplesheet)])))
+    
+    @staticmethod
+    def get_project_sample_ids(samplesheet, project):
+        """Return the samples listed in the samplesheet for a project
+        """
+        ids = []
+        for e in HiSeqRun.parse_samplesheet(samplesheet):
+            if e['SampleProject'].replace('__','.') == project:
+                ids.append(e['SampleID'])
+        return ids
     

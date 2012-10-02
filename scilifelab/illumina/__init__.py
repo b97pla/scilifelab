@@ -9,10 +9,10 @@ class IlluminaRun():
     
     def __init__(self, base):
         self.base = base
-        self.samplesheet = _get_samplesheet(self.base)
+        self.samplesheet = get_samplesheet(self.base)
         
     @staticmethod
-    def _get_samplesheet(base_dir):
+    def get_samplesheet(base_dir):
         """Get the samplesheet from a flowcell directory, returning firstly [FCID].csv and secondly SampleSheet.csv
         """
         pattern = os.path.join(base_dir,"*.csv")
@@ -28,11 +28,11 @@ class IlluminaRun():
         return ssheet
 
     @staticmethod    
-    def _get_flowcell(root_dir, fc_dir):
+    def get_flowcell(root_dir, fc_dir=None):
         """Get the flowcells matching the (potentially partial) flowcell pattern
         """
-        if fc_dir is None or len(fc_dir) == 0:
-            return []
+        if fc_dir is None:
+            fc_dir = ""
         
         # Match the pattern
         dir_pattern = os.path.join(root_dir,"*{}".format(fc_dir))
