@@ -1,30 +1,12 @@
-"""
-hs_metrics extension
-"""
+"""hs_metrics extension"""
 import os
+import re
 
 import glob
 from cement.core import backend, controller, handler
 from scilifelab.pm.core.controller import AbstractBaseController
-from scilifelab.pm.lib.flowcell import Flowcell
-from scilifelab.pm.utils.misc import query_yes_no
-
-## Auxiliary functions - move to lib or utils
-def get_files(path, fc, ftype, ext=".bam", project=None, lane=None):
-    """Get files from an analysis"""
-    info = fc.subset("sample_prj", project)
-    files = []
-    for l in info.lanes():
-        for bc in info.barcodes(l):
-            glob_str = "{}/{}_*_*_{}-{}{}".format(path, l, bc, ftype, ext)
-            glob_res = glob.glob(glob_str)
-            if glob_res:
-                files.append(glob_res[0])
-    return files
-
-def get_regexp_files():
-    """Get files based on a regular expression in an archive folder"""
-    pass
+from scilifelab.bcbio.flowcell import Flowcell
+from scilifelab.utils.misc import query_yes_no, filtered_walk
 
 class HsMetricsController(AbstractBaseController):
     """
@@ -34,23 +16,25 @@ class HsMetricsController(AbstractBaseController):
         label = 'hs_metrics_extension'
         """The string identifier of this handler"""
         description = 'Extension for running hs_metrics'
-        stacked_on = 'analysis'
+        stacked_on = 'production'
         arguments = [
             (['--region_file'], dict(help="Region definition file", default=None)),
+            (['--bait_file'], dict(help="Region bait definition file", default=None)),
             ## FIX ME: This should be called bcbb_file_type and be loaded via an extension
             (['--hs_file_type'], dict(help="File type glob", default="sort-dup")),
             ]
 
     @controller.expose(help="Calculate hs metrics for samples")
     def hs_metrics(self):
-        if not self._check_pargs(["flowcell", "project", "region_file"]):
+        if not self._check_pargs(["project", "region_file"]):
             return
+        if not self.pargs.bait_file:
+            self.pargs.bait_file = self.pargs.region_file
         self.log.info("hs_metrics: This is a temporary solution for calculating hs metrics for samples using picard tools")
-        fc = Flowcell()
-        fc.load([os.path.join(x, self.pargs.flowcell) for x in [self.config.get("archive", "root"), self.config.get("analysis", "root")]])
-        if not fc:
-            return
-        flist = get_files(os.path.join(self.config.get("analysis", "root"), self.pargs.flowcell), fc, ftype=self.pargs.hs_file_type, project=self.pargs.project)
+        pattern = "{}.bam$".format(self.pargs.hs_file_type)
+        def filter_fn(f):
+            return re.search(pattern, f) != None
+        flist = filtered_walk(os.path.join(self.config.get("production", "root"), self.pargs.project), filter_fn=filter_fn, exclude_dirs=['nophix', 'alignments', 'fastqc', 'fastq_screen'])
         if self.pargs.input_file:
             flist = [os.path.abspath(self.pargs.input_file)]
         if not query_yes_no("Going to run hs_metrics on {} files. Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
@@ -60,7 +44,7 @@ class HsMetricsController(AbstractBaseController):
             ### Issue with calling java from
             ### subprocess:http://stackoverflow.com/questions/9795249/issues-with-wrapping-java-program-with-pythons-subprocess-module
             ### Actually not an issue: command line arguments have to be done the right way
-            cl = ["java"] + ["-{}".format(self.pargs.java_opts)] +  ["-jar", "{}/CalculateHsMetrics.jar".format(os.getenv("PICARD_HOME"))] + ["INPUT={}".format(f)] + ["TARGET_INTERVALS={}".format(self.pargs.region_file)] + ["BAIT_INTERVALS={}".format(self.pargs.region_file)] +  ["OUTPUT={}".format(f.replace(".bam", ".hs_metrics"))] + ["VALIDATION_STRINGENCY=SILENT"]
+            cl = ["java"] + ["-{}".format(self.pargs.java_opts)] +  ["-jar", "{}/CalculateHsMetrics.jar".format(os.getenv("PICARD_HOME"))] + ["INPUT={}".format(f)] + ["TARGET_INTERVALS={}".format(os.path.abspath(self.pargs.region_file))] + ["BAIT_INTERVALS={}".format(os.path.abspath(self.pargs.bait_file))] +  ["OUTPUT={}".format(f.replace(".bam", ".hs_metrics"))] + ["VALIDATION_STRINGENCY=SILENT"]
             out = self.app.cmd.command(cl)
             if out:
                 self.app._output_data["stdout"].write(out.rstrip())

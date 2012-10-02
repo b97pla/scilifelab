@@ -11,10 +11,10 @@ from scilifelab.pm.lib.flowcell import *
 
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 flowcell = "120829_SN0001_0001_AA001AAAXX"
-fc_dir = os.path.join(filedir, "data", "analysis", flowcell)
+fc_dir = os.path.join(filedir, "data", "production", flowcell)
 runinfo = os.path.join(filedir, "data", "archive", flowcell, "run_info.yaml")
 flowcell_casava = "120924_SN0002_0003_CC003CCCXX"
-fc_dir_casava = os.path.join(filedir, "data", "analysis", flowcell_casava)
+fc_dir_casava = os.path.join(filedir, "data", "production", flowcell_casava)
 samplesheet = os.path.join(filedir, "data", "archive", flowcell_casava, "C003CCCXX.csv")
 
 
@@ -37,7 +37,7 @@ class PmFlowcellTest(PmTest):
         self.app = self.make_app(argv = [])
         self.app.setup()
         fc = Flowcell()
-        fc.load([os.path.join(self.app.config.get("analysis", "root"), flowcell),
+        fc.load([os.path.join(self.app.config.get("production", "root"), flowcell),
                  os.path.join(self.app.config.get("archive", "root"), flowcell)])
         self.eq(len(fc), 11)
         self.eq(os.path.dirname(fc.filename), os.path.join(self.app.config.get("archive", "root"), flowcell))
@@ -63,7 +63,7 @@ class PmFlowcellTest(PmTest):
         print glob_pfx_str
         self.app = self.make_app(argv = [])
         self.app.setup()
-        glob_str = os.path.join(self.app.config.get("analysis", "root"), flowcell, glob_pfx_str[0])
+        glob_str = os.path.join(self.app.config.get("production", "root"), flowcell, glob_pfx_str[0])
         print glob_str
                 
     def test_6_collect_files(self):

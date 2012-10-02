@@ -1,13 +1,11 @@
-"""
-Pm Archive Module
-"""
+"""Pm Archive Module"""
 
 import os
 import yaml
 
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractExtendedBaseController
-from scilifelab.pm.lib.flowcell import *
+from scilifelab.bcbio.flowcell import *
 
 ## Main archive controller
 class ArchiveController(AbstractExtendedBaseController):

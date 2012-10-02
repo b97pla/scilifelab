@@ -1,30 +1,53 @@
 API Reference
 =============
 
-Pmtools
--------
+bcbio module
+--------------------
 
 .. toctree::
    :maxdepth: 1
 
-   pmtools
+   bcbio/index
+   bcbio/flowcell
+   bcbio/qc/index
 
-Pmtools Controller Modules
---------------------------
-
-.. toctree::
-   :maxdepth: 1
-   
-   controller/analysis
-   controller/archive
-   controller/project
-
-Pmtools Lib Modules
-----------------------
+db module
+---------
 
 .. toctree::
    :maxdepth: 1
    
-   lib/config
-   lib/runinfo
+   db/index
+   db/statusdb
+
+Project management tools
+------------------------
+
+.. toctree::
+   :maxdepth: 1
    
+   pm/pm
+   pm/core/archive
+   pm/core/production
+   pm/core/project
+   pm/lib/config
+
+
+report module
+-------------
+
+.. toctree::
+   :maxdepth: 1
+   
+   report/rl
+
+utils module
+------------
+
+.. toctree::
+   :maxdepth: 1
+
+   utils/fastq_utils
+   utils/http
+   utils/misc
+   utils/timestamp

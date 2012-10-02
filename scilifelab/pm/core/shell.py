@@ -1,4 +1,4 @@
-"""Shell extension"""
+"""Shell core module"""
 
 import subprocess
 
