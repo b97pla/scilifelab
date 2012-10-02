@@ -1,6 +1,4 @@
-"""
-Pm Output Handler
-"""
+"""Pm Output Handler"""
 import sys
 
 from cement.core import output

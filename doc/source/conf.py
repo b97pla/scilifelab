@@ -11,11 +11,11 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-VERSION = '0.1.0'
-RELEASE = '0.1.0'
+VERSION = '0.2.0'
+RELEASE = '0.2.0'
 
 import sys, os
-sys.path.insert(0, os.path.abspath('../pmtools/'))
+sys.path.insert(0, os.path.abspath('../scilifelab'))
 
 # -- General configuration -----------------------------------------------------
 
@@ -46,7 +46,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'pmtools'
+project = u'scilifelab'
 copyright = u'2012, Per Unneberg'
 
 # The version info for the project you're documenting, acts as replacement for
