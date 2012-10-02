@@ -64,16 +64,16 @@ def filtered_walk(rootdir, filter_fn, include_dirs=None, exclude_dirs=None):
 
     :param rootdir: Root directory
     :param filter_fn: Filtering function that returns boolean
-    :param include_dirs: Only traverse these directories
-    :param exclude_dirs: Exclude these directories
+    :param include_dirs: Only traverse these directories (list)
+    :param exclude_dirs: Exclude these directories (list)
 
     :returns: Filtered file list 
     """
     flist = []
     for root, dirs, files in os.walk(rootdir):
-        if include_dirs and not re.search(include_dirs, root):
+        if include_dirs and not os.path.basename(root) in include_dirs:
             continue
-        if exclude_dirs and re.search(exclude_dirs, root):
+        if exclude_dirs and os.path.basename(root) in exclude_dirs:
             continue
         flist = flist + [os.path.join(root, x) for x in filter(filter_fn, files)]
     return flist

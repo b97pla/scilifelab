@@ -197,7 +197,7 @@ class AbstractExtendedBaseController(AbstractBaseController):
                 return
             return re.search(pattern , f) != None
 
-        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), clean_filter, include_dirs="|".join(self._meta.include_dirs))
+        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), clean_filter, include_dirs=self._meta.include_dirs)
         if len(flist) == 0:
             self.app.log.info("No files matching pattern {} found".format(pattern))
             return
