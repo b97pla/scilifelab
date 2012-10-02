@@ -2,6 +2,33 @@
 import re
 from itertools import izip
 from scilifelab.db import Couch
+
+def sample_map_fn(sample_run_name, project_sample_name):
+    """Name mapping from project summary sample id to run info sample id"""
+    if not project_sample_name.startswith("P"):
+        try:
+            sid = re.search("(\d+)([A-Z])?_",sample_run_name)
+            if str(sid.group(1)) == str(project_sample_name):
+                return True
+            else: 
+                return False
+        except:
+            pass
+    if str(sample_run_name).startswith(str(project_sample_name)):
+        return True
+    elif str(sample_run_name).startswith(str(project_sample_name).rstrip("F")):
+        return True
+    elif str(sample_run_name).startswith(str(project_sample_name).rstrip("B")):
+        return True
+    ## Add cases here
+    return False
+
+def sample_map_fn_id(sample_run_name, prj_sample):
+    if 'sample_run_metrics' in prj_sample.keys():
+        return prj_sample.get('sample_run_metrics').get(sample_run_name, None)
+    else:
+        return None
+
     
 class SampleRunMetricsConnection(Couch):
     def __init__(self, **kwargs):
@@ -168,6 +195,21 @@ class ProjectSummaryConnection(Couch):
         """Make sure we don't change db from projects"""
         pass
 
+    def map_sample_run_to_project_name(self, project_id):
+        """Map sample run to project name"""
+        project = self.get_entry(project_id)
+        project_samples = project.get('samples', None)
+        d = {pid:project_samples[pid].get('sample_run_metrics', None) for pid in project_samples.keys()}
+        retlist = []
+        for pid in d.keys():
+            if d[pid]:
+                for sid in d[pid].keys():
+                    dbid = d[pid][sid]
+                    retlist.append((pid, sid, dbid))
+            else:
+                retlist.append((pid, None, None))
+        return retlist
+        
     def map_sample_run_names(self, project_id, fc_id=None):
         """Map sample run names for a project, possibly subset by fc_id, to
         sample name defined by project.
@@ -179,39 +221,30 @@ class ProjectSummaryConnection(Couch):
         """
         project = self.get_entry(project_id)
         project_samples = project.get('samples', None)
-        print len(project_samples)
+
         s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
         if fc_id:
             sample_run_samples = s_con.get_samples(fc_id, project_id)
         else:
             sample_run_samples = s_con.get_project_samples(project_id)
-        print len(sample_run_samples)
-        def sample_map_fn(sample_run_name, project_sample_name):
-            """Mapping from project summary sample id to run info sample id"""
-            if not project_sample_name.startswith("P"):
-                try:
-                    sid = re.search("(\d+)([A-Z])?_",sample_run_name)
-                    if str(sid.group(1)) == str(project_sample_name):
-                        return True
-                    else: 
-                        return False
-                except:
-                    pass
-            if str(sample_run_name).startswith(str(project_sample_name)):
-                return True
-            elif str(sample_run_name).startswith(str(project_sample_name).rstrip("F")):
-                return True
-            elif str(sample_run_name).startswith(str(project_sample_name).rstrip("B")):
-                return True
-            ## Add cases here
-            return False
 
+        ## FIX ME: This code is inefficient. Want mapping from
+        ## sample_run_metrics name to project sample name (and vice
+        ## versa) Information is (sometimes) present in
+        ## project_summary object as database id, otherwise need match
+        
+        ## sample names: get sample_run_names from project_samples if present
         sample_map = {}
         for x in sample_run_samples:
             sample_map[x["name"]] = None
             for y in project_samples.keys():
+                srm_id = sample_map_fn_id(x["name"], project_samples[str(y)])
+                self.log.debug("project sample name {} is mapped to sample_run_metrics id {}".format(srm_id, x["_id"]))
                 if sample_map_fn(x["barcode_name"], y):
+                    self.log.debug("sample_sample_run_metrics name {}, barcode name {}, id {},  is mapped to project sample name {}".format(x["name"], x["barcode_name"], x["_id"], y))
                     sample_map[str(x["name"])] = {'sample_id':x["_id"], 'project_sample':y}
+                if not srm_id is None:
+                    self.log.debug("{} {}".format(srm_id, x["_id"]))
         for x in sample_map:
             if x is None:
                 self.log.warn("No mapping from name to sample for {}".format(x))

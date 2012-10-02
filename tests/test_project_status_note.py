@@ -91,3 +91,9 @@ class TestProjectStatusNote(unittest.TestCase):
             sample_table.insert(0, ['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status'])
             paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
             make_note("{}.pdf".format(self.examples["project"]), headers, paragraphs, **param)
+
+    def test_3_sample_map(self):
+        """Test getting a sample mapping"""
+        p_con = ProjectSummaryConnection(username=self.user, password=self.pw, url=self.url)
+        sample_map = p_con.map_sample_run_to_project_name(self.examples["project"])
+        print sample_map
