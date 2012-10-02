@@ -1,7 +1,7 @@
 import os
 import unittest
 import ConfigParser
-from scilifelab.report import sequencing_success
+from scilifelab.report import sequencing_success, set_status
 from scilifelab.report.rl import make_example_sample_note, make_note, sample_note_paragraphs, sample_note_headers
 from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectSummaryConnection
 
@@ -76,11 +76,11 @@ class TestSampleDeliveryNote(unittest.TestCase):
             s_param["phix_error_rate"] = fc_con.get_phix_error_rate(str(fc), s["lane"])
             s_param['avg_quality_score'] = s_con.calc_avg_qv(s["name"])
             s_param['rounded_read_count'] = round(float(s_param['rounded_read_count'])/1e6,1) if s_param['rounded_read_count'] else None
-            s_param['success'] = sequencing_success(s_param, cutoffs)
             s_param['customer_name'] = project['samples'][sample_map[s["name"]]['project_sample']].get('customer_name', None)
-            ## Set success of run
+
             if project:
                 s_param['ordered_amount'] = p_con.get_ordered_amount(self.examples["project"])
                 s_param.update({key:project[ps_to_parameter[key]] for key in ps_to_parameter.keys() })
+            s_param['success'] = sequencing_success(s_param, cutoffs)
             s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None})
             make_note("{}.pdf".format(s["barcode_name"]), headers, paragraphs, **s_param)
