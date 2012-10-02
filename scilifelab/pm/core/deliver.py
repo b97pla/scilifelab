@@ -44,7 +44,6 @@ class DeliveryReportController(AbstractBaseController):
     def _process_args(self):
         pass
 
-
     @controller.expose(hide=True)
     def default(self):
         print self._help_text

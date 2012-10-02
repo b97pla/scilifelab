@@ -1,5 +1,5 @@
 """Database backend for connecting to statusdb"""
-
+import re
 from itertools import izip
 from scilifelab.db import Couch
     
@@ -66,7 +66,7 @@ class SampleRunMetricsConnection(Couch):
         :returns sample_ids: list of couchdb sample ids
         """
         self.log.debug("retrieving sample ids subset by sample_prj '{}'".format(sample_prj))
-        sample_ids = [self.name_fc_view[k].id for k in self.name_proj_view.keys() if self.name_proj_view[k].value == sample_prj]
+        sample_ids = [self.name_proj_view[k].id for k in self.name_proj_view.keys() if self.name_proj_view[k].value == sample_prj]
         return sample_ids
 
     def get_project_samples(self, sample_prj):
@@ -179,14 +179,24 @@ class ProjectSummaryConnection(Couch):
         """
         project = self.get_entry(project_id)
         project_samples = project.get('samples', None)
+        print len(project_samples)
         s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
         if fc_id:
             sample_run_samples = s_con.get_samples(fc_id, project_id)
         else:
             sample_run_samples = s_con.get_project_samples(project_id)
-
+        print len(sample_run_samples)
         def sample_map_fn(sample_run_name, project_sample_name):
             """Mapping from project summary sample id to run info sample id"""
+            if not project_sample_name.startswith("P"):
+                try:
+                    sid = re.search("(\d+)([A-Z])?_",sample_run_name)
+                    if str(sid.group(1)) == str(project_sample_name):
+                        return True
+                    else: 
+                        return False
+                except:
+                    pass
             if str(sample_run_name).startswith(str(project_sample_name)):
                 return True
             elif str(sample_run_name).startswith(str(project_sample_name).rstrip("F")):

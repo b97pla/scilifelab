@@ -73,6 +73,9 @@ class TestProjectStatusNote(unittest.TestCase):
             sample_map = p_con.map_sample_run_names(self.examples["project"])
             all_passed = True
             for k,v in sample_map.items():
+                if v is None:
+                    print k, v
+                    continue
                 project_sample = sample_list[v['project_sample']]
                 vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
                 vals['MOrdered'] = ordered_amount
