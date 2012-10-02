@@ -1,12 +1,10 @@
-"""
-Configuration settings
-"""
+"""Configuration settings"""
 
 import os
 from cement.core import backend
 
-config_defaults = backend.defaults('analysis', 'archive', 'config', 'project','log', 'distributed')
-config_defaults['analysis']['root']  = None
+config_defaults = backend.defaults('production', 'archive', 'config', 'project','log', 'distributed')
+config_defaults['production']['root']  = None
 config_defaults['archive']['root']  = None
 config_defaults['project']['root']  = None
 config_defaults['project']['repos']  = None

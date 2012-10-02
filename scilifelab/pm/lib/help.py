@@ -1,4 +1,4 @@
-"""help formatting"""
+"""Pm help formatting"""
 from argparse import HelpFormatter
 
 ## I personally don't like the default help formatting output from
