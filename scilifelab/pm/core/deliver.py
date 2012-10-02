@@ -1,6 +1,7 @@
 """Pm deliver module"""
 import os
 import shutil
+import itertools
 
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractBaseController
@@ -106,26 +107,26 @@ class DeliveryReportController(AbstractBaseController):
             if self.pargs.qcinfo:
                 self.app._output_data["stdout"].write("{}\t{}\t{}\n".format(s["barcode_name"], s_param["phix_error_rate"], s_param["avg_quality_score"]))
             s_param['rounded_read_count'] = round(float(s_param['rounded_read_count'])/1e6,1) if s_param['rounded_read_count'] else None
-            ## Set success of run
-            s_param['success'] = sequencing_success(s_param, cutoffs)
             s_param['customer_name'] = project['samples'][sample_map[s["name"]]['project_sample']].get('customer_name', None)
             if project:
                 s_param['ordered_amount'] = p_con.get_ordered_amount(self.pargs.project_id)
                 s_param.update({key:project[ps_to_parameter[key]] for key in ps_to_parameter.keys() })
+            ## Set success of run
+            s_param['success'] = sequencing_success(s_param, cutoffs)
             s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None})
             make_note("{}.pdf".format(s["barcode_name"]), headers, paragraphs, **s_param)
             
 
     @controller.expose(help="Make project status note")
     def project_status(self):
-        if not self._check_pargs(["project_id", "flowcell_id"]):
+        if not self._check_pargs(["project_id"]):
             return
         ## parameters
         parameters = {
             "project_name" : None,
             "customer_reference": self.pargs.customer_reference,
             "uppnex_project_id" : self.pargs.uppmax_id,
-            "finished":None,
+            "finished" : "Not finished, or cannot yet assess if finished.",
             }
         ## key mapping from sample_run_metrics to parameter keys
         srm_to_parameter = {"project_name":"sample_prj"}
@@ -151,20 +152,25 @@ class DeliveryReportController(AbstractBaseController):
 
         ## Start collecting the data
         sample_table = []
-        sample_table.append(['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status'])
         if project:
             sample_list = project['samples']
             param.update({key:project.get(ps_to_parameter[key], None) for key in ps_to_parameter.keys()})
             sample_map = p_con.map_sample_run_names(self.pargs.project_id, self.pargs.flowcell_id)
+            all_passed = True
             for k,v in sample_map.items():
                 project_sample = sample_list[v['project_sample']]
                 vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
                 vals['MOrdered'] = ordered_amount
                 vals['BarcodeSeq'] = s_con.get_entry(k, "sequence")
                 ## Set status
-                vals['Status'] = set_status() if vals['Status'] is None else vals['Status']
+                vals['Status'] = set_status(vals) if vals['Status'] is None else vals['Status']
                 vals.update({k:"N/A" for k in vals.keys() if vals[k] is None})
+                if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
                 sample_table.append([vals[k] for k in table_keys])
+            if not all_passed: param["finished"] = 'Project finished.'
+            sample_table.sort()
+            sample_table = list(sample_table for sample_table,_ in itertools.groupby(sample_table))
+            sample_table.insert(0, ['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status'])
             paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
             make_note("{}.pdf".format(self.pargs.project_id), headers, paragraphs, **param)
 
