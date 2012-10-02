@@ -1,9 +1,9 @@
-.. _pmtools.lib.config:
+.. _scilifelab.pm.lib.config:
 
-:mod:`pmtools.lib.config`
+:mod:`scilifelab.pm.lib.config`
 ----------------------------------
 
-.. automodule:: pmtools.lib.config
+.. automodule:: scilifelab.pm.lib.config
     :members:
     :undoc-members:
     :private-members:

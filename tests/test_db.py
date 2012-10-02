@@ -25,7 +25,7 @@ class TestDbConnection(unittest.TestCase):
     def test_1_connection(self):
         """Test database connection"""
         sample_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
-        self.assertEqual(sample_con.url, "http://{}:5984".format(self.url))
+        self.assertEqual(sample_con.url_string, "http://{}:5984".format(self.url))
 
     def test_2_get_flowcell(self):
         """Test getting a flowcell for a given sample"""

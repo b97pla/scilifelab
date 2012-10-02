@@ -1,7 +1,7 @@
 .. _scilifelab.utils.misc:
 
 :mod:`scilifelab.utils.misc`
-------------------------
+----------------------------
 
 .. automodule:: scilifelab.utils.misc
     :members:

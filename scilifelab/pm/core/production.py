@@ -1,6 +1,4 @@
-"""
-Pm production module
-"""
+"""Pm production module"""
 
 import sys
 import os

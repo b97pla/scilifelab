@@ -1,6 +1,5 @@
-"""
-statusdb.py
-"""
+"""Database backend for connecting to statusdb"""
+
 from itertools import izip
 from scilifelab.db import Couch
     
@@ -82,11 +81,11 @@ class SampleRunMetricsConnection(Couch):
         except:
             return None
 
-
-
 class FlowcellRunMetricsConnection(Couch):
     def __init__(self, **kwargs):
         super(FlowcellRunMetricsConnection, self).__init__(**kwargs)
+        if not self.con:
+            return
         self.db = self.con["flowcells"]
         self.name_view = {k.key:k.id for k in self.db.view("names/name", reduce=False)}
 
@@ -120,6 +119,8 @@ class FlowcellRunMetricsConnection(Couch):
 class ProjectSummaryConnection(Couch):
     def __init__(self, **kwargs):
         super(ProjectSummaryConnection, self).__init__(**kwargs)
+        if not self.con:
+            return
         self.db = self.con["projects"]
         self.name_view = {k.key:k.id for k in self.db.view("project/project_id", reduce=False)}
 
@@ -156,7 +157,7 @@ class ProjectSummaryConnection(Couch):
         """
         project = self.get_entry(project_id)
         project_samples = project.get('samples', None)
-        s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.rawurl)
+        s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
         sample_run_samples = s_con.get_samples(fc_id, project_id)
 
         ## FIX ME: Mapping must be much more general to account for anomalous cases
@@ -177,6 +178,21 @@ class ProjectSummaryConnection(Couch):
             if x is None:
                 self.log.warn("No mapping from name to sample for {}".format(x))
         return sample_map
+
+    def get_ordered_amount(self, project_id, rounded=True, dec=1):
+        """Get (rounded) ordered amount of reads in millions. 
+
+        :param project_id: project id
+        :param rounded: <boolean>
+        :param dec: <integer>, number of decimal places
+
+        :returns: ordered amount of reads if present, None otherwise
+        """
+        amount = self.get_entry(project_id, 'min_m_reads_per_sample_ordered')
+        if not amount:
+            return None
+        else:
+            return round(amount, dec)
 
 class ProjectQCSummaryConnection(Couch):
     """ProjectQCSummary. Connection to old QC database.
@@ -229,7 +245,7 @@ class ProjectQCSummaryConnection(Couch):
         """
         project = self.get_entry(project_id)
         project_samples = project['Samples']
-        s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.rawurl)
+        s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
         sample_run_samples = s_con.get_samples(fc_id, project_id)
 
         ## FIX ME: Mapping must be much more general to account for anomalous cases

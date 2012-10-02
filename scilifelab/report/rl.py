@@ -1,8 +1,4 @@
-"""
-rl.py
-
-Format reportlab documents
-"""
+"""Reportlab module for generating pdf documents"""
 
 import sys
 import os
@@ -158,8 +154,7 @@ def make_note(outfile, headers, paragraphs, **kw):
     :param paragraphs: <OrderedDict> of paragraphs
     :param kw: keyword arguments for formatting
     """
-    story = []
-    [story.append(Paragraph(x, headers[x])) for x in headers.keys()]
+    story = [Paragraph(x, headers[x]) for x in headers.keys()]
 
     for headline, paragraph in paragraphs.items():
         story.append(Paragraph(headline, paragraph.get("style", h3)))

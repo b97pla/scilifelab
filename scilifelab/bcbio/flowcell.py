@@ -1,7 +1,4 @@
-"""
-Flowcell object
-"""
-
+"""Flowcell module"""
 import os
 import sys
 import re

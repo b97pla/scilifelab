@@ -1,9 +1,9 @@
-.. _pmtools.controller.analysis:
+.. _scilifelab.pm.core.archive:
 
-:mod:`pmtools.controller.analysis`
+:mod:`scilifelab.pm.core.archive`
 ----------------------------------
 
-.. automodule:: pmtools.controller.analysis
+.. automodule:: scilifelab.pm.core.archive
     :members:
     :undoc-members:
     :private-members:

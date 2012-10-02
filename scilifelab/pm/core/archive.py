@@ -1,6 +1,4 @@
-"""
-Pm Archive Module
-"""
+"""Pm Archive Module"""
 
 import os
 import yaml

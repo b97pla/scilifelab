@@ -1,6 +1,4 @@
-"""
-Utilities for comparing time stamps
-"""
+"""Utilities for comparing time stamps"""
 import os
 from datetime import datetime
 import time
