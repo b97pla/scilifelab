@@ -2,10 +2,25 @@
 A module for handling HiSeq-specificfiles and folders
 """
 import csv
-from scilifelab.illumina import IlluminaRun
+import scilifelab.illumina as illumina
 
-class HiSeqRun(IlluminaRun):
+class HiSeqRun(illumina.IlluminaRun):
     pass
+
+    @staticmethod
+    def _samplesheet_header():
+        """Return a list of columns in the HiSeq samplesheet
+        """
+        return ["FCID",
+                "Lane",
+                "SampleID",
+                "SampleRef",
+                "Index",
+                "Description",
+                "Control",
+                "Recipe",
+                "Operator",
+                "SampleProject"] 
 
     @staticmethod
     def parse_samplesheet(samplesheet):
@@ -15,8 +30,18 @@ class HiSeqRun(IlluminaRun):
         """
         entries = []
         with open(samplesheet) as fh:
-            csvread = csv.DictReader(fh, dialect='excel')
-            entries = [row for row in csvread]
+            csvr = csv.DictReader(fh, dialect='excel')
+            entries = [row for row in csvr]
         
         return entries
+    
+    @staticmethod
+    def write_samplesheet(sdata, samplesheet):
+        """Write a .csv samplesheet from a list of entries
+        """
+        with open(samplesheet,"w") as outh:
+            csvw = csv.writer(outh)
+            csvw.writerow(HiSeqRun._samplesheet_header())
+            csvw.writerows(sdata)
+        return samplesheet
     

@@ -7,6 +7,7 @@ import random
 import string
 import bcbio.utils as utils
 import tests.generate_test_data as td
+from scripts.fastq_utils import (FastQParser, FastQWriter, demultiplex_fastq)
 import scilifelab.illumina as illumina
 from scilifelab.illumina import IlluminaRun
 
@@ -25,28 +26,78 @@ class TestIllumina(unittest.TestCase):
         # Generate some test fastq_files
         indexes = {td.generate_barcode(): [],
                    td.generate_barcode(): [],
+                   td.generate_barcode(): [],
                    td.generate_barcode(): []}
         args = {'instrument': td.generate_instrument(),
                 'run_number': random.randint(101,9999),
                 'fcid': td.generate_fc_barcode(),
                 'lane': 1,
                 'pair': True}
-        fd, f1 = tempfile.mkstemp(suffix="_R1.fastq", dir=self.rootdir)
+        fd, f1 = tempfile.mkstemp(suffix="_R1.fastq.gz", dir=self.rootdir)
         os.close(fd) 
         f2 = f1.replace("_R1","_R2")
-        f1h = open(f1,"w")
-        f2h = open(f2,"w")
+        f1h = FastQWriter(f1)
+        f2h = FastQWriter(f2)
         for n in range(1000):
             args['index'] = random.choice(indexes.keys()) 
             record = td.generate_fastq_record(**args)
             indexes[args['index']].append(record[0])
-            f1h.write("\n".join(record[0:4]))
-            f1h.write("\n")
-            f2h.write("\n".join(record[4:]))
-            f2h.write("\n")
+            f1h.write(record[0:4])
+            f2h.write(record[4:])
         f1h.close()
         f2h.close()
         
+        # Create a samplesheet to use for demultiplexing using all but the last index
+        samplesheet = f1.replace("_R1.fastq.gz",".csv")
+        sdata = []
+        for n, index in enumerate(indexes.keys()[0:-1]):
+             sdata.append([args['fcid'],
+                           str(args['lane']),
+                           "Sample_{}".format(str(n)),
+                           "unknown",
+                           index,
+                           "DemuxTest",
+                           "0",
+                           "",
+                           "",
+                           "DemuxTestProject"])
+        samplesheet = td._write_samplesheet(sdata,samplesheet)
+        
+        # Demultiplex sample files based on samplesheet
+        outfiles = demultiplex_fastq(self.rootdir,samplesheet,f1,f2)
+        outfiles = outfiles["1"]
+        
+        # Assert that the expected number of output files were returned
+        self.assertEqual(len(sdata),len(outfiles.keys()),
+                         "Demultiplexing did not return the expected number of fastq files")
+        
+        for index in outfiles.keys():
+            # Assert that the out_files was written to the correct folder
+            self.assertEqual([self.rootdir,self.rootdir],
+                             [os.path.dirname(o) for o in outfiles[index]],
+                             "The demultiplexed output was not written to the correct folder")
+            
+            # Parse the outfile and verify the output
+            headers = []
+            f1h = FastQParser(outfiles[index][0])
+            f2h = FastQParser(outfiles[index][1])
+            for r1 in f1h:
+                r2 = f2h.next()
+                r1s = r1[0].strip().split()
+                r2s = r2[0].strip().split()
+                self.assertListEqual([r1s[0],r1s[1][1:]],
+                                     [r2s[0],r2s[1][1:]],
+                                     "Header strings from paired fastq files don't match")
+                headers.append(r1[0])
+            
+            # Assert that the number of sequences matches the expected and that the headers match
+            self.assertEqual(len(headers),len(indexes[index]),
+                             "The number of demultiplexed reads in file does not match expected ({} vs {})".format(str(len(headers)),str(len(indexes[index]))))
+            self.assertListEqual(sorted(headers),sorted(indexes[index]),
+                                 "The parsed headers from demultiplexed fastq file do not match the expected")
+            
+            
+            
         
         
 class TestIlluminaRun(unittest.TestCase):

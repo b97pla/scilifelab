@@ -4,6 +4,7 @@ import random
 import datetime
 import string
 import copy
+import os
 
 def generate_fc_barcode():
     """Generate a flowcell barcode on the format ABC123CXX
