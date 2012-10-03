@@ -178,8 +178,8 @@ class RunMetricsController(AbstractBaseController):
             fcobj.parse_illumina_metrics(fullRTA=False)
             fcobj.parse_bc_metrics()
             fcobj.parse_filter_metrics()
-            fcobj.parse_samplesheet_csv()
-            fcobj.parse_run_info_yaml()
+            if not fcobj.parse_samplesheet_csv():
+                fcobj.parse_run_info_yaml()
             qc_objects.append(fcobj)
         else:
             return qc_objects
@@ -216,9 +216,10 @@ class RunMetricsController(AbstractBaseController):
             fc_kw = dict(path=fcdir, fc_date = fc_date, fc_name=fc_name)
             fcobj = FlowcellRunMetrics(**fc_kw)
             fcobj.parse_illumina_metrics(fullRTA=False)
-            fcobj.parse_bc_metrics()
+            #fcobj.parse_bc_metrics()
+            fcobj.parse_demultiplex_stats_htm()
             fcobj.parse_samplesheet_csv()
-            fcobj.parse_run_info_yaml()
+            #fcobj.parse_run_info_yaml()
             qc_objects.append(fcobj)
 
         for sample in runinfo[1:]:
@@ -284,7 +285,7 @@ class RunMetricsController(AbstractBaseController):
             return
         for obj in qc_objects:
             if self.app.pargs.debug:
-                self.log.info(obj)
+                self.log.debug(str(obj))
                 continue
             if isinstance(obj, FlowcellRunMetrics):
                 self.app.cmd.save("flowcells", obj, update_fn)

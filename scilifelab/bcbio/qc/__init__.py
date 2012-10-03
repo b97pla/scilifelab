@@ -12,7 +12,9 @@ import json
 import fnmatch
 import numpy as np
 import csv
+from collections import defaultdict
 
+from bs4 import BeautifulSoup
 
 from cement.core import backend
 LOG = backend.minimal_logger("bcbio")
@@ -682,7 +684,7 @@ class RunMetrics(dict):
 class SampleRunMetrics(RunMetrics):
     """Sample-level class for holding run metrics data"""
 
-    def __init__(self, path, flowcell, date, lane, barcode_name, barcode_id, sample_prj, sequence=None, barcode_type=None, genomes_filter_out=None):
+    def __init__(self, path, flowcell, date, lane, barcode_name, barcode_id, sample_prj, sequence, barcode_type=None, genomes_filter_out=None):
         RunMetrics.__init__(self)
         self.path = path
         self["entity_type"] = "sample_run_metrics"
@@ -697,7 +699,7 @@ class SampleRunMetrics(RunMetrics):
         self["sequence"] = sequence
         self["barcode_type"] = barcode_type
         self["genomes_filter_out"] = genomes_filter_out
-        self["name"] = "{}_{}_{}_{}".format(lane, date, flowcell, barcode_id)
+        self["name"] = "{}_{}_{}_{}".format(lane, date, flowcell, sequence)
         
         ## Metrics
         self["fastqc"] = {}
@@ -710,7 +712,7 @@ class SampleRunMetrics(RunMetrics):
         return "<sample_run_metrics {}>".format(self["name"])
 
     def __str__(self):
-        return self
+        return repr(self)
         
     def read_picard_metrics(self):
         self.log.info("read_picard_metrics for sample {}, project {}, lane {} in run {}".format(self["barcode_name"], self["sample_prj"], self["lane"], self["flowcell"]))
@@ -788,6 +790,7 @@ class FlowcellRunMetrics(RunMetrics):
         RunMetrics.__init__(self)
         self.path = path
         self.db=None
+        self.fc_name = fc_name
         self["name"] = "{}_{}".format(fc_date, fc_name)
         self["RunInfo"] = {"Id" : self["name"], "Flowcell":fc_name, "Date": fc_date, "Instrument": "NA"}
         self["run_info_yaml"] = {}
@@ -801,7 +804,7 @@ class FlowcellRunMetrics(RunMetrics):
         return "<flowcell_metrics {}>".format(self["name"])
 
     def __str__(self):
-        return self
+        return repr(self)
 
     def _parseRunInfo(self, fn="RunInfo.xml"):
         self.log.info("_parseRunInfo: going to read RunInfo.xml in directory {}".format(self.path))
@@ -822,8 +825,10 @@ class FlowcellRunMetrics(RunMetrics):
             runinfo = json.dumps([x for x in csv.reader(fp)])
             fp.close()
             self["samplesheet_csv"] = runinfo
+            return True
         except:
             self.log.warn("No such file {}".format(infile))
+            return False
             
     def parse_run_info_yaml(self, run_info_yaml="run_info.yaml"):
         self.log.info("parse_run_info_yaml: going to read {} in directory {}".format(run_info_yaml, self.path))
@@ -833,8 +838,10 @@ class FlowcellRunMetrics(RunMetrics):
             runinfo = yaml.load(fp)
             fp.close()
             self["run_info_yaml"] = runinfo
+            return True
         except:
             self.log.warn("No such file {}".format(infile))
+            return False
 
     def get_full_flowcell(self):
         vals = self["RunInfo"]["Id"].split("_")
@@ -888,3 +895,38 @@ class FlowcellRunMetrics(RunMetrics):
                 self["lanes"][str(lane)]["bc_metrics"] = data
             except:
                 self.log.warn("No bc_metrics info for lane {}".format(lane))
+
+    def parse_demultiplex_stats_htm(self):
+        """Parse the Unaligned/Basecall_Stats_*/Demultiplex_Stats.htm file
+        generated from CASAVA demultiplexing and returns barcode metrics.
+        """
+        self.log.info("parsing Demultiplex_Stats.htm")
+        htm_file = os.path.join(self.path, "Unaligned", "Basecall_Stats_{}".format(self.fc_name[1:]), "Demultiplex_Stats.htm")
+        print htm_file
+        with open(htm_file) as fh:
+            htm_doc = fh.read()
+
+        soup = BeautifulSoup(htm_doc)
+
+        # The second table in the htm file is the one with the metrics
+        table = soup.findAll("table")[1]
+
+        rows = table.findAll("tr")
+        column_gen = (row.findAll("td") for row in rows)
+        # Columns 1, 2, 4 and 10 contain Lane, Sample ID, Index sequence and the
+        # Number of reads, respectively.
+        parse_row = lambda row: {"lane": int(row[0].string), \
+                                     "name": row[1].string, \
+                                     "sequence": row[3].string, \
+                                     "read_count": int(row[9].string.replace(",", "")) // 2}
+
+        # (We divide "read_count" by 2 to get the number of read pairs)
+
+        metrics = map(parse_row, column_gen)
+
+        bc_metrics = defaultdict(dict)
+        for metric in metrics:
+            bc_metrics[metric["lane"]][metric["sequence"]] = metric
+
+        print bc_metrics
+        return dict(bc_metrics)
