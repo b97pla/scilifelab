@@ -1,8 +1,7 @@
 """Utilities for handling FastQ data"""
 import gzip
 import os
-
-PHRED_OFFSET = 33
+from scilifelab.illumina.hiseq import HiSeqRun
          
 class FastQParser:
     """Parser for fastq files, possibly compressed with gzip. 
@@ -82,13 +81,13 @@ class FastQWriter:
     def close(self):
         self._fh.close()
 
-def avgQ(record,offset=PHRED_OFFSET):
+def avgQ(record,offset=33):
     qual = record[3].strip()
     l = len(qual)
     s = sum([ord(c) for c in qual])
     return round(float(s - l*offset)/l,1)
     
-def gtQ30(record,offset=PHRED_OFFSET):
+def gtQ30(record,offset=33):
     qual = record[3].strip()
     cutoff = 30 + offset
     g = 0
@@ -122,7 +121,6 @@ def demultiplex_fastq(outdir, samplesheet, fastq1, fastq2=None):
     """Demultiplex a bcl-converted illumina fastq file. Assumes it has the index sequence
     in the header a la CASAVA 1.8+
     """
-    from scilifelab.illumina.hiseq import HiSeqRun
     outfiles = {}
     sdata = HiSeqRun.parse_samplesheet(samplesheet)
     reads = [1]
@@ -137,10 +135,10 @@ def demultiplex_fastq(outdir, samplesheet, fastq1, fastq2=None):
             outfiles[lane] = {}
         outfiles[lane][index] = []
         for read in reads:
-            fname = "{}_{}_L00{}_R{}_001.fastq.gz".format(sd['SampleID'],
-                                                       index,
-                                                       lane,
-                                                       read)
+            fname = "tmp_{}_{}_L00{}_R{}_001.fastq.gz".format(sd['SampleID'],
+                                                              index,
+                                                              lane,
+                                                              read)
             outfiles[lane][index].append(FastQWriter(os.path.join(outdir,fname)))
     
     # Parse the input file(s) and write the records to the appropriate output files
@@ -161,7 +159,17 @@ def demultiplex_fastq(outdir, samplesheet, fastq1, fastq2=None):
         for index in outfiles[lane].keys():
             for r, fh in enumerate(outfiles[lane][index]):
                 fh.close()
-                outfiles[lane][index][r] = fh.name()
+                fname = fh.name()
+                # If no sequences were written, remove the temporary file and the entry from the results
+                if os.path.getsize(fname) == 0:
+                    os.unlink(fname)
+                    del outfiles[lane][index]
+                    break
+                
+                # Rename the temporary file to a persistent name
+                nname = fname.replace("tmp_","")
+                os.rename(fname,nname)
+                outfiles[lane][index][r] = nname
     
     return outfiles
 
