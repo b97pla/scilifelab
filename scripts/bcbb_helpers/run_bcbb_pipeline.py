@@ -12,7 +12,6 @@ import argparse
 import bcbio.solexa.flowcell
 import bcbio.solexa.samplesheet
 from bcbio.pipeline.config_loader import load_config
-import scilifelab.scripts.bcbb_helpers.report_to_gdocs as report
 
 # The directory where CASAVA has written the demuxed output
 CASAVA_OUTPUT_DIR = "Unaligned"
@@ -387,7 +386,11 @@ def report_to_gdocs(fc_dir, post_process_config_file):
     run_info = os.path.join(fc_dir, "run_info.yaml")
     if os.path.exists(run_info):
         os.rename(run_info, "{}.bak".format(run_info))
-    report.main(os.path.basename(os.path.abspath(fc_dir)), post_process_config_file)
+    # Call the report_to_gdocs script
+    cmd = ["report_to_gdocs.py",
+            os.path.basename(os.path.abspath(fc_dir)),
+            post_process_config_file]
+    subprocess.check_call(cmd)
 
 if __name__ == "__main__":
 

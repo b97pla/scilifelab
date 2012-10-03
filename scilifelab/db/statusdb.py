@@ -58,6 +58,28 @@ class SampleRunMetricsConnection(Couch):
         sample_ids = self.get_sample_ids(fc_id, sample_prj)
         return [self.db.get(x) for x in sample_ids]
 
+    def get_project_sample_ids(self, sample_prj):
+        """Retrieve sample ids subset by sample_prj
+
+        :param sample_prj: sample project name
+
+        :returns sample_ids: list of couchdb sample ids
+        """
+        self.log.debug("retrieving sample ids subset by sample_prj '{}'".format(sample_prj))
+        sample_ids = [self.name_fc_view[k].id for k in self.name_proj_view.keys() if self.name_proj_view[k].value == sample_prj]
+        return sample_ids
+
+    def get_project_samples(self, sample_prj):
+        """Retrieve samples subset related to a project.
+
+        :param sample_prj: sample project name
+
+        :returns samples: list of samples
+        """
+        self.log.debug("retrieving samples subset by sample_prj '{}'".format(sample_prj))
+        sample_ids = self.get_project_sample_ids(sample_prj)
+        return [self.db.get(x) for x in sample_ids]
+        
     def set_db(self):
         """Make sure we don't change db from samples"""
         pass
@@ -146,11 +168,11 @@ class ProjectSummaryConnection(Couch):
         """Make sure we don't change db from projects"""
         pass
 
-    def map_sample_run_names(self, project_id, fc_id):
-        """Map sample run names for a project subset by fc_id to
+    def map_sample_run_names(self, project_id, fc_id=None):
+        """Map sample run names for a project, possibly subset by fc_id, to
         sample name defined by project.
 
-        :param project_id: flowcell id
+        :param project_id: project id
         :param fc_id: flowcell id
 
         :returns: dict with key sample run name and value dict with keys 'sample_id' and 'project_sample'
@@ -158,12 +180,18 @@ class ProjectSummaryConnection(Couch):
         project = self.get_entry(project_id)
         project_samples = project.get('samples', None)
         s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
-        sample_run_samples = s_con.get_samples(fc_id, project_id)
+        if fc_id:
+            sample_run_samples = s_con.get_samples(fc_id, project_id)
+        else:
+            sample_run_samples = s_con.get_project_samples(project_id)
 
-        ## FIX ME: Mapping must be much more general to account for anomalous cases
         def sample_map_fn(sample_run_name, project_sample_name):
             """Mapping from project summary sample id to run info sample id"""
             if str(sample_run_name).startswith(str(project_sample_name)):
+                return True
+            elif str(sample_run_name).startswith(str(project_sample_name).rstrip("F")):
+                return True
+            elif str(sample_run_name).startswith(str(project_sample_name).rstrip("B")):
                 return True
             ## Add cases here
             return False
