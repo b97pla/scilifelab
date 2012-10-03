@@ -6,7 +6,8 @@ import os
 import shutil
 import random
 import unittest
-import scripts.fastq_utils as fu
+import copy
+import scilifelab.utils.fastq_utils as fu
 import tests.generate_test_data as td
 import scilifelab.illumina.hiseq as hi
 
@@ -128,6 +129,11 @@ class TestFastQUtils(unittest.TestCase):
                            "",
                            "DemuxTestProject"])
              
+        # Add an entry that will not match
+        s = copy.copy(sdata[-1])
+        s[1] = str(args['lane']+1)
+        sdata.append(s)
+        
         self.samplesheet = td._write_samplesheet(sdata,samplesheet)
         self.indexes = indexes
         self.fastq_1 = f1
@@ -142,11 +148,20 @@ class TestFastQUtils(unittest.TestCase):
         
         # Demultiplex sample files based on samplesheet
         outfiles = fu.demultiplex_fastq(self.rootdir,self.samplesheet,self.fastq_1,self.fastq_2)
-        outfiles = outfiles["1"]
+        
+        # Assert that no files were returned for empty lanes
+        n = 0
+        for lane in outfiles.keys():
+            n += sum([len(ix) for ix in outfiles[lane].values() if lane != "1"])
+        self.assertEqual(0,
+                         n,
+                         "Demultiplexing should not return results for empty lane")
         
         # Assert that the expected number of output files were returned
+        outfiles = outfiles["1"]
         sdata = hi.HiSeqRun.parse_samplesheet(self.samplesheet)
-        self.assertEqual(len(sdata),len(outfiles.keys()),
+        self.assertEqual(len([s for s in sdata if s["Lane"] == "1"]),
+                         len(outfiles.keys()),
                          "Demultiplexing did not return the expected number of fastq files")
         
         for index in outfiles.keys():

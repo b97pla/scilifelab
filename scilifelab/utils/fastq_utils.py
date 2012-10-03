@@ -72,7 +72,7 @@ class FastQWriter:
         return self.fname
     
     def write(self,record):
-        self._fh.write("{}\n".format("\n".join(record)))
+        self._fh.write("\n".join(record))
         self._records_written += 1
     
     def rwritten(self):
@@ -122,6 +122,7 @@ def demultiplex_fastq(outdir, samplesheet, fastq1, fastq2=None):
     in the header a la CASAVA 1.8+
     """
     outfiles = {}
+    counts = {}
     sdata = HiSeqRun.parse_samplesheet(samplesheet)
     reads = [1]
     if fastq2 is not None:
@@ -133,7 +134,9 @@ def demultiplex_fastq(outdir, samplesheet, fastq1, fastq2=None):
         index = sd['Index']
         if lane not in outfiles:
             outfiles[lane] = {}
+            counts[lane] = {}
         outfiles[lane][index] = []
+        counts[lane][index] = 0
         for read in reads:
             fname = "tmp_{}_{}_L00{}_R{}_001.fastq.gz".format(sd['SampleID'],
                                                               index,
@@ -153,6 +156,7 @@ def demultiplex_fastq(outdir, samplesheet, fastq1, fastq2=None):
             index = header['index']
             if lane in outfiles and index in outfiles[lane]:
                 outfiles[lane][index][r].write(record)
+                counts[lane][index] += 1
     
     # Close filehandles and replace the handles with the file names
     for lane in outfiles.keys():
@@ -161,7 +165,7 @@ def demultiplex_fastq(outdir, samplesheet, fastq1, fastq2=None):
                 fh.close()
                 fname = fh.name()
                 # If no sequences were written, remove the temporary file and the entry from the results
-                if os.path.getsize(fname) == 0:
+                if counts[lane][index] == 0:
                     os.unlink(fname)
                     del outfiles[lane][index]
                     break
