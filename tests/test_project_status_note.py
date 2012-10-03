@@ -63,13 +63,17 @@ class TestProjectStatusNote(unittest.TestCase):
         if project:
             ordered_amount = p_con.get_ordered_amount(self.examples["project"])
         else:
+            return
             ordered_amount = self.pargs.ordered_million_reads
-
+            
         ## Start collecting the data
         sample_table = []
         if project:
             sample_list = project['samples']
             param.update({key:project.get(ps_to_parameter[key], None) for key in ps_to_parameter.keys()})
+            ## This is roundabout work: here I get project from p_con
+            ## again - why not use the information directly in project
+            ## above?!?
             sample_map = p_con.map_sample_run_names(self.examples["project"])
             all_passed = True
             for k,v in sample_map.items():
@@ -79,7 +83,7 @@ class TestProjectStatusNote(unittest.TestCase):
                 project_sample = sample_list[v['project_sample']]
                 vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
                 vals['MOrdered'] = ordered_amount
-                vals['BarcodeSeq'] = s_con.get_entry(k, "sequence")
+                #vals['BarcodeSeq'] = s_con.get_entry(k, "sequence")
                 ## Set status
                 vals['Status'] = set_status(vals) if vals['Status'] is None else vals['Status']
                 vals.update({k:"N/A" for k in vals.keys() if vals[k] is None})
@@ -95,5 +99,27 @@ class TestProjectStatusNote(unittest.TestCase):
     def test_3_sample_map(self):
         """Test getting a sample mapping"""
         p_con = ProjectSummaryConnection(username=self.user, password=self.pw, url=self.url)
-        sample_map = p_con.map_sample_run_to_project_name(self.examples["project"])
+        #sample_map = p_con.map_sample_run_to_project_name(self.examples["project"])
+        #print sample_map
+        sample_map = p_con.sample_map(self.examples["project"])
         print sample_map
+
+    def test_4_srm_sample_map(self):
+        """Make sample map from sample run metrics"""
+        s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
+        samples = s_con.get_project_samples(self.examples["project"])
+        sample_names = {x["name"]:x["_id"] for x in samples}
+        print len(sample_names.keys())
+        print len(list(set(sample_names.keys())))
+        print sample_names
+
+    def test_5_name_view(self):
+        """Test unique ids in name view"""
+        s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
+        name_view  = s_con.db.view("names/name", reduce=False)
+        print s_con.name_view.keys()[0:10]
+        print len(s_con.name_view.keys())
+        print len(list(set(s_con.name_view.keys())))
+        print len(name_view)
+        #print len(list(set(name_view.keys())))
+

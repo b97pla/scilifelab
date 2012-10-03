@@ -31,10 +31,12 @@ def sample_map_fn_id(sample_run_name, prj_sample):
 
     
 class SampleRunMetricsConnection(Couch):
+    ## FIXME: set time limits on which entries to include?
     def __init__(self, **kwargs):
         super(SampleRunMetricsConnection, self).__init__(**kwargs)
         self.db = self.con["samples"]
-        ## FIXME: set time limits on which entries to include?
+        ## FIXME: key 'name' may be non_unique?!? If so, all the
+        ## following views are wrong
         self.name_view = {k.key:k.id for k in self.db.view("names/name", reduce=False)}
         self.name_fc_view = {k.key:k for k in self.db.view("names/name_fc", reduce=False)}
         self.name_proj_view = {k.key:k for k in self.db.view("names/name_proj", reduce=False)}
@@ -111,6 +113,9 @@ class SampleRunMetricsConnection(Couch):
         """Make sure we don't change db from samples"""
         pass
 
+    ## FIX ME: operations on sample run metrics objects should be
+    ## separated from the connection. Either implement a
+    ## sample_run_metrics object (subclassing ViewResults)
     def calc_avg_qv(self, name):
         """Calculate average quality score for a sample based on
         FastQC results.
@@ -128,6 +133,7 @@ class SampleRunMetricsConnection(Couch):
             quality = srm["fastqc"]["stats"]["Per sequence quality scores"]["Quality"]
             return round(sum([x*int(y) for x,y in izip(count, quality)])/sum(count), 1)
         except:
+            self.log.warn("Calculation of average quality failed for sample {}, id {}".format(srm["name"], srm["_id"]))
             return None
 
 class FlowcellRunMetricsConnection(Couch):
@@ -209,6 +215,38 @@ class ProjectSummaryConnection(Couch):
             else:
                 retlist.append((pid, None, None))
         return retlist
+        
+    def sample_map(self, project_id, fc_id=None):
+        """Map project sample names to sample run names for a project,
+        possibly subset by flowcell id.
+
+        """
+        project = self.get_entry(project_id)
+        if not project:
+            return None
+        project_samples = project.get('samples', None)
+        if project_samples is None:
+            return None
+        sample_map = {k:v.get('sample_run_metrics', None) for k, v in project_samples.items()}
+        def check_duplicates(sid,d):
+            if d is None:
+                return
+            keys = ["_".join(x.split("_")[0:3]) for x in d.keys()]
+            if len(keys) != len(list(set(keys))):
+                self.log.warn("Sample run metrics duplicate for sample {}: {}".format(sid,d))
+        all_runs = {}
+        for k,v in sample_map.items():
+            check_duplicates(k, v)   
+            if not v is None:
+                for x in v.keys():
+                    if not x in all_runs.keys():
+                        all_runs[x] = [k]
+                    else:
+                        all_runs[x].append(k)
+        for k, v in all_runs.items():
+            if len(v) > 1:
+                self.log.warn("Sample run metrics duplicate over samples: sample run metrics id {} maps to {}".format(k, v))
+        return sample_map
         
     def map_sample_run_names(self, project_id, fc_id=None):
         """Map sample run names for a project, possibly subset by fc_id, to
