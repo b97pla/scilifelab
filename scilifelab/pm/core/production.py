@@ -39,8 +39,9 @@ class ProductionController(AbstractExtendedBaseController):
         if self.pargs.from_pre_casava:
             self._meta.path_id = self.pargs.flowcell
         ## This is a bug; how will this work when processing casava-folders?!?
+        ## I need to set this so as not to upset productioncontrollers process_args
         if self.command == "hs_metrics":
-            self._meta.path_id = self.pargs.flowcell
+            self._meta.path_id = self.pargs.flowcell if self.pargs.flowcell else self.pargs.project
         super(ProductionController, self)._process_args()
 
     @controller.expose(help="List runinfo contents")

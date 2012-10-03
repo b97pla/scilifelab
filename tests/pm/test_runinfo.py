@@ -7,7 +7,7 @@ import glob
 import re
 from cement.core import handler
 from test_default import PmTest
-from scilifelab.pm.lib.flowcell import *
+from scilifelab.bcbio.flowcell import *
 
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 flowcell = "120829_SN0001_0001_AA001AAAXX"
