@@ -13,6 +13,7 @@ import fnmatch
 import numpy as np
 import csv
 from collections import defaultdict
+from itertools import izip
 
 from bs4 import BeautifulSoup
 
@@ -902,31 +903,29 @@ class FlowcellRunMetrics(RunMetrics):
         """
         self.log.info("parsing Demultiplex_Stats.htm")
         htm_file = os.path.join(self.path, "Unaligned", "Basecall_Stats_{}".format(self.fc_name[1:]), "Demultiplex_Stats.htm")
-        print htm_file
         with open(htm_file) as fh:
             htm_doc = fh.read()
-
         soup = BeautifulSoup(htm_doc)
+        ## Find headers
+        allrows = soup.findAll("tr")
+        column_gen=(row.findAll("th") for row in allrows)
+        parse_row = lambda row: row 
+        headers = [h for h in map(parse_row, column_gen) if h]
 
-        # The second table in the htm file is the one with the metrics
+        ## Parse Barcode lane statistics
+        soup = BeautifulSoup(htm_doc)
         table = soup.findAll("table")[1]
-
         rows = table.findAll("tr")
         column_gen = (row.findAll("td") for row in rows)
-        # Columns 1, 2, 4 and 10 contain Lane, Sample ID, Index sequence and the
-        # Number of reads, respectively.
-        parse_row = lambda row: {"lane": int(row[0].string), \
-                                     "name": row[1].string, \
-                                     "sequence": row[3].string, \
-                                     "read_count": int(row[9].string.replace(",", "")) // 2}
-
-        # (We divide "read_count" by 2 to get the number of read pairs)
-
+        parse_row = lambda row: {headers[0][i].string:row[i].string for i in range(0, len(headers[0])) if row}
         metrics = map(parse_row, column_gen)
 
-        bc_metrics = defaultdict(dict)
-        for metric in metrics:
-            bc_metrics[metric["lane"]][metric["sequence"]] = metric
 
-        print bc_metrics
-        return dict(bc_metrics)
+        ## Parse Sample information
+        soup = BeautifulSoup(htm_doc)
+        table = soup.findAll("table")[3]
+        rows = table.findAll("tr")
+        column_gen = (row.findAll("td") for row in rows)
+        parse_row = lambda row: {headers[1][i].string:row[i].string for i in range(0, len(headers[1])) if row}
+        metrics = map(parse_row, column_gen)
+        print metrics
