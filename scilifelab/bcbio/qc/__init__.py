@@ -906,26 +906,38 @@ class FlowcellRunMetrics(RunMetrics):
         with open(htm_file) as fh:
             htm_doc = fh.read()
         soup = BeautifulSoup(htm_doc)
+        ## 
         ## Find headers
         allrows = soup.findAll("tr")
         column_gen=(row.findAll("th") for row in allrows)
         parse_row = lambda row: row 
         headers = [h for h in map(parse_row, column_gen) if h]
+        bc_header = [str(x.string) for x in headers[0]]
+        smp_header = [str(x.string) for x in headers[1]]
+        ## 'Known' headers from a Demultiplex_Stats.htm document
+        bc_header_known = ['Lane', 'Sample ID', 'Sample Ref', 'Index', 'Description', 'Control', 'Project', 'Yield (Mbases)', '% PF', '# Reads', '% of raw clusters per lane', '% Perfect Index Reads', '% One Mismatch Reads (Index)', '% of >= Q30 Bases (PF)', 'Mean Quality Score (PF)']
+        smp_header_known = ['None', 'Recipe', 'Operator', 'Directory']
+        if not bc_header == bc_header_known:
+            self.log.warn("Barcode lane statistics header information has changed. New format?\nOld format: {}\nSaw: {}".format(",".join((["'{}'".format(x) for x in bc_header_known])), ",".join(["'{}'".format(x) for x in bc_header])))
+        if not smp_header == smp_header_known:
+            self.log.warn("Sample header information has changed. New format?\nOld format: {}\nSaw: {}".format(",".join((["'{}'".format(x) for x in smp_header_known])), ",".join(["'{}'".format(x) for x in smp_header])))
+        ## Fix first header name in smp_header since htm document is mal-formatted: <th>Sample<p></p>ID</th>
+        smp_header[0] = "Sample ID"
 
+        metrics = {}
         ## Parse Barcode lane statistics
         soup = BeautifulSoup(htm_doc)
         table = soup.findAll("table")[1]
         rows = table.findAll("tr")
         column_gen = (row.findAll("td") for row in rows)
-        parse_row = lambda row: {headers[0][i].string:row[i].string for i in range(0, len(headers[0])) if row}
-        metrics = map(parse_row, column_gen)
-
+        parse_row = lambda row: {bc_header[i]:str(row[i].string) for i in range(0, len(bc_header)) if row}
+        metrics["Barcode_lane_statistics"] =  map(parse_row, column_gen)
 
         ## Parse Sample information
         soup = BeautifulSoup(htm_doc)
         table = soup.findAll("table")[3]
         rows = table.findAll("tr")
         column_gen = (row.findAll("td") for row in rows)
-        parse_row = lambda row: {headers[1][i].string:row[i].string for i in range(0, len(headers[1])) if row}
-        metrics = map(parse_row, column_gen)
-        print metrics
+        parse_row = lambda row: {smp_header[i]:str(row[i].string) for i in range(0, len(smp_header)) if row}
+        metrics["Sample_information"] = map(parse_row, column_gen)
+        return metrics
