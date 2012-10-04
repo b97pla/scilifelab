@@ -4,7 +4,7 @@ import itertools
 import ConfigParser
 from scilifelab.report import sequencing_success
 from scilifelab.report.rl import make_example_project_note, make_note, project_note_paragraphs, project_note_headers, make_sample_table
-from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectQCSummaryConnection, ProjectSummaryConnection
+from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectSummaryConnection
 
 filedir = os.path.abspath(os.path.realpath(os.path.dirname(__file__)))
 
@@ -60,6 +60,9 @@ class TestProjectStatusNote(unittest.TestCase):
         headers = project_note_headers()
         param = parameters
         project = p_con.get_entry(self.examples["project"])
+        if not project:
+            print "No project named {}".format(self.examples["project"])
+            return
         if project:
             ordered_amount = p_con.get_ordered_amount(self.examples["project"])
         else:
@@ -68,41 +71,48 @@ class TestProjectStatusNote(unittest.TestCase):
             
         ## Start collecting the data
         sample_table = []
-        if project:
-            sample_list = project['samples']
-            param.update({key:project.get(ps_to_parameter[key], None) for key in ps_to_parameter.keys()})
-            ## This is roundabout work: here I get project from p_con
-            ## again - why not use the information directly in project
-            ## above?!?
-            sample_map = p_con.map_sample_run_names(self.examples["project"])
-            all_passed = True
-            for k,v in sample_map.items():
-                if v is None:
-                    print k, v
-                    continue
-                project_sample = sample_list[v['project_sample']]
-                vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
-                vals['MOrdered'] = ordered_amount
-                #vals['BarcodeSeq'] = s_con.get_entry(k, "sequence")
-                ## Set status
-                vals['Status'] = set_status(vals) if vals['Status'] is None else vals['Status']
-                vals.update({k:"N/A" for k in vals.keys() if vals[k] is None})
-                if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
-                sample_table.append([vals[k] for k in table_keys])
-            if all_passed: param["finished"] = 'Project finished.'
-            sample_table.sort()
-            sample_table = list(sample_table for sample_table,_ in itertools.groupby(sample_table))
-            sample_table.insert(0, ['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status'])
-            paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
-            make_note("{}.pdf".format(self.examples["project"]), headers, paragraphs, **param)
+        sample_list = project['samples']
+        param.update({key:project.get(ps_to_parameter[key], None) for key in ps_to_parameter.keys()})
+        samples = p_con.map_name_to_srm(self.examples["project"], check_consistency=True, use_bc_map=True)
+        all_passed = True
+        for k,v in samples.items():
+            if k=="Unexpected":
+                continue
+            project_sample = sample_list[k]
+            vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
+            vals['MOrdered'] = ordered_amount
+            vals['BarcodeSeq'] = s_con.get_entry(v.keys()[0], "sequence")
+            
+            ## Set status
+            vals['Status'] = set_status(vals) if vals['Status'] is None else vals['Status']
+            vals.update({k:"N/A" for k in vals.keys() if vals[k] is None})
+            if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
+            sample_table.append([vals[k] for k in table_keys])
+        if all_passed: param["finished"] = 'Project finished.'
+        sample_table.sort()
+        sample_table = list(sample_table for sample_table,_ in itertools.groupby(sample_table))
+        sample_table.insert(0, ['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status'])
+        paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
+        make_note("{}.pdf".format(self.examples["project"]), headers, paragraphs, **param)
 
     def test_3_sample_map(self):
         """Test getting a sample mapping"""
         p_con = ProjectSummaryConnection(username=self.user, password=self.pw, url=self.url)
-        #sample_map = p_con.map_sample_run_to_project_name(self.examples["project"])
-        #print sample_map
-        sample_map = p_con.sample_map(self.examples["project"])
+        sample_map = p_con.map_name_to_srm(self.examples["project"], use_ps_map=False, check_consistency=True)
         print sample_map
+
+    def test_3_sample_map_fc(self):
+        """Test getting a sample mapping subset by flowcell"""
+        p_con = ProjectSummaryConnection(username=self.user, password=self.pw, url=self.url)
+        sample_map = p_con.map_name_to_srm(self.examples["project"], self.examples["flowcell"], use_ps_map=False, check_consistency=True)
+        print sample_map
+
+    def test_4_srm_map(self):
+        """Test getting a sample mapping from srm to project samples"""
+        p_con = ProjectSummaryConnection(username=self.user, password=self.pw, url=self.url)
+        samples = p_con.map_srm_to_name(self.examples["project"], fc_id=self.examples["flowcell"], use_ps_map=False, check_consistency=True)
+        print samples
+
 
     def test_4_srm_sample_map(self):
         """Make sample map from sample run metrics"""
