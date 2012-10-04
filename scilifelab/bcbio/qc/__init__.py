@@ -685,7 +685,7 @@ class RunMetrics(dict):
 class SampleRunMetrics(RunMetrics):
     """Sample-level class for holding run metrics data"""
 
-    def __init__(self, path, flowcell, date, lane, barcode_name, barcode_id, sample_prj, sequence, barcode_type=None, genomes_filter_out=None):
+    def __init__(self, path, flowcell, date, lane, barcode_name, barcode_id, sample_prj, sequence="NoIndex", barcode_type=None, genomes_filter_out=None):
         RunMetrics.__init__(self)
         self.path = path
         self["entity_type"] = "sample_run_metrics"
@@ -722,7 +722,7 @@ class SampleRunMetrics(RunMetrics):
                             "{}_[0-9]+_[0-9A-Za-z]+_{}(_nophix)?-.*.(align|hs|insert|dup)_metrics".format(self["lane"], self["barcode_id"])])
         files = self.filter_files(pattern)
         if len(files) == 0:
-            self.log.warn("no picard metrics files for sample {}".format(self["barcode_name"]))
+            self.log.warn("no picard metrics files for sample {}; pattern {}".format(self["barcode_name"], pattern))
             return 
         try:
             self.log.debug("files {}".format(",".join(files)))
@@ -783,6 +783,9 @@ class SampleRunMetrics(RunMetrics):
         self.log.debug("parse_bc_metrics for sample {}, project {} in flowcell {}".format(self["barcode_name"], self["sample_prj"], self["flowcell"]))
         pattern = "{}_[0-9]+_[0-9A-Za-z]+(_nophix)?[\._]bc[\._]metrics".format(self["lane"])
         files = self.filter_files(pattern)
+        if len(files) == 0:
+            self.log.debug("no bc metrics files for sample {}; pattern {}".format(self["barcode_name"], pattern))
+            return 
         self.log.debug("files {}".format(",".join(files)))
         try:
             parser = MetricsParser()
@@ -807,6 +810,7 @@ class FlowcellRunMetrics(RunMetrics):
         self["samplesheet_csv"] = {}
         self._lanes = [1,2,3,4,5,6,7,8]
         self["lanes"] = {str(k):{"lane":str(k), "filter_metrics":{}, "bc_metrics":{}} for k in self._lanes}
+        self["illumina"] = {}
         self._parseRunInfo(runinfo)
         self._collect_files()
 
@@ -871,7 +875,7 @@ class FlowcellRunMetrics(RunMetrics):
             for file in files:
                 if file.endswith(".xml"):
                     fn.append(os.path.join(root, file))
-        self.log.debug("RTA files {}".format(",".join(fn)))
+        self.log.debug("Found {} RTA files {}...".format(len(fn), ",".join(fn[0:10])))
         parser = IlluminaXMLParser()
         metrics = parser.parse(fn, fullRTA)
         self["illumina"] = metrics
@@ -916,6 +920,9 @@ class FlowcellRunMetrics(RunMetrics):
         """
         htm_file = os.path.join(self.path, "Unaligned", "Basecall_Stats_{}".format(self.fc_name[1:]), "Demultiplex_Stats.htm")
         self.log.debug("parsing {}".format(htm_file))
+        if not os.path.exists(htm_file):
+            self.log.warn("No such file {}".format(htm_file))
+            return
         with open(htm_file) as fh:
             htm_doc = fh.read()
         soup = BeautifulSoup(htm_doc)

@@ -31,7 +31,8 @@ class RunMetricsController(AbstractBaseController):
             (['--pre_casava'], dict(help="Toggle casava structure", default=False, action="store_true")),
             (['--project'], dict(help="Project id", default=None, action="store", type=str)),
             (['--sample'], dict(help="Sample id", default=None, action="store", type=str)),
-            (['--mtime'], dict(help="Last modification time of directory (days): skip if older. Defaults to 1 day.", default=1, action="store", type=int))
+            (['--mtime'], dict(help="Last modification time of directory (days): skip if older. Defaults to 1 day.", default=1, action="store", type=int)),
+            (['--remap'], dict(help="WARNING: temporary fix to remap objects to LANE_DATE_FC_BCSEQUENCE.", default=False, action="store_true")),
             ]
 
     @controller.expose(hide=True)
@@ -186,11 +187,13 @@ class RunMetricsController(AbstractBaseController):
         for info in runinfo:
             if not info.get("multiplex", None):
                 self.app.log.warn("No multiplex information for lane {}".format(info.get("lane")))
-                continue
+                sample.update({k: info.get(k, None) for k in ('analysis', 'description', 'flowcell_id', 'lane')})
+                sample_kw = dict(path=fcdir, flowcell=fc_name, date=fc_date, lane=sample.get('lane', None), barcode_name=sample.get('name', None), sample_prj=sample.get('sample_prj', None),
+                                 barcode_id=sample.get('barcode_id', None), sequence=sample.get('sequence', "NoIndex"))
             for sample in info["multiplex"]:
                 sample.update({k: info.get(k, None) for k in ('analysis', 'description', 'flowcell_id', 'lane')})
                 sample_kw = dict(path=fcdir, flowcell=fc_name, date=fc_date, lane=sample['lane'], barcode_name=sample['name'], sample_prj=sample.get('sample_prj', None),
-                                 barcode_id=sample['barcode_id'], sequence=sample['sequence'])
+                                 barcode_id=sample['barcode_id'], sequence=sample.get('sequence', "NoIndex"))
                 obj = SampleRunMetrics(**sample_kw)
                 obj.read_picard_metrics()
                 obj.parse_fastq_screen()
@@ -259,6 +262,12 @@ class RunMetricsController(AbstractBaseController):
 
     @controller.expose(help="Upload run metrics to statusdb")
     def upload_qc(self):
+        if self.pargs.remap:
+            self.app.log.info("using update_remap_fn")
+            update_fn_ptr = update_remap_fn
+        else:
+            self.app.log.info("using update_fn")
+            update_fn_ptr = update_fn
         if not self._check_pargs(['flowcell', 'analysis', 'url']):
             return
         runinfo_csv = os.path.join(os.path.abspath(self.pargs.flowcell), "{}.csv".format(self._fc_id()))
@@ -280,17 +289,14 @@ class RunMetricsController(AbstractBaseController):
             self.app._meta.cmd_handler = 'couchdb'
             self.app._setup_cmd_handler()
         self.app.cmd.connect(self.pargs.url, self.pargs.port)
-        db = self.app.cmd.db("qc")
-        if not db and not self.pargs.dry_run:
-            return
         for obj in qc_objects:
             if self.app.pargs.debug:
-                self.log.debug(str(obj))
+                self.log.debug("{}: {}".format(str(obj), obj["_id"]))
                 continue
             if isinstance(obj, FlowcellRunMetrics):
-                self.app.cmd.save("flowcells", obj, update_fn)
+                self.app.cmd.save("flowcells", obj, update_fn_ptr)
             if isinstance(obj, SampleRunMetrics):
-                self.app.cmd.save("samples", obj, update_fn)
+                self.app.cmd.save("samples", obj, update_fn_ptr)
 
 def update_fn(db, obj):
     t_utc = utc_time()
@@ -321,6 +327,69 @@ def update_fn(db, obj):
         obj["_rev"] = dbobj.get("_rev")
         obj["_id"] = dbobj.get("_id")
         return obj
+
+def update_remap_fn(db, obj):
+    t_utc = utc_time()
+    def equal(a, b):
+        a_keys = [str(x) for x in a.keys() if x not in ["_id", "_rev", "creation_time", "modification_time"]]
+        b_keys = [str(x) for x in b.keys() if x not in ["_id", "_rev", "creation_time", "modification_time"]]
+        keys = list(set(a_keys + b_keys))
+        return {k:a.get(k, None) for k in keys} == {k:b.get(k, None) for k in keys}
+
+    if isinstance(obj, FlowcellRunMetrics):
+        print "Working on FlowcellRunMetrics"
+        view = db.view("names/id_to_name")
+        obj_name = obj["name"]
+    if isinstance(obj, SampleRunMetrics):
+        print "Working on SampleRunMetrics"
+        view = db.view("names/id_to_name")
+        sample_bc_to_seq = {}
+        sample_seq_to_bc = {}
+        for k in db:
+            dbobj = db.get(k)
+            if not dbobj:
+                continue
+            if not "name" in dbobj:
+                print dbobj
+                
+            sample_seq_id = "{}_{}_{}_{}".format(obj.get("lane"), obj.get("date"), obj.get("flowcell"), obj.get("sequence", "NoIndex"))
+            if not sample_seq_id in sample_seq_to_bc.keys():
+                sample_seq_to_bc[sample_seq_id] = [k]
+            else:
+                sample_seq_to_bc[sample_seq_id].append(k)
+            if not dbobj["name"] in sample_bc_to_seq.keys():
+                sample_bc_to_seq[dbobj["name"]] = [k]
+            else:
+                sample_bc_to_seq[dbobj["name"]].append(k)
+                obj_name = "{}_{}_{}_{}".format(obj["lane"], obj["date"], obj["flowcell"], obj["barcode_id"])
+            for k,v in sample_bc_to_seq.items():
+                if len(v) > 1:
+                    print "WARNING: duplicate sample_bcid entry: {}, {}".format(k, v)
+            for k,v in sample_seq_to_bc.items():
+                if len(v) > 1:
+                    print "WARNING: duplicate sample_seq_id entry: {}, {}".format(k, v)
+
+    d_view = {k.value:k for k in view}
+    dbid = d_view.get(obj_name, None)
+    ## Make sure that dbid only has single entry for sample run metrics
+    if isinstance(obj, SampleRunMetrics):
+        if len(sample_bc_to_seq[dbid.id]):
+            self.log.warn("Duplicate entry for sample {}, barcode name {}, sample seq id {}".format(obj["barcode_name"], obj_bc_name, sample_bc_to_seq[dbid.id]))
+    dbobj = None
+    if dbid:
+        dbobj = db.get(dbid.id, None)
+    if dbobj is None:
+        obj["creation_time"] = t_utc
+        return obj
+    if equal(obj, dbobj):
+        return None
+    else:
+        obj["creation_time"] = dbobj.get("creation_time")
+        obj["modification_time"] = t_utc
+        obj["_rev"] = dbobj.get("_rev")
+        obj["_id"] = dbobj.get("_id")
+        return obj
+
 
 def load():
     """Called by the framework when the extension is 'loaded'."""

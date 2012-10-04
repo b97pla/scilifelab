@@ -34,9 +34,26 @@ class TestQCUpload(unittest.TestCase):
             self.examples = {"sample":config.get("examples", "sample"),
                              "flowcell":config.get("examples", "flowcell"),
                              "project":config.get("examples", "project")}
+            self.fcrm = FlowcellRunMetrics(**self.fc_kw)
+            self.srm  = SampleRunMetrics(**self.sample_kw)
 
     def test_1_demuxstats(self):
-        obj = FlowcellRunMetrics(**self.fc_kw)
-        metrics = obj.parse_demultiplex_stats_htm()
+        #obj = FlowcellRunMetrics(**self.fc_kw)
+        metrics = self.fcrm.parse_demultiplex_stats_htm()
         print metrics["Barcode_lane_statistics"][0]
-            
+
+    def test_2_map_srmseqid_to_srmid(self):
+        """Map srm seq id names to srm ids"""
+        sample_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
+        sample_map = {}
+        for k in sample_con.db:
+            obj = sample_con.db.get(k)
+            sample_seq_id = "{}_{}_{}_{}".format(obj.get("lane"), obj.get("date"), obj.get("flowcell"), obj.get("sequence", "NoIndex"))
+            if not sample_seq_id in sample_map.keys():
+                sample_map[sample_seq_id] = [k]
+            else:
+                print "WARNING: duplicate for {}".format(sample_seq_id)
+                sample_map[sample_seq_id].append(k)
+        for k,v in sample_map.items():
+            if len(v) > 1:
+                print k, v

@@ -80,7 +80,9 @@ class TestSampleDeliveryNote(unittest.TestCase):
 
             if project:
                 s_param['ordered_amount'] = p_con.get_ordered_amount(self.examples["project"])
-                s_param.update({key:project[ps_to_parameter[key]] for key in ps_to_parameter.keys() })
+                s_param['customer_reference'] = s_param.get('customer_reference', project['customer_reference'])
+                s_param['uppnex_project_id'] = s_param.get('uppnex_project_id', project['uppnex_id'])
             s_param['success'] = sequencing_success(s_param, cutoffs)
             s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None})
             make_note("{}.pdf".format(s["barcode_name"]), headers, paragraphs, **s_param)
+

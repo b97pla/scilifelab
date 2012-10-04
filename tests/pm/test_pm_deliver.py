@@ -37,4 +37,14 @@ class PmProductionTest(PmTest):
         handler.register(DeliveryReportController)
         self._run_app()
 
+    def test_2_sample_status_custom(self):
+        """Test sample status note generation with command line customizations"""
+        self.app = self.make_app(argv = ['report', 'sample_status', '--user', self.user, '--password', self.pw, '--url', self.url, self.examples["project"], self.examples["flowcell"], '--debug', '--customer_reference', 'MyCustomerReference', '--uppnex_id', 'MyUppnexID', '--ordered_million_reads', '10'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        handler.register(DeliveryReportController)
+        self._run_app()
 
+    def test_2_project_status_custom(self):
+        """Test project status note generation with command line customizations"""
+        self.app = self.make_app(argv = ['report', 'project_status', '--user', self.user, '--password', self.pw, '--url', self.url, self.examples["project"], self.examples["flowcell"], '--debug', '--customer_reference', 'MyCustomerReference', '--uppnex_id', 'MyUppnexID'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        handler.register(DeliveryReportController)
+        self._run_app()
