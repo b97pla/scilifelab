@@ -2,12 +2,24 @@
 import os
 import shutil
 import itertools
+import pprint
 
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.report import sequencing_success, set_status
 from scilifelab.report.rl import *
 from scilifelab.db.statusdb import *
+
+## QC data cutoff values
+qc_cutoff = {
+    'rnaseq':{'PCT_PF_READS_ALIGNED':70,'PERCENT_DUPLICATION':30},
+    'reseq':{'PCT_PF_READS_ALIGNED':70,'PERCENT_DUPLICATION':30},
+    'seqcap':{'PCT_PF_READS_ALIGNED':70,'PERCENT_ON_TARGET':60, 'PCT_TARGET_BASES_10X':90, 'PERCENT_DUPLICATION':30},
+    'customcap':{'PCT_PF_READS_ALIGNED':70, 'PERCENT_DUPLICATION':30},
+    'finished':{},
+    }
+## Mapping from genomics project list application names
+application_map = {'RNA-seq (Total RNA)':'rnaseq','Resequencing':'reseq', 'Exome capture':'seqcap', 'Custom':'customcap', 'Finished library':'finished' }
 
 ## Main delivery controller
 class DeliveryController(AbstractBaseController):
@@ -23,7 +35,7 @@ class DeliveryController(AbstractBaseController):
     @controller.expose(hide=True)
     def default(self):
         self._not_implemented()
-    
+
 ## Main delivery controller
 class DeliveryReportController(AbstractBaseController):
     """
@@ -31,7 +43,7 @@ class DeliveryReportController(AbstractBaseController):
     """
     class Meta:
         label = 'report'
-        description = 'Make delivery reports'
+        description = 'Make delivery reports and assess qc'
         arguments = [
             (['project_id'], dict(help="Project id. Standard format is 'J.Doe_00_00'", default=None, nargs="?")),
             (['flowcell_id'], dict(help="Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?")),
@@ -41,7 +53,8 @@ class DeliveryReportController(AbstractBaseController):
             (['-q', '--qcinfo'], dict(help="Write qcinfo to console", default=False, action="store_true")),
             (['--check_consistency'], dict(help="Check consistency of project sample name mapping to sample run metrics names", default=False, action="store_true")),
             (['--use_ps_map'], dict(help="Use project summary mapping in cases where no sample_run_metrics is available", default=True, action="store_false")),
-            (['--use_bc_map'], dict(help="Use sample run metrics barcode mapping in cases where no sample_run_metrics is available", default=False, action="store_true"))
+            (['--use_bc_map'], dict(help="Use sample run metrics barcode mapping in cases where no sample_run_metrics is available", default=False, action="store_true")),
+            (['--application'], dict(help="Set application for qc evaluation. One of '{}'".format(",".join(qc_cutoff.keys())), action="store", type=str, default=None))
             ]
 
     def _process_args(self):
@@ -50,6 +63,36 @@ class DeliveryReportController(AbstractBaseController):
     @controller.expose(hide=True)
     def default(self):
         print self._help_text
+
+    @controller.expose(help="Print summary QC data for a flowcell/project for application QC control")
+    def qc(self):
+        if not self._check_pargs(["project_id"]):
+            return
+        header = ["project","sample","lane","flowcell", "date", "application", "TOTAL_READS",
+                  "MEAN_INSERT_SIZE","GENOME_SIZE","FOLD_ENRICHMENT", "PCT_USABLE_BASES_ON_TARGET",
+                  "PERCENT_ON_TARGET", "PERCENT_DUPLICATION", "PCT_TARGET_BASES_10X", "PCT_PF_READS_ALIGNED", "status"]
+
+        s_con = SampleRunMetricsConnection(username=self.pargs.user, password=self.pargs.password, url=self.pargs.url)
+        qc_data = s_con.get_qc_data(self.pargs.project_id, self.pargs.flowcell_id)
+        def assess_qc(x):
+            status = "PASS"
+            app_label = application_map[x["application"]] if x["application"] else self.pargs.application 
+            if app_label:
+                for k in qc_cutoff[app_label].keys():
+                    self.log.debug("assessing qc metric {}".format(k))
+                    if k == "PERCENT_DUPLICATION":
+                        if float(x[k]) > qc_cutoff[app_label][k]: 
+                            status = "FAIL"
+                    else:
+                        if float(x[k]) < qc_cutoff[app_label][k]:
+                            status = "FAIL"
+            return [x["project"], x["sample"],x["lane"],x["flowcell"], x["date"], x["application"], x["TOTAL_READS"],
+                    "{:.1f}".format(float(x["MEAN_INSERT_SIZE"])),x["GENOME_SIZE"],"{:.1f}".format(float(x["FOLD_ENRICHMENT"])), "{:.1f}".format(float(x["PCT_USABLE_BASES_ON_TARGET"])),
+                    "{:.1f}".format(float(x["PERCENT_ON_TARGET"])),"{:.1f}".format(float(x["PERCENT_DUPLICATION"])),"{:.1f}".format(float(x["PCT_TARGET_BASES_10X"])), "{:.1f}".format(float(x["PCT_PF_READS_ALIGNED"])), status]
+        self.app._output_data["stdout"].write("\t".join(header) + "\n")
+        for k, v in qc_data.items():
+            y = [str(x) for x in assess_qc(v)]
+            self.app._output_data["stdout"].write("\t".join(y) + "\n")
 
     @controller.expose(help="Make sample status note")
     def sample_status(self):
