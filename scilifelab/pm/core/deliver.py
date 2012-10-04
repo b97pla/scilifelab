@@ -35,9 +35,9 @@ class DeliveryReportController(AbstractBaseController):
         arguments = [
             (['project_id'], dict(help="Project id. Standard format is 'J.Doe_00_00'", default=None, nargs="?")),
             (['flowcell_id'], dict(help="Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?")),
-            (['-u', '--uppmax_id'], dict(help="Manually insert Uppnex project ID into the report.", default=None, action="store", type=str)),
+            (['-u', '--uppnex_id'], dict(help="Manually insert Uppnex project ID into the report.", default=None, action="store", type=str)),
             (['-o', '--ordered_million_reads'], dict(help="Manually insert the ordered number of read pairs (in millions)", default=None, action="store", type=str)),
-            (['-r', '--customer-reference'], dict(help="Manually insert customer reference (the customer's name for the project) into reports", default=None, action="store", type=str)),
+            (['-r', '--customer_reference'], dict(help="Manually insert customer reference (the customer's name for the project) into reports", default=None, action="store", type=str)),
             (['-q', '--qcinfo'], dict(help="Write qcinfo to console", default=False, action="store_true")),
             ]
 
@@ -61,7 +61,7 @@ class DeliveryReportController(AbstractBaseController):
         parameters = {
             "project_name" : None,
             "customer_reference": self.pargs.customer_reference,
-            "uppnex_project_id" : self.pargs.uppmax_id,
+            "uppnex_project_id" : self.pargs.uppnex_id,
             "ordered_amount" : self.pargs.ordered_million_reads,
             "start_date" : None,
             "FC_id" : None,
@@ -76,13 +76,12 @@ class DeliveryReportController(AbstractBaseController):
         ## key mapping from sample_run_metrics to parameter keys
         srm_to_parameter = {"project_name":"sample_prj", "FC_id":"flowcell", 
                             "scilifelab_name":"barcode_name", "start_date":"date", "rounded_read_count":"bc_count"}
-        ## mapping project_summary to parameter keys
-        ps_to_parameter = {"customer_reference":"customer_reference", "uppnex_project_id":"uppnex_id"}
 
-        ## mapping project sample to table
-        table_keys = ['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status']
-        prjs_to_sample = {'customer_name':'customer_name'}
+        # ## mapping project sample to table
+        # table_keys = ['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status']
+        # prjs_to_sample = {'customer_name':'customer_name'}
 
+        self.log.debug("got parameters {}".format(parameters))
         ## Write qcinfo if needed
         if self.pargs.qcinfo:
             self.app._output_data["stdout"].write("*** Quality stats ***\n")
@@ -98,6 +97,7 @@ class DeliveryReportController(AbstractBaseController):
         project = p_con.get_entry(self.pargs.project_id)
         sample_map = p_con.map_sample_run_names(self.pargs.project_id, self.pargs.flowcell_id)
         for s in samples:
+            self.log.debug("working on sample {}, id {}".format(s["name"], s["barcode_name"], s["_id"]))
             s_param = parameters
             s_param.update({key:s[srm_to_parameter[key]] for key in srm_to_parameter.keys()})
             fc = "{}_{}".format(s["date"], s["flowcell"])
@@ -108,8 +108,9 @@ class DeliveryReportController(AbstractBaseController):
             s_param['rounded_read_count'] = round(float(s_param['rounded_read_count'])/1e6,1) if s_param['rounded_read_count'] else None
             s_param['customer_name'] = project['samples'][sample_map[s["name"]]['project_sample']].get('customer_name', None)
             if project:
-                s_param['ordered_amount'] = p_con.get_ordered_amount(self.pargs.project_id)
-                s_param.update({key:project[ps_to_parameter[key]] for key in ps_to_parameter.keys() })
+                s_param['ordered_amount'] = s_param.get('orderded_amount', p_con.get_ordered_amount(self.pargs.project_id))
+                s_param['customer_reference'] = s_param.get('customer_reference', project.get('customer_reference', None))
+                s_param['uppnex_project_id'] = s_param.get('uppnex_project_id', project.get('uppnex_id',None))
             ## Set success of run
             s_param['success'] = sequencing_success(s_param, cutoffs)
             s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None})
@@ -124,15 +125,12 @@ class DeliveryReportController(AbstractBaseController):
         parameters = {
             "project_name" : None,
             "customer_reference": self.pargs.customer_reference,
-            "uppnex_project_id" : self.pargs.uppmax_id,
+            "uppnex_project_id" : self.pargs.uppnex_id,
             "finished" : "Not finished, or cannot yet assess if finished.",
             }
-        ## key mapping from sample_run_metrics to parameter keys
-        srm_to_parameter = {"project_name":"sample_prj"}
         ## mapping project_summary to parameter keys
-        ps_to_parameter = {"customer_reference":"customer_reference", "uppnex_project_id":"uppnex_id", "scilife_name":"scilife_name", "customer_name":"customer_name", "project_name":"project_id"}
+        ps_to_parameter = {"scilife_name":"scilife_name", "customer_name":"customer_name", "project_name":"project_id"}
         ## mapping project sample to table
-        srm_to_table = {'BarcodeSeq':'sequence'}
         table_keys = ['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status']
         prjs_to_table = {'ScilifeID':'scilife_name', 'CustomerID':'customer_name', 'MSequenced':'m_reads_sequenced', 'MOrdered':'min_m_reads_per_sample_ordered', 'Status':'status'}
         
@@ -154,6 +152,8 @@ class DeliveryReportController(AbstractBaseController):
         if project:
             sample_list = project['samples']
             param.update({key:project.get(ps_to_parameter[key], None) for key in ps_to_parameter.keys()})
+            param["customer_reference"] = param.get("customer_reference", project.get("customer_reference", None))
+            param["uppnex_project_id"] = param.get("uppnex_project_id", project.get("uppnex_project_id", None))
             sample_map = p_con.map_sample_run_names(self.pargs.project_id, self.pargs.flowcell_id)
             all_passed = True
             for k,v in sample_map.items():
