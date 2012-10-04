@@ -6,7 +6,7 @@ import yaml
 from cement.core import handler
 from test_default import PmTest, PmTestOutputHandler
 from scilifelab.pm.core.archive import ArchiveController
-from scilifelab.pm.lib.flowcell import *
+from scilifelab.bcbio.flowcell import *
 
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 runinfo = os.path.join(filedir, "data", "archive", "120829_SN0001_0001_AA001AAAXX", "run_info.yaml")

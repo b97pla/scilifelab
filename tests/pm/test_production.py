@@ -9,7 +9,7 @@ from cement.core import handler
 from cement.utils import shell
 from test_default import PmTest
 from scilifelab.pm.core.production import ProductionController
-from scilifelab.pm.utils.misc import walk
+from scilifelab.utils.misc import walk
 
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 delivery_dir = os.path.abspath(os.path.join(filedir, "data", "projects", "j_doe_00_01", "data"))
