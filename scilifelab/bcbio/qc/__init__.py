@@ -539,7 +539,7 @@ class FlowcellRunMetrics(RunMetrics):
         infile = os.path.join(os.path.abspath(self.path), fn)
         self.log.debug("_parseRunInfo: going to read {}".format(infile))
         try:
-            fp = open()
+            fp = open(infile)
             parser = RunInfoParser()
             data = parser.parse(fp)
             fp.close()
