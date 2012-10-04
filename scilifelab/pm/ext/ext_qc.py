@@ -173,12 +173,14 @@ class RunMetricsController(AbstractBaseController):
             return
         runinfo_csv = os.path.join(os.path.abspath(self.pargs.flowcell), "{}.csv".format(self._fc_id()))
         runinfo_yaml = os.path.join(os.path.abspath(self.pargs.flowcell), "run_info.yaml")
-        if os.path.exists(runinfo_yaml):
+        ## Have to set pre-casava flag!
+        if self.pargs.pre_casava:
             self.log.info("Assuming pre-casava based file structure for {}".format(self._fc_id()))
             qc_objects = self._collect_pre_casava_qc()
         else:
             self.log.info("Assuming casava based file structure for {}".format(self._fc_id()))
             qc_objects = self._collect_casava_qc()
+
         if len(qc_objects) == 0:
             self.log.info("No out-of-date qc objects for {}".format(self._fc_id()))
             return
