@@ -28,7 +28,6 @@ class RunMetricsController(AbstractBaseController):
             (['flowcell'], dict(help="Flowcell directory", nargs="?", default=None)),
             ## FIXME: analysis is a confusing name
             (['analysis'], dict(help="Root path to analysis folder", default=None, nargs="?")),
-            (['--pre_casava'], dict(help="Toggle casava structure", default=False, action="store_true")),
             (['--project'], dict(help="Project id", default=None, action="store", type=str)),
             (['--sample'], dict(help="Sample id", default=None, action="store", type=str)),
             (['--mtime'], dict(help="Last modification time of directory (days): skip if older. Defaults to 1 day.", default=1, action="store", type=int)),
@@ -173,8 +172,8 @@ class RunMetricsController(AbstractBaseController):
             return
         runinfo_csv = os.path.join(os.path.abspath(self.pargs.flowcell), "{}.csv".format(self._fc_id()))
         runinfo_yaml = os.path.join(os.path.abspath(self.pargs.flowcell), "run_info.yaml")
-        ## Have to set pre-casava flag!
-        if self.pargs.pre_casava:
+        (fc_date, fc_name) = self._fc_parts()
+        if int(fc_date) < 120815:
             self.log.info("Assuming pre-casava based file structure for {}".format(self._fc_id()))
             qc_objects = self._collect_pre_casava_qc()
         else:
