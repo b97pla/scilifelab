@@ -593,7 +593,7 @@ class FlowcellRunMetrics(RunMetrics):
         self.log.debug("Found {} RTA files {}...".format(len(fn), ",".join(fn[0:10])))
         parser = IlluminaXMLParser()
         metrics = parser.parse(fn, fullRTA)
-        self["illumina"] = metrics
+        self["illumina"].update(metrics)
 
     def parse_filter_metrics(self):
         """pre-CASAVA: Parse filter metrics at flowcell level"""
@@ -676,5 +676,5 @@ class FlowcellRunMetrics(RunMetrics):
         parse_row = lambda row: {smp_header[i]:str(row[i].string) for i in range(0, len(smp_header)) if row}
         metrics["Sample_information"] = map(parse_row, column_gen)
         ## Set data
-        self["illumina"]["Demultiplex_Stats"] = metrics
+        self["illumina"].update({"Demultiplex_Stats": metrics})
         return metrics

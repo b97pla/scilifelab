@@ -35,8 +35,6 @@ class SampleRunMetricsConnection(Couch):
     def __init__(self, **kwargs):
         super(SampleRunMetricsConnection, self).__init__(**kwargs)
         self.db = self.con["samples"]
-        ## FIXME: key 'name' may be non_unique?!? If so, all the
-        ## following views are wrong
         self.name_view = {k.key:k.id for k in self.db.view("names/name", reduce=False)}
         self.name_fc_view = {k.key:k for k in self.db.view("names/name_fc", reduce=False)}
         self.name_proj_view = {k.key:k for k in self.db.view("names/name_proj", reduce=False)}
@@ -115,7 +113,8 @@ class SampleRunMetricsConnection(Couch):
 
     ## FIX ME: operations on sample run metrics objects should be
     ## separated from the connection. Either implement a
-    ## sample_run_metrics object (subclassing ViewResults)
+    ## sample_run_metrics object (subclassing ViewResults) with this
+    ## function or move to utils or similar
     def calc_avg_qv(self, name):
         """Calculate average quality score for a sample based on
         FastQC results.
