@@ -9,7 +9,7 @@ from cement.utils import shell, test
 from test_default import PmTest, safe_makedir
 from scilifelab.pm.core.project import ProjectController, ProjectRmController
 from scilifelab.pm.core.production import ProductionController
-from scilifelab.pm.utils.misc import walk
+from scilifelab.utils.misc import walk
 
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 flowcell = "120829_SN0001_0001_AA001AAAXX"
