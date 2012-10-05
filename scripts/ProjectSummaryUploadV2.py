@@ -28,7 +28,7 @@ import hashlib
 import couchdb
 import time
 from  datetime  import  datetime
-from scilifelab.scripts.bcbb_helpers.process_run_info import _replace_ascii
+#from scilifelab.scripts.process_run_info import _replace_ascii
 import bcbio.scilifelab.google.project_metadata as pm
 import bcbio.pipeline.config_loader as cl
 import logging
@@ -292,6 +292,16 @@ def find_samp_from_view(samp_db,proj_id):
 
 
 #		NAME HANDELING
+def _replace_ascii(str):
+    # Substitute swedish characters for sensible counterparts
+    str = str.replace(u'\xc5','A')
+    str = str.replace(u'\xe5','a')
+    str = str.replace(u'\xc4','A')
+    str = str.replace(u'\xe4','a')
+    str = str.replace(u'\xd6','O')
+    str = str.replace(u'\xf6','o')
+    return str.encode('ascii','replace')
+
 def find_duplicates(list):
 	dup=[]
         shown=[]
