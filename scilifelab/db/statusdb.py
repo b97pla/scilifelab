@@ -199,7 +199,7 @@ class ProjectSummaryConnection(Couch):
         """Make sure we don't change db from projects"""
         pass
 
-    def map_srm_to_name(self, project_id, **args):
+    def map_srm_to_name(self, project_id,  **args):
         """Map sample run metrics names to project sample names for a
         project, possibly subset by flowcell id.
 
@@ -209,8 +209,10 @@ class ProjectSummaryConnection(Couch):
         samples = self.map_name_to_srm(project_id, **args)
         srm_to_name = {}
         for k, v in samples.items():
-            if not v: continue
-            srm_to_name.update({x:{"sample":k,"id":y} for x,y in v.items()})
+            if not v:
+                srm_to_name.update({"NOSRM_{}".format(k):{"sample":k, "id":None}})
+            else:
+                srm_to_name.update({x:{"sample":k,"id":y} for x,y in v.items()})
         return srm_to_name
 
     def map_name_to_srm(self, project_id, fc_id=None, use_ps_map=True, use_bc_map=False,  check_consistency=False):
@@ -264,6 +266,7 @@ class ProjectSummaryConnection(Couch):
         :returns: ordered amount of reads if present, None otherwise
         """
         amount = self.get_entry(project_id, 'min_m_reads_per_sample_ordered')
+        self.log.debug("got amount {}".format(amount))
         if not amount:
             return None
         else:
