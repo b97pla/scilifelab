@@ -114,12 +114,15 @@ class DeliveryReportController(AbstractBaseController):
                 self.app._output_data["stdout"].write("{}\t{}\t{}\n".format(s["barcode_name"], s_param["phix_error_rate"], s_param["avg_quality_score"]))
             s_param['rounded_read_count'] = round(float(s_param['rounded_read_count'])/1e6,1) if s_param['rounded_read_count'] else None
             s_param['ordered_amount'] = s_param.get('ordered_amount', p_con.get_ordered_amount(self.pargs.project_id))
-            if not s_param["ordered_amount"]:
+            s_param['customer_reference'] = s_param.get('customer_reference', project.get('customer_reference'))
+            s_param['uppnex_project_id'] = s_param.get('uppnex_project_id', project.get('uppnex_id'))
+            if self.pargs.ordered_million_reads:
                 s_param["ordered_amount"] = self.pargs.ordered_million_reads
-            s_param['customer_reference'] = s_param.get('customer_reference', project.get('customer_reference', self.pargs.customer_reference))
+            if self.pargs.uppnex_id:
+                s_param["uppnex_project_id"] = self.pargs.uppnex_id
+            if self.pargs.customer_reference:
+                s_param["customer_reference"] = self.pargs.customer_reference
             s_param['customer_name'] = s_param.get('customer_name', project.get('customer_name', None))
-            s_param['uppnex_project_id'] = s_param.get('uppnex_project_id', project.get('uppnex_id',self.pargs.uppnex_id))
-
             s_param['success'] = sequencing_success(s_param, cutoffs)
             s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None})
             make_note("{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"]), headers, paragraphs, **s_param)
@@ -156,10 +159,16 @@ class DeliveryReportController(AbstractBaseController):
         sample_list = project['samples']
         param.update({key:project.get(ps_to_parameter[key], None) for key in ps_to_parameter.keys()})
         param["ordered_amount"] = param.get("ordered_amount", p_con.get_ordered_amount(self.pargs.project_id))
+        param['customer_reference'] = param.get('customer_reference', project.get('customer_reference'))
+        param['uppnex_project_id'] = param.get('uppnex_project_id', project.get('uppnex_id'))
+        if self.pargs.ordered_million_reads:
+            param["ordered_amount"] = self.pargs.ordered_million_reads
+        if self.pargs.uppnex_id:
+            param["uppnex_project_id"] = self.pargs.uppnex_id
+        if self.pargs.customer_reference:
+            param["customer_reference"] = self.pargs.customer_reference
         if not param["ordered_amount"]:
             param["ordered_amount"] = self.pargs.ordered_million_reads
-        param["customer_reference"] = param.get("customer_reference", project.get("customer_reference", None))
-        param["uppnex_project_id"] = param.get("uppnex_project_id", project.get("uppnex_project_id", None))
         ## Start collecting the data
         sample_table = []
         all_passed = True
