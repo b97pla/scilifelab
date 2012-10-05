@@ -199,7 +199,7 @@ class ProjectSummaryConnection(Couch):
         """Make sure we don't change db from projects"""
         pass
 
-    def map_srm_to_name(self, project_id,  **args):
+    def map_srm_to_name(self, project_id, include_all=True, **args):
         """Map sample run metrics names to project sample names for a
         project, possibly subset by flowcell id.
 
@@ -210,6 +210,8 @@ class ProjectSummaryConnection(Couch):
         srm_to_name = {}
         for k, v in samples.items():
             if not v:
+                if not include_all:
+                    continue
                 srm_to_name.update({"NOSRM_{}".format(k):{"sample":k, "id":None}})
             else:
                 srm_to_name.update({x:{"sample":k,"id":y} for x,y in v.items()})
@@ -246,7 +248,7 @@ class ProjectSummaryConnection(Couch):
                 ps_map = v.get('sample_run_metrics', None)                
                 sample_map[k] = ps_map
             if use_bc_map or sample_map[k] is None:
-                if sample_map[k] is None: self.log.info("Using barcode map since no information in project summary")
+                if sample_map[k] is None: self.log.info("Using barcode map since no information in project summary for sample '{}'".format(k))
                 bc_map = {s["name"]:s["_id"] for s in srm_samples if match_project_name_to_barcode_name(k, s.get("barcode_name", None))}
                 sample_map[k] = bc_map
             if check_consistency:

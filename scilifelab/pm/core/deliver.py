@@ -91,12 +91,20 @@ class DeliveryReportController(AbstractBaseController):
         headers = sample_note_headers()
         project = p_con.get_entry(self.pargs.project_id)
         if not project:
-            self.log.warn("No such project {}".format(self.pargs.project_id))
+            self.log.warn("No such project '{}'".format(self.pargs.project_id))
             return
-        samples = p_con.map_srm_to_name(self.pargs.project_id, fc_id=self.pargs.flowcell_id, use_ps_map=self.pargs.use_ps_map, use_bc_map=self.pargs.use_bc_map, check_consistency=self.pargs.check_consistency)
+        samples = p_con.map_srm_to_name(self.pargs.project_id, include_all=False, fc_id=self.pargs.flowcell_id, use_ps_map=self.pargs.use_ps_map, use_bc_map=self.pargs.use_bc_map, check_consistency=self.pargs.check_consistency)
         for k,v  in samples.items():
-            self.log.debug("working on sample {}, id {}".format(k, v["id"]))
+            self.log.debug("working on sample '{}', id '{}'".format(k, v["id"]))
             s_param = parameters
+            if not v['id'] is None:
+                if not s_con.name_fc_view[k].value == self.pargs.flowcell_id:
+                    self.log.debug("skipping sample '{}' since it isn't run on flowcell {}".format(k, self.pargs.flowcell_id))
+                    continue
+            else:
+                if re.match("NOSRM", k):
+                    self.log.warn("No sample run metrics information for project sample '{}'".format(k.strip("NOSRM_")))
+                    continue
             s = s_con.get_entry(k)
             s_param.update({key:s[srm_to_parameter[key]] for key in srm_to_parameter.keys()})
             fc = "{}_{}".format(s["date"], s["flowcell"])
@@ -114,7 +122,7 @@ class DeliveryReportController(AbstractBaseController):
 
             s_param['success'] = sequencing_success(s_param, cutoffs)
             s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None})
-            make_note("{}.pdf".format(s["barcode_name"]), headers, paragraphs, **s_param)
+            make_note("{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"]), headers, paragraphs, **s_param)
 
     @controller.expose(help="Make project status note")
     def project_status(self):
@@ -140,10 +148,10 @@ class DeliveryReportController(AbstractBaseController):
         param = parameters
         project = p_con.get_entry(self.pargs.project_id)
         if not project:
-            self.log.warn("No such project {}".format(self.pargs.project_id))
+            self.log.warn("No such project '{}'".format(self.pargs.project_id))
             return
         
-        self.log.debug("Workin on project {}.".format(self.pargs.project_id))
+        self.log.debug("Working on project '{}'.".format(self.pargs.project_id))
         samples = p_con.map_srm_to_name(self.pargs.project_id, use_ps_map=self.pargs.use_ps_map, use_bc_map=self.pargs.use_bc_map, check_consistency=self.pargs.check_consistency)
         sample_list = project['samples']
         param.update({key:project.get(ps_to_parameter[key], None) for key in ps_to_parameter.keys()})
@@ -157,7 +165,7 @@ class DeliveryReportController(AbstractBaseController):
         all_passed = True
         self.log.debug("Looping through sample map that maps project sample names to sample run metrics ids")
         for k,v in samples.items():
-            self.log.debug("project sample {} maps to {}".format(k, v))
+            self.log.debug("project sample '{}' maps to '{}'".format(k, v))
             if k=="Unexpected":
                 continue
             project_sample = sample_list[v['sample']]
