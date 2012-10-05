@@ -6,14 +6,16 @@ from scilifelab.db import Couch
 def match_project_name_to_barcode_name(project_sample_name, sample_run_name):
     """Name mapping from project summary sample id to run info sample id"""
     if not project_sample_name.startswith("P"):
-        try:
-            sid = re.search("(\d+)([A-Z])?_",sample_run_name)
-            if str(sid.group(1)) == str(project_sample_name):
-                return True
-            else: 
-                return False
-        except:
-            pass
+        sid = re.search("(\d+)([A-Z])?_",sample_run_name)
+        if str(sid.group(1)) == str(project_sample_name):
+            return True
+        sid = re.search("([A-Za-z0-9\_]+)(_index[0-9][A-Z][a-z])?", sample_run_name)
+        if str(sid.group(1)) == str(project_sample_name):
+            return True
+        elif str(sid.group(1)).startswith(str(project_sample_name)):
+            return True
+        else:
+            return False
     if str(sample_run_name).startswith(str(project_sample_name)):
         return True
     elif str(sample_run_name).startswith(str(project_sample_name).rstrip("F")):
@@ -28,6 +30,16 @@ def sample_map_fn_id(sample_run_name, prj_sample):
         return prj_sample.get('sample_run_metrics').get(sample_run_name, None)
     else:
         return None
+
+def _prune_ps_map(ps_map):
+    """Only use srm_ids that end with [ACGT]+ or "NoIndex"""
+    if not ps_map:
+        return None
+    ret = {}
+    for k, v in ps_map.items():
+        if re.match("_[ACGT]+$|_NoIndex$", k):
+            ret[k] = v
+    return ret
 
 class SampleRunMetricsConnection(Couch):
     ## FIXME: set time limits on which entries to include?
@@ -245,10 +257,10 @@ class ProjectSummaryConnection(Couch):
                 use_ps_map = True
                 use_bc_map = True
             if use_ps_map:
-                ps_map = v.get('sample_run_metrics', None)                
-                sample_map[k] = ps_map
-            if use_bc_map or sample_map[k] is None:
-                if sample_map[k] is None: self.log.info("Using barcode map since no information in project summary for sample '{}'".format(k))
+                ps_map = v.get('sample_run_metrics', None)
+                sample_map[k] = _prune_ps_map(ps_map)
+            if use_bc_map or not sample_map[k]:
+                if not sample_map[k]: self.log.info("Using barcode map since no information in project summary for sample '{}'".format(k))
                 bc_map = {s["name"]:s["_id"] for s in srm_samples if match_project_name_to_barcode_name(k, s.get("barcode_name", None))}
                 sample_map[k] = bc_map
             if check_consistency:
