@@ -150,6 +150,7 @@ class DeliveryReportController(AbstractBaseController):
             samples = {x["name"]:{'sample':x["barcode_name"], 'id':x["_id"]} for x in srm_samples}
             self.log.warn("No such project {}".format(self.pargs.project_id))
         else:
+            self.log.debug("Project {} exists!".format(self.pargs.project_id))
             samples = p_con.map_srm_to_name(self.pargs.project_id, use_ps_map=self.pargs.use_ps_map, use_bc_map=self.pargs.use_bc_map, check_consistency=self.pargs.check_consistency)
             sample_list = project['samples']
             param.update({key:project.get(ps_to_parameter[key], None) for key in ps_to_parameter.keys()})
@@ -167,16 +168,15 @@ class DeliveryReportController(AbstractBaseController):
             if k=="Unexpected":
                 continue
             if project:
-                project_sample = sample_list[k]
+                project_sample = sample_list[v['sample']]
                 vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
+                ## Set status
+                vals['Status'] = project_sample.get("status", "N/A")
             else:
                 vals = {x:None for x in prjs_to_table.keys()}
                 vals['ScilifeID'] = s_con.get_entry(k, "barcode_name")
             vals['MOrdered'] = param["ordered_amount"]
             vals['BarcodeSeq'] = s_con.get_entry(k, "sequence")
-            
-            ## Set status
-            vals['Status'] = set_status(vals) if vals['Status'] is None else vals['Status']
             vals.update({k:"N/A" for k in vals.keys() if vals[k] is None})
             if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
             sample_table.append([vals[k] for k in table_keys])

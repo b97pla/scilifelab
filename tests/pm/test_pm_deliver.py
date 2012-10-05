@@ -33,7 +33,7 @@ class PmProductionTest(PmTest):
         self._run_app()
 
     def test_1_project_status(self):
-        self.app = self.make_app(argv = ['report', 'project_status', '--user', self.user, '--password', self.pw, '--url', self.url, self.examples["project"], self.examples["flowcell"], '--debug', '--use_bc_map'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['report', 'project_status', '--user', self.user, '--password', self.pw, '--url', self.url, self.examples["project"], '--debug', '--use_bc_map'],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
 
