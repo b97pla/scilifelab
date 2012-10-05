@@ -1,5 +1,6 @@
 """Pm deliver module"""
 import os
+import re
 import shutil
 import itertools
 
@@ -102,7 +103,7 @@ class DeliveryReportController(AbstractBaseController):
                     self.log.debug("skipping sample '{}' since it isn't run on flowcell {}".format(k, self.pargs.flowcell_id))
                     continue
             else:
-                if re.match("NOSRM", k):
+                if re.search("NOSRM", k):
                     self.log.warn("No sample run metrics information for project sample '{}'".format(k.strip("NOSRM_")))
                     continue
             s = s_con.get_entry(k)
@@ -175,7 +176,7 @@ class DeliveryReportController(AbstractBaseController):
         self.log.debug("Looping through sample map that maps project sample names to sample run metrics ids")
         for k,v in samples.items():
             self.log.debug("project sample '{}' maps to '{}'".format(k, v))
-            if k=="Unexpected":
+            if re.search("Unexpected", k):
                 continue
             project_sample = sample_list[v['sample']]
             vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
@@ -191,7 +192,7 @@ class DeliveryReportController(AbstractBaseController):
         sample_table = list(sample_table for sample_table,_ in itertools.groupby(sample_table))
         sample_table.insert(0, ['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status'])
         paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
-        make_note("{}.pdf".format(self.pargs.project_id), headers, paragraphs, **param)
+        make_note("{}_summary.pdf".format(self.pargs.project_id), headers, paragraphs, **param)
 
 
 
