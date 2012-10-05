@@ -92,10 +92,15 @@ class DeliveryReportController(AbstractBaseController):
         p_con = ProjectSummaryConnection(username=self.pargs.user, password=self.pargs.password, url=self.pargs.url)
         paragraphs = sample_note_paragraphs()
         headers = sample_note_headers()
-        samples = s_con.get_samples(self.pargs.flowcell_id, self.pargs.project_id)
         project = p_con.get_entry(self.pargs.project_id)
-        samples = p_con.map_srm_to_name(self.pargs.project_id, fc_id=self.pargs.flowcell_id, use_ps_map=self.pargs.use_ps_map, use_bc_map=self.pargs.use_bc_map, check_consistency=self.pargs.check_consistency)
+        if not project:
+            srm_samples = s_con.get_samples(self.pargs.flowcell_id, self.pargs.project_id)
+            samples = {x["name"]:{'sample':x["barcode_name"], 'id':x["_id"]} for x in srm_samples}
+            self.log.warn("No such project {}".format(self.pargs.project_id))
+        else:
+            samples = p_con.map_srm_to_name(self.pargs.project_id, fc_id=self.pargs.flowcell_id, use_ps_map=self.pargs.use_ps_map, use_bc_map=self.pargs.use_bc_map, check_consistency=self.pargs.check_consistency)
         for k,v  in samples.items():
+            print k, v
             self.log.debug("working on sample {}, id {}".format(k, v["id"]))
             s_param = parameters
             s = s_con.get_entry(k)
@@ -106,11 +111,10 @@ class DeliveryReportController(AbstractBaseController):
             if self.pargs.qcinfo:
                 self.app._output_data["stdout"].write("{}\t{}\t{}\n".format(s["barcode_name"], s_param["phix_error_rate"], s_param["avg_quality_score"]))
             s_param['rounded_read_count'] = round(float(s_param['rounded_read_count'])/1e6,1) if s_param['rounded_read_count'] else None
-            s_param['customer_name'] = project['samples'][v["sample"]].get('customer_name', None)
-
             if project:
                 s_param['ordered_amount'] = s_param.get('ordered_amount', p_con.get_ordered_amount(self.pargs.project_id))
                 s_param['customer_reference'] = s_param.get('customer_reference', project.get('customer_reference', None))
+                s_param['customer_name'] = s_param.get('customer_name', project.get('customer_name', None))
                 s_param['uppnex_project_id'] = s_param.get('uppnex_project_id', project.get('uppnex_id',None))
             s_param['success'] = sequencing_success(s_param, cutoffs)
             s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None})
@@ -122,7 +126,7 @@ class DeliveryReportController(AbstractBaseController):
             return
         ## parameters
         parameters = {
-            "project_name" : None,
+            "project_name" : self.pargs.project_id,
             "customer_reference": self.pargs.customer_reference,
             "uppnex_project_id" : self.pargs.uppnex_id,
             "finished" : "Not finished, or cannot yet assess if finished.",
@@ -142,29 +146,36 @@ class DeliveryReportController(AbstractBaseController):
         headers = project_note_headers()
         param = parameters
         project = p_con.get_entry(self.pargs.project_id)
-        ## is this too strict?
         if not project:
+            srm_samples = s_con.get_project_samples(self.pargs.project_id)
+            samples = {x["name"]:{'sample':x["barcode_name"], 'id':x["_id"]} for x in srm_samples}
             self.log.warn("No such project {}".format(self.pargs.project_id))
-            return
-        param["ordered_amount"] = param.get("ordered_amount", p_con.get_ordered_amount(self.pargs.project_id))
+        else:
+            samples = p_con.map_srm_to_name(self.pargs.project_id, use_ps_map=self.pargs.use_ps_map, use_bc_map=self.pargs.use_bc_map, check_consistency=self.pargs.check_consistency)
+            sample_list = project['samples']
+            param.update({key:project.get(ps_to_parameter[key], None) for key in ps_to_parameter.keys()})
+            param["ordered_amount"] = param.get("ordered_amount", p_con.get_ordered_amount(self.pargs.project_id))
+            param["customer_reference"] = param.get("customer_reference", project.get("customer_reference", None))
+            param["uppnex_project_id"] = param.get("uppnex_project_id", project.get("uppnex_project_id", None))
         ## Start collecting the data
         sample_table = []
-        sample_list = project['samples']
-        param.update({key:project.get(ps_to_parameter[key], None) for key in ps_to_parameter.keys()})
-        param["customer_reference"] = param.get("customer_reference", project.get("customer_reference", None))
-        param["uppnex_project_id"] = param.get("uppnex_project_id", project.get("uppnex_project_id", None))
         ## Get sample run metrics names for project sample names
-        samples = p_con.map_name_to_srm(self.pargs.project_id, use_ps_map=self.pargs.use_ps_map, use_bc_map=self.pargs.use_bc_map, check_consistency=self.pargs.check_consistency)
+
         all_passed = True
         self.log.debug("Looping through sample map that maps project sample names to sample run metrics ids")
         for k,v in samples.items():
             self.log.debug("project sample {} maps to {}".format(k, v))
             if k=="Unexpected":
                 continue
-            project_sample = sample_list[k]
-            vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
+            if project:
+                project_sample = sample_list[k]
+                vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
+            else:
+                vals = {x:None for x in prjs_to_table.keys()}
+                vals['ScilifeID'] = s_con.get_entry(k, "barcode_name")
+            print vals
             vals['MOrdered'] = param["ordered_amount"]
-            vals['BarcodeSeq'] = s_con.get_entry(v.keys()[0], "sequence")
+            vals['BarcodeSeq'] = s_con.get_entry(k, "sequence")
             
             ## Set status
             vals['Status'] = set_status(vals) if vals['Status'] is None else vals['Status']

@@ -29,7 +29,6 @@ def sample_map_fn_id(sample_run_name, prj_sample):
     else:
         return None
 
-    
 class SampleRunMetricsConnection(Couch):
     ## FIXME: set time limits on which entries to include?
     def __init__(self, **kwargs):
@@ -69,7 +68,7 @@ class SampleRunMetricsConnection(Couch):
         self.log.debug("retrieving sample ids subset by flowcell '{}' and sample_prj '{}'".format(fc_id, sample_prj))
         sample_ids = [self.name_fc_view[k].id for k in self.name_fc_view.keys() if self.name_fc_view[k].value == fc_id]
         if sample_prj:
-            prj_sample_ids = [self.name_fc_view[k].id for k in self.name_proj_view.keys() if self.name_proj_view[k].value == sample_prj]
+            prj_sample_ids = [self.name_proj_view[k].id for k in self.name_proj_view.keys() if self.name_proj_view[k].value == sample_prj]
             sample_ids = list(set(sample_ids).intersection(set(prj_sample_ids)))
         return sample_ids
 
