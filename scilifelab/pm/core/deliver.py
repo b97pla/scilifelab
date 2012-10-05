@@ -100,7 +100,6 @@ class DeliveryReportController(AbstractBaseController):
         else:
             samples = p_con.map_srm_to_name(self.pargs.project_id, fc_id=self.pargs.flowcell_id, use_ps_map=self.pargs.use_ps_map, use_bc_map=self.pargs.use_bc_map, check_consistency=self.pargs.check_consistency)
         for k,v  in samples.items():
-            print k, v
             self.log.debug("working on sample {}, id {}".format(k, v["id"]))
             s_param = parameters
             s = s_con.get_entry(k)
@@ -173,7 +172,6 @@ class DeliveryReportController(AbstractBaseController):
             else:
                 vals = {x:None for x in prjs_to_table.keys()}
                 vals['ScilifeID'] = s_con.get_entry(k, "barcode_name")
-            print vals
             vals['MOrdered'] = param["ordered_amount"]
             vals['BarcodeSeq'] = s_con.get_entry(k, "sequence")
             
