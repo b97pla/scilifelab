@@ -3,7 +3,6 @@ import os
 import re
 import shutil
 import itertools
-import pprint
 
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractBaseController
@@ -91,7 +90,7 @@ class DeliveryReportController(AbstractBaseController):
                     "{:.1f}".format(float(x["MEAN_INSERT_SIZE"])),x["GENOME_SIZE"],"{:.1f}".format(float(x["FOLD_ENRICHMENT"])), "{:.1f}".format(float(x["PCT_USABLE_BASES_ON_TARGET"])),
                     "{:.1f}".format(float(x["PERCENT_ON_TARGET"])),"{:.1f}".format(float(x["PERCENT_DUPLICATION"])),"{:.1f}".format(float(x["PCT_TARGET_BASES_10X"])), "{:.1f}".format(float(x["PCT_PF_READS_ALIGNED"])), status]
         self.app._output_data["stdout"].write("\t".join(header) + "\n")
-        for k, v in qc_data.items():
+        for k,v in sorted(qc_data.iteritems()):
             y = [str(x) for x in assess_qc(v)]
             self.app._output_data["stdout"].write("\t".join(y) + "\n")
 
