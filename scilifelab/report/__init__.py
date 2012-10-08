@@ -40,7 +40,7 @@ def set_status(parameters):
     
     :returns: string
     """
-    status = "NP"
+    status = "N/A"
     if 'rounded_read_count' in parameters.keys() and 'ordered_amount' in parameters.keys():
         if parameters['rounded_read_count'] >= parameters['ordered_amount']:
             status = "P"

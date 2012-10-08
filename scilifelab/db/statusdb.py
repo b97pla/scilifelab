@@ -6,14 +6,16 @@ from scilifelab.db import Couch
 def match_project_name_to_barcode_name(project_sample_name, sample_run_name):
     """Name mapping from project summary sample id to run info sample id"""
     if not project_sample_name.startswith("P"):
-        try:
-            sid = re.search("(\d+)([A-Z])?_",sample_run_name)
-            if str(sid.group(1)) == str(project_sample_name):
-                return True
-            else: 
-                return False
-        except:
-            pass
+        sid = re.search("(\d+)([A-Z])?_",sample_run_name)
+        if str(sid.group(1)) == str(project_sample_name):
+            return True
+        sid = re.search("([A-Za-z0-9\_]+)(_index[0-9][A-Z][a-z])?", sample_run_name)
+        if str(sid.group(1)) == str(project_sample_name):
+            return True
+        elif str(sid.group(1)).startswith(str(project_sample_name)):
+            return True
+        else:
+            return False
     if str(sample_run_name).startswith(str(project_sample_name)):
         return True
     elif str(sample_run_name).startswith(str(project_sample_name).rstrip("F")):
@@ -29,7 +31,16 @@ def sample_map_fn_id(sample_run_name, prj_sample):
     else:
         return None
 
-    
+def _prune_ps_map(ps_map):
+    """Only use srm_ids that end with [ACGT]+ or "NoIndex"""
+    if not ps_map:
+        return None
+    ret = {}
+    for k, v in ps_map.items():
+        if re.match("_[ACGT]+$|_NoIndex$", k):
+            ret[k] = v
+    return ret
+
 class SampleRunMetricsConnection(Couch):
     ## FIXME: set time limits on which entries to include?
     def __init__(self, **kwargs):
@@ -238,7 +249,7 @@ class ProjectSummaryConnection(Couch):
         """Make sure we don't change db from projects"""
         pass
 
-    def map_srm_to_name(self, project_id, **args):
+    def map_srm_to_name(self, project_id, include_all=True, **args):
         """Map sample run metrics names to project sample names for a
         project, possibly subset by flowcell id.
 
@@ -248,8 +259,12 @@ class ProjectSummaryConnection(Couch):
         samples = self.map_name_to_srm(project_id, **args)
         srm_to_name = {}
         for k, v in samples.items():
-            if not v: continue
-            srm_to_name.update({x:{"sample":k,"id":y} for x,y in v.items()})
+            if not v:
+                if not include_all:
+                    continue
+                srm_to_name.update({"NOSRM_{}".format(k):{"sample":k, "id":None}})
+            else:
+                srm_to_name.update({x:{"sample":k,"id":y} for x,y in v.items()})
         return srm_to_name
 
     def map_name_to_srm(self, project_id, fc_id=None, use_ps_map=True, use_bc_map=False,  check_consistency=False):
@@ -280,10 +295,10 @@ class ProjectSummaryConnection(Couch):
                 use_ps_map = True
                 use_bc_map = True
             if use_ps_map:
-                ps_map = v.get('sample_run_metrics', None)                
-                sample_map[k] = ps_map
-            if use_bc_map or sample_map[k] is None:
-                if sample_map[k] is None: self.log.info("Using barcode map since no information in project summary")
+                ps_map = v.get('sample_run_metrics', None)
+                sample_map[k] = _prune_ps_map(ps_map)
+            if use_bc_map or not sample_map[k]:
+                if not sample_map[k]: self.log.info("Using barcode map since no information in project summary for sample '{}'".format(k))
                 bc_map = {s["name"]:s["_id"] for s in srm_samples if match_project_name_to_barcode_name(k, s.get("barcode_name", None))}
                 sample_map[k] = bc_map
             if check_consistency:
@@ -303,6 +318,7 @@ class ProjectSummaryConnection(Couch):
         :returns: ordered amount of reads if present, None otherwise
         """
         amount = self.get_entry(project_id, 'min_m_reads_per_sample_ordered')
+        self.log.debug("got amount {}".format(amount))
         if not amount:
             return None
         else:
