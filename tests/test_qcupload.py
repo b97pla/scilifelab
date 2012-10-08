@@ -38,7 +38,6 @@ class TestQCUpload(unittest.TestCase):
             self.srm  = SampleRunMetrics(**self.sample_kw)
 
     def test_1_demuxstats(self):
-        #obj = FlowcellRunMetrics(**self.fc_kw)
         metrics = self.fcrm.parse_demultiplex_stats_htm()
         print metrics["Barcode_lane_statistics"][0]
 
