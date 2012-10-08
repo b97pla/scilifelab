@@ -19,7 +19,7 @@ qc_cutoff = {
     'finished':{},
     }
 ## Mapping from genomics project list application names
-application_map = {'RNA-seq (Total RNA)':'rnaseq','Resequencing':'reseq', 'Exome capture':'seqcap', 'Custom':'customcap', 'Finished library':'finished' }
+application_map = {'RNA-seq (Total RNA)':'rnaseq','Resequencing':'reseq', 'Exome capture':'seqcap', 'Custom':'customcap', 'Finished library':'finished' , 'Custom capture':'customcap'}
 
 ## Main delivery controller
 class DeliveryController(AbstractBaseController):
