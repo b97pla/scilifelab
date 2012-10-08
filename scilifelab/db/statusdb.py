@@ -6,13 +6,16 @@ from scilifelab.db import Couch
 def match_project_name_to_barcode_name(project_sample_name, sample_run_name):
     """Name mapping from project summary sample id to run info sample id"""
     if not project_sample_name.startswith("P"):
-        sid = re.search("(\d+)([A-Z])?_",sample_run_name)
+        sid = re.search("(\d+)_?([A-Z])?_",sample_run_name)
         if str(sid.group(1)) == str(project_sample_name):
             return True
-        sid = re.search("([A-Za-z0-9\_]+)(_index[0-9][A-Z][a-z])?", sample_run_name)
+        m = re.search("(_index[0-9]+)", sample_run_name)
+        if not m:
+            index = ""
+        else:
+            index = m.group(1)
+        sid = re.search("([A-Za-z0-9\_]+)(\_index[0-9]+)?", sample_run_name.replace(index, ""))
         if str(sid.group(1)) == str(project_sample_name):
-            return True
-        elif str(sid.group(1)).startswith(str(project_sample_name)):
             return True
         else:
             return False
@@ -37,7 +40,7 @@ def _prune_ps_map(ps_map):
         return None
     ret = {}
     for k, v in ps_map.items():
-        if re.match("_[ACGT]+$|_NoIndex$", k):
+        if re.search("_[ACGT]+$|_NoIndex$", k):
             ret[k] = v
     return ret
 

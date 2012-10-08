@@ -138,7 +138,7 @@ class DeliveryReportController(AbstractBaseController):
         samples = p_con.map_srm_to_name(self.pargs.project_id, include_all=False, fc_id=self.pargs.flowcell_id, use_ps_map=self.pargs.use_ps_map, use_bc_map=self.pargs.use_bc_map, check_consistency=self.pargs.check_consistency)
         for k,v  in samples.items():
             s_param = {}
-            self.log.debug("working on sample '{}', id '{}'".format(k, v["id"]))
+            self.log.debug("working on sample '{}', sample run metrics name '{}', id '{}'".format(v["sample"], k, v["id"]))
             s_param.update(parameters)
             if not v['id'] is None:
                 if not s_con.name_fc_view[k].value == self.pargs.flowcell_id:
