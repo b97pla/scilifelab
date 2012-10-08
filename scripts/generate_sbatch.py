@@ -33,6 +33,7 @@ parser.add_option('-p', '--phred64', action="store_true", dest="phred64", defaul
 parser.add_option('-f', '--fai', action="store", dest="fai", default="", help="Provide FASTA index file for generating UCSC bigwig tracks")
 parser.add_option('-m', '--mail', action="store", dest="mail", default="mikael.huss@scilifelab.se", help="Specify a mailing address for SLURM mail notifications")
 parser.add_option('-a', '--alloc-time', action="store", dest="hours", default="40:00:00", help="Time to allocate in SLURM. Please specify as hours:minutes:seconds or days-hours:minutes:seconds")
+parser.add_option('-s', '--slurm-flag', action="store", dest="slurmflag", default="", help="To specify an extra SLURM flag")
 
 (opts, args) = parser.parse_args()
 
@@ -43,6 +44,9 @@ projtag = opts.projtag
 mail = opts.mail
 hours = opts.hours
 conffile = opts.conffile
+slurmflag = opts.slurmflag
+extra_flag = False
+if len(slurmflag) > 0: extra_flag = True
 
 if not len ( hours.split(':') ) == 3: sys.exit("Please specify the time allocation string as hours:minutes:seconds or days-hours:minutes:seconds") 
 
@@ -95,9 +99,10 @@ for n in sorted(sample_names):
     oF.write("#SBATCH -J tophat_" + n + projtag + "\n")
     oF.write("#SBATCH -e tophat_" + n + projtag + ".err\n")
     oF.write("#SBATCH -o tophat_" + n + projtag + ".out\n")
-    oF.write("#SBATCH --qos=seqver")
     oF.write("#SBATCH --mail-user=" + mail + "\n")
     oF.write("#SBATCH --mail-type=ALL\n")
+    if extra_flag == True:
+        oF.write("#SBATCH " + slurmflag + "\n")
 
     oF.write("module unload bioinfo-tools\n")
     #oF.write("module unload samtools\n")
