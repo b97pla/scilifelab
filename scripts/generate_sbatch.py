@@ -95,7 +95,7 @@ for n in sorted(sample_names):
     oF.write("#SBATCH -J tophat_" + n + projtag + "\n")
     oF.write("#SBATCH -e tophat_" + n + projtag + ".err\n")
     oF.write("#SBATCH -o tophat_" + n + projtag + ".out\n")
-    oF.write("#SBATCH --qos=seqver")
+    
     oF.write("#SBATCH --mail-user=" + mail + "\n")
     oF.write("#SBATCH --mail-type=ALL\n")
 
