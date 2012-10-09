@@ -1,26 +1,19 @@
 """bcbio qc module. Parsers for collecting qc metrics."""
 import os
-import sys
 import re
 import yaml
 import xml.parsers.expat
-import hashlib
-import time
 from uuid import uuid4
-import glob
 import json
-import fnmatch
 import numpy as np
 import csv
-from collections import defaultdict
-from itertools import izip
 
 from bs4 import BeautifulSoup
 
 from cement.core import backend
 LOG = backend.minimal_logger("bcbio")
 
-from bcbio.broad.metrics import *
+from bcbio.broad.metrics import PicardMetricsParser
 from bcbio.pipeline.qcsummary import FastQCParser
 
 class MetricsParser():
@@ -48,7 +41,6 @@ class MetricsParser():
         return data
 
     def parse_fastq_screen_metrics(self, in_handle):
-        column_names = ["Library", "Unmapped", "Mapped_One_Library", "Mapped_Multiple_Libraries"]
         in_handle.readline()
         data = {}
         while 1:
@@ -70,7 +62,6 @@ class ExtendedPicardMetricsParser(PicardMetricsParser):
         PicardMetricsParser.__init__(self)
 
     def _get_command(self, in_handle):
-        analysis = None
         while 1:
             line = in_handle.readline()
             if line.startswith("# net.sf.picard.analysis") or line.startswith("# net.sf.picard.sam"):
@@ -84,7 +75,7 @@ class ExtendedPicardMetricsParser(PicardMetricsParser):
                 break
         return in_handle.readline().rstrip("\n").split("\t")
 
-    def _read_vals_of_interest(self, want, header, info):
+    def _read_vals_of_interest(self, header, info):
         want_indexes = [header.index(w) for w in header]
         vals = dict()
         for i in want_indexes:
@@ -101,7 +92,7 @@ class ExtendedPicardMetricsParser(PicardMetricsParser):
             category = info[0]
             if len(info) <= 1:
                 break
-            vals = self._read_vals_of_interest(header, header, info)
+            vals = self._read_vals_of_interest(header, info)
             res[category] = vals
         return res
 
@@ -109,7 +100,7 @@ class ExtendedPicardMetricsParser(PicardMetricsParser):
         command = self._get_command(in_handle)
         header = self._read_off_header(in_handle)
         info = in_handle.readline().rstrip("\n").split("\t")
-        vals = self._read_vals_of_interest(header, header, info)
+        vals = self._read_vals_of_interest(header, info)
         histvals = self._read_histogram(in_handle)
         return dict(command=command, metrics = vals, hist = histvals)
 
@@ -117,7 +108,7 @@ class ExtendedPicardMetricsParser(PicardMetricsParser):
         command = self._get_command(in_handle)
         header = self._read_off_header(in_handle)
         info = in_handle.readline().rstrip("\n").split("\t")
-        vals = self._read_vals_of_interest(header, header, info)
+        vals = self._read_vals_of_interest(header, info)
         histvals = self._read_histogram(in_handle)
         return dict(command=command, metrics = vals, hist = histvals)
 
@@ -125,7 +116,7 @@ class ExtendedPicardMetricsParser(PicardMetricsParser):
         command = self._get_command(in_handle)
         header = self._read_off_header(in_handle)
         info = in_handle.readline().rstrip("\n").split("\t")
-        vals = self._read_vals_of_interest(header, header, info)
+        vals = self._read_vals_of_interest(header, info)
         return dict(command=command, metrics = vals)
     
     def _read_histogram(self, in_handle):
@@ -158,8 +149,7 @@ class RunInfoParser():
         self._element = None
 
     def parse(self, fp):
-        if os.path.exists(fp):
-            self._parse_RunInfo(fp)
+        self._parse_RunInfo(fp)
         return self._data
 
     def _start_element(self, name, attrs):
@@ -204,7 +194,6 @@ class IlluminaXMLParser():
             self._header = attrs
         if name == "Layout":
             n_tiles_per_lane = int(attrs['RowsPerLane']) * int(attrs['ColsPerLane'])
-            nrow = int(attrs['NumLanes']) * n_tiles_per_lane
             if self._tmp is None:
                 self._tmp = self._header
                 self._tmp.update(attrs)
@@ -355,6 +344,7 @@ class RunMetrics(dict):
     reignore = re.compile(ignore)
 
     def __init__(self, log=None):
+        super(RunMetrics, self).__init__()
         self["_id"] = uuid4().hex
         self["entity_type"] = self.entity_type()
         self["name"] = None
@@ -375,9 +365,6 @@ class RunMetrics(dict):
     def to_json(self):
         return json.dumps(self)
 
-    def parse(self):
-        raise NotImplementedError
-
     def _collect_files(self):
         if not self.path:
             return
@@ -395,7 +382,7 @@ class RunMetrics(dict):
             return re.search(pattern, f) != None
         if not filter_fn:
             filter_fn = filter_function
-        return [x for x in filter(filter_fn, self.files)]
+        return filter(filter_fn, self.files)
 
 class SampleRunMetrics(RunMetrics):
     """Sample-level class for holding run metrics data"""
@@ -538,18 +525,24 @@ class FlowcellRunMetrics(RunMetrics):
     def _parseRunInfo(self, fn="RunInfo.xml"):
         infile = os.path.join(os.path.abspath(self.path), fn)
         self.log.debug("_parseRunInfo: going to read {}".format(infile))
+        if not os.path.exists(infile):
+            self.log.warn("No such file {}".format(infile))
+            return
         try:
             fp = open(infile)
-            parser = RunInfoParser()
+            parser = RunInfoParser(log=self.log)
             data = parser.parse(fp)
             fp.close()
             self["RunInfo"] = data
         except:
-            self.log.warn("No such file %s" % os.path.join(os.path.abspath(self.path), fn))
+            self.log.warn("Reading file {} failed".format(os.path.join(os.path.abspath(self.path), fn)))
 
     def parse_samplesheet_csv(self):
         infile = os.path.join(os.path.abspath(self.path), "{}.csv".format(self["RunInfo"]["Flowcell"][1:]))
         self.log.debug("parse_samplesheet_csv: going to read {}".format(infile))
+        if not os.path.exists(infile):
+            self.log.warn("No such file {}".format(infile))
+            return
         try:
             fp = open(infile)
             runinfo = json.dumps([x for x in csv.reader(fp)])
@@ -557,12 +550,15 @@ class FlowcellRunMetrics(RunMetrics):
             self["samplesheet_csv"] = runinfo
             return True
         except:
-            self.log.warn("No such file {}".format(infile))
+            self.log.warn("Reading file {} failed".format(infile))
             return False
             
     def parse_run_info_yaml(self, run_info_yaml="run_info.yaml"):
         infile = os.path.join(os.path.abspath(self.path), run_info_yaml)
         self.log.debug("parse_run_info_yaml: going to read {}".format(infile))
+        if not os.path.exists(infile):
+            self.log.warn("No such file {}".format(infile))
+            return
         try:
             fp = open(infile)
             runinfo = yaml.load(fp)
@@ -587,8 +583,8 @@ class FlowcellRunMetrics(RunMetrics):
         self.log.debug("parse_illumina_metrics")
         fn = []
         for root, dirs, files in os.walk(os.path.abspath(self.path)):
-            for file in files:
-                if file.endswith(".xml"):
+            for f in files:
+                if f.endswith(".xml"):
                     fn.append(os.path.join(root, file))
         self.log.debug("Found {} RTA files {}...".format(len(fn), ",".join(fn[0:10])))
         parser = IlluminaXMLParser()
