@@ -530,7 +530,7 @@ class FlowcellRunMetrics(RunMetrics):
             return
         try:
             fp = open(infile)
-            parser = RunInfoParser(log=self.log)
+            parser = RunInfoParser()
             data = parser.parse(fp)
             fp.close()
             self["RunInfo"] = data
@@ -585,7 +585,7 @@ class FlowcellRunMetrics(RunMetrics):
         for root, dirs, files in os.walk(os.path.abspath(self.path)):
             for f in files:
                 if f.endswith(".xml"):
-                    fn.append(os.path.join(root, file))
+                    fn.append(os.path.join(root, f))
         self.log.debug("Found {} RTA files {}...".format(len(fn), ",".join(fn[0:10])))
         parser = IlluminaXMLParser()
         metrics = parser.parse(fn, fullRTA)
