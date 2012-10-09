@@ -1,8 +1,19 @@
 from mako.template import Template
+import os
+filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 
-def files():
+def setup_data_files():
+    """Setup data files"""
+    for k,v in _files().items():
+        if not os.path.exists(os.path.join(filedir, k)):
+            if not os.path.exists(os.path.dirname(os.path.join(filedir, k))):
+                os.makedirs(os.path.dirname(os.path.join(filedir, k)))
+            with open(os.path.join(filedir, k), "w") as fh:
+                print "Preparing test: writing to file {}".format(k)
+                fh.write(v)
 
-    files = {
+def _files():
+    outfiles = {
         ### Old-school project analysis data
         'data/production/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_barcode/1_120829_AA001AAAXX_nophix.bc_metrics' : 
         """1       19756915
@@ -185,6 +196,33 @@ C003CCCXX,2,P002_103_index8,hg19,TGGTCA,J__Doe_00_05,N,R1,NN,J__Doe_00_05
 C003CCCXX,2,P003_101_index1,hg19,AGTGCG,J__Doe_00_06,N,R1,NN,J__Doe_00_06
 C003CCCXX,2,P003_102_index2,hg19,TGTGCG,J__Doe_00_06,N,R1,NN,J__Doe_00_06
 C003CCCXX,2,P003_103_index6,hg19,CGTTAA,J__Doe_00_06,N,R1,NN,J__Doe_00_06""",
+        'data/archive/120924_SN0002_0003_CC003CCCXX/RunInfo.xml' :
+            """<?xml version="1.0"?>
+<RunInfo xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Version="2">
+  <Run Id="120924_SN0002_0003_CC003CCCXX" Number="1">
+    <Flowcell>CC003CCCXX</Flowcell>
+    <Instrument>SN0002</Instrument>
+    <Date>120924</Date>
+    <Reads>
+      <Read Number="1" NumCycles="101" IsIndexedRead="N" />
+      <Read Number="2" NumCycles="7" IsIndexedRead="Y" />
+      <Read Number="3" NumCycles="101" IsIndexedRead="N" />
+    </Reads>
+    <FlowcellLayout LaneCount="8" SurfaceCount="2" SwathCount="3" TileCount="16" />
+    <AlignToPhiX>
+      <Lane>1</Lane>
+      <Lane>2</Lane>
+      <Lane>3</Lane>
+      <Lane>4</Lane>
+      <Lane>5</Lane>
+      <Lane>6</Lane>
+      <Lane>7</Lane>
+      <Lane>8</Lane>
+    </AlignToPhiX>
+  </Run>
+</RunInfo>
+""",
+
         ### Casava analysis data structures
         'data/production/120924_SN0002_0003_CC003CCCXX/1_120924_CC003CCCXX.bc_metrics':
             """7       22463443        TGACCA  P001_101_index3
@@ -200,10 +238,10 @@ unmatched       2326234 Undetermined    lane1
 1       7108259        CGTTAA  P003_103_index6
 unmatched       3946195 Undetermined    lane2
 """}
-    files.update(add_casava_samples(files['data/archive/120924_SN0002_0003_CC003CCCXX/C003CCCXX.csv']))
-    return files
+    outfiles.update(_add_casava_samples(outfiles['data/archive/120924_SN0002_0003_CC003CCCXX/C003CCCXX.csv']))
+    return outfiles
     
-def add_casava_samples(runinfo):
+def _add_casava_samples(runinfo):
     ## Generate the sample files for casava 
     bcids = [7,2,5,7,3,8,4,1]
     i=0
