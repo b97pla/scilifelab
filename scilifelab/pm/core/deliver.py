@@ -14,12 +14,13 @@ from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryCon
 qc_cutoff = {
     'rnaseq':{'PCT_PF_READS_ALIGNED':70,'PERCENT_DUPLICATION':30},
     'reseq':{'PCT_PF_READS_ALIGNED':70,'PERCENT_DUPLICATION':30},
+    'WG-reseq':{'PCT_PF_READS_ALIGNED':70,'PERCENT_DUPLICATION':30},
     'seqcap':{'PCT_PF_READS_ALIGNED':70,'PERCENT_ON_TARGET':60, 'PCT_TARGET_BASES_10X':90, 'PERCENT_DUPLICATION':30},
     'customcap':{'PCT_PF_READS_ALIGNED':70, 'PERCENT_DUPLICATION':30},
     'finished':{},
     }
 ## Mapping from genomics project list application names
-application_map = {'RNA-seq (Total RNA)':'rnaseq','Resequencing':'reseq', 'Exome capture':'seqcap', 'Custom':'customcap', 'Finished library':'finished' , 'Custom capture':'customcap'}
+application_map = {'RNA-seq (Total RNA)':'rnaseq','WG re-seq':'WG-reseq','Resequencing':'reseq', 'Exome capture':'seqcap', 'Custom':'customcap', 'Finished library':'finished' , 'Custom capture':'customcap'}
 application_inv_map = {v:k for k, v in application_map.items()}
 
 
@@ -84,11 +85,15 @@ class DeliveryReportController(AbstractBaseController):
         ## info. Call get_qc_data from ProjectSummaryConnection instead?
         p_con = ProjectSummaryConnection(username=self.pargs.user, password=self.pargs.password, url=self.pargs.url)
         project = p_con.get_entry(self.pargs.project_id)
-        application = application_map[project["application"]] if project["application"] else self.pargs.application 
-        if not application:
-            self.app.log.warn("No such application {}. Choose one of {}".format(app_label, ",".join(qc_cutoff.keys())))
-            return
-
+        
+        if project.get("application") not in application_map.keys():
+            if not self.pargs.application:
+                self.app.log.warn("No such application {}. Please use the application option (available choices {})".format(app_label, ",".join(qc_cutoff.keys())))
+                return
+            application = self.pargs.application
+        else:
+            application = application_map[project.get("application")]
+            
         def assess_qc(x, application):
             status = "PASS"
             dup_status = "OK"
