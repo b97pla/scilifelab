@@ -2,8 +2,8 @@ import os
 from cement.core import backend, handler, output
 from cement.utils import test, shell
 from scilifelab.pm import PmApp
-from data import files as data_files
-from empty_files import files as empty_files
+from data import setup_data_files
+from empty_files import setup_empty_files
 
 ## Set default configuration
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
@@ -55,21 +55,9 @@ class PmTest(test.CementTestCase):
     OUTPUT_FILES = []
 
     def setUp(self):
-        ## setup empty files 
-        for k,v in data_files().items():
-            if not os.path.exists(os.path.join(filedir, k)):
-                if not os.path.exists(os.path.dirname(os.path.join(filedir, k))):
-                    os.makedirs(os.path.dirname(os.path.join(filedir, k)))
-                with open(os.path.join(filedir, k), "w") as fh:
-                    print "Preparing test: writing to file {}".format(k)
-                    fh.write(v)
-        for f in empty_files():
-            if not os.path.exists(os.path.join(filedir, f)):
-                print "Preparing test: touching file {}".format(f)
-                if not os.path.exists(os.path.dirname(os.path.join(filedir, f))):
-                    os.makedirs(os.path.dirname(os.path.join(filedir, f)))
-                shell.exec_cmd(['touch', os.path.join(filedir, f)])
-
+        setup_data_files()
+        setup_empty_files()
+        
     def _run_app(self):
         try:
             self.app.setup()
