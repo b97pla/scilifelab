@@ -8,7 +8,7 @@ from cement.core import controller
 from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.report import sequencing_success, set_status
 from scilifelab.report.rl import *
-from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection
+from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection
 
 ## QC data cutoff values
 qc_cutoff = {
