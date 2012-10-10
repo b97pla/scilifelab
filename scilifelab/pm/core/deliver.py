@@ -8,7 +8,7 @@ from cement.core import controller
 from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.report import sequencing_success, set_status
 from scilifelab.report.rl import *
-from scilifelab.db.statusdb import *
+from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection
 
 ## QC data cutoff values
 qc_cutoff = {
@@ -20,6 +20,9 @@ qc_cutoff = {
     }
 ## Mapping from genomics project list application names
 application_map = {'RNA-seq (Total RNA)':'rnaseq','Resequencing':'reseq', 'Exome capture':'seqcap', 'Custom':'customcap', 'Finished library':'finished' , 'Custom capture':'customcap'}
+application_inv_map = {v:k for k, v in application_map.items()}
+
+
 
 ## Main delivery controller
 class DeliveryController(AbstractBaseController):
@@ -68,30 +71,58 @@ class DeliveryReportController(AbstractBaseController):
     def qc(self):
         if not self._check_pargs(["project_id"]):
             return
-        header = ["project","sample","lane","flowcell", "date", "application", "TOTAL_READS",
-                  "MEAN_INSERT_SIZE","GENOME_SIZE","FOLD_ENRICHMENT", "PCT_USABLE_BASES_ON_TARGET",
-                  "PERCENT_ON_TARGET", "PERCENT_DUPLICATION", "PCT_TARGET_BASES_10X", "PCT_PF_READS_ALIGNED", "status"]
+        header = ["sample","lane","flowcell", "date",  "TOTAL_READS",
+                  "MEAN_INSERT_SIZE", "GENOME_SIZE", "PERCENT_ON_TARGET",
+                  "PERCENT_DUPLICATION", "PCT_TARGET_BASES_10X", "PCT_PF_READS_ALIGNED",
+                  "dup_status", "status"]
 
         s_con = SampleRunMetricsConnection(username=self.pargs.user, password=self.pargs.password, url=self.pargs.url)
         qc_data = s_con.get_qc_data(self.pargs.project_id, self.pargs.flowcell_id)
-        def assess_qc(x):
+
+        ## FIXME: this code is redundant. ProjectSummaryConnection is
+        ## called in s_con.get_qc_data, but needed for project level
+        ## info. Call get_qc_data from ProjectSummaryConnection instead?
+        p_con = ProjectSummaryConnection(username=self.pargs.user, password=self.pargs.password, url=self.pargs.url)
+        project = p_con.get_entry(self.pargs.project_id)
+        application = application_map[project["application"]] if project["application"] else self.pargs.application 
+        if not application:
+            self.app.log.warn("No such application {}. Choose one of {}".format(app_label, ",".join(qc_cutoff.keys())))
+            return
+
+        def assess_qc(x, application):
             status = "PASS"
-            app_label = application_map[x["application"]] if x["application"] else self.pargs.application 
-            if app_label:
-                for k in qc_cutoff[app_label].keys():
-                    self.log.debug("assessing qc metric {}".format(k))
-                    if k == "PERCENT_DUPLICATION":
-                        if float(x[k]) > qc_cutoff[app_label][k]: 
-                            status = "FAIL"
-                    else:
-                        if float(x[k]) < qc_cutoff[app_label][k]:
-                            status = "FAIL"
-            return [x["project"], x["sample"],x["lane"],x["flowcell"], x["date"], x["application"], x["TOTAL_READS"],
-                    "{:.1f}".format(float(x["MEAN_INSERT_SIZE"])),x["GENOME_SIZE"],"{:.1f}".format(float(x["FOLD_ENRICHMENT"])), "{:.1f}".format(float(x["PCT_USABLE_BASES_ON_TARGET"])),
-                    "{:.1f}".format(float(x["PERCENT_ON_TARGET"])),"{:.1f}".format(float(x["PERCENT_DUPLICATION"])),"{:.1f}".format(float(x["PCT_TARGET_BASES_10X"])), "{:.1f}".format(float(x["PCT_PF_READS_ALIGNED"])), status]
-        self.app._output_data["stdout"].write("\t".join(header) + "\n")
+            dup_status = "OK"
+            for k in qc_cutoff[application].keys():
+                self.log.debug("assessing qc metric {}".format(k))
+                if k == "PERCENT_DUPLICATION":
+                    if float(x[k]) > qc_cutoff[application][k]: 
+                        dup_status = "HIGH"
+                else:
+                    if float(x[k]) < qc_cutoff[application][k]:
+                        status = "FAIL"
+            genome_size = "{:.1f}G".format(int(x["GENOME_SIZE"])/1e9) if x["GENOME_SIZE"]>1e9 else "{:.1f}M".format(int(x["GENOME_SIZE"])/1e6)
+            return [x["sample"],x["lane"],x["flowcell"],x["date"], 
+                    "{:.2f}M".format(int(x["TOTAL_READS"])/1e6), "{:.1f}".format(float(x["MEAN_INSERT_SIZE"])),
+                    genome_size,
+                    "{:.1f}".format(float(x["PERCENT_ON_TARGET"])),
+                    "{:.1f}".format(float(x["PERCENT_DUPLICATION"])),
+                    "{:.1f}".format(float(x["PCT_TARGET_BASES_10X"])), 
+                    "{:.1f}".format(float(x["PCT_PF_READS_ALIGNED"])), 
+                    dup_status, status]
+        ## Add info about qc
+        self.app._output_data["stdout"].write("\n\nApplication QC\n")
+        self.app._output_data["stdout"].write("==============\n")
+        self.app._output_data["stdout"].write("Project\t{}\n".format(self.pargs.project_id))
+        self.app._output_data["stdout"].write("Application\t{}\n".format(application_inv_map[application]))
+        self.app._output_data["stdout"].write("==============\n\n")        
+        self.app._output_data["stdout"].write("Application QC criteria\n")
+        self.app._output_data["stdout"].write("==============\n")        
+        for k,v in sorted(qc_cutoff[application].iteritems()):
+            self.app._output_data["stdout"].write("{}={}\n".format(k, v))
+        self.app._output_data["stdout"].write("==============\n\n")        
+        self.app._output_data["stdout"].write(" ".join(header) + "\n")
         for k,v in sorted(qc_data.iteritems()):
-            y = [str(x) for x in assess_qc(v)]
+            y = [str(x) for x in assess_qc(v, application)]
             self.app._output_data["stdout"].write("\t".join(y) + "\n")
 
     @controller.expose(help="Make sample status note")
