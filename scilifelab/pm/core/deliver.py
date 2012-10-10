@@ -79,8 +79,8 @@ class DeliveryReportController(AbstractBaseController):
             self.app._output_data["stdout"].write(s["barcode_name"] + "\n")
             if fqscreen_data:
                 header = [[x for x in v.keys()] for k, v in fqscreen_data.iteritems()]
-                self.app._output_data["stdout"].write("\t\t" + "\t".join(header[0]) + "\n")
-                vals = ["\t{}\t{}\n".format(k, "\t".join([str(x) for x in v.values()])) for k, v in fqscreen_data.iteritems()]
+                self.app._output_data["stdout"].write("\t\t" + "".join("{:>27}".format(x) for x in header[0]) + "\n")
+                vals = ["{:>12}\t{}\n".format(k, "".join(["{:>27}".format(x) for x in v.values()])) for k, v in fqscreen_data.iteritems()]
                 for v in vals:
                     self.app._output_data["stdout"].write(v)
 
