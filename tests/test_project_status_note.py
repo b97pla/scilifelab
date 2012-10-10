@@ -1,4 +1,5 @@
 import os
+import re
 import unittest
 import itertools
 import ConfigParser
@@ -69,22 +70,23 @@ class TestProjectStatusNote(unittest.TestCase):
             return
             ordered_amount = self.pargs.ordered_million_reads
             
+
         ## Start collecting the data
         sample_table = []
         sample_list = project['samples']
         param.update({key:project.get(ps_to_parameter[key], None) for key in ps_to_parameter.keys()})
-        samples = p_con.map_name_to_srm(self.examples["project"], check_consistency=True, use_bc_map=True)
+        samples = p_con.map_srm_to_name(self.examples["project"], check_consistency=True)
+        ##samples = p_con.map_srm_to_name(self.pargs.project_id, use_ps_map=self.pargs.use_ps_map, use_bc_map=self.pargs.use_bc_map, check_consistency=self.pargs.check_consistency)
         all_passed = True
         for k,v in samples.items():
-            if k=="Unexpected":
+            print k, v
+            if re.search("Unexpected", k):
                 continue
-            project_sample = sample_list[k]
+            project_sample = sample_list[v['sample']]
             vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
+            vals['Status'] = project_sample.get("status", "N/A")
             vals['MOrdered'] = ordered_amount
-            vals['BarcodeSeq'] = s_con.get_entry(v.keys()[0], "sequence")
-            
-            ## Set status
-            vals['Status'] = set_status(vals) if vals['Status'] is None else vals['Status']
+            vals['BarcodeSeq'] = s_con.get_entry(k, "sequence")
             vals.update({k:"N/A" for k in vals.keys() if vals[k] is None})
             if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
             sample_table.append([vals[k] for k in table_keys])
@@ -117,7 +119,7 @@ class TestProjectStatusNote(unittest.TestCase):
     def test_4_srm_sample_map(self):
         """Make sample map from sample run metrics"""
         s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
-        samples = s_con.get_project_samples(self.examples["project"])
+        samples = s_con.get_samples(sample_prj=self.examples["project"])
         sample_names = {x["name"]:x["_id"] for x in samples}
         print len(sample_names.keys())
         print len(list(set(sample_names.keys())))
@@ -131,5 +133,4 @@ class TestProjectStatusNote(unittest.TestCase):
         print len(s_con.name_view.keys())
         print len(list(set(s_con.name_view.keys())))
         print len(name_view)
-        #print len(list(set(name_view.keys())))
 

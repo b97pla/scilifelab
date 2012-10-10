@@ -68,6 +68,24 @@ class DeliveryReportController(AbstractBaseController):
     def default(self):
         print self._help_text
 
+    @controller.expose(help="Print FastQ screen output for a project/flowcell")
+    def fqscreen(self):
+        if not self._check_pargs(["project_id"]):
+            return
+        s_con = SampleRunMetricsConnection(username=self.pargs.user, password=self.pargs.password, url=self.pargs.url)
+        samples = s_con.get_samples(fc_id=self.pargs.flowcell_id, sample_prj=self.pargs.project_id)
+        for s in samples:
+            fqscreen_data = s.get("fastq_scr", {})
+            self.app._output_data["stdout"].write(s["barcode_name"] + "\n")
+            if fqscreen_data:
+                header = [[x for x in v.keys()] for k, v in fqscreen_data.iteritems()]
+                self.app._output_data["stdout"].write("\t\t" + "\t".join(header[0]) + "\n")
+                vals = ["\t{}\t{}\n".format(k, "\t".join([str(x) for x in v.values()])) for k, v in fqscreen_data.iteritems()]
+                for v in vals:
+                    self.app._output_data["stdout"].write(v)
+
+            
+
     @controller.expose(help="Print summary QC data for a flowcell/project for application QC control")
     def qc(self):
         if not self._check_pargs(["project_id"]):
@@ -107,7 +125,7 @@ class DeliveryReportController(AbstractBaseController):
                         status = "FAIL"
             genome_size = "{:.1f}G".format(int(x["GENOME_SIZE"])/1e9) if x["GENOME_SIZE"]>1e9 else "{:.1f}M".format(int(x["GENOME_SIZE"])/1e6)
             return [x["sample"],x["lane"],x["flowcell"],x["date"], 
-                    "{:.2f}M".format(int(x["TOTAL_READS"])/1e6), "{:.1f}".format(float(x["MEAN_INSERT_SIZE"])),
+                    "{:.2f}M".format(int(x["TOTAL_READS"])/1e6/2), "{:.1f}".format(float(x["MEAN_INSERT_SIZE"])),
                     genome_size,
                     "{:.1f}".format(float(x["PERCENT_ON_TARGET"])),
                     "{:.1f}".format(float(x["PERCENT_DUPLICATION"])),
@@ -203,7 +221,7 @@ class DeliveryReportController(AbstractBaseController):
                 s_param["customer_reference"] = self.pargs.customer_reference
             s_param['customer_name'] = project['samples'].get(v["sample"], {}).get("customer_name", None)
             s_param['success'] = sequencing_success(s_param, cutoffs)
-            s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None})
+            s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None or s_param[k] ==  ""})
             make_note("{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"]), headers, paragraphs, **s_param)
 
     @controller.expose(help="Make project status note")
@@ -262,7 +280,7 @@ class DeliveryReportController(AbstractBaseController):
             vals['Status'] = project_sample.get("status", "N/A")
             vals['MOrdered'] = param["ordered_amount"]
             vals['BarcodeSeq'] = s_con.get_entry(k, "sequence")
-            vals.update({k:"N/A" for k in vals.keys() if vals[k] is None})
+            vals.update({k:"N/A" for k in vals.keys() if vals[k] is None or vals[k] == ""})
             if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
             sample_table.append([vals[k] for k in table_keys])
         if all_passed: param["finished"] = 'Project finished.'
