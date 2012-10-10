@@ -509,7 +509,7 @@ class FlowcellRunMetrics(RunMetrics):
         self["name"] = "{}_{}".format(fc_date, fc_name)
         self["RunInfo"] = {"Id" : self["name"], "Flowcell":fc_name, "Date": fc_date, "Instrument": "NA"}
         self["run_info_yaml"] = {}
-        self["samplesheet_csv"] = {}
+        self["samplesheet_csv"] = []
         self._lanes = [1,2,3,4,5,6,7,8]
         self["lanes"] = {str(k):{"lane":str(k), "filter_metrics":{}, "bc_metrics":{}} for k in self._lanes}
         self["illumina"] = {}
@@ -538,7 +538,7 @@ class FlowcellRunMetrics(RunMetrics):
             self.log.warn("Reading file {} failed".format(os.path.join(os.path.abspath(self.path), fn)))
 
     def parse_samplesheet_csv(self):
-        infile = os.path.join(os.path.abspath(self.path), "{}.csv".format(self["RunInfo"]["Flowcell"][1:]))
+        infile = os.path.join(os.path.abspath(self.path), "{}.csv".format(self["RunInfo"]["Flowcell"]))
         self.log.debug("parse_samplesheet_csv: going to read {}".format(infile))
         if not os.path.exists(infile):
             self.log.warn("No such file {}".format(infile))
