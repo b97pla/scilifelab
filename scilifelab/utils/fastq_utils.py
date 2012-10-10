@@ -116,7 +116,15 @@ def parse_header(header):
             'is_filtered': (is_filtered == 'Y'),
             'control_number': int(control_number),
             'index': str(index)} # Note that MiSeq Reporter outputs a SampleSheet index rather than the index sequence
-    
+
+def is_read_pair(rec1, rec2):
+    """Returns true if the two records belong to the same read pair, determined by matching the header strings and disregarding
+       the read field
+    """
+    r1 = rec1[0].split(' ')
+    r2 = rec2[0].split(' ')
+    return (len(r1) == 2 and len(r2) == 2 and r1[0] == r2[0] and r1[1][1:] == r2[1][1:])
+
 def demultiplex_fastq(outdir, samplesheet, fastq1, fastq2=None):
     """Demultiplex a bcl-converted illumina fastq file. Assumes it has the index sequence
     in the header a la CASAVA 1.8+

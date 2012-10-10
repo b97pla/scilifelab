@@ -1,17 +1,25 @@
 """Demultiplex a CASAVA 1.8+ FastQ file based on the information in the fastq header
 """
 
+import sys
 import argparse
-from scilifelab.utils.fastq_utils import FastQParser
+from scilifelab.utils.fastq_utils import FastQParser, is_read_pair
 
 def demultiplex_fastq(index, fastq1, fastq2):
 
     filter = {'index': index}
     
     fp1 = FastQParser(fastq1,filter)
-    for record in fp1:
-        print("\n".join(record))
-
+    if fastq2 is not None:
+        fp2 = FastQParser(fastq2,filter)
+    for r1 in fp1:
+        if fastq2 is not None:
+            r2 = fp2.next()
+            assert is_read_pair(r1,r2), "Mismatching headers for expected read pair" 
+            sys.stderr.write("{}\n".format("\n".join(r2)))
+             
+        sys.stdout.write("{}\n".format("\n".join(r1))) 
+    
 def main():
     
     parser = argparse.ArgumentParser(description="Demultiplex a CASAVA 1.8+ FastQ file based on the information in the fastq header")
