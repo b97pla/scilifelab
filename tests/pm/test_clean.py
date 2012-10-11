@@ -152,7 +152,6 @@ class CleanTest(PmTest):
                   'variants-split' : glob.glob(os.path.join(j_doe_00_04, "intermediate", "analysis_1", "1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-variants-split", "*.*")),
                   'variants-split-tx' : glob.glob(os.path.join(j_doe_00_04, "intermediate", "analysis_1", "1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-variants-split", "tx", "*.*")),
                   'all' : glob.glob(os.path.join(j_doe_00_04, "intermediate", "analysis_1", "*"))}
-
         self.eq(set(before['all']), set(after['all']))
         self.eq(len(after['realign-split']), 0)
         self.eq(len(after['realign-split-tx']), 0)

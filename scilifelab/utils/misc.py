@@ -72,8 +72,14 @@ def filtered_walk(rootdir, filter_fn, include_dirs=None, exclude_dirs=None):
     flist = []
     for root, dirs, files in os.walk(rootdir):
         if include_dirs and len(set(root.split(os.sep)).intersection(set(include_dirs))) == 0:
-            continue
+            ## Also try re.search in case we have patterns
+            if re.search("|".join(include_dirs), root):
+                pass
+            else:
+                continue
         if exclude_dirs and len(set(root.split(os.sep)).intersection(set(exclude_dirs))) > 0:
+            continue
+        if exclude_dirs and re.search("|".join(exclude_dirs), root):
             continue
         flist = flist + [os.path.join(root, x) for x in filter(filter_fn, files)]
     return flist
