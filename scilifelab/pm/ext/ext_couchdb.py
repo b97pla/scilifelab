@@ -142,13 +142,21 @@ def add_shared_couchdb_options(app):
     :param app: The application object.
     
     """
-    app.args.add_argument('--url', help="Database url (excluding http://)", nargs="?", type=str)
+    user = None
+    url = None
+    password = None
+    if app.config.has_option("db", "user"):
+        user = app.config.get("db", "user") 
+    if app.config.has_option("db", "password"):
+        password = app.config.get("db", "password") 
+    if app.config.has_option("db", "url"):
+        url = app.config.get("db", "url") 
+    app.args.add_argument('--url', help="Database url (excluding http://). Default '{}'".format(url), default=url, nargs="?", type=str)
     app.args.add_argument('--port', help="Database port. Default 5984", nargs="?", default="5984", type=str)
     app.args.add_argument('--dbname', help="Database name", default=None, type=str)
-    app.args.add_argument('--user', help="Database user", nargs="?", default=None, type=str)
-    app.args.add_argument('--password', help="Database password", default=None, type=str)
-
-
+    app.args.add_argument('--user', help="Database user. Default '{}'".format(user), nargs="?", default=user, type=str)
+    app.args.add_argument('--password', help="Database password.", default=password, type=str)
+ 
 def add_couchdb_option(app):
     """
     Adds the '--couchdb' argument to the argument object.
