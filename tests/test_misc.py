@@ -4,7 +4,7 @@ import unittest
 
 import subprocess 
 
-from scilifelab.utils.misc import *
+from scilifelab.utils.misc import walk, filtered_walk
 
 filedir = os.path.abspath(__file__)
 

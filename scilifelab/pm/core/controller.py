@@ -18,7 +18,7 @@ class AbstractBaseController(controller.CementBaseController):
     """
     class Meta:
         pass
-            
+
     def _setup(self, base_app):
         self._meta.arguments.append( (['-n', '--dry_run'], dict(help="dry_run - don't actually do anything", action="store_true", default=False)) )
         self._meta.arguments.append((['--force'], dict(help="force execution", action="store_true", default=False)))

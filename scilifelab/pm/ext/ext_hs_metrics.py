@@ -34,7 +34,9 @@ class HsMetricsController(AbstractBaseController):
         pattern = "{}.bam$".format(self.pargs.hs_file_type)
         def filter_fn(f):
             return re.search(pattern, f) != None
-        flist = filtered_walk(os.path.join(self.config.get("production", "root"), self.pargs.project), filter_fn=filter_fn, exclude_dirs=['nophix', 'alignments', 'fastqc', 'fastq_screen'])
+        ### FIX ME: this isn't caught by _process_args
+        path =  self.pargs.flowcell if self.pargs.flowcell else self.pargs.project
+        flist = filtered_walk(os.path.join(self.config.get("production", "root"), path), filter_fn=filter_fn, exclude_dirs=['nophix', 'alignments', 'fastqc', 'fastq_screen'])
         if self.pargs.input_file:
             flist = [os.path.abspath(self.pargs.input_file)]
         if not query_yes_no("Going to run hs_metrics on {} files. Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):

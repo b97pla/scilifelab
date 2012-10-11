@@ -5,11 +5,12 @@ Test production subcontroller
 import os
 import yaml
 import shutil
+import glob
 from cement.core import handler
 from cement.utils import shell
 from test_default import PmTest
 from scilifelab.pm.core.production import ProductionController
-from scilifelab.pm.utils.misc import walk
+from scilifelab.utils.misc import walk
 
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 delivery_dir = os.path.abspath(os.path.join(filedir, "data", "projects", "j_doe_00_01", "data"))
@@ -36,7 +37,7 @@ class PmProductionTest(PmTest):
         handler.register(ProductionController)
         self._run_app()
         res = shell.exec_cmd(["ls", "-1", os.path.join(delivery_dir, "P1_101F_index1", "120829_AA001AAAXX")])
-        self.eq(['1_120829_AA001AAAXX_barcode', '1_120829_AA001AAAXX_nophix_1-sort-dup.align_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.bam', '1_120829_AA001AAAXX_nophix_1-sort-dup.dup_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.insert_metrics', '1_120829_AA001AAAXX_nophix_1-sort.bam', 'P1_101F_index1-bcbb-config.yaml', 'alignments'], res[0].split())
+        self.eq(set(['1_120829_AA001AAAXX_barcode', '1_120829_AA001AAAXX_nophix_1-sort-dup.align_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.bam', '1_120829_AA001AAAXX_nophix_1-sort-dup.dup_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.insert_metrics', '1_120829_AA001AAAXX_nophix_1-sort.bam', 'P1_101F_index1-bcbb-config.yaml', 'alignments']),set(res[0].split()))
     
     def test_4_from_pre_to_pre_casava_transfer(self):
         """Test pre_casava transfer to project directory"""
@@ -54,9 +55,10 @@ class PmProductionTest(PmTest):
                      '1_120829_AA001AAAXX_nophix_8_1_fastq.txt','1_120829_AA001AAAXX_nophix_8_2_fastq.txt']
         self.eq(set(res_files), set(res[0].split()))
         ## Assert intermediate delivery output 
-        res = shell.exec_cmd(["ls", "-1", os.path.join(intermediate_delivery_dir, "120829_AA001AAAXX")])
-        self.eq(['1_120829_AA001AAAXX_nophix_1-sort-dup.align_metrics','1_120829_AA001AAAXX_nophix_1-sort-dup.bam'], res[0].split()[0:2])
-        self.eq(['1_120829_AA001AAAXX_nophix_8-sort-dup.insert_metrics','1_120829_AA001AAAXX_nophix_8-sort.bam', 'alignments'], res[0].split()[-3:])
+        res = [os.path.basename(x) for x in glob.glob(os.path.join(intermediate_delivery_dir, "120829_AA001AAAXX", "*_10*" ))]
+        self.eq(set(['1_120829_AA001AAAXX_nophix_10-sort.bam', '1_120829_AA001AAAXX_nophix_10-sort-dup.align_metrics', '1_120829_AA001AAAXX_nophix_10-sort-dup.dup_metrics', '1_120829_AA001AAAXX_nophix_10-sort-dup.hs_metrics', '1_120829_AA001AAAXX_nophix_10-sort-dup.insert_metrics', '1_120829_AA001AAAXX_nophix_10-sort-dup.bam']), set(res))
+        res = [os.path.basename(x) for x in glob.glob(os.path.join(intermediate_delivery_dir, "120829_AA001AAAXX", "*_8*" ))]
+        self.eq(set(['1_120829_AA001AAAXX_nophix_8-sort.bam', '1_120829_AA001AAAXX_nophix_8-sort-dup.align_metrics', '1_120829_AA001AAAXX_nophix_8-sort-dup.dup_metrics', '1_120829_AA001AAAXX_nophix_8-sort-dup.hs_metrics', '1_120829_AA001AAAXX_nophix_8-sort-dup.insert_metrics', '1_120829_AA001AAAXX_nophix_8-sort-dup.bam']), set(res))
         ## Assert pruned yaml file contents
         with open(os.path.join(delivery_dir, "120829_AA001AAAXX", "project_run_info.yaml")) as fh:
             runinfo_yaml = yaml.load(fh)
