@@ -156,33 +156,8 @@ def add_shared_couchdb_options(app):
     app.args.add_argument('--dbname', help="Database name", default=None, type=str)
     app.args.add_argument('--user', help="Database user. Default '{}'".format(user), nargs="?", default=user, type=str)
     app.args.add_argument('--password', help="Database password.", default=password, type=str)
- 
-def add_couchdb_option(app):
-    """
-    Adds the '--couchdb' argument to the argument object.
-    
-    :param app: The application object.
-    
-    """
-    app.args.add_argument('--couchdb', dest='output_handler', 
-                          action='store_const', help='toggle couchdb output handler', const='couchdb')
-
-
-def set_couchdb_handler(app):
-    """
-    Overrides the configured command handler if ``--couchdb`` is passed at the
-    command line.
-    
-    :param app: The application object.
-    
-    """
-    if '--couchdb' in app._meta.argv:
-        app._meta.cmd_handler = 'couchdb'
-        app._setup_cmd_handler()
 
 def load():
     """Called by the framework when the extension is 'loaded'."""
-    hook.register('post_setup', add_couchdb_option)
     hook.register('post_setup', add_shared_couchdb_options)
-    hook.register('pre_run', set_couchdb_handler)
     handler.register(CouchdbCommandHandler)
