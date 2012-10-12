@@ -76,7 +76,6 @@ class TestProjectStatusNote(unittest.TestCase):
         sample_list = project['samples']
         param.update({key:project.get(ps_to_parameter[key], None) for key in ps_to_parameter.keys()})
         samples = p_con.map_srm_to_name(self.examples["project"], check_consistency=True)
-        ##samples = p_con.map_srm_to_name(self.pargs.project_id, use_ps_map=self.pargs.use_ps_map, use_bc_map=self.pargs.use_bc_map, check_consistency=self.pargs.check_consistency)
         all_passed = True
         for k,v in samples.items():
             print k, v
