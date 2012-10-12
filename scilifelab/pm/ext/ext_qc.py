@@ -178,10 +178,8 @@ class RunMetricsController(AbstractBaseController):
         else:
             self.log.info("Retrieved {} updated qc objects".format(len(qc_objects)))
 
-        ## Make sure couchdb handler is set
-        if not '--couchdb' in self.app._meta.argv:
-            self.app._meta.cmd_handler = 'couchdb'
-            self.app._setup_cmd_handler()
+        self.app._meta.cmd_handler = 'couchdb'
+        self.app._setup_cmd_handler()
         self.app.cmd.connect(self.pargs.url, self.pargs.port)
         for obj in qc_objects:
             if self.app.pargs.debug:
