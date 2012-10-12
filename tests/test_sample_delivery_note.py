@@ -1,8 +1,9 @@
 import os
 import unittest
 import ConfigParser
+from pyPdf import PdfFileWriter, PdfFileReader
 from scilifelab.report import sequencing_success, set_status
-from scilifelab.report.rl import make_example_sample_note, make_note, sample_note_paragraphs, sample_note_headers
+from scilifelab.report.rl import make_example_sample_note, make_note, sample_note_paragraphs, sample_note_headers, concatenate_notes
 from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectSummaryConnection
 
 filedir = os.path.abspath(os.path.realpath(os.path.dirname(__file__)))
@@ -69,6 +70,7 @@ class TestSampleDeliveryNote(unittest.TestCase):
         ##samples = s_con.get_samples(self.examples["flowcell"], self.examples["project"])
         project = p_con.get_entry(self.examples["project"])
         samples = p_con.map_srm_to_name(self.examples["project"], fc_id=self.examples["flowcell"], use_bc_map=True, include_all=False)
+        notes = []
         for k,v  in samples.items():
             s_param = {}
             s_param.update(parameters)
@@ -89,5 +91,6 @@ class TestSampleDeliveryNote(unittest.TestCase):
             s_param['customer_name'] = project['samples'][v["sample"]].get('customer_name', None)
             s_param['success'] = sequencing_success(s_param, cutoffs)
             s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None or s_param[k] ==  ""})
-            make_note("{}.pdf".format(s["barcode_name"]), headers, paragraphs, **s_param)
+            notes.append(make_note("{}.pdf".format(s["barcode_name"]), headers, paragraphs, **s_param))
+        concatenate_notes(notes, "{}_{}_{}_sample_summary.pdf".format(self.examples["project"], s["date"], s["flowcell"]))
 

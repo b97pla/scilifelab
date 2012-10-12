@@ -185,7 +185,7 @@ class DeliveryReportController(AbstractBaseController):
         paragraphs = sample_note_paragraphs()
         headers = sample_note_headers()
         project = p_con.get_entry(self.pargs.project_id)
-
+        notes = []
         if not project:
             self.log.warn("No such project '{}'".format(self.pargs.project_id))
             return
@@ -222,7 +222,8 @@ class DeliveryReportController(AbstractBaseController):
             s_param['customer_name'] = project['samples'].get(v["sample"], {}).get("customer_name", None)
             s_param['success'] = sequencing_success(s_param, cutoffs)
             s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None or s_param[k] ==  ""})
-            make_note("{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"]), headers, paragraphs, **s_param)
+            notes.append(make_note("{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"]), headers, paragraphs, **s_param))
+        concatenate_notes(notes, "{}_{}_{}_sample_summary.pdf".format(self.pargs.project_id, s["date"], s["flowcell"]))
 
     @controller.expose(help="Make project status note")
     def project_status(self):
@@ -288,7 +289,7 @@ class DeliveryReportController(AbstractBaseController):
         sample_table = list(sample_table for sample_table,_ in itertools.groupby(sample_table))
         sample_table.insert(0, ['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status'])
         paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
-        make_note("{}_summary.pdf".format(self.pargs.project_id), headers, paragraphs, **param)
+        make_note("{}_project_summary.pdf".format(self.pargs.project_id), headers, paragraphs, **param)
 
 
 
