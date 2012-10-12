@@ -67,7 +67,6 @@ class TestSampleDeliveryNote(unittest.TestCase):
         p_con = ProjectSummaryConnection(username=self.user, password=self.pw, url=self.url)
         paragraphs = sample_note_paragraphs()
         headers = sample_note_headers()
-        ##samples = s_con.get_samples(self.examples["flowcell"], self.examples["project"])
         project = p_con.get_entry(self.examples["project"])
         samples = p_con.map_srm_to_name(self.examples["project"], fc_id=self.examples["flowcell"], use_bc_map=True, include_all=False)
         notes = []
