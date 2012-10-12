@@ -7,6 +7,7 @@ from cement.core import controller
 from scilifelab.pm.core.controller import AbstractExtendedBaseController
 from scilifelab.utils.misc import query_yes_no, filtered_walk
 from scilifelab.bcbio.flowcell import Flowcell
+from scilifelab.bcbio.status import status_query
 
 ## Main production controller
 class ProductionController(AbstractExtendedBaseController):
@@ -23,7 +24,8 @@ class ProductionController(AbstractExtendedBaseController):
             (['-b', '--barcode_id'], dict(help="Barcode id")),
             (['--from_pre_casava'], dict(help="Use pre-casava directory structure for gathering information", action="store_true", default=False)),
             (['--to_pre_casava'], dict(help="Use pre-casava directory structure for delivery", action="store_true", default=False)),
-            (['--transfer_dir'], dict(help="Transfer data to transfer_dir instead of sample_prj dir", action="store", default=None))
+            (['--transfer_dir'], dict(help="Transfer data to transfer_dir instead of sample_prj dir", action="store", default=None)),
+            (['--brief'], dict(help="Output brief information from status queries", action="store_true", default=False))
             ]
 
     def _process_args(self):
@@ -52,9 +54,12 @@ class ProductionController(AbstractExtendedBaseController):
     def bcstats(self):
         self._not_implemented()
 
-    @controller.expose(help="List status of a run")
-    def status(self):
-        self._not_implemented()
+    @controller.expose(help="Query the status of flowcells, projects, samples"\
+                           " that are organized according to the CASAVA file structure")
+    def status_query(self):
+        if not self._check_pargs(["project", "flowcell"]):
+            return
+        status_query(self.app.config.get("archive", "root"), self.app.config.get("production", "root"), self.pargs.flowcell, self.pargs.project, brief=self.pargs.brief)
 
     def _from_casava_structure(self):
         """Get information from casava structure"""

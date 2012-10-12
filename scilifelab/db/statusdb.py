@@ -72,8 +72,8 @@ class SampleRunMetricsConnection(Couch):
         else:
             return self.db.get(self.name_view.get(name))
 
-    def get_sample_ids(self, fc_id, sample_prj=None):
-        """Retrieve sample ids subset by fc_id and possibly sample_prj
+    def get_sample_ids(self, fc_id=None, sample_prj=None):
+        """Retrieve sample ids subset by fc_id and/or sample_prj
 
         :param fc_id: flowcell id
         :param sample_prj: sample project name
@@ -81,14 +81,13 @@ class SampleRunMetricsConnection(Couch):
         :returns sample_ids: list of couchdb sample ids
         """
         self.log.debug("retrieving sample ids subset by flowcell '{}' and sample_prj '{}'".format(fc_id, sample_prj))
-        sample_ids = [self.name_fc_view[k].id for k in self.name_fc_view.keys() if self.name_fc_view[k].value == fc_id]
-        if sample_prj:
-            prj_sample_ids = [self.name_proj_view[k].id for k in self.name_proj_view.keys() if self.name_proj_view[k].value == sample_prj]
-            sample_ids = list(set(sample_ids).intersection(set(prj_sample_ids)))
+        fc_sample_ids = [self.name_fc_view[k].id for k in self.name_fc_view.keys() if self.name_fc_view[k].value == fc_id] if fc_id else []
+        prj_sample_ids = [self.name_proj_view[k].id for k in self.name_proj_view.keys() if self.name_proj_view[k].value == sample_prj] if sample_prj else []
+        sample_ids = list(set(fc_sample_ids + prj_sample_ids))
         return sample_ids
 
-    def get_samples(self, fc_id, sample_prj=None):
-        """Retrieve samples subset by fc_id and possibly sample_prj
+    def get_samples(self, fc_id=None, sample_prj=None):
+        """Retrieve samples subset by fc_id and/or sample_prj
 
         :param fc_id: flowcell id
         :param sample_prj: sample project name
@@ -97,28 +96,6 @@ class SampleRunMetricsConnection(Couch):
         """
         self.log.debug("retrieving samples subset by flowcell '{}' and sample_prj '{}'".format(fc_id, sample_prj))
         sample_ids = self.get_sample_ids(fc_id, sample_prj)
-        return [self.db.get(x) for x in sample_ids]
-
-    def get_project_sample_ids(self, sample_prj):
-        """Retrieve sample ids subset by sample_prj
-
-        :param sample_prj: sample project name
-
-        :returns sample_ids: list of couchdb sample ids
-        """
-        self.log.debug("retrieving sample ids subset by sample_prj '{}'".format(sample_prj))
-        sample_ids = [self.name_proj_view[k].id for k in self.name_proj_view.keys() if self.name_proj_view[k].value == sample_prj]
-        return sample_ids
-
-    def get_project_samples(self, sample_prj):
-        """Retrieve samples subset related to a project.
-
-        :param sample_prj: sample project name
-
-        :returns samples: list of samples
-        """
-        self.log.debug("retrieving samples subset by sample_prj '{}'".format(sample_prj))
-        sample_ids = self.get_project_sample_ids(sample_prj)
         return [self.db.get(x) for x in sample_ids]
         
     def set_db(self):
@@ -288,10 +265,7 @@ class ProjectSummaryConnection(Couch):
             return None
         sample_map = {}
         s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
-        if fc_id is None:
-            srm_samples = s_con.get_project_samples(project_id)
-        else:
-            srm_samples = s_con.get_samples(fc_id, project_id)
+        srm_samples = s_con.get_samples(fc_id=fc_id, sample_prj=project_id)
         for k, v in project_samples.items():
             sample_map[k] = None
             if check_consistency:
@@ -326,4 +300,3 @@ class ProjectSummaryConnection(Couch):
             return None
         else:
             return round(amount, dec)
-
