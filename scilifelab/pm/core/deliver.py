@@ -58,7 +58,8 @@ class DeliveryReportController(AbstractBaseController):
             (['--check_consistency'], dict(help="Check consistency of project sample name mapping to sample run metrics names", default=False, action="store_true")),
             (['--use_ps_map'], dict(help="Use project summary mapping in cases where no sample_run_metrics is available", default=True, action="store_false")),
             (['--use_bc_map'], dict(help="Use sample run metrics barcode mapping in cases where no sample_run_metrics is available", default=False, action="store_true")),
-            (['--application'], dict(help="Set application for qc evaluation. One of '{}'".format(",".join(qc_cutoff.keys())), action="store", type=str, default=None))
+            (['--application'], dict(help="Set application for qc evaluation. One of '{}'".format(",".join(qc_cutoff.keys())), action="store", type=str, default=None)),
+            (['--exclude_sample_ids'], dict(help="Exclude project sample ids from report generation. Provide project sample ids separated by spaces, as in '--exclude_sample_ids PS1 PS2' ", action="store", default=[], nargs="+"))
             ]
 
     def _process_args(self):
@@ -274,6 +275,9 @@ class DeliveryReportController(AbstractBaseController):
         for k,v in samples.items():
             self.log.debug("project sample '{}' maps to '{}'".format(k, v))
             if re.search("Unexpected", k):
+                continue
+            if self.pargs.exclude_sample_ids and v['sample'] in self.pargs.exclude_sample_ids[0].split():
+                self.log.info("excluding sample '{}' from project report".format(v['sample']))
                 continue
             project_sample = sample_list[v['sample']]
             vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
