@@ -189,7 +189,6 @@ def concatenate_notes(notes, outfile, numpages=1):
     """
     output = PdfFileWriter()
     for n in notes:
-        print type(n)
         if isinstance(n, SimpleDocTemplate):
             fn = n.filename
         else:
