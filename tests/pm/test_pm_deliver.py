@@ -24,7 +24,8 @@ class PmProductionTest(PmTest):
             self.pw = config.get("couchdb", "password")
             self.examples = {"sample":config.get("examples", "sample"),
                              "flowcell":config.get("examples", "flowcell"),
-                             "project":config.get("examples", "project")}
+                             "project":config.get("examples", "project"),
+                             "exclude_samples":config.get("examples", "exclude_samples")}
 
         
     def test_1_sample_status(self):
@@ -34,6 +35,19 @@ class PmProductionTest(PmTest):
 
     def test_1_project_status(self):
         self.app = self.make_app(argv = ['report', 'project_status', '--user', self.user, '--password', self.pw, '--url', self.url, self.examples["project"], '--debug', '--use_bc_map'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        handler.register(DeliveryReportController)
+        self._run_app()
+
+
+    def test_2_sample_status_custom(self):
+        """Test sample status note generation with command line customizations"""
+        self.app = self.make_app(argv = ['report', 'sample_status', '--user', self.user, '--password', self.pw, '--url', self.url, self.examples["project"], self.examples["flowcell"], '--debug', '--customer_reference', 'MyCustomerReference', '--uppnex_id', 'MyUppnexID', '--ordered_million_reads', '10', '--use_bc_map'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        handler.register(DeliveryReportController)
+        self._run_app()
+
+    def test_2_project_status_custom(self):
+        """Test project status note generation with command line customizations"""
+        self.app = self.make_app(argv = ['report', 'project_status', '--user', self.user, '--password', self.pw, '--url', self.url, self.examples["project"], '--debug', '--customer_reference', 'MyCustomerReference', '--uppnex_id', 'MyUppnexID', '--use_bc_map', '--ordered_million_reads', '1'],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
 
@@ -48,14 +62,7 @@ class PmProductionTest(PmTest):
         self._run_app()
 
 
-    def test_2_sample_status_custom(self):
-        """Test sample status note generation with command line customizations"""
-        self.app = self.make_app(argv = ['report', 'sample_status', '--user', self.user, '--password', self.pw, '--url', self.url, self.examples["project"], self.examples["flowcell"], '--debug', '--customer_reference', 'MyCustomerReference', '--uppnex_id', 'MyUppnexID', '--ordered_million_reads', '10', '--use_bc_map'],extensions=['scilifelab.pm.ext.ext_couchdb'])
-        handler.register(DeliveryReportController)
-        self._run_app()
-
-    def test_2_project_status_custom(self):
-        """Test project status note generation with command line customizations"""
-        self.app = self.make_app(argv = ['report', 'project_status', '--user', self.user, '--password', self.pw, '--url', self.url, self.examples["project"], '--debug', '--customer_reference', 'MyCustomerReference', '--uppnex_id', 'MyUppnexID', '--use_bc_map', '--ordered_million_reads', '1'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+    def test_4_project_status_exclude_samples(self):
+        self.app = self.make_app(argv = ['report', 'project_status', '--user', self.user, '--password', self.pw, '--url', self.url, self.examples["project"], '--debug',  '--exclude_sample_ids', self.examples["exclude_samples"]],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()

@@ -58,7 +58,8 @@ class DeliveryReportController(AbstractBaseController):
             (['--check_consistency'], dict(help="Check consistency of project sample name mapping to sample run metrics names", default=False, action="store_true")),
             (['--use_ps_map'], dict(help="Use project summary mapping in cases where no sample_run_metrics is available", default=True, action="store_false")),
             (['--use_bc_map'], dict(help="Use sample run metrics barcode mapping in cases where no sample_run_metrics is available", default=False, action="store_true")),
-            (['--application'], dict(help="Set application for qc evaluation. One of '{}'".format(",".join(qc_cutoff.keys())), action="store", type=str, default=None))
+            (['--application'], dict(help="Set application for qc evaluation. One of '{}'".format(",".join(qc_cutoff.keys())), action="store", type=str, default=None)),
+            (['--exclude_sample_ids'], dict(help="Exclude project sample ids from report generation. Provide project sample ids separated by spaces, as in '--exclude_sample_ids PS1 PS2' ", action="store", default=[], nargs="+"))
             ]
 
     def _process_args(self):
@@ -67,6 +68,24 @@ class DeliveryReportController(AbstractBaseController):
     @controller.expose(hide=True)
     def default(self):
         print self._help_text
+
+    @controller.expose(help="Print FastQ screen output for a project/flowcell")
+    def fqscreen(self):
+        if not self._check_pargs(["project_id"]):
+            return
+        s_con = SampleRunMetricsConnection(username=self.pargs.user, password=self.pargs.password, url=self.pargs.url)
+        samples = s_con.get_samples(fc_id=self.pargs.flowcell_id, sample_prj=self.pargs.project_id)
+        for s in samples:
+            fqscreen_data = s.get("fastq_scr", {})
+            self.app._output_data["stdout"].write(s["barcode_name"] + "\n")
+            if fqscreen_data:
+                header = [[x for x in v.keys()] for k, v in fqscreen_data.iteritems()]
+                self.app._output_data["stdout"].write("\t\t" + "".join("{:>27}".format(x) for x in header[0]) + "\n")
+                vals = ["{:>12}\t{}\n".format(k, "".join(["{:>27}".format(x) for x in v.values()])) for k, v in fqscreen_data.iteritems()]
+                for v in vals:
+                    self.app._output_data["stdout"].write(v)
+
+            
 
     @controller.expose(help="Print summary QC data for a flowcell/project for application QC control")
     def qc(self):
@@ -107,7 +126,7 @@ class DeliveryReportController(AbstractBaseController):
                         status = "FAIL"
             genome_size = "{:.1f}G".format(int(x["GENOME_SIZE"])/1e9) if x["GENOME_SIZE"]>1e9 else "{:.1f}M".format(int(x["GENOME_SIZE"])/1e6)
             return [x["sample"],x["lane"],x["flowcell"],x["date"], 
-                    "{:.2f}M".format(int(x["TOTAL_READS"])/1e6), "{:.1f}".format(float(x["MEAN_INSERT_SIZE"])),
+                    "{:.2f}M".format(int(x["TOTAL_READS"])/1e6/2), "{:.1f}".format(float(x["MEAN_INSERT_SIZE"])),
                     genome_size,
                     "{:.1f}".format(float(x["PERCENT_ON_TARGET"])),
                     "{:.1f}".format(float(x["PERCENT_DUPLICATION"])),
@@ -167,7 +186,7 @@ class DeliveryReportController(AbstractBaseController):
         paragraphs = sample_note_paragraphs()
         headers = sample_note_headers()
         project = p_con.get_entry(self.pargs.project_id)
-
+        notes = []
         if not project:
             self.log.warn("No such project '{}'".format(self.pargs.project_id))
             return
@@ -203,8 +222,9 @@ class DeliveryReportController(AbstractBaseController):
                 s_param["customer_reference"] = self.pargs.customer_reference
             s_param['customer_name'] = project['samples'].get(v["sample"], {}).get("customer_name", None)
             s_param['success'] = sequencing_success(s_param, cutoffs)
-            s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None})
-            make_note("{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"]), headers, paragraphs, **s_param)
+            s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None or s_param[k] ==  ""})
+            notes.append(make_note("{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"]), headers, paragraphs, **s_param))
+        concatenate_notes(notes, "{}_{}_{}_sample_summary.pdf".format(self.pargs.project_id, s["date"], s["flowcell"]))
 
     @controller.expose(help="Make project status note")
     def project_status(self):
@@ -256,13 +276,16 @@ class DeliveryReportController(AbstractBaseController):
             self.log.debug("project sample '{}' maps to '{}'".format(k, v))
             if re.search("Unexpected", k):
                 continue
+            if self.pargs.exclude_sample_ids and v['sample'] in self.pargs.exclude_sample_ids[0].split():
+                self.log.info("excluding sample '{}' from project report".format(v['sample']))
+                continue
             project_sample = sample_list[v['sample']]
             vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
             ## Set status
             vals['Status'] = project_sample.get("status", "N/A")
             vals['MOrdered'] = param["ordered_amount"]
             vals['BarcodeSeq'] = s_con.get_entry(k, "sequence")
-            vals.update({k:"N/A" for k in vals.keys() if vals[k] is None})
+            vals.update({k:"N/A" for k in vals.keys() if vals[k] is None or vals[k] == ""})
             if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
             sample_table.append([vals[k] for k in table_keys])
         if all_passed: param["finished"] = 'Project finished.'
@@ -270,7 +293,7 @@ class DeliveryReportController(AbstractBaseController):
         sample_table = list(sample_table for sample_table,_ in itertools.groupby(sample_table))
         sample_table.insert(0, ['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status'])
         paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
-        make_note("{}_summary.pdf".format(self.pargs.project_id), headers, paragraphs, **param)
+        make_note("{}_project_summary.pdf".format(self.pargs.project_id), headers, paragraphs, **param)
 
 
 
