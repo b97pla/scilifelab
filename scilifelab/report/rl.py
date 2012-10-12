@@ -4,8 +4,11 @@ import sys
 import os
 from datetime import datetime
 
+from pyPdf import PdfFileWriter, PdfFileReader
 from collections import OrderedDict
 from mako.template import Template
+
+from scilifelab.log import minimal_logger
 
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import cm
@@ -14,6 +17,9 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Image
 from reportlab.rl_config import defaultPageSize
+
+## Set minimal logger
+LOG = minimal_logger(__name__)
 
 # Set sll_logo file
 FILEPATH=os.path.dirname(os.path.realpath(__file__))
@@ -174,6 +180,30 @@ def make_note(outfile, headers, paragraphs, **kw):
     doc.build(story, onFirstPage=formatted_page, onLaterPages=formatted_page)
     return doc
 
+def concatenate_notes(notes, outfile, numpages=1):
+    """Concatenate documents. Warn if numpages in document > numpages.
+
+    :param notes: list of notes
+    :param outfile: outfile name
+    :param numpages: number of pages to include
+    """
+    output = PdfFileWriter()
+    for n in notes:
+        if isinstance(n, SimpleDocTemplate):
+            fn = n.filename
+        else:
+            fn = n
+        if not os.path.exists(fn):
+            LOG.warn("No such file {}".format(fn))
+            continue
+        LOG.debug("Adding file {}".format(fn))
+        inpdf = PdfFileReader(file(fn, "rb"))
+        if inpdf.getNumPages() > numpages:
+            LOG.warn("Number of pages in document ({}) larger than number of added pages ({}): not adding complete document".format(inpdf.getNumPages, numpages))
+        [output.addPage(inpdf.getPage(i)) for i in range(0, numpages)]
+    outputStream = file(outfile, "wb")
+    output.write(outputStream)
+    outputStream.close()
 
 def make_example_project_note(outfile):
     """Make a note with some simple nonsensical data. Looking at this function

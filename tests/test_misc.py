@@ -4,7 +4,7 @@ import unittest
 
 import subprocess 
 
-from scilifelab.utils.misc import walk, filtered_walk
+from scilifelab.utils.misc import walk, filtered_walk, safe_makedir
 
 filedir = os.path.abspath(__file__)
 
@@ -23,7 +23,6 @@ class TestMisc(unittest.TestCase):
         """Perform a filtered walk of data dir"""
         flist = filtered_walk("data", filter_fn=self.filter_fn)
         self.assertEqual(flist, ['data/file1.txt', 'data/alignments/file1.txt', 'data/nophix/file1.txt', 'data/nophix/fastqc/file1.txt', 'data/fastqc/file1.txt', 'data/fastqc/nophix/file1.txt'])
-
 
     def test_2_filtered_walk_include(self):
         """Perform a filtered walk of data dir, using include_dirs restriction"""
