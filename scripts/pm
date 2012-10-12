@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import os
 import sys
-from cement.core import foundation, handler
+from cement.core import foundation, handler, backend
 from scilifelab.pm.lib.config import config_defaults
 from scilifelab.pm import PmApp
 from scilifelab.pm.core.controller import PmController
@@ -10,7 +10,8 @@ from scilifelab.pm.core.project import ProjectController, BcbioRunController, Pr
 from scilifelab.pm.core.archive import ArchiveController
 from scilifelab.pm.core.production import ProductionController
 from scilifelab.pm.core.deliver import DeliveryController, DeliveryReportController
-
+import logbook
+from scilifelab.log import LOG
 
 CONFIGFILE=os.path.join(os.getenv("HOME"), ".pm", "pm.conf")
 PLUGINDIR=os.path.join(os.getenv("HOME"), ".pm", "plugins")
@@ -25,7 +26,7 @@ app = PmApp('pm',
                           'scilifelab.pm.ext.ext_distributed',                        
                           'scilifelab.pm.ext.ext_hs_metrics',
                           'scilifelab.pm.ext.ext_qc',
-                          'scilifelab.pm.ext.ext_couchdb'
+                          'scilifelab.pm.ext.ext_couchdb',
                           ],
             plugin_dir = PLUGINDIR,
             plugin_config_dir = PLUGINCONFIGDIR,
@@ -40,6 +41,19 @@ try:
     handler.register(DeliveryController)
     handler.register(DeliveryReportController)
     app.setup()
+    LOG.level = logbook.lookup_level(app.log.get_level())
+    LOG.level = 2
+    print "console level {}".format(app.log._console_handler.level)
+    print "file level {}".format(app.log._file_handler.level)
+    print "default time string {}".format(app.log._console_handler.default_format_string)
+    print "my time string {}".format(app.log._console_handler.format_string)
+    for h in app.log.backend.handlers:
+        h.push_application()
+    #with app.log.log_setup.applicationbound():
+    app.log.info("An info message")
+    LOG.debug("Debug message from other logger")
+    LOG.info("infoLOG message from other logger")
+    LOG.info("third message from other logger")
     try:
         app.config.parse_file(CONFIGFILE)
     except:
@@ -47,6 +61,5 @@ try:
         sys.exit()
     app.run()
     app.render(app._output_data)
-
 finally:
     app.close()
