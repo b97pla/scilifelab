@@ -61,8 +61,9 @@ class PmTest(test.CementTestCase):
     def _run_app(self):
         try:
             self.app.setup()
-            self.app.run()
-            self.app.render(self.app._output_data)
+            with self.app.log.log_setup.applicationbound():
+                self.app.run()
+                self.app.render(self.app._output_data)
         finally:
             self.app.close()
             

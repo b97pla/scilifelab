@@ -33,13 +33,13 @@ class PmLogHandler(log.CementLogHandler):
         setup.
         """
 
-        file_format = "{record.time} {record.level_name} {record.channel} : {record.message}"
+        file_format = "{record.time} ({record.level_name}) {record.channel} : {record.message}"
         """The logging format for the file logger."""
 
-        console_format = "{record.time:%Y-%m-%d %H:%M} {record.level_name}: {record.message}"
+        console_format = "{record.time:%Y-%m-%d %H:%M} ({record.level_name}): {record.message}"
         """The logging format for the consoler logger."""
 
-        debug_format = "{record.time} {record.level_name} {record.channel} : {record.message}"
+        debug_format = "{record.time} ({record.level_name}) {record.channel} : {record.message}"
         """The logging format for both file and console if ``debug==True``."""
 
         log_setup = None
@@ -104,7 +104,7 @@ class PmLogHandler(log.CementLogHandler):
         if self.app.config.get('log', 'file'):
             self._setup_file_log()
         # nested setup
-        self.backend.handlers.append(logbook.NullHandler())
+        self.backend.handlers.insert(0, logbook.NullHandler(bubble=False))
         self.log_setup = logbook.NestedSetup(self.backend.handlers)
         with self._console_handler.applicationbound():
             self.debug("logging initialized for '%s' using PmLogHandler" % \
