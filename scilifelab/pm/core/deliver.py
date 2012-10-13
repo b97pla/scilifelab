@@ -6,8 +6,9 @@ import itertools
 
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractBaseController
-from scilifelab.report import sequencing_success, set_status
+from scilifelab.report import sequencing_success
 from scilifelab.report.rl import *
+from scilifelab.report.delivery_notes import sample_status_note, project_status_note
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection
 
 ## QC data cutoff values
@@ -151,6 +152,15 @@ class DeliveryReportController(AbstractBaseController):
 
     @controller.expose(help="Make sample status note")
     def sample_status(self):
+        if not self._check_pargs(["project_id", "flowcell_id"]):
+            return
+        print self.pargs
+        print type(self.pargs)
+        print vars(self.pargs)
+        sample_status_note(**vars(self.pargs))
+
+    @controller.expose(help="Make sample status note")
+    def sample_status_old(self):
         if not self._check_pargs(["project_id", "flowcell_id"]):
             return
         ## Cutoffs

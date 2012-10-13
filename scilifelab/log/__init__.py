@@ -3,7 +3,9 @@ log module
 """
 from logbook import Logger
 
-LOG = Logger('scilifelab')
+def minimal_logger(namespace):
+    """Make and return a minimal logger
 
-def minimal_logger(name):
-    return Logger(name)
+    :param namespace: namspace of logger
+    """
+    return Logger(namespace)

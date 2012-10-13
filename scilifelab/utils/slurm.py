@@ -3,7 +3,10 @@
 
 import subprocess
 import getpass
-import drmaa
+try:
+    import drmaa
+except:
+    pass
 
 def get_slurm_jobid(jobname,user=getpass.getuser()):
     """Attempt to get the job id for a slurm job name. Can this be done with python-drmaa instead?

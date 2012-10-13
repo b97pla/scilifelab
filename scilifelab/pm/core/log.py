@@ -43,6 +43,10 @@ class PmLogHandler(log.CementLogHandler):
         """The logging format for both file and console if ``debug==True``."""
 
         log_setup = None
+        """Nested log setup placeholder"""
+
+        level = 0
+        """Global level for handlers"""
 
         clear_loggers = True
         """Whether of not to clear previous loggers first."""
@@ -84,6 +88,8 @@ class PmLogHandler(log.CementLogHandler):
         if is_true(self.app._meta.debug):
             self.app.config.set('log', 'level', 'DEBUG')
             
+        # Mainly for backwards compatibility since Logger level should
+        # be NOTSET (level 0). Output level is controlled by handlers
         self.set_level(self.app.config.get('log', 'level'))
         
         # clear loggers?
@@ -98,9 +104,11 @@ class PmLogHandler(log.CementLogHandler):
         if self.app.config.get('log', 'file'):
             self._setup_file_log()
         # nested setup
+        self.backend.handlers.append(logbook.NullHandler())
         self.log_setup = logbook.NestedSetup(self.backend.handlers)
-        self.debug("logging initialized for '%s' using PmLogHandler" % \
-                       self._meta.namespace)
+        with self._console_handler.applicationbound():
+            self.debug("logging initialized for '%s' using PmLogHandler" % \
+                           self._meta.namespace)
 
 
     def set_level(self, level):
@@ -115,12 +123,11 @@ class PmLogHandler(log.CementLogHandler):
         if level not in self.levels:
             level = 'INFO'
         level = logbook.lookup_level(level.upper())
-        ## How is this propagated to submodules?!?
-        self.backend.level = level
+        self.level = level
         
     def get_level(self):
         """Returns a string representation of the current log level."""
-        return logbook.get_level_name(self.backend.level)
+        return logbook.get_level_name(self.level)
 
     def _setup_console_log(self):
         """Add a console log handler."""
@@ -130,7 +137,8 @@ class PmLogHandler(log.CementLogHandler):
             fmt_string = self._meta.console_format
         console_handler = logbook.StderrHandler(
             format_string=fmt_string,
-            level = logbook.lookup_level(self.get_level()))
+            level = logbook.lookup_level(self.get_level()),
+            bubble = True)
         self._console_handler = console_handler
         self.backend.handlers.append(console_handler)
 
@@ -153,12 +161,14 @@ class PmLogHandler(log.CementLogHandler):
                 backup_count=int(self.app.config.get('log', 'max_files')),
                 format_string=fmt_string,
                 level = logbook.lookup_level(self.get_level()),
+                bubble = True,
                 )
         else:
             from logbook import FileHandler
             file_handler = FileHandler(file_path,
                                        format_string=fmt_string,
                                        level = logbook.lookup_level(self.get_level()),
+                                       bubble = True,
                                        )
         
         self._file_handler = file_handler
