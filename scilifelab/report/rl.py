@@ -218,7 +218,7 @@ def make_example_project_note(outfile):
     "uppnex_project_id": "b2013444",
     "finished":None,
     }
-
+    LOG.debug("Making example project note with parameters {}".format(kw))
     make_note(outfile, headers, paragraphs, **kw)
 
 
@@ -244,4 +244,5 @@ def make_example_sample_note(outfile):
         "success": "How should I know if it was successful or not?",
         }
 
+    LOG.debug("Making example sample note with parameters {}".format(kw))
     make_note(outfile, headers, paragraphs, **kw)
