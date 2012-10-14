@@ -1,7 +1,10 @@
 import os
+import sys
 import subprocess
 import unittest
 import collections
+
+from Bio import SeqIO
 
 from scilifelab.utils.misc import safe_makedir
 
@@ -45,52 +48,63 @@ class SciLifeTest(unittest.TestCase):
         ## Here check should be done on input files to pipeline; if not present, then
         ## download bamfile and generate fastq files
         if not os.path.exists(bamfile):
-            #cl = ["curl", bam_url, "-r", "0-20000000", "-o", bamfile]
             cl = ["curl", bam_url, "-o", bamfile]
             subprocess.check_call(cl)
-        
-        samfile = os.path.join(tmp_dir, os.path.basename(bam_url).replace(".bam", ".part.sam"))
-        cl = ["samtools", "view", "-h", bamfile, "|", "head", "-200000", ">", samfile]
-        subprocess.Popen(" ".join(cl), shell=True)
-        bamfile2 = os.path.join(tmp_dir, os.path.basename(bam_url).replace(".bam", ".part.bam"))
-        cl = ["samtools", "view", "-Sbh", samfile, ">", bamfile2]
-        subprocess.Popen(" ".join(cl), shell=True)
-        cl = ["samtools", "index", bamfile2]
-        subprocess.check_call(cl)
 
-    def _install_bcbio_test_files(self, data_dir):
-        """Download required sequence and reference files.
-        """
-        
-        DlInfo = collections.namedtuple("DlInfo", "fname dirname version")
-        download_data = [DlInfo("110106_FC70BUKAAXX.tar.gz", None, None),
-                         DlInfo("genomes_automated_test.tar.gz", "genomes", 6),
-                         DlInfo("110907_ERP000591.tar.gz", None, None),
-                         DlInfo("100326_FC6107FAAXX.tar.gz", None, 2)]
-        for dl in download_data:
-            url = "http://chapmanb.s3.amazonaws.com/{fname}".format(fname=dl.fname)
-            dirname = os.path.join(data_dir, 
-                                   dl.fname.replace(".tar.gz", "") if dl.dirname is None
-                                   else dl.dirname)
-            if os.path.exists(dirname) and dl.version is not None:
-                version_file = os.path.join(dirname, "VERSION")
-                is_old = True
-                if os.path.exists(version_file):
-                    with open(version_file) as in_handle:
-                        version = int(in_handle.read())
-                    is_old = version < dl.version
-                if is_old:
-                    shutil.rmtree(dirname)
-            if not os.path.exists(dirname):
-                self._download_to_dir(url, dirname)
+        ## Generate fastq files from bam
+        if not os.getenv("PICARD_HOME", None):
+            print "No environment variable PICARD_HOME set; exiting"
+            sys.exit()
+        try:
+            cl = ["java", "-Xmx2g", "-XX:-UseGCOverheadLimit", "-jar", os.path.join(os.getenv("PICARD_HOME", os.curdir), "SamToFastq.jar"),
+                  "INPUT={}".format(bamfile), "INCLUDE_NON_PF_READS=False", "FASTQ=reads_1.fq", "SECOND_END_FASTQ=reads_2.fq", "VALIDATION_STRINGENCY=SILENT"]
+            if not os.path.exists("reads_1.fq"):
+                subprocess.check_call(cl)
+        except:
+            print "Failed: {}".format(cl)
+            raise
 
-    def _download_to_dir(self, url, dirname):
-        print "Downloading data to {}".format(dirname)
-        cl = ["wget", url]
-        subprocess.check_call(cl)
-        cl = ["tar", "-xzvpf", os.path.basename(url)]
-        subprocess.check_call(cl)
-        if not os.path.exists(os.path.dirname(dirname)):
-            safe_makedir(os.path.dirname(dirname))
-        os.rename(os.path.basename(dirname), dirname)
-        os.remove(os.path.basename(url))
+        ## Unfortunately the fastq files are not "paired". Here we
+        ## loop the files and write to outfiles only if there are
+        ## paired reads
+        seqs1 = self._read_fastq("reads_1.fq")
+        seqs2 = self._read_fastq("reads_2.fq")
+        print "Writing fastq file 1..."
+        self._write_fastq("seqs_1.fastq", seqs1, [x.id[0:-2] for x in seqs2])
+        print "Writing fastq file 2..."
+        self._write_fastq("seqs_2.fastq", seqs2, [x.id[0:-2] for x in seqs1])
+        print "Done writing files"
+
+    def _read_fastq(self, fn, numreads=250000):
+        fh = open(fn, "rU")
+        i = 0
+        seqs = []
+        for rec in SeqIO.parse(fh, "fastq"):
+            i = i + 1
+            if i % 10000==0:
+                print "Read {} sequences...".format(i)
+            ## For reads without a mate. SamToFastq should exclude
+            ## these but apparently that doesn't happen
+            if not rec.id[-2] == "/":
+                print "excluding id {}".format(rec.id)
+                continue
+            seqs.append(rec)
+            if i >= numreads:
+                return seqs
+    
+    def _write_fastq(self, fn, seqs, ids):
+        fh = open(fn, "w")
+        i = 0
+        for rec in seqs:
+            if rec.id[-2] != "/":
+                continue
+            if rec.id[0:-2] in ids:
+                del ids[ids.index(rec.id[0:-2])]
+                i = i + 1
+                SeqIO.write(rec, fh, "fastq")
+                if i % 10000==0:
+                    print "Wrote {} sequences...".format(i)
+        fh.close()
+            
+
+    
