@@ -163,10 +163,3 @@ class DeliveryReportController(AbstractBaseController):
         if not self._check_pargs(["project_id"]):
             return
         project_status_note(**vars(self.pargs))
-
-
-
-
-
-
-    

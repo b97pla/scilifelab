@@ -104,7 +104,7 @@ class PmLogHandler(log.CementLogHandler):
         if self.app.config.get('log', 'file'):
             self._setup_file_log()
         # nested setup
-        self.backend.handlers.insert(0, logbook.NullHandler(bubble=False))
+        self.backend.handlers.append(logbook.NullHandler(bubble=False))
         self.log_setup = logbook.NestedSetup(self.backend.handlers)
         with self._console_handler.applicationbound():
             self.debug("logging initialized for '%s' using PmLogHandler" % \

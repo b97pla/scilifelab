@@ -8,7 +8,7 @@ from cement.core import interface, handler, controller, backend
 from scilifelab.pm.lib.help import PmHelpFormatter
 from scilifelab.utils.misc import filtered_output, query_yes_no, filtered_walk
 
-LOG = backend.minimal_logger(__name__)
+#LOG = backend.minimal_logger(__name__)
 
 class AbstractBaseController(controller.CementBaseController):
     """
@@ -45,10 +45,10 @@ class AbstractBaseController(controller.CementBaseController):
         self._process_args()
         
         if not self.command:
-            LOG.debug("no command to dispatch")
+            self.app.log.debug("no command to dispatch")
         else:    
             func = self.exposed[self.command]     
-            LOG.debug("dispatching command: %s.%s" % \
+            self.app.log.debug("dispatching command: %s.%s" % \
                       (func['controller'], func['label']))
 
             if func['controller'] == self._meta.label:
@@ -65,14 +65,14 @@ class AbstractBaseController(controller.CementBaseController):
         raise NotImplementedError
 
     def _obsolete(self, msg):
-        self.log.warn("This function is obsolete.")
-        self.log.warn(msg)
+        self.app.log.warn("This function is obsolete.")
+        self.app.log.warn(msg)
 
     def _check_pargs(self, pargs, msg=None):
         """Check that list of pargs are present"""
         for p in pargs:
             if not self.pargs.__getattribute__(p):
-                self.log.warn("Required argument '{}' lacking".format(p))
+                self.app.log.warn("Required argument '{}' lacking".format(p))
                 return False
         return True
 

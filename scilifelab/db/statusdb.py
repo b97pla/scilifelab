@@ -144,23 +144,23 @@ class SampleRunMetricsConnection(Couch):
                                "flowcell":s.get("flowcell", None),
                                "date":s.get("date", None),
                                "application":application,
-                               "TOTAL_READS":s.get("picard_metrics", {}).get("AL_PAIR", {}).get("TOTAL_READS", -1),
+                               "TOTAL_READS":int(s.get("picard_metrics", {}).get("AL_PAIR", {}).get("TOTAL_READS", -1)),
                                "PERCENT_DUPLICATION":s.get("picard_metrics", {}).get("DUP_metrics", {}).get("PERCENT_DUPLICATION", "-1.0"),
-                               "MEAN_INSERT_SIZE":s.get("picard_metrics", {}).get("INS_metrics", {}).get("MEAN_INSERT_SIZE", "-1.0"),
-                               "GENOME_SIZE":s.get("picard_metrics", {}).get("HS_metrics", {}).get("GENOME_SIZE", -1),
-                               "FOLD_ENRICHMENT":s.get("picard_metrics", {}).get("HS_metrics", {}).get("FOLD_ENRICHMENT", "-1.0").replace(",", "."),
+                               "MEAN_INSERT_SIZE":float(s.get("picard_metrics", {}).get("INS_metrics", {}).get("MEAN_INSERT_SIZE", "-1.0")),
+                               "GENOME_SIZE":int(s.get("picard_metrics", {}).get("HS_metrics", {}).get("GENOME_SIZE", -1)),
+                               "FOLD_ENRICHMENT":float(s.get("picard_metrics", {}).get("HS_metrics", {}).get("FOLD_ENRICHMENT", "-1.0").replace(",", ".")),
                                "PCT_USABLE_BASES_ON_TARGET":s.get("picard_metrics", {}).get("HS_metrics", {}).get("PCT_USABLE_BASES_ON_TARGET", "-1.0"),
                                "PCT_TARGET_BASES_10X":s.get("picard_metrics", {}).get("HS_metrics", {}).get("PCT_TARGET_BASES_10X", "-1.0"),
                                "PCT_PF_READS_ALIGNED":s.get("picard_metrics", {}).get("AL_PAIR", {}).get("PCT_PF_READS_ALIGNED", "-1.0"),
                                }
-            target_territory = s.get("picard_metrics", {}).get("HS_metrics", {}).get("TARGET_TERRITORY", -1)
+            target_territory = float(s.get("picard_metrics", {}).get("HS_metrics", {}).get("TARGET_TERRITORY", -1))
             pct_labels = ["PERCENT_DUPLICATION", "PCT_USABLE_BASES_ON_TARGET", "PCT_TARGET_BASES_10X",
                           "PCT_PF_READS_ALIGNED"]
             for l in pct_labels:
                 if qcdata[s["name"]][l]:
                     qcdata[s["name"]][l] = float(qcdata[s["name"]][l].replace(",", ".")) * 100
             if qcdata[s["name"]]["FOLD_ENRICHMENT"] and qcdata[s["name"]]["GENOME_SIZE"] and target_territory:
-                qcdata[s["name"]]["PERCENT_ON_TARGET"] = float(float(qcdata[s["name"]]["FOLD_ENRICHMENT"].replace(",", "."))/(float(qcdata[s["name"]]["GENOME_SIZE"]) / float(target_territory))) * 100
+                qcdata[s["name"]]["PERCENT_ON_TARGET"] = float(qcdata[s["name"]]["FOLD_ENRICHMENT"]/ (float(qcdata[s["name"]]["GENOME_SIZE"]) / float(target_territory))) * 100
         return qcdata
 
 
