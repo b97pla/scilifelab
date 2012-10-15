@@ -132,6 +132,7 @@ class AbstractExtendedBaseController(AbstractBaseController):
         self._meta.arguments.append((['--split'], dict(help="Workon *-split directories", default=False, action="store_true")))
         self._meta.arguments.append((['--tmp'], dict(help="Workon staging (tx) and tmp directories", default=False, action="store_true")))
         self._meta.arguments.append((['--txt'], dict(help="Workon txt files", default=False, action="store_true")))
+        self._meta.arguments.append((['--glob'], dict(help="Workon freetext glob expression. CAUTION: using wildcard expressions will remove *everything* that matches.", default=None, action="store")))
         self._meta.arguments.append((['--move'], dict(help="Transfer file with move", default=False, action="store_true")))
         self._meta.arguments.append((['--copy'], dict(help="Transfer file with copy (default)", default=True, action="store_true")))
         self._meta.arguments.append((['--rsync'], dict(help="Transfer file with rsync", default=False, action="store_true")))
@@ -164,7 +165,9 @@ class AbstractExtendedBaseController(AbstractBaseController):
         if self.pargs.tmp:
             self._meta.file_pat += [".idx", ".vcf", ".bai", ".bam", ".idx", ".pdf"]
             self._meta.include_dirs += ["tmp", "tx"]
-
+        if self.pargs.glob:
+            self._meta.file_pat += [self.pargs.glob]
+            
         ## Setup zip program
         if self.pargs.pbzip2:
             self._meta.compress_prog = "pbzip2"

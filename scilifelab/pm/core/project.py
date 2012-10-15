@@ -141,6 +141,28 @@ class ProjectController(AbstractExtendedBaseController):
                     self.app.cmd.safe_unlink(f)
                     self.app.cmd.write(f, "File removed to save disk space: Moved to {}".format(os.path.abspath(tgt)))
 
+        ## Find bam files in sample folder. Often there are
+        ## -sort-dup.bam, sort-dup-gatkrecal.bam,
+        ## sort-dup-gatkrecal-realign.bam - only the latter should be
+        ## needed. Find files and organize by sample and save the
+        ## longest name
+        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), purge_filter)
+        samples = {}
+        for f in flist:
+            sid = re.search("(.*)-.*", f)
+            if not sid in samples.keys():
+                samples[sid] = []
+            samples[sid].append(f)
+
+        for k, v in samples.iteritems():
+            print k
+            # f_tgt = [f.replace(".bam", "-sort.bam"), os.path.join(os.path.dirname(os.path.dirname(f)),os.path.basename(f) )]
+            # for tgt in f_tgt:
+            #     if os.path.exists(tgt):
+            #         self.app.log.info("Purging bam file {}".format(f))
+            #         self.app.cmd.safe_unlink(f)
+            #         self.app.cmd.write(f, "File removed to save disk space: Moved to {}".format(os.path.abspath(tgt)))
+
 class ProjectRmController(AbstractBaseController):
     class Meta:
         label = 'projectrm'
