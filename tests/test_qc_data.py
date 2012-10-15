@@ -5,7 +5,7 @@ import ConfigParser
 import pandas as pd
 from pandas.core.format import set_eng_float_format
 from scilifelab.db.statusdb import SampleRunMetricsConnection
-from test_default import SciLifeTest
+from classes import SciLifeTest
 
 filedir = os.path.abspath(__file__)
 
