@@ -61,10 +61,12 @@ def setUpModule():
     _install_1000g_test_files(os.path.join(os.path.dirname(__file__), "data", "production"))
     _install_phix()
     dbsnp = _install_dbsnp()
+    (omni_out, hapmap_out, mills_out) = _install_training_data()
+
     _download_ucsc_genome_and_index()
     ## Install post_process file
     fh = open(POSTPROCESS, "w")
-    fh.write(PPTEMPLATE.render(**{'store_dir':ARCHIVE, 'base_dir':PRODUCTION, 'dbsnp':dbsnp}))
+    fh.write(PPTEMPLATE.render(**{'store_dir':ARCHIVE, 'base_dir':PRODUCTION, 'dbsnp':dbsnp, 'omni':omni_out, 'hapmap':hapmap_out, 'mills':mills_out}))
     fh.close()
     ## Install index files
     for k, v in index_files.iteritems():
@@ -370,4 +372,61 @@ def _install_dbsnp(build="hg19"):
                 break
         of.close()
     return dbsnp
+
+
+omni="""##fileformat=VCFv4.1
+##FILTER=<ID=NOT_POLY_IN_1000G,Description="Alternate allele count = 0">
+##FILTER=<ID=badAssayMapping,Description="The mapping information for the SNP assay is internally inconsistent in the chip metadata">
+##FILTER=<ID=dup,Description="Duplicate assay at same position with worse Gentrain Score">
+##FILTER=<ID=id10,Description="Within 10 bp of an known indel">
+##FILTER=<ID=id20,Description="Within 20 bp of an known indel">
+##FILTER=<ID=id5,Description="Within 5 bp of an known indel">
+##FILTER=<ID=id50,Description="Within 50 bp of an known indel">
+##FILTER=<ID=refN,Description="Reference base is N. Assay is designed for 2 alt alleles">
+##FORMAT=<ID=GC,Number=.,Type=Float,Description="Gencall Score">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FilterLiftedVariants="analysis_type=FilterLiftedVariants input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_g1k_v37.fasta rodBind=[/gap/birdsuite/1kg/0.928975161471502.sorted.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false enable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null quiet_output_mode=false debug_mode=false help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub"
+##INFO=<ID=CR,Number=.,Type=Float,Description="SNP Callrate">
+##INFO=<ID=GentrainScore,Number=.,Type=Float,Description="Gentrain Score">
+##INFO=<ID=HW,Number=.,Type=Float,Description="Hardy-Weinberg Equilibrium">
+##reference=human_g1k_v37.fasta
+##source=infiniumFinalReportConverterV1.0
+#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO
+"""
+
+hapmap = """##fileformat=VCFv4.1
+##CombineVariants="analysis_type=CombineVariants input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/seq/references/Homo_sapiens_assembly18/v0/Homo_sapiens_assembly18.fasta rodBind=[/broad/shptmp/0.516962905488075.ASW.vcf, /broad/shptmp/0.516962905488075.CEU.vcf, /broad/shptmp/0.516962905488075.CHB.vcf, /broad/shptmp/0.516962905488075.CHD.vcf, /broad/shptmp/0.516962905488075.GIH.vcf, /broad/shptmp/0.516962905488075.JPT.vcf, /broad/shptmp/0.516962905488075.LWK.vcf, /broad/shptmp/0.516962905488075.MEX.vcf, /broad/shptmp/0.516962905488075.MKK.vcf, /broad/shptmp/0.516962905488075.TSI.vcf, /broad/shptmp/0.516962905488075.YRI.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=1.0E-4 useOriginalQualities=false validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null logging_level=INFO log_to_file=null quiet_output_mode=false debug_mode=false help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub genotypemergeoption=UNSORTED variantmergeoption=UNION rod_priority_list=ASW,YRI,LWK,CHD,CHB,CEU,GIH,MKK,MEX,JPT,TSI printComplexMerges=false filteredAreUncalled=false minimalVCF=false setKey=set"
+##FilterLiftedVariants="analysis_type=FilterLiftedVariants input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_g1k_v37.fasta rodBind=[/broad/shptmp/ebanks//0.764768180511059.sorted.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=1.0E-4 useOriginalQualities=false validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null logging_level=INFO log_to_file=null quiet_output_mode=false debug_mode=false help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub"
+##INFO=<ID=set,Number=1,Type=String,Description="Source VCF for the merged record in CombineVariants">
+##VariantsToVCF="analysis_type=VariantsToVCF input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=[X] excludeIntervals=null reference_sequence=/seq/references/Homo_sapiens_assembly18/v0/Homo_sapiens_assembly18.fasta rodBind=[/humgen/gsa-hpprojects/GATK/data/Comparisons/Validated/HapMap/3.3/rawdata/genotypes_chrX_ASW_phase3.3_consensus.b36_fwd.txt] rodToIntervalTrackName=null BTI_merge_rule=UNION DBSNP=/humgen/gsa-hpprojects/GATK/data/dbsnp_129_hg18.rod downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=1.0E-4 useOriginalQualities=false validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null logging_level=INFO log_to_file=null quiet_output_mode=false debug_mode=false help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sample=null"
+##reference=Homo_sapiens_assembly18.fasta
+##source=VariantsToVCF
+#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO
+"""
+mills = """##fileformat=VCFv4.1
+##CombineVariants="analysis_type=CombineVariants input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_g1k_v37.fasta rodBind=[./indel_hg19_051711_leftAligned.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub genotypemergeoption=PRIORITIZE filteredrecordsmergetype=KEEP_IF_ANY_UNFILTERED rod_priority_list=mills printComplexMerges=false filteredAreUncalled=false minimalVCF=false setKey=set assumeIdenticalSamples=false minimumN=1 masterMerge=false mergeInfoWithMaxAC=false"
+##FilterLiftedVariants="analysis_type=FilterLiftedVariants input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta rodBind=[/broad/shptmp/delangel/tmp/0.101786952306615.sorted.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub"
+##INFO=<ID=set,Number=1,Type=String,Description="Source VCF for the merged record in CombineVariants">
+##LeftAlignVariants="analysis_type=LeftAlignVariants input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_b36_both.fasta rodBind=[./indel_hg18_051711.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub"
+##ValidateVariants="analysis_type=ValidateVariants input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_g1k_v37.fasta rodBind=[./indel_hg19_051711_leftAligned_collapsed.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub validationType=ALL doNotValidateFilteredRecords=false warnOnErrors=true"
+##VariantsToVCF="analysis_type=VariantsToVCF input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_b36_both.fasta rodBind=[./indel_hg18_051711_sorted.txt] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sample=null fixRef=true"
+#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO
+"""
+
+def _install_training_data(build="hg19"):
+    variationdir = os.path.join(GENOMES, genomes[build]['species'], build, "variation")
+    omni_out = os.path.join(variationdir, "1000G_omni2.5.vcf")
+    hapmap_out = os.path.join(variationdir, "hapmap_3.3.vcf")
+    mills_out = os.path.join(variationdir, "Mills_Devine_2hit.indels.vcf")
+    fh = open(omni_out, "w")
+    fh.write(omni)
+    fh.close()
+    fh = open(hapmap_out, "w")
+    fh.write(hapmap)
+    fh.close()
+    fh = open(mills_out, "w")
+    fh.write(mills)
+    fh.close()
+    return (omni_out, hapmap_out, mills_out)
+
 ## run_bcbb_pipeline.py flowcell_path post_process.yaml [-custom runinfo -g]

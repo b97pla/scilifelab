@@ -89,6 +89,10 @@ custom_algorithms:
     quality_format: Standard
     upload_fastq: true
     dbsnp: ${dbsnp}
+    train_hapmap: ${hapmap}
+    train_1000g_omni: ${omni}
+    train_indels: ${mills}
+
 #    hybrid_target: 
 #    hybrid_bait: 
 
