@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import subprocess
 import unittest
 import logbook
@@ -24,8 +25,8 @@ PRODUCTION = os.path.join(filedir, "data", "production")
 GENOMES = os.path.join(filedir, "data", "genomes")
 CONFIG = os.path.join(filedir, "data", "config")
 tmpdir = os.path.join(os.path.dirname(__file__), "tmp")
-CURLFILESIZE = 200000
-NUMREADS = 300
+CURLFILESIZE = 30000000
+NUMREADS = 400000
 
 ## Postprocess file
 PPTEMPLATE = Template(filename=os.path.join(CONFIG, "post_process.mako"))
@@ -36,12 +37,22 @@ SAMPLESHEETS = {}
 SAMPLESHEETS['C003CCCXX'] = """FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,SampleProject
 C003CCCXX,1,P001_101_index3,hg19,TGACCA,J__Doe_00_01,N,R1,NN,J__Doe_00_01
 C003CCCXX,1,P001_102_index6,hg19,ACAGTG,J__Doe_00_01,N,R1,NN,J__Doe_00_01
-C003CCCXX,2,P002_101_index3,hg19,TGACCA,J__Doe_00_02,N,R1,NN,J__Doe_00_02
+C003CCCXX,2,P002_101_index3,hg19,TGACCA,J__Doe_00_02,N,R1,NN_failed,J__Doe_00_02
 C003CCCXX,2,P002_102_index6,hg19,ACAGTG,J__Doe_00_02,N,R1,NN,J__Doe_00_02
 C003CCCXX,2,P002_103_index8,hg19,TGGTCA,J__Doe_00_02,N,R1,NN,J__Doe_00_02
-C003CCCXX,2,P003_101_index1,hg19,AGTGCG,J__Doe_00_03,N,R1,NN,J__Doe_00_03
+C003CCCXX,2,P003_101_index1,hg19,AGTGCG,J__Doe_00_03,N,R1,NN_failed,J__Doe_00_03
 C003CCCXX,2,P003_101_index2,hg19,TGTGCG,J__Doe_00_03,N,R1,NN,J__Doe_00_03
-C003CCCXX,2,P003_101_index6,hg19,CGTTAA,J__Doe_00_03,N,R1,NN,J__Doe_00_03"""
+C003CCCXX,2,P003_101_index6,hg19,CGTTAA,J__Doe_00_03,N,R1,NN_failed,J__Doe_00_03"""
+SAMPLESHEETS['B002BBBXX'] = """FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,SampleProject
+B002BBBXX,1,P001_101_index3,hg19,TGACCA,J__Doe_00_04,N,R1,NN,J__Doe_00_01
+B002BBBXX,1,P001_102_index6,hg19,ACAGTG,J__Doe_00_04,N,R1,NN,J__Doe_00_01
+B002BBBXX,2,P002_101_index3,hg19,TGACCA,J__Doe_00_05,N,R1,NN,J__Doe_00_02
+B002BBBXX,2,P002_102_index6,hg19,ACAGTG,J__Doe_00_05,N,R1,NN,J__Doe_00_02
+B002BBBXX,2,P002_103_index8,hg19,TGGTCA,J__Doe_00_05,N,R1,NN,J__Doe_00_02
+B002BBBXX,2,P003_102_index2,hg19,TGTGCG,J__Doe_00_03,N,R1,NN,J__Doe_00_03
+B002BBBXX,2,P003_103_index3,hg19,TGAACG,J__Doe_00_03,N,R1,NN,J__Doe_00_03
+B002BBBXX,2,P003_101_index1,hg19,AGTGCG,J__Doe_00_03,N,R1,NN,J__Doe_00_03
+"""
 
 ## Genome metadata
 genomes = {'hg19':{'species':'Hsapiens', 'label':'Human (hg19)'},
@@ -62,7 +73,7 @@ def setUpModule():
     ## Add function to check existence of output files
     _install_1000g_test_files(os.path.join(os.path.dirname(__file__), "data", "production"))
     _install_phix()
-    dbsnp = _install_dbsnp()
+    dbsnp = _install_entrez_file()
     (omni_out, hapmap_out, mills_out) = _install_training_data()
 
     _download_ucsc_genome_and_index()
@@ -126,15 +137,8 @@ def _install_1000g_test_files(data_dir):
     smallbamfile = bamfile.replace(".bam", ".small.bam")
     if not os.path.exists(smallbamfile):
         LOG.info("downloading {} from {}".format(bamfile, base_url))
-        cl = ["curl", bam_url, "-o", bamfile, "-r", "0-{}".format(CURLFILESIZE)]
+        cl = ["curl", bam_url, "-o", smallbamfile, "-r", "0-{}".format(CURLFILESIZE)]
         subprocess.check_call(cl)
-        ## Is this needed? Just to make sure that SamToFastq doesn't
-        ## complain about truncated file
-        samfile = bamfile.replace(".bam", ".sam")
-        cl = ["-c", "samtools view -hb {} 11:1-2000000 -o {}".format(bamfile, smallbamfile)]
-        subprocess.check_call(cl, shell=True)
-        #os.unlink(bamfile)
-        #os.unlink(samfile)
         LOG.info("finished creating {}".format(smallbamfile))
 
     _bam_to_fastq(smallbamfile, os.path.join(tmpdir, "reads"))
@@ -142,6 +146,7 @@ def _install_1000g_test_files(data_dir):
     r2 = os.path.join(tmpdir, "reads_2.fq")
     _pair_fastq_files(r1, r2, os.path.join(tmpdir, "seqs"))
     _make_casava_archive_files(FLOWCELL, "C003CCCXX", os.path.join(tmpdir, "seqs"))
+    _make_casava_archive_files(FLOWCELL, "B002BBBXX", os.path.join(tmpdir, "seqs"), startiter = 100000)
 
 def _bam_to_fastq(bamfile, out_prefix):
     """Convert bam to fastq file. Outputs paired reads"""
@@ -153,7 +158,8 @@ def _bam_to_fastq(bamfile, out_prefix):
             subprocess.check_call(cl)
     except:
         LOG.warn("Failed to run SamToFastq: {}".format(cl))
-        raise
+        LOG.info("This is expected since the input bamfile is truncated")
+        pass
 
 def _pair_fastq_files(r1, r2, out_prefix):
     """Pair fastq files. Unfortunately the fastq files are not
@@ -203,7 +209,7 @@ def _write_fastq(fn, seqs, ids):
                 LOG.info("Wrote {} sequences...".format(i))
     fh.close()
 
-def _make_casava_archive_files(fc, ssname, prefix, nseqout=100000):
+def _make_casava_archive_files(fc, ssname, prefix, startiter = 1, nseqout=100000):
     fc_dir = os.path.join(ARCHIVE, fc)
     if not os.path.exists(fc_dir):
         safe_makedir(fc_dir)
@@ -242,7 +248,6 @@ def _make_casava_archive_files(fc, ssname, prefix, nseqout=100000):
         oh2 = gzip.open(os.path.join(outdir, "{}_{}_L00{}_R2_001.fastq.gz".format(vals[2], vals[4], vals[1])),"w")
         outh2.append(oh2)
 
-
     ## Write sequences
     i = 0
     n = len(outh1)
@@ -255,8 +260,12 @@ def _make_casava_archive_files(fc, ssname, prefix, nseqout=100000):
             break
     [h.close() for h in outh1]
     i = 0
+    j = 0 - startiter
     n = len(outh2)
     for rec in SeqIO.parse(h2, "fastq"):
+        j = j + 1
+        if j < 0:
+            continue
         SeqIO.write(rec, outh2[i%n], "fastq")
         i = i + 1
         if (i % 10000 == 0):
@@ -265,7 +274,6 @@ def _make_casava_archive_files(fc, ssname, prefix, nseqout=100000):
             break
 
     [h.close() for h in outh2]
-        
     h1.close()
     h2.close()
 
@@ -334,13 +342,16 @@ def _index_bowtie2(fn, label="bowtie2"):
     return os.path.splitext(os.path.join(outdir, os.path.basename(fn)))[0]
 
 def _install_phix():
+    LOG.info("Installing phix")
     build = "phix"
     genomedir = os.path.join(GENOMES, genomes[build]['species'], build, "seq")
     fn = os.path.join(genomedir, "phix.fa")
     if not os.path.exists(genomedir):
+        LOG.info("Creating {}".format(genomedir))
         safe_makedir(genomedir)
     if not os.path.exists(fn):
         try:
+            LOG.info("Opening file {}".format(fn))
             fh = open(fn, "w")
             handle = Entrez.efetch(db="nucleotide", id="9626372", rettype="fasta", retmode="text")
             rec = "".join(handle.readlines())
@@ -356,7 +367,34 @@ def _install_phix():
     #outfile = _index_bowtie2(fn, label="bowtie2")
     #index_files['bowtie2']['data'].write("{}\t{}\t{}\t{}\n".format(build, build, genomes[build]['label'], outfile))
 
-def _install_dbsnp(build="hg19"):
+def _install_dbsnp_entrez(build="hg19"):
+    """Install a subset of snps using Entrez queries"""
+    variationdir = os.path.join(GENOMES, genomes[build]['species'], build, "variation")
+    if not os.path.exists(variationdir):
+        safe_makedir(variationdir)
+    fn = os.path.join(variationdir, "dbsnp132_chr11.vcf")
+    if not os.path.exists(fn):
+        try:
+            #fh = open(fn, "w")
+            #'("Homo sapiens"[Organism] OR human[All Fields]) AND (11[CHR] AND (1[CHRPOS] : 2000000[CHRPOS]))')
+            handle = Entrez.esearch(db="snp", retmax = 10, term="\"Homo sapiens\"[Organism] AND (11[CHR] AND (1[CHRPOS] : 2000000[CHRPOS]))")
+            h = Entrez.efetch(db="snp", id=record['IdList'], rettype="flt")
+            out = ""
+            while True:
+                rsid = handle.readline().split()[0]
+                handle.readline()
+                (ref, alt) = re.search("alleles=([A-Z]+)/([A-Z]+))", handle.readline()).groups()
+                handle.readline()
+                (ch, pos) = re.search("chr=([0-9]+) | chr-pos=([0-9]+)", handle.readline()).groups()
+                print "\t".join("chr{}".format(ch), pos, rsid, ref, alt, ".", ".", "dbSNPBuildID=132")
+            rec = "".join(handle.readlines())
+            fh.write(rec)
+            fh.close()
+        except:
+            pass
+    
+
+def _install_dbsnp_file(build="hg19"):
     """Download a (large) dbsnp file and extract a region from chr 11"""
     variationdir = os.path.join(GENOMES, genomes[build]['species'], build, "variation")
     url = "ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/dbsnp132_20101103.vcf.gz"
