@@ -147,19 +147,31 @@ class ProjectTest(PmTest):
             self.eq(sam, "")
 
         
-    def test_8_purge_alignments(self):
+    def test_purge_sam(self):
         """Test purging alignments of sam files"""
         self.app = self.make_app(argv = ['production', 'transfer', 'J.Doe_00_04', '--quiet'])
         handler.register(ProductionController)
         self._run_app()
-        self.app = self.make_app(argv = ['project', 'purge_alignments', 'j_doe_00_04', 'analysis_1', '--force'])
+        self.app = self.make_app(argv = ['project', 'purge', 'j_doe_00_04', 'analysis_1', '--force', '--sam'])
         handler.register(ProjectController)
         handler.register(ProjectRmController)
         self._run_app()
         with open(os.path.join(j_doe_00_04['data'], "P001_102_index6", "120924_CC003CCCXX", "alignments", "1_120924_CC003CCCXX_2_nophix.sam")) as fh:
             sam = fh.read()
             self.eq(sam, "File removed to save disk space: SAM converted to BAM")
+
+
+    def test_purge_bam(self):
+        """Test purging alignments of bam files"""
+        self.app = self.make_app(argv = ['production', 'transfer', 'J.Doe_00_04', '--quiet'])
+        handler.register(ProductionController)
+        self._run_app()
+        self.app = self.make_app(argv = ['project', 'purge', 'j_doe_00_04', 'analysis_1', '--force', '--data', '--minfilesize', "0", '--debug'])
+        handler.register(ProjectController)
+        handler.register(ProjectRmController)
+        self._run_app()
         with open(os.path.join(j_doe_00_04['data'], "P001_102_index6", "120924_CC003CCCXX", "alignments", "1_120924_CC003CCCXX_2_nophix-sort.bam")) as fh:
             bam = fh.read()
             self.eq(bam, "File removed to save disk space: Moved to {}".format(os.path.join(j_doe_00_04['data'], "P001_102_index6", "120924_CC003CCCXX", "1_120924_CC003CCCXX_2_nophix-sort.bam")))
-        
+
+

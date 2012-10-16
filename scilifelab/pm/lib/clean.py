@@ -10,24 +10,22 @@ LOG = backend.minimal_logger(__name__)
 
 MINFILESIZE = 2000
 
-def _purge_by_sample(files, dry_run):
+def _purge_by_sample(files, dry_run, fsize=MINFILESIZE):
     saved_size = 0
-    files.sort(lambda x,y: cmp(len(x), len(y)))
     for i in range(0, len(files)-1):
         f1 = os.path.basename(files[i])
         f2 = os.path.basename(files[i])
         if f1.startswith(os.path.splitext(f2)[0]):
             statinfo = os.stat(files[i])
-            print files[i], statinfo.st_size
-            if statinfo.st_size < MINFILESIZE:
+            if statinfo.st_size < fsize:
                 continue
             saved_size = saved_size + statinfo.st_size
-            LOG.info("Purging bam file {}".format(f1))
+            LOG.info("Purging bam file {}".format(files[i])) 
             dry_unlink(files[i], dry_run)
-            dry_write(files[i], "File removed to save disk space: data resides in {}".format(files[i+1]), dry_run)
+            dry_write(files[i], "File removed to save disk space: Moved to {}".format(files[i+1]), dry_run)
     return saved_size
 
-def purge_alignments(path, ftype="sam", keep="last", dry_run=True, force=False):
+def purge_alignments(path, ftype="sam", keep="last", dry_run=True, force=False, fsize=MINFILESIZE):
     """Cleanup sam and bam files. In some cases, sam files persist. If
     the corresponding bam file exists, replace the sam file contents
     with a message that the file has been removed to save space.
@@ -80,10 +78,12 @@ def purge_alignments(path, ftype="sam", keep="last", dry_run=True, force=False):
 
         saved_size = 0
         for k in samples.iterkeys():
+            LOG.info("Iter ", k, samples[k])
             for d, files  in samples[k].iteritems():
                 if not files or len(files) == 1:
                     continue
+                files.sort(lambda x,y: cmp(len(x), len(y)))
                 if keep == "last":
                     LOG.info("Keeping file {} and removing all files with common prefix: {}".format(os.path.basename(files[len(files)-1]), ", ".join([os.path.basename(x) for x in files[0:-1]])))
-                saved_size = _purge_by_sample(files, dry_run) + saved_size
+                saved_size = _purge_by_sample(files, dry_run, int(fsize)) + saved_size
         LOG.info("Will save approximately {:.1f}G space".format(saved_size / 1e9))

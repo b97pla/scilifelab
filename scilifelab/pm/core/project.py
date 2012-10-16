@@ -25,6 +25,7 @@ class ProjectController(AbstractExtendedBaseController):
             (['--finished'], dict(help="include finished project listing", action="store_true", default=False)),
             (['--intermediate'], dict(help="Work on intermediate data", default=False, action="store_true")),
             (['--data'], dict(help="Work on data folder", default=False, action="store_true")),
+            (['--minfilesize'], dict(help="Min file size to keep (in bytes). Default 2000.", default=2000, action="store", type=int)),
             ]
         flowcelldir = None
 
@@ -117,9 +118,9 @@ class ProjectController(AbstractExtendedBaseController):
         if not self._check_pargs(["project"]):
             return
         if self.app.pargs.sam:
-            purge_alignments(path=os.path.join(self._meta.root_path, self._meta.path_id), dry_run=self.app.pargs.dry_run, force=self.app.pargs.force)
+            purge_alignments(path=os.path.join(self._meta.root_path, self._meta.path_id), dry_run=self.app.pargs.dry_run, force=self.app.pargs.force, fsize=self.app.pargs.minfilesize)
         else:
-            purge_alignments(path=os.path.join(self._meta.root_path, self._meta.path_id), dry_run=self.app.pargs.dry_run, force=self.app.pargs.force, ftype="bam")
+            purge_alignments(path=os.path.join(self._meta.root_path, self._meta.path_id), dry_run=self.app.pargs.dry_run, force=self.app.pargs.force, ftype="bam", fsize=self.app.pargs.minfilesize)
 
 class ProjectRmController(AbstractBaseController):
     class Meta:
