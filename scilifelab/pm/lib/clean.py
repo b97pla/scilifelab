@@ -78,7 +78,6 @@ def purge_alignments(path, ftype="sam", keep="last", dry_run=True, force=False, 
 
         saved_size = 0
         for k in samples.iterkeys():
-            LOG.info("Iter ", k, samples[k])
             for d, files  in samples[k].iteritems():
                 if not files or len(files) == 1:
                     continue
