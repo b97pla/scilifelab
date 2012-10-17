@@ -3,11 +3,13 @@ import re
 import unittest
 import itertools
 import ConfigParser
-from scilifelab.report import sequencing_success
+import logbook
 from scilifelab.report.rl import make_example_project_note, make_note, project_note_paragraphs, project_note_headers, make_sample_table
 from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectSummaryConnection
 
 filedir = os.path.abspath(os.path.realpath(os.path.dirname(__file__)))
+LOG = logbook.Logger(__name__)
+
 
 ## Cutoffs
 cutoffs = {
@@ -38,6 +40,7 @@ class TestProjectStatusNote(unittest.TestCase):
             self.user = None
             self.pw = None
             self.examples = {}
+            LOG.warning("No such file {}; will not run database connection tests".format(os.path.join(os.getenv("HOME"), "dbcon.ini")))
         else:
             config = ConfigParser.ConfigParser()
             config.readfp(open(os.path.join(os.getenv("HOME"), "dbcon.ini")))
@@ -48,12 +51,15 @@ class TestProjectStatusNote(unittest.TestCase):
                              "flowcell":config.get("examples", "flowcell"),
                              "project":config.get("examples", "project")}
 
-    def test_1_make_example_project_note(self):
+    def test_make_example_project_note(self):
         """Make example project note"""
         make_example_project_note(os.path.join(filedir, "project_test.pdf"))
 
-    def test_2_make_project_note(self):
+    def test_make_project_note(self):
         """Make a project note subset by flowcell and project"""
+        if not self.examples:
+            LOG.info("Not running test")
+            return
         s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
         fc_con = FlowcellRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
         p_con = ProjectSummaryConnection(username=self.user, password=self.pw, url=self.url)
@@ -96,27 +102,38 @@ class TestProjectStatusNote(unittest.TestCase):
         paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
         make_note("{}.pdf".format(self.examples["project"]), headers, paragraphs, **param)
 
-    def test_3_sample_map(self):
+    def test_sample_map(self):
         """Test getting a sample mapping"""
+        if not self.examples:
+            LOG.info("Not running test")
+            return
         p_con = ProjectSummaryConnection(username=self.user, password=self.pw, url=self.url)
         sample_map = p_con.map_name_to_srm(self.examples["project"], use_ps_map=False, check_consistency=True)
         print sample_map
 
-    def test_3_sample_map_fc(self):
+    def test_sample_map_fc(self):
         """Test getting a sample mapping subset by flowcell"""
+        if not self.examples:
+            LOG.info("Not running test")
+            return
         p_con = ProjectSummaryConnection(username=self.user, password=self.pw, url=self.url)
         sample_map = p_con.map_name_to_srm(self.examples["project"], self.examples["flowcell"], use_ps_map=False, check_consistency=True)
         print sample_map
 
-    def test_4_srm_map(self):
+    def test_srm_map(self):
         """Test getting a sample mapping from srm to project samples"""
+        if not self.examples:
+            LOG.info("Not running test")
+            return
         p_con = ProjectSummaryConnection(username=self.user, password=self.pw, url=self.url)
         samples = p_con.map_srm_to_name(self.examples["project"], fc_id=self.examples["flowcell"], use_ps_map=False, check_consistency=True)
         print samples
 
-
-    def test_4_srm_sample_map(self):
+    def test_srm_sample_map(self):
         """Make sample map from sample run metrics"""
+        if not self.examples:
+            LOG.info("Not running test")
+            return
         s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
         samples = s_con.get_samples(sample_prj=self.examples["project"])
         sample_names = {x["name"]:x["_id"] for x in samples}
@@ -124,8 +141,11 @@ class TestProjectStatusNote(unittest.TestCase):
         print len(list(set(sample_names.keys())))
         print sample_names
 
-    def test_5_name_view(self):
+    def test_name_view(self):
         """Test unique ids in name view"""
+        if not self.examples:
+            LOG.info("Not running test")
+            return
         s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
         name_view  = s_con.db.view("names/name", reduce=False)
         print s_con.name_view.keys()[0:10]

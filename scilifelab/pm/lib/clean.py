@@ -25,7 +25,7 @@ def _purge_by_sample(files, dry_run, fsize=MINFILESIZE):
             dry_write(files[i], "File removed to save disk space: Moved to {}".format(files[i+1]), dry_run)
     return saved_size
 
-def purge_alignments(path, ftype="sam", keep="last", dry_run=True, force=False, fsize=MINFILESIZE):
+def purge_alignments(path, ftype="sam", keep="last", dry_run=False, force=False, fsize=MINFILESIZE):
     """Cleanup sam and bam files. In some cases, sam files persist. If
     the corresponding bam file exists, replace the sam file contents
     with a message that the file has been removed to save space.

@@ -44,7 +44,7 @@ C003CCCXX,4,P003_101_index6,hg19,CGTTAA,J__Doe_00_03,N,R1,NN_failed,J__Doe_00_03
 SAMPLESHEETS['B002BBBXX'] = """FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,SampleProject
 B002BBBXX,1,P001_101_index3,hg19,TGACCA,J__Doe_00_01,N,R1,NN,J__Doe_00_01
 B003BBBXX,2,P002_101_index3,hg19,TGACCA,J__Doe_00_02,N,R1,NN,J__Doe_00_02"""
-
+NSAMPLES = sum([(len(v)-1) for k,v in SAMPLESHEETS.iteritems()])
 ## Genome metadata
 genomes = {'hg19':{'species':'Hsapiens', 'label':'Human (hg19)'},
            'phix':{'species':'phix', 'label':'phiX174'}}
@@ -71,8 +71,14 @@ def setUpModule():
     - runs run_bcbb_pipeline.py -s to install fastq files to production folder
     - runs automated_initial_analysis.py
     """
+    pattern = "14_write_metrics.txt"
     def filter_fn(f):
-        return re.search("-bcbb-config.yaml$", f) != None
+        return re.search(pattern, f) != None
+
+    msgfiles = filtered_walk(PRODUCTION, filter_fn)
+    if len(msgfiles) == NSAMPLES:
+        LOG.info("All samples have been run, requirements for downstream tests satisfied")
+        return
 
     LOG.info("Running setUpModule")
     _check_requirements()
@@ -100,11 +106,13 @@ def setUpModule():
 
     ## Install files in production with run_bcbb_pipeline.py
     for k in FLOWCELL.keys():
-        if not os.path.exists(os.path.join(PRODUCTION, "Basecall_Stats_{}".format(k))):
-            cl = ["run_bcbb_pipeline.py", "-s", "-g", POSTPROCESS, os.path.join(ARCHIVE, FLOWCELL[k])]
-            subprocess.check_call(cl)
+        ##LOG.info("Checking if we need to install test data for {}".format(k))
+        LOG.info("Installing files with run_bcbb_pipeline.py for flowcell {}".format(k))
+        cl = ["run_bcbb_pipeline.py", "-s", "-g", POSTPROCESS, os.path.join(ARCHIVE, FLOWCELL[k])]
+        subprocess.check_call(cl)
     
     ## Run pipeline on samples 
+    pattern = "-bcbb-config.yaml$"
     yamlfiles = filtered_walk(PRODUCTION, filter_fn)
     orig_dir = os.path.abspath(os.curdir)
     for yamlconfig in yamlfiles:
@@ -161,6 +169,7 @@ def _install_1000g_test_files(data_dir):
     bamfile = os.path.join(tmpdir, os.path.basename(bam_url))
     ## Here check should be done on input files to pipeline; if not present, then
     ## download bamfile and generate fastq files
+    ## FIXME: checks should be done on output from _pair_fastq_files
     smallbamfile = bamfile.replace(".bam", ".small.bam")
     if not os.path.exists(smallbamfile):
         LOG.info("downloading {} from {}".format(bamfile, base_url))
@@ -172,6 +181,7 @@ def _install_1000g_test_files(data_dir):
     r1 = os.path.join(tmpdir, "reads_1.fq")
     r2 = os.path.join(tmpdir, "reads_2.fq")
     _pair_fastq_files(r1, r2, os.path.join(tmpdir, "seqs"))
+
     _make_casava_archive_files(FLOWCELL["C003CCCXX"], "C003CCCXX", os.path.join(tmpdir, "seqs"))
     ## FIXME: startiter doesn't work, now generating identical files
     _make_casava_archive_files(FLOWCELL["B002BBBXX"], "B002BBBXX", os.path.join(tmpdir, "seqs"))

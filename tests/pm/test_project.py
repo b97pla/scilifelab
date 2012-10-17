@@ -133,12 +133,12 @@ class ProjectTest(PmTest):
         except:
             raise Exception
 
-    def test_8_purge_alignments_dry(self):
+    def test_purge_dry(self):
         """Test purging alignments of sam files, dry run"""
         self.app = self.make_app(argv = ['production', 'transfer', 'J.Doe_00_04', '--quiet'])
         handler.register(ProductionController)
         self._run_app()
-        self.app = self.make_app(argv = ['project', 'purge_alignments', 'j_doe_00_04', 'analysis_1', '-n', '--force'])
+        self.app = self.make_app(argv = ['project', 'purge', 'j_doe_00_04', 'analysis_1', '-n', '--force'])
         handler.register(ProjectController)
         handler.register(ProjectRmController)
         self._run_app()
@@ -166,12 +166,12 @@ class ProjectTest(PmTest):
         self.app = self.make_app(argv = ['production', 'transfer', 'J.Doe_00_04', '--quiet'])
         handler.register(ProductionController)
         self._run_app()
-        self.app = self.make_app(argv = ['project', 'purge', 'j_doe_00_04', 'analysis_1', '--force', '--data', '--minfilesize', "0", '--debug'])
+        self.app = self.make_app(argv = ['project', 'purge', 'j_doe_00_04', '--force', '--data', '--minfilesize', "0", '--debug'])
         handler.register(ProjectController)
         handler.register(ProjectRmController)
         self._run_app()
-        with open(os.path.join(j_doe_00_04['data'], "P001_102_index6", "120924_CC003CCCXX", "alignments", "1_120924_CC003CCCXX_2_nophix-sort.bam")) as fh:
+        with open(os.path.join(j_doe_00_04['data'], "P001_102_index6", "120924_CC003CCCXX", "1_120924_CC003CCCXX_2_nophix-sort.bam")) as fh:
             bam = fh.read()
-            self.eq(bam, "File removed to save disk space: Moved to {}".format(os.path.join(j_doe_00_04['data'], "P001_102_index6", "120924_CC003CCCXX", "1_120924_CC003CCCXX_2_nophix-sort.bam")))
+            self.eq(bam, "File removed to save disk space: Moved to {}".format(os.path.join(j_doe_00_04['data'], "P001_102_index6", "120924_CC003CCCXX", "1_120924_CC003CCCXX_2_nophix-sort-dup.bam")))
 
 

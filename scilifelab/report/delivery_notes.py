@@ -14,7 +14,7 @@ LOG = scilifelab.log.minimal_logger(__name__)
 def sample_status_note(project_id=None, flowcell_id=None, user=None, password=None, url=None,
                        use_ps_map=True, use_bc_map=False, check_consistency=False, 
                        ordered_million_reads=None, uppnex_id=None, customer_reference=None,
-                       qcinfo=False, **kw):
+                       qcinfo=True, **kw):
     """Make a sample status note. Used keywords:
 
     :param project_id: project id
@@ -54,8 +54,8 @@ def sample_status_note(project_id=None, flowcell_id=None, user=None, password=No
     ## Write qcinfo if needed
     output_data = {'stdout':StringIO(), 'stderr':StringIO()}
     if qcinfo:
-        qcdata["stdout"].write("*** Quality stats ***\n")
-        qcdata["stdout"].write("Scilifelab ID\tPhiXError\tAvgQV\n")
+        output_data["stdout"].write("*** Quality stats ***\n")
+        output_data["stdout"].write("{:>18}\t{:>12}\t{:>12}\n".format("Scilifelab ID", "PhiXError", "AvgQV"))
         
     ## Connect and run
     s_con = SampleRunMetricsConnection(username=user, password=password, url=url)
@@ -87,7 +87,7 @@ def sample_status_note(project_id=None, flowcell_id=None, user=None, password=No
         s_param["phix_error_rate"] = fc_con.get_phix_error_rate(str(fc), s["lane"])
         s_param['avg_quality_score'] = s_con.calc_avg_qv(s["name"])
         if qcinfo:
-            self.app._output_data["stdout"].write("{}\t{}\t{}\n".format(s["barcode_name"], s_param["phix_error_rate"], s_param["avg_quality_score"]))
+            output_data["stdout"].write("{:>18}\t{:>12}\t{:>12}\n".format(s["barcode_name"], s_param["phix_error_rate"], s_param["avg_quality_score"]))
         s_param['rounded_read_count'] = round(float(s_param['rounded_read_count'])/1e6,1) if s_param['rounded_read_count'] else None
         s_param['ordered_amount'] = s_param.get('ordered_amount', p_con.get_ordered_amount(project_id))
         s_param['customer_reference'] = s_param.get('customer_reference', project.get('customer_reference'))
