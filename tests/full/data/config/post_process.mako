@@ -101,13 +101,13 @@ resources:
   ucsc_bigwig:
     memory: 3g
   gatk:
-    cores: 1
+    cores: 8
   bwa:
-    cores: 1
+    cores: 8
   mosaik:
     cores: 1
   bowtie:
-    cores: 1
+    cores: 8
   tophat:
     cores: 1
   cufflinks:
