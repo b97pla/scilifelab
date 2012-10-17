@@ -5,4 +5,4 @@ class PipelineTest(SciLifeTest):
         pass
 
     def test_pipeline(self):
-        print "Hello"
+        pass

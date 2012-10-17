@@ -12,14 +12,15 @@ from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio import Entrez
 
-from scilifelab.utils.misc import safe_makedir
+from scilifelab.utils.misc import safe_makedir, filtered_walk
 from scilifelab.bcbio.flowcell import Flowcell
 
 LOG = logbook.Logger(__name__)
 
 ## Directories and constants
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
-FLOWCELL = "120924_SN0002_0003_CC003CCCXX"
+FLOWCELL = {"C003CCCXX": "120924_SN0002_0003_AC003CCCXX",
+            "B002BBBXX": "121015_SN0001_0002_BB002BBBXX"}
 ARCHIVE = os.path.join(filedir, "data", "archive")
 PRODUCTION = os.path.join(filedir, "data", "production")
 GENOMES = os.path.join(filedir, "data", "genomes")
@@ -36,23 +37,13 @@ POSTPROCESS = os.path.join(CONFIG, "post_process.yaml")
 SAMPLESHEETS = {}
 SAMPLESHEETS['C003CCCXX'] = """FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,SampleProject
 C003CCCXX,1,P001_101_index3,hg19,TGACCA,J__Doe_00_01,N,R1,NN,J__Doe_00_01
-C003CCCXX,1,P001_102_index6,hg19,ACAGTG,J__Doe_00_01,N,R1,NN,J__Doe_00_01
-C003CCCXX,2,P002_101_index3,hg19,TGACCA,J__Doe_00_02,N,R1,NN_failed,J__Doe_00_02
-C003CCCXX,2,P002_102_index6,hg19,ACAGTG,J__Doe_00_02,N,R1,NN,J__Doe_00_02
-C003CCCXX,2,P002_103_index8,hg19,TGGTCA,J__Doe_00_02,N,R1,NN,J__Doe_00_02
-C003CCCXX,2,P003_101_index1,hg19,AGTGCG,J__Doe_00_03,N,R1,NN_failed,J__Doe_00_03
-C003CCCXX,2,P003_101_index2,hg19,TGTGCG,J__Doe_00_03,N,R1,NN,J__Doe_00_03
-C003CCCXX,2,P003_101_index6,hg19,CGTTAA,J__Doe_00_03,N,R1,NN_failed,J__Doe_00_03"""
+C003CCCXX,2,P001_102_index6,hg19,ACAGTG,J__Doe_00_01,N,R1,NN,J__Doe_00_01
+C003CCCXX,3,P002_101_index3,hg19,TGACCA,J__Doe_00_02,N,R1,NN_failed,J__Doe_00_02
+C003CCCXX,3,P002_102_index6,hg19,ACAGTG,J__Doe_00_02,N,R1,NN,J__Doe_00_02
+C003CCCXX,4,P003_101_index6,hg19,CGTTAA,J__Doe_00_03,N,R1,NN_failed,J__Doe_00_03"""
 SAMPLESHEETS['B002BBBXX'] = """FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,SampleProject
-B002BBBXX,1,P001_101_index3,hg19,TGACCA,J__Doe_00_04,N,R1,NN,J__Doe_00_01
-B002BBBXX,1,P001_102_index6,hg19,ACAGTG,J__Doe_00_04,N,R1,NN,J__Doe_00_01
-B002BBBXX,2,P002_101_index3,hg19,TGACCA,J__Doe_00_05,N,R1,NN,J__Doe_00_02
-B002BBBXX,2,P002_102_index6,hg19,ACAGTG,J__Doe_00_05,N,R1,NN,J__Doe_00_02
-B002BBBXX,2,P002_103_index8,hg19,TGGTCA,J__Doe_00_05,N,R1,NN,J__Doe_00_02
-B002BBBXX,2,P003_102_index2,hg19,TGTGCG,J__Doe_00_03,N,R1,NN,J__Doe_00_03
-B002BBBXX,2,P003_103_index3,hg19,TGAACG,J__Doe_00_03,N,R1,NN,J__Doe_00_03
-B002BBBXX,2,P003_101_index1,hg19,AGTGCG,J__Doe_00_03,N,R1,NN,J__Doe_00_03
-"""
+B002BBBXX,1,P001_101_index3,hg19,TGACCA,J__Doe_00_01,N,R1,NN,J__Doe_00_01
+B003BBBXX,2,P002_101_index3,hg19,TGACCA,J__Doe_00_02,N,R1,NN,J__Doe_00_02"""
 
 ## Genome metadata
 genomes = {'hg19':{'species':'Hsapiens', 'label':'Human (hg19)'},
@@ -66,8 +57,23 @@ index_files = {'sam':{'file':os.path.join(CONFIG, "tool-data", "sam_fa_indices.l
                'liftOver':{'file':os.path.join(CONFIG, "tool-data", "liftOver.loc"), 'data':StringIO()}
                }
 
-
 def setUpModule():
+    """Set up test files for scilifelab pipeline tests. The setup
+    covers some typical situations, such as multiplexing, samples run
+    on several flowcells, and same sample being run on several lanes
+    in one flowcell.
+
+    In short, the setup
+    - downloads data from 1000 genomes (exome data from chr11, 0-2Mb)
+    - generates fastq files in an archive folder
+    - installs genome references (phix, hg19)
+    - downloads dbsnp data for chr11, 0-2Mb
+    - runs run_bcbb_pipeline.py -s to install fastq files to production folder
+    - runs automated_initial_analysis.py
+    """
+    def filter_fn(f):
+        return re.search("-bcbb-config.yaml$", f) != None
+
     LOG.info("Running setUpModule")
     _check_requirements()
     ## Add function to check existence of output files
@@ -91,6 +97,27 @@ def setUpModule():
     ## Make production dir
     if not os.path.exists(PRODUCTION):
         safe_makedir(PRODUCTION)
+
+    ## Install files in production with run_bcbb_pipeline.py
+    for k in FLOWCELL.keys():
+        if not os.path.exists(os.path.join(PRODUCTION, "Basecall_Stats_{}".format(k))):
+            cl = ["run_bcbb_pipeline.py", "-s", "-g", POSTPROCESS, os.path.join(ARCHIVE, FLOWCELL[k])]
+            subprocess.check_call(cl)
+    
+    ## Run pipeline on samples 
+    yamlfiles = filtered_walk(PRODUCTION, filter_fn)
+    orig_dir = os.path.abspath(os.curdir)
+    for yamlconfig in yamlfiles:
+        try:
+            LOG.info("cding to {}".format(os.path.abspath(os.curdir)))
+            os.chdir(os.path.dirname(yamlconfig))
+            cl = ["automated_initial_analysis.py", POSTPROCESS, os.path.join(os.path.pardir, os.path.basename(os.path.dirname(yamlconfig))), yamlconfig]
+            if not os.path.exists(os.path.join(os.path.dirname(yamlconfig), "14_write_metrics.txt")):
+                LOG.info("Running pipeline: {}".format(" ".join(cl)))
+                subprocess.check_call(cl)
+        finally:
+            os.chdir(orig_dir)
+            LOG.info("Finished pipeline run and cd back to {}".format(orig_dir))
 
 
 def _check_requirements():
@@ -145,8 +172,9 @@ def _install_1000g_test_files(data_dir):
     r1 = os.path.join(tmpdir, "reads_1.fq")
     r2 = os.path.join(tmpdir, "reads_2.fq")
     _pair_fastq_files(r1, r2, os.path.join(tmpdir, "seqs"))
-    _make_casava_archive_files(FLOWCELL, "C003CCCXX", os.path.join(tmpdir, "seqs"))
-    _make_casava_archive_files(FLOWCELL, "B002BBBXX", os.path.join(tmpdir, "seqs"), startiter = 100000)
+    _make_casava_archive_files(FLOWCELL["C003CCCXX"], "C003CCCXX", os.path.join(tmpdir, "seqs"))
+    ## FIXME: startiter doesn't work, now generating identical files
+    _make_casava_archive_files(FLOWCELL["B002BBBXX"], "B002BBBXX", os.path.join(tmpdir, "seqs"))
 
 def _bam_to_fastq(bamfile, out_prefix):
     """Convert bam to fastq file. Outputs paired reads"""
@@ -202,7 +230,7 @@ def _write_fastq(fn, seqs, ids):
         if rec.id[-2] != "/":
             continue
         if rec.id[0:-2] in ids:
-            del ids[ids.index(rec.id[0:-2])]
+            ##del ids[ids.index(rec.id[0:-2])]
             i = i + 1
             SeqIO.write(rec, fh, "fastq")
             if i % 10000==0:
@@ -231,6 +259,8 @@ def _make_casava_archive_files(fc, ssname, prefix, startiter = 1, nseqout=100000
         vals = row.split(",")
         if vals[0] == "FCID":
             header = row
+            continue
+        if len(vals) == 0:
             continue
         outdir = os.path.join(fc_dir, "Unaligned", "Project_{}".format(vals[5]), "Sample_{}".format(vals[2]))
         if not os.path.exists(outdir):
@@ -370,10 +400,10 @@ def _install_phix():
     index_files['bwa']['data'].write("{}\t{}\t{}\t{}\n".format(build, build, genomes[build]['label'], outfile))
     outfile = _index_bowtie(fn, label="bowtie")
     index_files['bowtie']['data'].write("{}\t{}\t{}\t{}\n".format(build, build, genomes[build]['label'], outfile))
-    #outfile = _index_bowtie2(fn, label="bowtie2")
-    #index_files['bowtie2']['data'].write("{}\t{}\t{}\t{}\n".format(build, build, genomes[build]['label'], outfile))
 
-
+##############################
+## Variation data
+##############################
 dbsnp_header = """##fileformat=VCFv4.0
 ##fileDate=20101103
 ##source=dbSNP
@@ -429,9 +459,8 @@ dbsnp_header = """##fileformat=VCFv4.0
 ##INFO=<ID=NOC,Number=0,Type=Flag,Description="Contig allele not present in SNP allele list. The reference sequence allele at the mapped position is not present in the SNP allele list, adjusted for orientation.">
 ##INFO=<ID=WTD,Number=0,Type=Flag,Description="Is Withdrawn by submitter If one member ss is withdrawn by submitter, then this bit is set.  If all member ss' are withdrawn, then the rs is deleted to SNPHistory">
 ##INFO=<ID=NOV,Number=0,Type=Flag,Description="Rs cluster has non-overlapping allele sets. True when rs set has more than 2 alleles from different submissions and these sets share no alleles in common.">
-##INFO=<ID=GCF,Number=0,Type=Flag,Description="Has Genotype Conflict Same (rs, ind), different genotype.  N/N is not included.">
-#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO
-"""
+##INFO=<ID=GCF,Number=0,Type=Flag,Description="Has Genotype Conflict Same (rs, ind), different genotype.  N/N is not included.">"""
+
 omni="""##fileformat=VCFv4.1
 ##FILTER=<ID=NOT_POLY_IN_1000G,Description="Alternate allele count = 0">
 ##FILTER=<ID=badAssayMapping,Description="The mapping information for the SNP assay is internally inconsistent in the chip metadata">
@@ -468,8 +497,7 @@ mills = """##fileformat=VCFv4.1
 ##LeftAlignVariants="analysis_type=LeftAlignVariants input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_b36_both.fasta rodBind=[./indel_hg18_051711.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub"
 ##ValidateVariants="analysis_type=ValidateVariants input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_g1k_v37.fasta rodBind=[./indel_hg19_051711_leftAligned_collapsed.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub validationType=ALL doNotValidateFilteredRecords=false warnOnErrors=true"
 ##VariantsToVCF="analysis_type=VariantsToVCF input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_b36_both.fasta rodBind=[./indel_hg18_051711_sorted.txt] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sample=null fixRef=true"
-#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO
-"""
+#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO"""
 
 def _install_dbsnp_entrez(build="hg19"):
     """Install a subset of snps using Entrez queries"""
@@ -480,27 +508,67 @@ def _install_dbsnp_entrez(build="hg19"):
     fn = os.path.join(variationdir, "dbsnp132_chr11.vcf")
     if not os.path.exists(fn):
         try:
-            fh = open(fn, "w")
-            fh.write(dbsnp_header)
-            #'("Homo sapiens"[Organism] OR human[All Fields]) AND (11[CHR] AND (1[CHRPOS] : 2000000[CHRPOS]))')
-            handle = Entrez.esearch(db="snp", retmax = 10, term="\"Homo sapiens\"[Organism] AND (11[CHR] AND (1[CHRPOS] : 2000000[CHRPOS]))")
-            h = Entrez.efetch(db="snp", id=record['IdList'], rettype="flt")
-            out = ""
-            while True:
-                lines = [fh.readline() for i in range(0,7)]
-                rec = _dbsnp_line(lines)
-                fh.write(rec)
-            fh.close()
+            # http://www.ncbi.nlm.nih.gov/books/NBK44454/#Search.how_do_i_search_dbsnp_for_the_tot
+            ## This will actually only download a subset of snps
+            handle = Entrez.esearch(db="snp", retmax=8000, term="\"Homo sapiens\"[Organism] AND (11[CHR] AND (1[CHRPOS] : 2000000[CHRPOS])")
+            record = Entrez.read(handle)
+            records = []
+            ## For some reason the first entries are more or less empty
+            start = 4000
+            delta = 200
+            for i in xrange(start, len(record['IdList']), delta):
+                LOG.info("retrieving dbsnp records {} - {}".format(i, i+delta))
+                h = Entrez.efetch(db="snp", id=record['IdList'][i:i+delta], rettype="flt", retmax=delta)
+                lbuffer = None
+                lines = []
+                while True:
+                    if lbuffer:
+                        l = lbuffer
+                        lbuffer = None
+                    else:
+                        l = h.readline()
+                    if l.startswith("rs") or len(lines) > 20:
+                        if lines:
+                            lbuffer = l
+                            rec = _dbsnp_line(lines)
+                            if rec is None:
+                                break
+                            records.append(rec)
+                            lines = []
+                        else:
+                            lines.append(l.rstrip())
+                    else:
+                        lines.append(l.rstrip())
         except:
+            LOG.warning("Entrez query failed")
             pass
+        LOG.info("Writing file {}".format(fn))
+        fh = open(fn, "w")
+        fh.write(dbsnp_header)
+        fh.write("\n")
+        ## Header must be tab-separated, otherwise GATK complains...
+        fh.write("\t".join(["#CHROM","POS","ID","REF","ALT","QUAL","FILTER","INFO"]))
+        fh.write("\n")
+        for rec in sorted(records, key=lambda x: int(x.split()[1])):
+            fh.write(rec)
+            fh.write("\n")
+        fh.close()
+
+    return fn
     
 def _dbsnp_line(lines):
+    if not lines:
+        return None
     line = "".join(lines)
-    rsid = re.search("^(rs[0-9]+).*alleles=([A-Z]+)/([A-Z]+)).*chr=([0-9]+) | chr-pos=([0-9]+)", line).groups()[0]
-    print "\t".join("chr{}".format(ch), pos, rsid, ref, alt, ".", ".", "dbSNPBuildID=132")
-    if not h.readline():
-        break
-    
+    try:
+        m = re.search("^(rs[0-9]+).*alleles=([A-Z]+)/([A-Z]+).*chr=([0-9]+).*chr-pos=([0-9]+)", line)
+    except:
+        LOG.warning("regexp search failed")
+        raise
+    if m:
+        return "\t".join(["chr{}".format(m.groups()[3]), m.groups()[4], m.groups()[0], m.groups()[1], m.groups()[2], ".", ".", "dbSNPBuildID=132;VP=050000020005000000000100;WGT=1"])
+    else:
+        return None
 
 def _install_dbsnp_file(build="hg19"):
     """Download a (large) dbsnp file and extract a region from chr 11"""
@@ -551,3 +619,9 @@ def _install_training_data(build="hg19"):
     return (omni_out, hapmap_out, mills_out)
 
 ## run_bcbb_pipeline.py flowcell_path post_process.yaml [-custom runinfo -g]
+
+
+##rs193283954 | Homo sapiens | 9606 | snp | genotype=NO | submitterlink=YES | updated 2011-10-06 16:26ss462008714 | 1000GENOMES | 20101
+## notwithdrawnCTG | assembly=GRCh37.p5 | chr=11 | chr-pos=1656090 | NT_009237.18 | ctg-start=1596090 | ctg-end=1596090 | loctype=2 | o
+
+##chr11	10327	rs112750067	T	C	.	.	dbSNPBuildID=132;VP=050000020005000000000100;WGT=1;VC=SNP;R5;ASP

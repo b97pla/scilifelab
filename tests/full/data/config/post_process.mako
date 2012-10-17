@@ -11,11 +11,12 @@ program:
   pdflatex: pdflatex
   ps2pdf: ps2pdf
   barcode: barcode_sort_trim.py
+  snpEff: $SNPEFF_HOME
 algorithm:
   aligner: bwa
   demultiplexed: true
   max_errors: 2
-  num_cores: 1
+  num_cores: 8
   stringency: high
   quality_format: Illumina
   platform: illumina
