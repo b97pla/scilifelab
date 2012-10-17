@@ -24,8 +24,6 @@ qc_cutoff = {
 application_map = {'RNA-seq (Total RNA)':'rnaseq','WG re-seq':'WG-reseq','Resequencing':'reseq', 'Exome capture':'seqcap', 'Custom':'customcap', 'Finished library':'finished' , 'Custom capture':'customcap'}
 application_inv_map = {v:k for k, v in application_map.items()}
 
-
-
 ## Main delivery controller
 class DeliveryController(AbstractBaseController):
     """
@@ -35,11 +33,20 @@ class DeliveryController(AbstractBaseController):
         label = 'deliver'
         description = 'Deliver data'
         arguments = [
+            (['project_id'], dict(help="Project id. Standard format is 'J.Doe_00_00'", default=None, nargs="?")),
+            (['flowcell_id'], dict(help="Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?")),
+            (['uppmax_project'], dict(help="Uppmax project.", default=None, nargs="?")),
+            (['-i', '--interactive'], dict(help="Interactively select samples to be delivered", default=False, action="store_true")),
+            (['-a', '--deliver-all-fcs'], dict(help="rsync samples from all flow cells", default=False, action="store_true")),
             ]
 
     @controller.expose(hide=True)
     def default(self):
-        self._not_implemented()
+        if not self._check_pargs(["project_id", "flowcell_id", "uppmax_project"]):
+            return
+        
+        
+
 
 ## Main delivery controller
 class DeliveryReportController(AbstractBaseController):

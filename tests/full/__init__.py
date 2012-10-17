@@ -240,14 +240,14 @@ def _write_fastq(fn, seqs, ids):
         if rec.id[-2] != "/":
             continue
         if rec.id[0:-2] in ids:
-            ##del ids[ids.index(rec.id[0:-2])]
+            del ids[ids.index(rec.id[0:-2])]
             i = i + 1
             SeqIO.write(rec, fh, "fastq")
             if i % 10000==0:
                 LOG.info("Wrote {} sequences...".format(i))
     fh.close()
 
-def _make_casava_archive_files(fc, ssname, prefix, startiter = 1, nseqout=100000):
+def _make_casava_archive_files(fc, ssname, prefix, startiter = 1, nseqout=2000):
     fc_dir = os.path.join(ARCHIVE, fc)
     if not os.path.exists(fc_dir):
         safe_makedir(fc_dir)
@@ -291,12 +291,13 @@ def _make_casava_archive_files(fc, ssname, prefix, startiter = 1, nseqout=100000
     ## Write sequences
     i = 0
     n = len(outh1)
+    totseqout = n * nseqout
     for rec in SeqIO.parse(h1, "fastq"):
         SeqIO.write(rec, outh1[i % n], "fastq")
         i = i + 1
         if (i % 10000 == 0):
             LOG.info("read {} sequences from {}".format(i, h1.name))
-        if i > nseqout:
+        if i > totseqout:
             break
     [h.close() for h in outh1]
     i = 0
@@ -469,7 +470,8 @@ dbsnp_header = """##fileformat=VCFv4.0
 ##INFO=<ID=NOC,Number=0,Type=Flag,Description="Contig allele not present in SNP allele list. The reference sequence allele at the mapped position is not present in the SNP allele list, adjusted for orientation.">
 ##INFO=<ID=WTD,Number=0,Type=Flag,Description="Is Withdrawn by submitter If one member ss is withdrawn by submitter, then this bit is set.  If all member ss' are withdrawn, then the rs is deleted to SNPHistory">
 ##INFO=<ID=NOV,Number=0,Type=Flag,Description="Rs cluster has non-overlapping allele sets. True when rs set has more than 2 alleles from different submissions and these sets share no alleles in common.">
-##INFO=<ID=GCF,Number=0,Type=Flag,Description="Has Genotype Conflict Same (rs, ind), different genotype.  N/N is not included.">"""
+##INFO=<ID=GCF,Number=0,Type=Flag,Description="Has Genotype Conflict Same (rs, ind), different genotype.  N/N is not included.">
+"""
 
 omni="""##fileformat=VCFv4.1
 ##FILTER=<ID=NOT_POLY_IN_1000G,Description="Alternate allele count = 0">
@@ -488,7 +490,6 @@ omni="""##fileformat=VCFv4.1
 ##INFO=<ID=HW,Number=.,Type=Float,Description="Hardy-Weinberg Equilibrium">
 ##reference=human_g1k_v37.fasta
 ##source=infiniumFinalReportConverterV1.0
-#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO
 """
 
 hapmap = """##fileformat=VCFv4.1
@@ -498,7 +499,6 @@ hapmap = """##fileformat=VCFv4.1
 ##VariantsToVCF="analysis_type=VariantsToVCF input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=[X] excludeIntervals=null reference_sequence=/seq/references/Homo_sapiens_assembly18/v0/Homo_sapiens_assembly18.fasta rodBind=[/humgen/gsa-hpprojects/GATK/data/Comparisons/Validated/HapMap/3.3/rawdata/genotypes_chrX_ASW_phase3.3_consensus.b36_fwd.txt] rodToIntervalTrackName=null BTI_merge_rule=UNION DBSNP=/humgen/gsa-hpprojects/GATK/data/dbsnp_129_hg18.rod downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=1.0E-4 useOriginalQualities=false validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null logging_level=INFO log_to_file=null quiet_output_mode=false debug_mode=false help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sample=null"
 ##reference=Homo_sapiens_assembly18.fasta
 ##source=VariantsToVCF
-#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO
 """
 mills = """##fileformat=VCFv4.1
 ##CombineVariants="analysis_type=CombineVariants input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_g1k_v37.fasta rodBind=[./indel_hg19_051711_leftAligned.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub genotypemergeoption=PRIORITIZE filteredrecordsmergetype=KEEP_IF_ANY_UNFILTERED rod_priority_list=mills printComplexMerges=false filteredAreUncalled=false minimalVCF=false setKey=set assumeIdenticalSamples=false minimumN=1 masterMerge=false mergeInfoWithMaxAC=false"
@@ -507,7 +507,9 @@ mills = """##fileformat=VCFv4.1
 ##LeftAlignVariants="analysis_type=LeftAlignVariants input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_b36_both.fasta rodBind=[./indel_hg18_051711.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub"
 ##ValidateVariants="analysis_type=ValidateVariants input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_g1k_v37.fasta rodBind=[./indel_hg19_051711_leftAligned_collapsed.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub validationType=ALL doNotValidateFilteredRecords=false warnOnErrors=true"
 ##VariantsToVCF="analysis_type=VariantsToVCF input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_b36_both.fasta rodBind=[./indel_hg18_051711_sorted.txt] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sample=null fixRef=true"
-#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO"""
+"""
+
+vcfheader="{}\n".format("\t".join(["#CHROM","POS","ID","REF","ALT","QUAL","FILTER","INFO"]))
 
 def _install_dbsnp_entrez(build="hg19"):
     """Install a subset of snps using Entrez queries"""
@@ -557,8 +559,7 @@ def _install_dbsnp_entrez(build="hg19"):
         fh.write(dbsnp_header)
         fh.write("\n")
         ## Header must be tab-separated, otherwise GATK complains...
-        fh.write("\t".join(["#CHROM","POS","ID","REF","ALT","QUAL","FILTER","INFO"]))
-        fh.write("\n")
+        fh.write(vcfheader)
         for rec in sorted(records, key=lambda x: int(x.split()[1])):
             fh.write(rec)
             fh.write("\n")
@@ -618,20 +619,15 @@ def _install_training_data(build="hg19"):
     hapmap_out = os.path.join(variationdir, "hapmap_3.3.vcf")
     mills_out = os.path.join(variationdir, "Mills_Devine_2hit.indels.vcf")
     fh = open(omni_out, "w")
+    fh.write(vcfheader)
     fh.write(omni)
     fh.close()
     fh = open(hapmap_out, "w")
+    fh.write(vcfheader)
     fh.write(hapmap)
     fh.close()
     fh = open(mills_out, "w")
+    fh.write(vcfheader)
     fh.write(mills)
     fh.close()
     return (omni_out, hapmap_out, mills_out)
-
-## run_bcbb_pipeline.py flowcell_path post_process.yaml [-custom runinfo -g]
-
-
-##rs193283954 | Homo sapiens | 9606 | snp | genotype=NO | submitterlink=YES | updated 2011-10-06 16:26ss462008714 | 1000GENOMES | 20101
-## notwithdrawnCTG | assembly=GRCh37.p5 | chr=11 | chr-pos=1656090 | NT_009237.18 | ctg-start=1596090 | ctg-end=1596090 | loctype=2 | o
-
-##chr11	10327	rs112750067	T	C	.	.	dbSNPBuildID=132;VP=050000020005000000000100;WGT=1;VC=SNP;R5;ASP
