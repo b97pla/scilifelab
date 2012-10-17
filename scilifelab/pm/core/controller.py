@@ -8,8 +8,6 @@ from cement.core import interface, handler, controller, backend
 from scilifelab.pm.lib.help import PmHelpFormatter
 from scilifelab.utils.misc import filtered_output, query_yes_no, filtered_walk
 
-#LOG = backend.minimal_logger(__name__)
-
 class AbstractBaseController(controller.CementBaseController):
     """
     This is an abstract base controller.

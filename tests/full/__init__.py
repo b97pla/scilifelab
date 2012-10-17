@@ -106,7 +106,6 @@ def setUpModule():
 
     ## Install files in production with run_bcbb_pipeline.py
     for k in FLOWCELL.keys():
-        ##LOG.info("Checking if we need to install test data for {}".format(k))
         LOG.info("Installing files with run_bcbb_pipeline.py for flowcell {}".format(k))
         cl = ["run_bcbb_pipeline.py", "-s", "-g", POSTPROCESS, os.path.join(ARCHIVE, FLOWCELL[k])]
         subprocess.check_call(cl)
@@ -253,7 +252,6 @@ def _make_casava_archive_files(fc, ssname, prefix, startiter = 1, nseqout=2000):
         safe_makedir(fc_dir)
     with open(os.path.join(fc_dir, "{}.csv".format(ssname)), "w") as fh:
         fh.write(SAMPLESHEETS[ssname])
-    #fc = Flowcell(os.path.join(fc_dir, "{}.csv".format(ssname)))
     h1 = open("{}_1.fastq".format(prefix), "r")
     h2 = open("{}_2.fastq".format(prefix), "r")
     outh1 = []
@@ -343,8 +341,6 @@ def _download_ucsc_genome_and_index(build="hg19", chr="chr11", start=0, end=2000
     index_files['bwa']['data'].write("{}\t{}\t{}\t{}\n".format(build, build, genomes[build]['label'], outfile))
     outfile = _index_bowtie(os.path.join(genomedir, os.path.basename(url).replace(".gz", "")))
     index_files['bowtie']['data'].write("{}\t{}\t{}\t{}\n".format(build, build, genomes[build]['label'], outfile))
-    #outfile = _index_bowtie2(os.path.join(genomedir, os.path.basename(url).replace(".gz", "")))
-    #index_files['bowtie2']['data'].write("{}\t{}\t{}\t{}\n".format(build, build, genomes[build]['label'], outfile))
 
 def _index_bwa(fn, label="bwa"):
     """Index bwa"""
