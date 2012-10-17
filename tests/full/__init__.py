@@ -73,7 +73,7 @@ def setUpModule():
     ## Add function to check existence of output files
     _install_1000g_test_files(os.path.join(os.path.dirname(__file__), "data", "production"))
     _install_phix()
-    dbsnp = _install_entrez_file()
+    dbsnp = _install_dbsnp_entrez()
     (omni_out, hapmap_out, mills_out) = _install_training_data()
 
     _download_ucsc_genome_and_index()
@@ -307,26 +307,32 @@ def _download_ucsc_genome_and_index(build="hg19", chr="chr11", start=0, end=2000
 
 def _index_bwa(fn, label="bwa"):
     """Index bwa"""
+    LOG.info("Indexing {} with bwa".format(fn))
     outdir = os.path.join(os.path.dirname(fn), os.pardir,label)
     if not os.path.exists(outdir):
         safe_makedir(outdir)
         os.symlink(fn, os.path.join(outdir, os.path.basename(fn)))
     if os.path.exists(os.path.join(outdir,"{}.amb".format( os.path.basename(fn)))):
+        LOG.info("{} exists; not doing anything".format(fn))
         return os.path.join(outdir, os.path.basename(fn))
     cl = ["bwa", "index", os.path.abspath(os.path.join(outdir, os.path.basename(fn)))]
     subprocess.check_call(cl)
+    LOG.info("Finished indexing {} with bwa".format(fn))
     return os.path.join(outdir, os.path.basename(fn))
 
 def _index_bowtie(fn, label="bowtie"):
     """Index bowtie"""
+    LOG.info("Indexing {} with bowtie".format(fn))
     outdir = os.path.join(os.path.dirname(fn), os.pardir, label)
     if not os.path.exists(outdir):
         safe_makedir(outdir)
         os.symlink(fn, os.path.join(outdir, os.path.basename(fn)))
     if os.path.exists(os.path.join(outdir,"{}.1.ebwt".format( os.path.splitext(os.path.basename(fn))[0]))):
+        LOG.info("{} exists; not doing anything".format(fn))
         return os.path.splitext(os.path.join(outdir, os.path.basename(fn)))[0]
     cl = ["bowtie-build", os.path.abspath(os.path.join(outdir, os.path.basename(fn))), os.path.splitext(os.path.abspath(os.path.join(outdir, os.path.basename(fn))))[0]]
     subprocess.check_call(cl)
+    LOG.info("Finished indexing {} with bowtie".format(fn))
     return os.path.splitext(os.path.join(outdir, os.path.basename(fn)))[0]
 
 def _index_bowtie2(fn, label="bowtie2"):
@@ -367,66 +373,65 @@ def _install_phix():
     #outfile = _index_bowtie2(fn, label="bowtie2")
     #index_files['bowtie2']['data'].write("{}\t{}\t{}\t{}\n".format(build, build, genomes[build]['label'], outfile))
 
-def _install_dbsnp_entrez(build="hg19"):
-    """Install a subset of snps using Entrez queries"""
-    variationdir = os.path.join(GENOMES, genomes[build]['species'], build, "variation")
-    if not os.path.exists(variationdir):
-        safe_makedir(variationdir)
-    fn = os.path.join(variationdir, "dbsnp132_chr11.vcf")
-    if not os.path.exists(fn):
-        try:
-            #fh = open(fn, "w")
-            #'("Homo sapiens"[Organism] OR human[All Fields]) AND (11[CHR] AND (1[CHRPOS] : 2000000[CHRPOS]))')
-            handle = Entrez.esearch(db="snp", retmax = 10, term="\"Homo sapiens\"[Organism] AND (11[CHR] AND (1[CHRPOS] : 2000000[CHRPOS]))")
-            h = Entrez.efetch(db="snp", id=record['IdList'], rettype="flt")
-            out = ""
-            while True:
-                rsid = handle.readline().split()[0]
-                handle.readline()
-                (ref, alt) = re.search("alleles=([A-Z]+)/([A-Z]+))", handle.readline()).groups()
-                handle.readline()
-                (ch, pos) = re.search("chr=([0-9]+) | chr-pos=([0-9]+)", handle.readline()).groups()
-                print "\t".join("chr{}".format(ch), pos, rsid, ref, alt, ".", ".", "dbSNPBuildID=132")
-            rec = "".join(handle.readlines())
-            fh.write(rec)
-            fh.close()
-        except:
-            pass
-    
 
-def _install_dbsnp_file(build="hg19"):
-    """Download a (large) dbsnp file and extract a region from chr 11"""
-    variationdir = os.path.join(GENOMES, genomes[build]['species'], build, "variation")
-    url = "ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/dbsnp132_20101103.vcf.gz"
-    fn = os.path.join(variationdir, "dbsnp132.vcf.gz")
-    dbsnp = os.path.join(variationdir, "dbsnp132_chr11.vcf")
-    if not os.path.exists(variationdir):
-        safe_makedir(variationdir)
-    try:
-        cl = ["curl", url, "-o", fn]
-        if not os.path.exists(os.path.join(variationdir, os.path.basename(fn))):
-            subprocess.check_call(cl)
-    except:
-        pass
-    fh = gzip.open(fn, "read")
-    if not os.path.exists(dbsnp):
-        of = open(dbsnp, "w")
-        for r in fh:
-            vals = r.split()
-            if r.startswith("#"):
-                of.write(r)
-            if vals[0] != "11":
-                continue
-            if int(vals[1]) < 2000000:
-                vals[0] = "chr{}".format(vals[0])
-                of.write("\t".join(vals))
-                of.write("\n")
-            else:
-                break
-        of.close()
-    return dbsnp
-
-
+dbsnp_header = """##fileformat=VCFv4.0
+##fileDate=20101103
+##source=dbSNP
+##dbSNP_BUILD_ID=132
+##reference=GRCh37
+##phasing=partial
+##variationPropertyDocumentationUrl=ftp://ftp.ncbi.nlm.nih.gov/snp/specs/dbSNP_BitField_latest.pdf
+##INFO=<ID=RV,Number=0,Type=Flag,Description="RS orientation is reversed">
+##INFO=<ID=NS,Number=1,Type=Integer,Description="Number of Samples With Data">
+##INFO=<ID=AF,Number=.,Type=Float,Description="Allele Frequency">
+##INFO=<ID=VP,Number=1,Type=String,Description="Variation Property">
+##INFO=<ID=dbSNPBuildID,Number=1,Type=Integer,Description="First SNP Build for RS">
+##INFO=<ID=WGT,Number=1,Type=Integer,Description="Weight, 00 - unmapped, 1 - weight 1, 2 - weight 2, 3 - weight 3 or more">
+##INFO=<ID=VC,Number=1,Type=String,Description="Variation Class">
+##INFO=<ID=CLN,Number=0,Type=Flag,Description="SNP is Clinical(LSDB,OMIM,TPA,Diagnostic)">
+##INFO=<ID=PM,Number=0,Type=Flag,Description="SNP is Precious(Clinical,Pubmed Cited)">
+##INFO=<ID=TPA,Number=0,Type=Flag,Description="Provisional Third Party Annotation(TPA) (currently rs from PHARMGKB who will give phenotype data)">
+##INFO=<ID=PMC,Number=0,Type=Flag,Description="Links exist to PubMed Central article">
+##INFO=<ID=S3D,Number=0,Type=Flag,Description="Has 3D structure - SNP3D table">
+##INFO=<ID=SLO,Number=0,Type=Flag,Description="Has SubmitterLinkOut - From SNP->SubSNP->Batch.link_out">
+##INFO=<ID=NSF,Number=0,Type=Flag,Description="Has non-synonymous frameshift A coding region variation where one allele in the set changes all downstream amino acids. FxnClass = 44">
+##INFO=<ID=NSM,Number=0,Type=Flag,Description="Has non-synonymous missense A coding region variation where one allele in the set changes protein peptide. FxnClass = 42">
+##INFO=<ID=NSN,Number=0,Type=Flag,Description="Has non-synonymous nonsense A coding region variation where one allele in the set changes to STOP codon (TER). FxnClass = 41">
+##INFO=<ID=REF,Number=0,Type=Flag,Description="Has reference A coding region variation where one allele in the set is identical to the reference sequence. FxnCode = 8">
+##INFO=<ID=SYN,Number=0,Type=Flag,Description="Has synonymous A coding region variation where one allele in the set does not change the encoded amino acid. FxnCode = 3">
+##INFO=<ID=U3,Number=0,Type=Flag,Description="In 3' UTR Location is in an untranslated region (UTR). FxnCode = 53">
+##INFO=<ID=U5,Number=0,Type=Flag,Description="In 5' UTR Location is in an untranslated region (UTR). FxnCode = 55">
+##INFO=<ID=ASS,Number=0,Type=Flag,Description="In acceptor splice site FxnCode = 73">
+##INFO=<ID=DSS,Number=0,Type=Flag,Description="In donor splice-site FxnCode = 75">
+##INFO=<ID=INT,Number=0,Type=Flag,Description="In Intron FxnCode = 6">
+##INFO=<ID=R3,Number=0,Type=Flag,Description="In 3' gene region FxnCode = 13">
+##INFO=<ID=R5,Number=0,Type=Flag,Description="In 5' gene region FxnCode = 15">
+##INFO=<ID=OTH,Number=0,Type=Flag,Description="Has other snp with exactly the same set of mapped positions on NCBI refernce assembly.">
+##INFO=<ID=CFL,Number=0,Type=Flag,Description="Has Assembly conflict. This is for weight 1 and 2 snp that maps to different chromosomes on different assemblies.">
+##INFO=<ID=ASP,Number=0,Type=Flag,Description="Is Assembly specific. This is set if the snp only maps to one assembly">
+##INFO=<ID=MUT,Number=0,Type=Flag,Description="Is mutation (journal citation, explicit fact): a low frequency variation that is cited in journal and other reputable sources">
+##INFO=<ID=VLD,Number=0,Type=Flag,Description="Is Validated.  This bit is set if the snp has 2+ minor allele count based on frequency or genotype data.">
+##INFO=<ID=G5A,Number=0,Type=Flag,Description=">5% minor allele frequency in each and all populations">
+##INFO=<ID=G5,Number=0,Type=Flag,Description=">5% minor allele frequency in 1+ populations">
+##INFO=<ID=HD,Number=0,Type=Flag,Description="Marker is on high density genotyping kit (50K density or greater).  The snp may have phenotype associations present in dbGaP.">
+##INFO=<ID=GNO,Number=0,Type=Flag,Description="Genotypes available. The snp has individual genotype (in SubInd table).">
+##INFO=<ID=KGPilot1,Number=0,Type=Flag,Description="1000 Genome discovery(pilot1) 2009">
+##INFO=<ID=KGPilot123,Number=0,Type=Flag,Description="1000 Genome discovery all pilots 2010(1,2,3)">
+##INFO=<ID=KGVAL,Number=0,Type=Flag,Description="1000 Genome validated by second method">
+##INFO=<ID=KGPROD,Number=0,Type=Flag,Description="1000 Genome production phase">
+##INFO=<ID=PH1,Number=0,Type=Flag,Description="Phase 1 genotyped: filtered, non-redundant">
+##INFO=<ID=PH2,Number=0,Type=Flag,Description="Phase 2 genotyped: filtered, non-redundant">
+##INFO=<ID=PH3,Number=0,Type=Flag,Description="Phase 3 genotyped: filtered, non-redundant">
+##INFO=<ID=CDA,Number=0,Type=Flag,Description="Variation is interrogated in a clinical diagnostic assay">
+##INFO=<ID=LSD,Number=0,Type=Flag,Description="Submitted from a locus-specific database">
+##INFO=<ID=MTP,Number=0,Type=Flag,Description="Microattribution/third-party annotation(TPA:GWAS,PAGE)">
+##INFO=<ID=OM,Number=0,Type=Flag,Description="Has OMIM/OMIA">
+##INFO=<ID=NOC,Number=0,Type=Flag,Description="Contig allele not present in SNP allele list. The reference sequence allele at the mapped position is not present in the SNP allele list, adjusted for orientation.">
+##INFO=<ID=WTD,Number=0,Type=Flag,Description="Is Withdrawn by submitter If one member ss is withdrawn by submitter, then this bit is set.  If all member ss' are withdrawn, then the rs is deleted to SNPHistory">
+##INFO=<ID=NOV,Number=0,Type=Flag,Description="Rs cluster has non-overlapping allele sets. True when rs set has more than 2 alleles from different submissions and these sets share no alleles in common.">
+##INFO=<ID=GCF,Number=0,Type=Flag,Description="Has Genotype Conflict Same (rs, ind), different genotype.  N/N is not included.">
+#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO
+"""
 omni="""##fileformat=VCFv4.1
 ##FILTER=<ID=NOT_POLY_IN_1000G,Description="Alternate allele count = 0">
 ##FILTER=<ID=badAssayMapping,Description="The mapping information for the SNP assay is internally inconsistent in the chip metadata">
@@ -465,6 +470,69 @@ mills = """##fileformat=VCFv4.1
 ##VariantsToVCF="analysis_type=VariantsToVCF input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_b36_both.fasta rodBind=[./indel_hg18_051711_sorted.txt] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sample=null fixRef=true"
 #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO
 """
+
+def _install_dbsnp_entrez(build="hg19"):
+    """Install a subset of snps using Entrez queries"""
+    LOG.info("Installing dbsnp file for {}".format(genomes[build]['species']))
+    variationdir = os.path.join(GENOMES, genomes[build]['species'], build, "variation")
+    if not os.path.exists(variationdir):
+        safe_makedir(variationdir)
+    fn = os.path.join(variationdir, "dbsnp132_chr11.vcf")
+    if not os.path.exists(fn):
+        try:
+            fh = open(fn, "w")
+            fh.write(dbsnp_header)
+            #'("Homo sapiens"[Organism] OR human[All Fields]) AND (11[CHR] AND (1[CHRPOS] : 2000000[CHRPOS]))')
+            handle = Entrez.esearch(db="snp", retmax = 10, term="\"Homo sapiens\"[Organism] AND (11[CHR] AND (1[CHRPOS] : 2000000[CHRPOS]))")
+            h = Entrez.efetch(db="snp", id=record['IdList'], rettype="flt")
+            out = ""
+            while True:
+                lines = [fh.readline() for i in range(0,7)]
+                rec = _dbsnp_line(lines)
+                fh.write(rec)
+            fh.close()
+        except:
+            pass
+    
+def _dbsnp_line(lines):
+    line = "".join(lines)
+    rsid = re.search("^(rs[0-9]+).*alleles=([A-Z]+)/([A-Z]+)).*chr=([0-9]+) | chr-pos=([0-9]+)", line).groups()[0]
+    print "\t".join("chr{}".format(ch), pos, rsid, ref, alt, ".", ".", "dbSNPBuildID=132")
+    if not h.readline():
+        break
+    
+
+def _install_dbsnp_file(build="hg19"):
+    """Download a (large) dbsnp file and extract a region from chr 11"""
+    variationdir = os.path.join(GENOMES, genomes[build]['species'], build, "variation")
+    url = "ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/dbsnp132_20101103.vcf.gz"
+    fn = os.path.join(variationdir, "dbsnp132.vcf.gz")
+    dbsnp = os.path.join(variationdir, "dbsnp132_chr11.vcf")
+    if not os.path.exists(variationdir):
+        safe_makedir(variationdir)
+    try:
+        cl = ["curl", url, "-o", fn]
+        if not os.path.exists(os.path.join(variationdir, os.path.basename(fn))):
+            subprocess.check_call(cl)
+    except:
+        pass
+    fh = gzip.open(fn, "read")
+    if not os.path.exists(dbsnp):
+        of = open(dbsnp, "w")
+        for r in fh:
+            vals = r.split()
+            if r.startswith("#"):
+                of.write(r)
+            if vals[0] != "11":
+                continue
+            if int(vals[1]) < 2000000:
+                vals[0] = "chr{}".format(vals[0])
+                of.write("\t".join(vals))
+                of.write("\n")
+            else:
+                break
+        of.close()
+    return dbsnp
 
 def _install_training_data(build="hg19"):
     variationdir = os.path.join(GENOMES, genomes[build]['species'], build, "variation")
