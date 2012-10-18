@@ -215,7 +215,7 @@ class ProductionController(AbstractExtendedBaseController):
             cl = run_bcbb_command(f, **vars(self.pargs))
             print "running {}".format(cl)
             try:
-                #subprocess.check_call(cl)
-                self.app.cmd.command(cl)
+                subprocess.check_call(cl)
+                #self.app.cmd.command(cl)
             finally:
                 os.chdir(orig_dir)
