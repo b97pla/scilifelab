@@ -52,10 +52,13 @@ def sample_status_note(project_id=None, flowcell_id=None, user=None, password=No
     
     LOG.debug("got parameters {}".format(parameters))
     output_data = {'stdout':StringIO(), 'stderr':StringIO()}
-    output_data["stdout"].write("*** Quality stats ***\n")
+    output_data["stdout"].write("\nQuality stats\n")
+    output_data["stdout"].write("************************\n")
+    output_data["stdout"].write("PhiX error cutoff: > {}\n".format(cutoffs['phix_err_cutoff']))
+    output_data["stdout"].write("QV cutoff        : < {}\n".format(cutoffs['qv_cutoff']))
+    output_data["stdout"].write("************************\n\n")
     output_data["stdout"].write("{:>18}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format("Scilifelab ID", "PhiXError", "ErrorStatus", "AvgQV", "QVStatus"))
     output_data["stdout"].write("{:>18}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format("=============", "=========", "===========", "=====", "========"))
-        
     ## Connect and run
     s_con = SampleRunMetricsConnection(username=user, password=password, url=url)
     fc_con = FlowcellRunMetricsConnection(username=user, password=password, url=url)
