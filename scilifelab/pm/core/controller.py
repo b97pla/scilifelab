@@ -8,8 +8,6 @@ from cement.core import interface, handler, controller, backend
 from scilifelab.pm.lib.help import PmHelpFormatter
 from scilifelab.utils.misc import filtered_output, query_yes_no, filtered_walk
 
-LOG = backend.minimal_logger(__name__)
-
 class AbstractBaseController(controller.CementBaseController):
     """
     This is an abstract base controller.
@@ -45,10 +43,10 @@ class AbstractBaseController(controller.CementBaseController):
         self._process_args()
         
         if not self.command:
-            LOG.debug("no command to dispatch")
+            self.app.log.debug("no command to dispatch")
         else:    
             func = self.exposed[self.command]     
-            LOG.debug("dispatching command: %s.%s" % \
+            self.app.log.debug("dispatching command: %s.%s" % \
                       (func['controller'], func['label']))
 
             if func['controller'] == self._meta.label:
@@ -65,14 +63,14 @@ class AbstractBaseController(controller.CementBaseController):
         raise NotImplementedError
 
     def _obsolete(self, msg):
-        self.log.warn("This function is obsolete.")
-        self.log.warn(msg)
+        self.app.log.warn("This function is obsolete.")
+        self.app.log.warn(msg)
 
     def _check_pargs(self, pargs, msg=None):
         """Check that list of pargs are present"""
         for p in pargs:
             if not self.pargs.__getattribute__(p):
-                self.log.warn("Required argument '{}' lacking".format(p))
+                self.app.log.warn("Required argument '{}' lacking".format(p))
                 return False
         return True
 
@@ -132,6 +130,7 @@ class AbstractExtendedBaseController(AbstractBaseController):
         self._meta.arguments.append((['--split'], dict(help="Workon *-split directories", default=False, action="store_true")))
         self._meta.arguments.append((['--tmp'], dict(help="Workon staging (tx) and tmp directories", default=False, action="store_true")))
         self._meta.arguments.append((['--txt'], dict(help="Workon txt files", default=False, action="store_true")))
+        self._meta.arguments.append((['--glob'], dict(help="Workon freetext glob expression. CAUTION: using wildcard expressions will remove *everything* that matches.", default=None, action="store")))
         self._meta.arguments.append((['--move'], dict(help="Transfer file with move", default=False, action="store_true")))
         self._meta.arguments.append((['--copy'], dict(help="Transfer file with copy (default)", default=True, action="store_true")))
         self._meta.arguments.append((['--rsync'], dict(help="Transfer file with rsync", default=False, action="store_true")))
@@ -164,7 +163,9 @@ class AbstractExtendedBaseController(AbstractBaseController):
         if self.pargs.tmp:
             self._meta.file_pat += [".idx", ".vcf", ".bai", ".bam", ".idx", ".pdf"]
             self._meta.include_dirs += ["tmp", "tx"]
-
+        if self.pargs.glob:
+            self._meta.file_pat += [self.pargs.glob]
+            
         ## Setup zip program
         if self.pargs.pbzip2:
             self._meta.compress_prog = "pbzip2"

@@ -3,6 +3,8 @@ import tempfile
 import random
 import datetime
 import string
+import collections
+
 
 def generate_fc_barcode():
     """Generate a flowcell barcode on the format ABC123CXX

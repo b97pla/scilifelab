@@ -93,3 +93,10 @@ class PmFlowcellTest(PmTest):
         print fc
         print fc.data
         print fc.as_yaml()
+
+    def test_9_get_flowcell_csv_wo_fastq(self):
+        """Test to load a flowcell as csv when no fastq information.
+        
+        For files without fastq info conversion to yaml fails.
+        """
+        pass

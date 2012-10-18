@@ -3,6 +3,9 @@ import sys
 import os
 import re
 import contextlib
+import scilifelab.log
+
+LOG = scilifelab.log.minimal_logger(__name__)
 
 ## yes or no: http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input
 def query_yes_no(question, default="yes", force=False):
@@ -115,6 +118,8 @@ def safe_makedir(dname):
         except OSError:
             if not os.path.isdir(dname):
                 raise
+    else:
+        LOG.warning("Directory {} already exists; not making directory".format(dname))
     return dname
 
 @contextlib.contextmanager
@@ -131,4 +136,5 @@ def chdir(new_dir):
         yield
     finally:
         os.chdir(cur_dir)
+
 
