@@ -6,7 +6,7 @@ from data import setup_data_files
 from empty_files import setup_empty_files
 
 ## Set default configuration
-filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+filedir = os.curdir
 config_defaults = backend.defaults('production', 'archive', 'config', 'project','log')
 config_defaults['production']['root']  = os.path.join(filedir, "data", "production")
 config_defaults['archive']['root']  = os.path.join(filedir, "data", "archive")

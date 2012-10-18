@@ -44,7 +44,8 @@ C003CCCXX,4,P003_101_index6,hg19,CGTTAA,J__Doe_00_03,N,R1,NN_failed,J__Doe_00_03
 SAMPLESHEETS['B002BBBXX'] = """FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,SampleProject
 B002BBBXX,1,P001_101_index3,hg19,TGACCA,J__Doe_00_01,N,R1,NN,J__Doe_00_01
 B003BBBXX,2,P002_101_index3,hg19,TGACCA,J__Doe_00_02,N,R1,NN,J__Doe_00_02"""
-NSAMPLES = sum([(len(v)-1) for k,v in SAMPLESHEETS.iteritems()])
+NSAMPLES = sum([(len(SAMPLESHEETS[k].split("\n"))-1) for k in SAMPLESHEETS.keys()])
+PROJECTS = ["J.Doe_00_01", "J.Doe_00_02", "J.Doe_00_03"]
 ## Genome metadata
 genomes = {'hg19':{'species':'Hsapiens', 'label':'Human (hg19)'},
            'phix':{'species':'phix', 'label':'phiX174'}}
@@ -75,11 +76,10 @@ def setUpModule():
     def filter_fn(f):
         return re.search(pattern, f) != None
 
-    msgfiles = filtered_walk(PRODUCTION, filter_fn)
-    if len(msgfiles) == NSAMPLES:
+    n = sum([len(filtered_walk(os.path.join(PRODUCTION, x), filter_fn)) for x in PROJECTS])
+    if n == NSAMPLES:
         LOG.info("All samples have been run, requirements for downstream tests satisfied")
         return
-
     LOG.info("Running setUpModule")
     _check_requirements()
     ## Add function to check existence of output files

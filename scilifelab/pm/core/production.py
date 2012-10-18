@@ -6,8 +6,10 @@ import re
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractExtendedBaseController
 from scilifelab.utils.misc import query_yes_no, filtered_walk
+from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command
 from scilifelab.bcbio.flowcell import Flowcell
 from scilifelab.bcbio.status import status_query
+import subprocess
 
 ## Main production controller
 class ProductionController(AbstractExtendedBaseController):
@@ -25,7 +27,18 @@ class ProductionController(AbstractExtendedBaseController):
             (['--from_pre_casava'], dict(help="Use pre-casava directory structure for gathering information", action="store_true", default=False)),
             (['--to_pre_casava'], dict(help="Use pre-casava directory structure for delivery", action="store_true", default=False)),
             (['--transfer_dir'], dict(help="Transfer data to transfer_dir instead of sample_prj dir", action="store", default=None)),
-            (['--brief'], dict(help="Output brief information from status queries", action="store_true", default=False))
+            (['--brief'], dict(help="Output brief information from status queries", action="store_true", default=False)),
+            (['--analysis_type'], dict(help="set analysis type in bcbb config file", action="store", default="Align_standard_seqcap", type=str)),
+            (['--genome_build'], dict(help="genome build ", action="store", default="hg19", type=str)),
+            (['--only_failed'], dict(help="only run on failed samples ", action="store_true", default=False)),
+            (['--only_setup'], dict(help="only perform setup", action="store_true", default=False)),
+            (['--restart'], dict(help="restart analysis", action="store_true", default=False)),
+            (['--no_only_run'], dict(help="run_bcbb parameter: don't setup", action="store_false", default=True)),
+            (['--google_report'], dict(help="make a google report (default False)", action="store_false", default=True)),
+            (['--automated_initial_analysis'], dict(help="call automated_initial_analysis directly", action="store_false", default=True)),
+            (['--halo'], dict(help="halo-like analyses, which means mark_duplicates is set to false", action="store_true", default=False)),
+            (['--targets'], dict(help="sequence capture target file", action="store", default=None)),
+            (['--baits'], dict(help="sequence capture baits file", action="store", default=None)),
             ]
 
     def _process_args(self):
@@ -45,6 +58,10 @@ class ProductionController(AbstractExtendedBaseController):
         if self.command == "hs_metrics":
             self._meta.path_id = self.pargs.flowcell if self.pargs.flowcell else self.pargs.project
         super(ProductionController, self)._process_args()
+
+    @controller.expose(hide=True)
+    def default(self):
+        print self._help_text
 
     @controller.expose(help="List runinfo contents")
     def runinfo(self):
@@ -172,6 +189,28 @@ class ProductionController(AbstractExtendedBaseController):
                 self._to_casava_structure(fc)
 
 
-        ## Fix lane_files for pre_casava output
-        ## if self.pargs.pre_casava:
-
+    @controller.expose(help="Run bcbb pipeline")
+    def run(self):
+        if not self._check_pargs(["project"]):
+            return
+        flist = find_samples(os.path.join(self._meta.root_path, self._meta.path_id), **vars(self.pargs))
+        if len(flist) > 0 and not query_yes_no("Going to start {} jobs... Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
+            return
+        orig_dir = os.getcwd()
+        for f in flist:
+            os.chdir(os.path.abspath(os.path.dirname(f)))
+            setup_sample(f, **vars(self.pargs))
+            os.chdir(orig_dir)
+        if self.pargs.only_setup:
+            return
+        ## Here process files again, removing if requested, and running the pipeline
+        for f in flist:
+            os.chdir(os.path.abspath(os.path.dirname(f)))
+            if not self.pargs.restart:
+                self.app.log.info("Removing old analysis files in {}".format(os.path.dirname(f)))
+                remove_files(f, **vars(self.pargs))
+            cl = run_bcbb_command(f, **vars(self.pargs))
+            print "running {}".format(cl)
+            subprocess.check_call(cl)
+            #self.app.cmd.command(cl)
+            os.chdir(orig_dir)

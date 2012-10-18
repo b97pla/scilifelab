@@ -105,7 +105,6 @@ class ProjectController(AbstractExtendedBaseController):
         if not self.pargs.flowcell:
             self.log.warn("No flowcellid provided. Please provide a flowcellid from which to deliver. Available options are:\n\t{}".format("\n\t".join(self._flowcells())))
             return
-
     
     ## purge_alignments
     @controller.expose(help="purge alignments in project folders")
