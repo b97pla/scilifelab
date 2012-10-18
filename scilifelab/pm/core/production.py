@@ -209,8 +209,13 @@ class ProductionController(AbstractExtendedBaseController):
             if not self.pargs.restart:
                 self.app.log.info("Removing old analysis files in {}".format(os.path.dirname(f)))
                 remove_files(f, **vars(self.pargs))
+            else:
+                ## Find jobid if present in slurm and kill
+                pass
             cl = run_bcbb_command(f, **vars(self.pargs))
             print "running {}".format(cl)
-            subprocess.check_call(cl)
-            #self.app.cmd.command(cl)
-            os.chdir(orig_dir)
+            try:
+                #subprocess.check_call(cl)
+                self.app.cmd.command(cl)
+            finally:
+                os.chdir(orig_dir)
