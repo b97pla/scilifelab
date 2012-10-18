@@ -10,8 +10,8 @@ from scilifelab.pm.core.production import ProductionController
 LOG = logbook.Logger(__name__)
 
 
-JDOE01 = os.path.join(os.curdir, "data", "production", "J.Doe_00_01")
-JDOE04 = os.path.join(os.curdir, "data", "production", "J.Doe_00_04")
+JDOE01 = os.path.abspath(os.path.join(os.curdir, "data", "production", "J.Doe_00_01"))
+JDOE04 = os.path.abspath(os.path.join(os.curdir, "data", "production", "J.Doe_00_04"))
 
 class ProductionTest(PmTest):
     def setUp(self):
