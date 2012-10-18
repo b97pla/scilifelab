@@ -5,7 +5,7 @@ import os
 import glob
 
 setup(name = "scilifelab",
-      version = "0.2",
+      version = "0.2.1",
       author = "Science for Life Laboratory",
       author_email = "genomics_support@scilifelab.se",
       description = "Useful scripts for use at SciLifeLab",
@@ -19,7 +19,12 @@ setup(name = "scilifelab",
         "reportlab >= 2.5",
         "cement >= 2.0.2",
         "mock",
-        "PIL"
+        "PIL",
+        "pyPdf",
+        "logbook >= 0.4",
+        "numpy >= 1.6",
+        "pandas >= 0.9",
+        "biopython",
         ],
       test_suite = 'nose.collector',
       packages=find_packages(exclude=['tests']),

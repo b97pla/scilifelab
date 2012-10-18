@@ -1,11 +1,14 @@
 import os
 import unittest
 import ConfigParser
-from scilifelab.report import sequencing_success, set_status
-from scilifelab.report.rl import make_example_sample_note, make_note, sample_note_paragraphs, sample_note_headers
+import logbook
+
+from scilifelab.report import sequencing_success
+from scilifelab.report.rl import make_example_sample_note, make_note, sample_note_paragraphs, sample_note_headers, concatenate_notes
 from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectSummaryConnection
 
 filedir = os.path.abspath(os.path.realpath(os.path.dirname(__file__)))
+LOG = logbook.Logger(__name__)
 
 ## Cutoffs
 cutoffs = {
@@ -45,6 +48,7 @@ class TestSampleDeliveryNote(unittest.TestCase):
             self.user = None
             self.pw = None
             self.examples = {}
+            LOG.warning("No such file {}; will not run database connection tests".format(os.path.join(os.getenv("HOME"), "dbcon.ini")))
         else:
             config = ConfigParser.ConfigParser()
             config.readfp(open(os.path.join(os.getenv("HOME"), "dbcon.ini")))
@@ -55,32 +59,43 @@ class TestSampleDeliveryNote(unittest.TestCase):
                              "flowcell":config.get("examples", "flowcell"),
                              "project":config.get("examples", "project")}
 
-    def test_1_make_example_note(self):
+    def test_make_example_note(self):
         """Make example note"""
         make_example_sample_note(os.path.join(filedir, "test.pdf"))
 
-    def test_2_make_note(self):
+    def test_make_note(self):
         """Make a note subset by example flowcell and project"""
+        if not self.examples:
+            LOG.info("Not running test")
+            return
         s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
         fc_con = FlowcellRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
         p_con = ProjectSummaryConnection(username=self.user, password=self.pw, url=self.url)
         paragraphs = sample_note_paragraphs()
         headers = sample_note_headers()
-        samples = s_con.get_samples(self.examples["flowcell"], self.examples["project"])
         project = p_con.get_entry(self.examples["project"])
-        sample_map = p_con.map_sample_run_names(self.examples["project"], self.examples["flowcell"])
-        for s in samples:
-            s_param = parameters
+        samples = p_con.map_srm_to_name(self.examples["project"], fc_id=self.examples["flowcell"], use_bc_map=True, include_all=False)
+        notes = []
+        for k,v  in samples.items():
+            s_param = {}
+            s_param.update(parameters)
+            if not v['id'] is None:
+                if not s_con.name_fc_view[k].value == self.examples["flowcell"]:
+                    print("skipping sample '{}' since it isn't run on flowcell {}".format(k, self.examples["flowcell"]))
+                    continue
+            else:
+                if re.search("NOSRM", k):
+                    print("No sample run metrics information for project sample '{}'".format(k.strip("NOSRM_")))
+                    continue
+            s = s_con.get_entry(k)
             s_param.update({key:s[srm_to_parameter[key]] for key in srm_to_parameter.keys()})
             fc = "{}_{}".format(s["date"], s["flowcell"])
             s_param["phix_error_rate"] = fc_con.get_phix_error_rate(str(fc), s["lane"])
             s_param['avg_quality_score'] = s_con.calc_avg_qv(s["name"])
             s_param['rounded_read_count'] = round(float(s_param['rounded_read_count'])/1e6,1) if s_param['rounded_read_count'] else None
-            s_param['customer_name'] = project['samples'][sample_map[s["name"]]['project_sample']].get('customer_name', None)
-
-            if project:
-                s_param['ordered_amount'] = p_con.get_ordered_amount(self.examples["project"])
-                s_param.update({key:project[ps_to_parameter[key]] for key in ps_to_parameter.keys() })
+            s_param['customer_name'] = project['samples'][v["sample"]].get('customer_name', None)
             s_param['success'] = sequencing_success(s_param, cutoffs)
-            s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None})
-            make_note("{}.pdf".format(s["barcode_name"]), headers, paragraphs, **s_param)
+            s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None or s_param[k] ==  ""})
+            notes.append(make_note("{}.pdf".format(s["barcode_name"]), headers, paragraphs, **s_param))
+        concatenate_notes(notes, "{}_{}_{}_sample_summary.pdf".format(self.examples["project"], s["date"], s["flowcell"]))
+

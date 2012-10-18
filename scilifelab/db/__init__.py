@@ -3,12 +3,8 @@ import os
 import sys
 import couchdb
 
-from cement.core import backend
-
-LOG = backend.minimal_logger("db")
-
+from scilifelab.log import minimal_logger
 from scilifelab.utils.http import check_url
-
 
 class ConnectionError(Exception):
     """Exception raised for connection errors.
@@ -29,7 +25,7 @@ class Database(object):
 
     def __init__(self, **kwargs):
         self.con = None
-        self.log = backend.minimal_logger(repr(self))
+        self.log = minimal_logger(repr(self))
         self.connect(**kwargs)
 
     def connect(self, **kwargs):
@@ -52,7 +48,7 @@ class Couch(Database):
         super(Couch, self).__init__(**kwargs)
         if not self.con:
             raise ConnectionError("Connection failed for url {}".format(self.url_string))
-
+        
     def connect(self, username=None, password=None, url=None, port=5984):
         if not username or not password or not url:
             self.log.warn("please supply username, password, and url")

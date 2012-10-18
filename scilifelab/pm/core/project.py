@@ -7,6 +7,7 @@ import yaml
 from cement.core import controller, hook
 from scilifelab.pm.core.controller import AbstractExtendedBaseController, AbstractBaseController
 from scilifelab.utils.misc import query_yes_no, filtered_walk, walk
+from scilifelab.pm.lib.clean import purge_alignments
 
 ## Main project controller
 class ProjectController(AbstractExtendedBaseController):
@@ -24,6 +25,7 @@ class ProjectController(AbstractExtendedBaseController):
             (['--finished'], dict(help="include finished project listing", action="store_true", default=False)),
             (['--intermediate'], dict(help="Work on intermediate data", default=False, action="store_true")),
             (['--data'], dict(help="Work on data folder", default=False, action="store_true")),
+            (['--minfilesize'], dict(help="Min file size to keep (in bytes). Default 2000.", default=2000, action="store", type=int)),
             ]
         flowcelldir = None
 
@@ -104,42 +106,21 @@ class ProjectController(AbstractExtendedBaseController):
             self.log.warn("No flowcellid provided. Please provide a flowcellid from which to deliver. Available options are:\n\t{}".format("\n\t".join(self._flowcells())))
             return
 
+    
     ## purge_alignments
     @controller.expose(help="purge alignments in project folders")
-    def purge_alignments(self):
+    def purge(self):
         """Cleanup sam and bam files. In some cases, sam files
         persist. If the corresponding bam file exists, replace the sam
         file contents with a message that the file has been removed to
         save space.
         """
-        pattern = ".sam$"
-        def purge_filter(f):
-            if not pattern:
-                return
-            return re.search(pattern, f) != None
-
-        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), purge_filter)
-        if len(flist) == 0:
-            self.app.log.info("No sam files found")
+        if not self._check_pargs(["project"]):
             return
-        if len(flist) > 0 and not query_yes_no("Going to remove/cleanup {} sam files ({}...). Are you sure you want to continue?".format(len(flist), ",".join([os.path.basename(x) for x in flist[0:10]])), force=self.pargs.force):
-            return
-        for f in flist:
-            self.app.log.info("Purging sam file {}".format(f))
-            self.app.cmd.safe_unlink(f)
-            if os.path.exists(f.replace(".sam", ".bam")):
-                self.app.cmd.write(f, "File removed to save disk space: SAM converted to BAM")
-
-        ## Find bam files in alignments subfolders
-        pattern = ".bam$"
-        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), purge_filter, include_dirs=["alignments"])
-        for f in flist:
-            f_tgt = [f.replace(".bam", "-sort.bam"), os.path.join(os.path.dirname(os.path.dirname(f)),os.path.basename(f) )]
-            for tgt in f_tgt:
-                if os.path.exists(tgt):
-                    self.app.log.info("Purging bam file {}".format(f))
-                    self.app.cmd.safe_unlink(f)
-                    self.app.cmd.write(f, "File removed to save disk space: Moved to {}".format(os.path.abspath(tgt)))
+        if self.app.pargs.sam:
+            purge_alignments(path=os.path.join(self._meta.root_path, self._meta.path_id), dry_run=self.app.pargs.dry_run, force=self.app.pargs.force, fsize=self.app.pargs.minfilesize)
+        else:
+            purge_alignments(path=os.path.join(self._meta.root_path, self._meta.path_id), dry_run=self.app.pargs.dry_run, force=self.app.pargs.force, ftype="bam", fsize=self.app.pargs.minfilesize)
 
 class ProjectRmController(AbstractBaseController):
     class Meta:

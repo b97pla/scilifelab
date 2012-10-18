@@ -1,13 +1,29 @@
 """Pm deliver module"""
 import os
+import re
 import shutil
 import itertools
 
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractBaseController
-from scilifelab.report import sequencing_success, set_status
+from scilifelab.report import sequencing_success
 from scilifelab.report.rl import *
-from scilifelab.db.statusdb import *
+from scilifelab.report.qc import application_qc, fastq_screen
+from scilifelab.report.delivery_notes import sample_status_note, project_status_note
+from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection
+
+## QC data cutoff values
+qc_cutoff = {
+    'rnaseq':{'PCT_PF_READS_ALIGNED':70,'PERCENT_DUPLICATION':30},
+    'reseq':{'PCT_PF_READS_ALIGNED':70,'PERCENT_DUPLICATION':30},
+    'WG-reseq':{'PCT_PF_READS_ALIGNED':70,'PERCENT_DUPLICATION':30},
+    'seqcap':{'PCT_PF_READS_ALIGNED':70,'PERCENT_ON_TARGET':60, 'PCT_TARGET_BASES_10X':90, 'PERCENT_DUPLICATION':30},
+    'customcap':{'PCT_PF_READS_ALIGNED':70, 'PERCENT_DUPLICATION':30},
+    'finished':{},
+    }
+## Mapping from genomics project list application names
+application_map = {'RNA-seq (Total RNA)':'rnaseq','WG re-seq':'WG-reseq','Resequencing':'reseq', 'Exome capture':'seqcap', 'Custom':'customcap', 'Finished library':'finished' , 'Custom capture':'customcap'}
+application_inv_map = {v:k for k, v in application_map.items()}
 
 ## Main delivery controller
 class DeliveryController(AbstractBaseController):
@@ -18,12 +34,18 @@ class DeliveryController(AbstractBaseController):
         label = 'deliver'
         description = 'Deliver data'
         arguments = [
+            (['project_id'], dict(help="Project id. Standard format is 'J.Doe_00_00'", default=None, nargs="?")),
+            (['flowcell_id'], dict(help="Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?")),
+            (['uppmax_project'], dict(help="Uppmax project.", default=None, nargs="?")),
+            (['-i', '--interactive'], dict(help="Interactively select samples to be delivered", default=False, action="store_true")),
+            (['-a', '--deliver-all-fcs'], dict(help="rsync samples from all flow cells", default=False, action="store_true")),
             ]
 
     @controller.expose(hide=True)
     def default(self):
-        self._not_implemented()
-    
+        if not self._check_pargs(["project_id", "flowcell_id", "uppmax_project"]):
+            return
+        
 ## Main delivery controller
 class DeliveryReportController(AbstractBaseController):
     """
@@ -31,147 +53,55 @@ class DeliveryReportController(AbstractBaseController):
     """
     class Meta:
         label = 'report'
-        description = 'Make delivery reports'
+        description = 'Make delivery reports and assess qc'
         arguments = [
             (['project_id'], dict(help="Project id. Standard format is 'J.Doe_00_00'", default=None, nargs="?")),
             (['flowcell_id'], dict(help="Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?")),
-            (['-u', '--uppmax_id'], dict(help="Manually insert Uppnex project ID into the report.", default=None, action="store", type=str)),
+            (['-u', '--uppnex_id'], dict(help="Manually insert Uppnex project ID into the report.", default=None, action="store", type=str)),
             (['-o', '--ordered_million_reads'], dict(help="Manually insert the ordered number of read pairs (in millions)", default=None, action="store", type=str)),
-            (['-r', '--customer-reference'], dict(help="Manually insert customer reference (the customer's name for the project) into reports", default=None, action="store", type=str)),
-            (['-q', '--qcinfo'], dict(help="Write qcinfo to console", default=False, action="store_true")),
+            (['-r', '--customer_reference'], dict(help="Manually insert customer reference (the customer's name for the project) into reports", default=None, action="store", type=str)),
+            (['--check_consistency'], dict(help="Check consistency of project sample name mapping to sample run metrics names", default=False, action="store_true")),
+            (['--use_ps_map'], dict(help="Use project summary mapping in cases where no sample_run_metrics is available", default=True, action="store_false")),
+            (['--use_bc_map'], dict(help="Use sample run metrics barcode mapping in cases where no sample_run_metrics is available", default=False, action="store_true")),
+            (['--application'], dict(help="Set application for qc evaluation. One of '{}'".format(",".join(qc_cutoff.keys())), action="store", type=str, default=None)),
+            (['--exclude_sample_ids'], dict(help="Exclude project sample ids from report generation. Provide project sample ids separated by spaces, as in '--exclude_sample_ids PS1 PS2' ", action="store", default=[], nargs="+"))
             ]
 
     def _process_args(self):
         pass
 
-
     @controller.expose(hide=True)
     def default(self):
         print self._help_text
+
+    @controller.expose(help="Print FastQ screen output for a project/flowcell")
+    def fqscreen(self):
+        if not self._check_pargs(["project_id"]):
+            return
+        out_data = fastq_screen(**vars(self.pargs))
+        self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
+        self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
+
+
+    @controller.expose(help="Print summary QC data for a flowcell/project for application QC control")
+    def application_qc(self):
+        if not self._check_pargs(["project_id"]):
+            return
+        out_data = application_qc(**vars(self.pargs))
+        self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
+        self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
+            
 
     @controller.expose(help="Make sample status note")
     def sample_status(self):
         if not self._check_pargs(["project_id", "flowcell_id"]):
             return
-        ## Cutoffs
-        cutoffs = {
-            "phix_err_cutoff" : 2.0,
-            }
-
-        ## parameters
-        parameters = {
-            "project_name" : None,
-            "customer_reference": self.pargs.customer_reference,
-            "uppnex_project_id" : self.pargs.uppmax_id,
-            "ordered_amount" : self.pargs.ordered_million_reads,
-            "start_date" : None,
-            "FC_id" : None,
-            "scilifelab_name" : None,
-            "customer_name" : None,
-            "rounded_read_count" : None,
-            "phix_error_rate" : None,
-            "avg_quality_score" : None,
-            "success" : None,
-            }
-
-        ## key mapping from sample_run_metrics to parameter keys
-        srm_to_parameter = {"project_name":"sample_prj", "FC_id":"flowcell", 
-                            "scilifelab_name":"barcode_name", "start_date":"date", "rounded_read_count":"bc_count"}
-        ## mapping project_summary to parameter keys
-        ps_to_parameter = {"customer_reference":"customer_reference", "uppnex_project_id":"uppnex_id"}
-
-        ## mapping project sample to table
-        table_keys = ['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status']
-        prjs_to_sample = {'customer_name':'customer_name'}
-
-        ## Write qcinfo if needed
-        if self.pargs.qcinfo:
-            self.app._output_data["stdout"].write("*** Quality stats ***\n")
-            self.app._output_data["stdout"].write("Scilifelab ID\tPhiXError\tAvgQV\n")
-
-        ## Connect and run
-        s_con = SampleRunMetricsConnection(username=self.pargs.user, password=self.pargs.password, url=self.pargs.url)
-        fc_con = FlowcellRunMetricsConnection(username=self.pargs.user, password=self.pargs.password, url=self.pargs.url)
-        p_con = ProjectSummaryConnection(username=self.pargs.user, password=self.pargs.password, url=self.pargs.url)
-        paragraphs = sample_note_paragraphs()
-        headers = sample_note_headers()
-        samples = s_con.get_samples(self.pargs.flowcell_id, self.pargs.project_id)
-        project = p_con.get_entry(self.pargs.project_id)
-        sample_map = p_con.map_sample_run_names(self.pargs.project_id, self.pargs.flowcell_id)
-        for s in samples:
-            s_param = parameters
-            s_param.update({key:s[srm_to_parameter[key]] for key in srm_to_parameter.keys()})
-            fc = "{}_{}".format(s["date"], s["flowcell"])
-            s_param["phix_error_rate"] = fc_con.get_phix_error_rate(str(fc), s["lane"])
-            s_param['avg_quality_score'] = s_con.calc_avg_qv(s["name"])
-            if self.pargs.qcinfo:
-                self.app._output_data["stdout"].write("{}\t{}\t{}\n".format(s["barcode_name"], s_param["phix_error_rate"], s_param["avg_quality_score"]))
-            s_param['rounded_read_count'] = round(float(s_param['rounded_read_count'])/1e6,1) if s_param['rounded_read_count'] else None
-            s_param['customer_name'] = project['samples'][sample_map[s["name"]]['project_sample']].get('customer_name', None)
-            if project:
-                s_param['ordered_amount'] = p_con.get_ordered_amount(self.pargs.project_id)
-                s_param.update({key:project[ps_to_parameter[key]] for key in ps_to_parameter.keys() })
-            ## Set success of run
-            s_param['success'] = sequencing_success(s_param, cutoffs)
-            s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None})
-            make_note("{}.pdf".format(s["barcode_name"]), headers, paragraphs, **s_param)
-            
+        out_data = sample_status_note(**vars(self.pargs))
+        self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
+        self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
 
     @controller.expose(help="Make project status note")
     def project_status(self):
         if not self._check_pargs(["project_id"]):
             return
-        ## parameters
-        parameters = {
-            "project_name" : None,
-            "customer_reference": self.pargs.customer_reference,
-            "uppnex_project_id" : self.pargs.uppmax_id,
-            "finished" : "Not finished, or cannot yet assess if finished.",
-            }
-        ## key mapping from sample_run_metrics to parameter keys
-        srm_to_parameter = {"project_name":"sample_prj"}
-        ## mapping project_summary to parameter keys
-        ps_to_parameter = {"customer_reference":"customer_reference", "uppnex_project_id":"uppnex_id", "scilife_name":"scilife_name", "customer_name":"customer_name", "project_name":"project_id"}
-        ## mapping project sample to table
-        srm_to_table = {'BarcodeSeq':'sequence'}
-        table_keys = ['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status']
-        prjs_to_table = {'ScilifeID':'scilife_name', 'CustomerID':'customer_name', 'MSequenced':'m_reads_sequenced', 'MOrdered':'min_m_reads_per_sample_ordered', 'Status':'status'}
-        
-        ## Connect and run
-        s_con = SampleRunMetricsConnection(username=self.pargs.user, password=self.pargs.password, url=self.pargs.url)
-        fc_con = FlowcellRunMetricsConnection(username=self.pargs.user, password=self.pargs.password, url=self.pargs.url)
-        p_con = ProjectSummaryConnection(username=self.pargs.user, password=self.pargs.password, url=self.pargs.url)
-        paragraphs = project_note_paragraphs()
-        headers = project_note_headers()
-        param = parameters
-        project = p_con.get_entry(self.pargs.project_id)
-        if project:
-            ordered_amount = p_con.get_ordered_amount(self.pargs.project_id)
-        else:
-            ordered_amount = self.pargs.ordered_million_reads
-
-        ## Start collecting the data
-        sample_table = []
-        if project:
-            sample_list = project['samples']
-            param.update({key:project.get(ps_to_parameter[key], None) for key in ps_to_parameter.keys()})
-            sample_map = p_con.map_sample_run_names(self.pargs.project_id, self.pargs.flowcell_id)
-            all_passed = True
-            for k,v in sample_map.items():
-                project_sample = sample_list[v['project_sample']]
-                vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
-                vals['MOrdered'] = ordered_amount
-                vals['BarcodeSeq'] = s_con.get_entry(k, "sequence")
-                ## Set status
-                vals['Status'] = set_status(vals) if vals['Status'] is None else vals['Status']
-                vals.update({k:"N/A" for k in vals.keys() if vals[k] is None})
-                if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
-                sample_table.append([vals[k] for k in table_keys])
-            if not all_passed: param["finished"] = 'Project finished.'
-            sample_table.sort()
-            sample_table = list(sample_table for sample_table,_ in itertools.groupby(sample_table))
-            sample_table.insert(0, ['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status'])
-            paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
-            make_note("{}.pdf".format(self.pargs.project_id), headers, paragraphs, **param)
-
-    
+        project_status_note(**vars(self.pargs))
