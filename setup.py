@@ -22,8 +22,9 @@ setup(name = "scilifelab",
         "PIL",
         "pyPdf",
         "logbook >= 0.4",
-        "numpy >= 1.6",
-        "pandas >= 0.9",
+        # pandas screws up installation; tries to look for local site
+        # packages and not in virtualenv
+        #"pandas >= 0.9",
         "biopython",
         ],
       test_suite = 'nose.collector',
