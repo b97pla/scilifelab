@@ -193,7 +193,7 @@ class ProductionController(AbstractExtendedBaseController):
     def run(self):
         if not self._check_pargs(["project"]):
             return
-        flist = find_samples(os.path.abspath(os.path.join(self._meta.root_path, self._meta.path_id), **vars(self.pargs)))
+        flist = find_samples(os.path.abspath(os.path.join(self._meta.root_path, self._meta.path_id)), **vars(self.pargs))
         if len(flist) > 0 and not query_yes_no("Going to start {} jobs... Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
             return
         orig_dir = os.path.abspath(os.getcwd())
