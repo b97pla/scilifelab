@@ -43,7 +43,7 @@ class ProductionController(AbstractExtendedBaseController):
 
     def _process_args(self):
         # Set root path for parent class
-        self._meta.root_path = self.app.config.get("production", "root")
+        self._meta.root_path = os.path.abspath(self.app.config.get("production", "root"))
         assert os.path.exists(self._meta.root_path), "No such directory {}; check your production config".format(self._meta.root_path)
         ## Set path_id for parent class
         if self.pargs.flowcell:
