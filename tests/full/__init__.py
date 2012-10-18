@@ -27,7 +27,7 @@ GENOMES = os.path.join(filedir, "data", "genomes")
 CONFIG = os.path.join(filedir, "data", "config")
 tmpdir = os.path.join(os.path.dirname(__file__), "tmp")
 CURLFILESIZE = 30000000
-NUMREADS = 400000
+NUMREADS = 50000
 
 ## Postprocess file
 PPTEMPLATE = Template(filename=os.path.join(CONFIG, "post_process.mako"))
@@ -106,9 +106,24 @@ def setUpModule():
 
     ## Install files in production with run_bcbb_pipeline.py
     for k in FLOWCELL.keys():
-        LOG.info("Installing files with run_bcbb_pipeline.py for flowcell {}".format(k))
-        cl = ["run_bcbb_pipeline.py", "-s", "-g", POSTPROCESS, os.path.join(ARCHIVE, FLOWCELL[k])]
-        subprocess.check_call(cl)
+        install = False
+        for ss in SAMPLESHEETS[k].split("\n"):
+            vals = ss.split(",")
+            if vals[0]=="FCID":
+                continue
+            outdir = os.path.join(PRODUCTION, "{}".format(vals[5].replace("__", ".")), "{}".format(vals[2]), "{}_{}".format(FLOWCELL[k].split("_")[0],FLOWCELL[k].split("_")[-1]))
+            r1 = os.path.join(outdir, "{}_{}_L00{}_R1_001.fastq.gz".format(vals[2], vals[4], vals[1]))
+            r2 = os.path.join(outdir, "{}_{}_L00{}_R2_001.fastq.gz".format(vals[2], vals[4], vals[1]))
+            LOG.info("Looking for {} and {}".format(r1, r2))
+            if not os.path.exists(r1) or not os.path.exists(r2):
+                install = True
+                break
+        if install:
+            LOG.info("Installing files with run_bcbb_pipeline.py for flowcell {}".format(k))
+            cl = ["run_bcbb_pipeline.py", "-s", "-g", POSTPROCESS, os.path.join(ARCHIVE, FLOWCELL[k])]
+            subprocess.check_call(cl)
+        else:
+            LOG.info("All files present; not running run_bcbb_pipeline.py")
     
     ## Run pipeline on samples 
     pattern = "-bcbb-config.yaml$"
@@ -215,7 +230,7 @@ def _pair_fastq_files(r1, r2, out_prefix):
     _write_fastq("{}_2.fastq".format(out_prefix), seqs2, [x.id[0:-2] for x in seqs1])
     LOG.info("Done writing files")
 
-def _read_fastq(fn, numreads=150000):
+def _read_fastq(fn, numreads=NUMREADS):
     fh = open(fn, "rU")
     i = 0
     seqs = []
@@ -239,23 +254,20 @@ def _write_fastq(fn, seqs, ids):
         if rec.id[-2] != "/":
             continue
         if rec.id[0:-2] in ids:
-            del ids[ids.index(rec.id[0:-2])]
             i = i + 1
             SeqIO.write(rec, fh, "fastq")
             if i % 10000==0:
                 LOG.info("Wrote {} sequences...".format(i))
     fh.close()
 
-def _make_casava_archive_files(fc, ssname, prefix, startiter = 1, nseqout=2000):
+def _make_casava_archive_files(fc, ssname, prefix, startiter = 1, nseqout=1000):
     fc_dir = os.path.join(ARCHIVE, fc)
     if not os.path.exists(fc_dir):
         safe_makedir(fc_dir)
     with open(os.path.join(fc_dir, "{}.csv".format(ssname)), "w") as fh:
         fh.write(SAMPLESHEETS[ssname])
-    h1 = open("{}_1.fastq".format(prefix), "r")
-    h2 = open("{}_2.fastq".format(prefix), "r")
-    outh1 = []
-    outh2 = []
+    outf1 = []
+    outf2 = []
     basecall_stats_dir = os.path.join(fc_dir, "Unaligned", "Basecall_Stats_{}".format(ssname))
     if not os.path.exists(basecall_stats_dir):
         safe_makedir(basecall_stats_dir)
@@ -278,43 +290,44 @@ def _make_casava_archive_files(fc, ssname, prefix, startiter = 1, nseqout=2000):
             fh.write("{}\n".format(header))
             fh.write("{}\n".format(row))
         r1 = os.path.join(outdir, "{}_{}_L00{}_R1_001.fastq.gz".format(vals[2], vals[4], vals[1]))
+        r2 = os.path.join(outdir, "{}_{}_L00{}_R2_001.fastq.gz".format(vals[2], vals[4], vals[1]))
         if os.path.exists(r1):
             LOG.info("{} already exists: if you want to rerun file generation remove {}".format(r1, r1))
             return 
-        oh1 = gzip.open(r1, "w")
-        outh1.append(oh1)
-        oh2 = gzip.open(os.path.join(outdir, "{}_{}_L00{}_R2_001.fastq.gz".format(vals[2], vals[4], vals[1])),"w")
-        outh2.append(oh2)
+        outf1.append(r1)
+        outf2.append(r2)
 
     ## Write sequences
-    i = 0
-    n = len(outh1)
-    totseqout = n * nseqout
-    for rec in SeqIO.parse(h1, "fastq"):
-        SeqIO.write(rec, outh1[i % n], "fastq")
-        i = i + 1
-        if (i % 10000 == 0):
-            LOG.info("read {} sequences from {}".format(i, h1.name))
-        if i > totseqout:
-            break
-    [h.close() for h in outh1]
+    with open("{}_1.fastq".format(prefix), "r") as fh:
+        _write_sample_fastq(fh, outf1, startiter=startiter, nseqout=nseqout)
+    with open("{}_2.fastq".format(prefix), "r") as fh:
+        _write_sample_fastq(fh, outf2, startiter=startiter, nseqout=nseqout)
+
+def _write_sample_fastq(fh, outfiles, startiter=0, nseqout=1000):
     i = 0
     j = 0 - startiter
-    n = len(outh2)
-    for rec in SeqIO.parse(h2, "fastq"):
+    outh = []
+    for of in outfiles:
+        LOG.info("Opening gzip file {}".format(of))
+        oh = gzip.open(of, "w")
+        outh.append(oh)
+    n = len(outh)
+    totseqout = n * nseqout
+    LOG.info("writing {} sequences per file for {} samples, {} sequences in total".format(nseqout, n, totseqout))
+    for rec in SeqIO.parse(fh, "fastq"):
         j = j + 1
         if j < 0:
             continue
-        SeqIO.write(rec, outh2[i%n], "fastq")
+        SeqIO.write(rec, outh[i%n], "fastq")
         i = i + 1
-        if (i % 10000 == 0):
-            LOG.info("read {} sequences from {}".format(i, h2.name))
-        if i > nseqout:
+        if (i % 1000 == 0):
+            LOG.info("read {} sequences from {}".format(i, fh.name))
+        if i > totseqout:
             break
+    [h.close() for h in outh]
 
-    [h.close() for h in outh2]
-    h1.close()
-    h2.close()
+
+
 
 def _download_ucsc_genome_and_index(build="hg19", chr="chr11", start=0, end=2000000):
     """Download chromosome from ucsc, extract a given region and
@@ -326,6 +339,7 @@ def _download_ucsc_genome_and_index(build="hg19", chr="chr11", start=0, end=2000
     if not os.path.exists(genomedir):
         safe_makedir(genomedir)
     try:
+        LOG.info("Downloading {} from {} with curl".format(os.path.join(genomedir, os.path.basename(url)), url))
         cl = ["curl", url, "-o", os.path.join(genomedir, os.path.basename(url))]
         if not os.path.exists(os.path.join(genomedir, os.path.basename(url))):
             subprocess.check_call(cl)
@@ -553,7 +567,6 @@ def _install_dbsnp_entrez(build="hg19"):
         LOG.info("Writing file {}".format(fn))
         fh = open(fn, "w")
         fh.write(dbsnp_header)
-        fh.write("\n")
         ## Header must be tab-separated, otherwise GATK complains...
         fh.write(vcfheader)
         for rec in sorted(records, key=lambda x: int(x.split()[1])):
@@ -586,6 +599,7 @@ def _install_dbsnp_file(build="hg19"):
     if not os.path.exists(variationdir):
         safe_makedir(variationdir)
     try:
+        LOG.info("Downloading {} from {} with curl".format(fn, url))
         cl = ["curl", url, "-o", fn]
         if not os.path.exists(os.path.join(variationdir, os.path.basename(fn))):
             subprocess.check_call(cl)
@@ -615,15 +629,15 @@ def _install_training_data(build="hg19"):
     hapmap_out = os.path.join(variationdir, "hapmap_3.3.vcf")
     mills_out = os.path.join(variationdir, "Mills_Devine_2hit.indels.vcf")
     fh = open(omni_out, "w")
-    fh.write(vcfheader)
     fh.write(omni)
+    fh.write(vcfheader)
     fh.close()
     fh = open(hapmap_out, "w")
-    fh.write(vcfheader)
     fh.write(hapmap)
+    fh.write(vcfheader)
     fh.close()
     fh = open(mills_out, "w")
-    fh.write(vcfheader)
     fh.write(mills)
+    fh.write(vcfheader)
     fh.close()
     return (omni_out, hapmap_out, mills_out)
