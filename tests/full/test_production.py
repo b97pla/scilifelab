@@ -37,13 +37,13 @@ class ProductionTest(PmFullTest):
         shutil.rmtree(j_doe_00_04)
 
     def test_production_setup(self):
-        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--only_setup'])
+        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--only_setup', '--restart'])
         handler.register(ProductionController)
         self._run_app()
         os.chdir(filedir)
 
     def test_production(self):
-        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--amplicon'])
+        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--amplicon', '--restart'])
         handler.register(ProductionController)
         self._run_app()
         os.chdir(filedir)
