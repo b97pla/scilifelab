@@ -2,18 +2,17 @@ import shutil
 import os
 import logbook
 
-from ..pm.test_default import PmTest
+from classes import PmFullTest
 
 from cement.core import handler
 from scilifelab.pm.core.production import ProductionController
 
 LOG = logbook.Logger(__name__)
 
-
 JDOE01 = os.path.abspath(os.path.join(os.curdir, "data", "production", "J.Doe_00_01"))
 JDOE04 = os.path.abspath(os.path.join(os.curdir, "data", "production", "J.Doe_00_04"))
 
-class ProductionTest(PmTest):
+class ProductionTest(PmFullTest):
     def setUp(self):
         LOG.info("Copy tree {} to {}".format(JDOE01, JDOE04))
         if not os.path.exists(JDOE04):

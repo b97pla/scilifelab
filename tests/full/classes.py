@@ -1,11 +1,8 @@
+"""classes for full test"""
 import os
 from cement.core import backend, handler, output
-from cement.utils import test, shell
 from scilifelab.pm import PmApp
-from data import setup_data_files
-from empty_files import setup_empty_files
 
-## Set default configuration
 filedir = os.path.abspath(os.curdir)
 config_defaults = backend.defaults('production', 'archive', 'config', 'project','log')
 config_defaults['production']['root']  = os.path.join(filedir, "data", "production")
@@ -16,24 +13,10 @@ config_defaults['config']['ignore'] = ["slurm*", "tmp*"]
 config_defaults['log']['level']  = "INFO"
 config_defaults['log']['file']  = os.path.join(filedir, "data", "log", "pm.log")
 
-
-def safe_makedir(dname):
-    """Make directory"""
-    if not os.path.exists(dname):
-        try:
-            os.makedirs(dname)
-        except OSError:
-            if not os.path.isdir(dname):
-                raise
-    else:
-        print "Directory %s already exists" % dname
-    return dname
-
-
 ## Output handler for tests
 class PmTestOutputHandler(output.CementOutputHandler):
     class Meta:
-        label = 'pmtest'
+        label = 'pmfulltest'
 
     def render(self, data, template = None):
         for key in data:
@@ -48,16 +31,11 @@ class PmTestApp(PmApp):
         config_defaults = config_defaults
         output_handler = PmTestOutputHandler
 
-## Main pm test 
-class PmTest(test.CementTestCase):
-    app_class = PmTestApp
-    app = None
-    OUTPUT_FILES = []
-
+class PmFullTest(PmTest):
+    
     def setUp(self):
-        setup_data_files()
-        setup_empty_files()
-        
+        pass
+
     def _run_app(self):
         try:
             self.app.setup()
@@ -66,4 +44,4 @@ class PmTest(test.CementTestCase):
                 self.app.render(self.app._output_data)
         finally:
             self.app.close()
-            
+        
