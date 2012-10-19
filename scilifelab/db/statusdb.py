@@ -272,7 +272,7 @@ class ProjectSummaryConnection(Couch):
                 use_ps_map = True
                 use_bc_map = True
             if use_ps_map:
-                ps_map = v.get('sample_run_metrics', None)
+                ps_map = self._get_sample_run_metrics(v)
                 sample_map[k] = _prune_ps_map(ps_map)
             if use_bc_map or not sample_map[k]:
                 if not sample_map[k]: self.log.info("Using barcode map since no information in project summary for sample '{}'".format(k))
@@ -284,6 +284,15 @@ class ProjectSummaryConnection(Couch):
                 else:
                     self.log.warn("Sample {} has inconsistent mappings: ps_map {} vs barcode_match {}".format(k, ps_map, bc_map))
         return sample_map
+
+    def _get_sample_run_metrics(self, v):
+        if v.get('library_prep', None):
+            library_preps = v.get('library_prep')
+            return {k:v for kk in library_preps.keys() for k, v in library_preps[kk]['sample_run_metrics'].items()} if library_preps else None
+        else:
+            return v.get('sample_run_metrics', None)
+            
+
         
     def get_ordered_amount(self, project_id, rounded=True, dec=1):
         """Get (rounded) ordered amount of reads in millions. 
