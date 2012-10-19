@@ -127,7 +127,10 @@ def setUpModule():
     
     ## Run pipeline on samples 
     pattern = "-bcbb-config.yaml$"
-    yamlfiles = filtered_walk(PRODUCTION, filter_fn)
+    yamlfiles = []
+    ## http://stackoverflow.com/questions/952914/making-a-flat-list-out-of-list-of-lists-in-python
+    ## [item for sublist in l for item in sublist]
+    yamlfiles = [item for sublist in [filtered_walk(os.path.join(PRODUCTION, x), filter_fn) for x in PROJECTS] for item in sublist]
     orig_dir = os.path.abspath(os.curdir)
     for yamlconfig in yamlfiles:
         try:

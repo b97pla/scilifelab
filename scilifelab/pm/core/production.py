@@ -33,10 +33,10 @@ class ProductionController(AbstractExtendedBaseController):
             (['--only_failed'], dict(help="only run on failed samples ", action="store_true", default=False)),
             (['--only_setup'], dict(help="only perform setup", action="store_true", default=False)),
             (['--restart'], dict(help="restart analysis", action="store_true", default=False)),
-            (['--no_only_run'], dict(help="run_bcbb parameter: don't setup", action="store_false", default=True)),
+            (['--no_only_run'], dict(help="run_bcbb parameter: don't setup", action="store_true", default=False)),
             (['--google_report'], dict(help="make a google report (default False)", action="store_false", default=True)),
             (['--automated_initial_analysis'], dict(help="call automated_initial_analysis directly", action="store_false", default=True)),
-            (['--halo'], dict(help="halo-like analyses, which means mark_duplicates is set to false", action="store_true", default=False)),
+            (['--amplicon'], dict(help="amplicon-based analyses (e.g. HaloPlex), which means mark_duplicates is set to false", action="store_true", default=False)),
             (['--targets'], dict(help="sequence capture target file", action="store", default=None)),
             (['--baits'], dict(help="sequence capture baits file", action="store", default=None)),
             ]
@@ -206,6 +206,7 @@ class ProductionController(AbstractExtendedBaseController):
             return
         ## Here process files again, removing if requested, and running the pipeline
         for f in flist:
+            self.app.log.info("Running analysis defined by config file {}".format(f))
             os.chdir(os.path.abspath(os.path.dirname(f)))
             if not self.pargs.restart:
                 self.app.log.info("Removing old analysis files in {}".format(os.path.dirname(f)))
@@ -214,9 +215,5 @@ class ProductionController(AbstractExtendedBaseController):
                 ## Find jobid if present in slurm and kill
                 pass
             cl = run_bcbb_command(f, **vars(self.pargs))
-            print "running {}".format(cl)
-            try:
-                subprocess.check_call(cl)
-                #self.app.cmd.command(cl)
-            finally:
-                os.chdir(orig_dir)
+            self.app.cmd.command(cl)
+            os.chdir(orig_dir)

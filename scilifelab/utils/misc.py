@@ -85,7 +85,7 @@ def filtered_walk(rootdir, filter_fn, include_dirs=None, exclude_dirs=None, get_
             continue
         if exclude_dirs and re.search("|".join(exclude_dirs), root):
             continue
-        dlist = dlist + dirs
+        dlist = dlist + [os.path.join(root, x) for x in dirs]
         flist = flist + [os.path.join(root, x) for x in filter(filter_fn, files)]
     if get_dirs:
         return dlist

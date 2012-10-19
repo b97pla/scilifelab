@@ -1,9 +1,11 @@
 """classes for full test"""
 import os
 from cement.core import backend, handler, output
+from cement.utils import test
 from scilifelab.pm import PmApp
 
-filedir = os.path.abspath(os.curdir)
+filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+
 config_defaults = backend.defaults('production', 'archive', 'config', 'project','log')
 config_defaults['production']['root']  = os.path.join(filedir, "data", "production")
 config_defaults['archive']['root']  = os.path.join(filedir, "data", "archive")
@@ -31,8 +33,10 @@ class PmTestApp(PmApp):
         config_defaults = config_defaults
         output_handler = PmTestOutputHandler
 
-class PmFullTest(PmTest):
-    
+class PmFullTest(test.CementTestCase):
+    app_class = PmTestApp
+    app = None
+
     def setUp(self):
         pass
 

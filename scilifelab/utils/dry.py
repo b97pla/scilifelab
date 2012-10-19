@@ -43,7 +43,7 @@ def dry_rmdir(dname, dry_run=True):
         if dname is None:
             return
         if not os.path.exists(dname):
-            LOG.warn("not going to remove non-existant file {}".format(fn))
+            LOG.warn("not going to remove non-existant directory {}".format(dname))
             return
         if os.path.isdir(dname):
             try:
