@@ -64,14 +64,6 @@ class ProductionController(AbstractExtendedBaseController):
     def default(self):
         print self._help_text
 
-    @controller.expose(help="List runinfo contents")
-    def runinfo(self):
-        self._not_implemented()
-
-    @controller.expose(help="List bcstats")
-    def bcstats(self):
-        self._not_implemented()
-
     @controller.expose(help="Query the status of flowcells, projects, samples"\
                            " that are organized according to the CASAVA file structure")
     def status_query(self):
