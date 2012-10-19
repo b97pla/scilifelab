@@ -205,7 +205,8 @@ class ProductionController(AbstractExtendedBaseController):
                 remove_files(f, **vars(self.pargs))
             else:
                 ## Find jobid if present in slurm and kill
-                pass
+                self.app.log.warn("pm production run --restart not yet implemented")
+                return
             cl = run_bcbb_command(f, **vars(self.pargs))
             self.app.cmd.command(cl)
             os.chdir(orig_dir)
