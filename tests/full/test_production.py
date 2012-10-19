@@ -81,6 +81,18 @@ class UtilsTest(SciLifeTest):
                 config = yaml.load(fh)
             self.assertEqual(config["details"][0]["multiplex"][0]["genome_build"], "rn4")
 
+    def test_remove_files(self):
+        """Test removing files"""
+        keep_files = ["-post_process.yaml$", "-post_process.yaml.bak$", "-bcbb-config.yaml$", "-bcbb-config.yaml.bak$",  "-bcbb-command.txt$", "-bcbb-command.txt.bak$", "_[0-9]+.fastq$", "_[0-9]+.fastq.gz$", "^[0-9][0-9]_.*.txt$"]
+        pattern = "|".join(keep_files)
+        def remove_filter_fn(f):
+            return re.search(pattern, f) == None
+        flist = find_samples(j_doe_00_05)
+        for f in flist:
+            workdir = os.path.dirname(f)
+            remove_files = filtered_walk(workdir, remove_filter_fn)
+            self.assertNotIn("01_analysis_start.txt", [os.path.basename(x) for x in remove_files])
+
     def test_remove_dirs(self):
         """Test removing directories before rerunning pipeline"""
         keep_files = ["-post_process.yaml$", "-post_process.yaml.bak$", "-bcbb-config.yaml$", "-bcbb-config.yaml.bak$",  "-bcbb-command.txt$", "-bcbb-command.txt.bak$", "_[0-9]+.fastq$", "_[0-9]+.fastq.gz$"]
