@@ -200,12 +200,12 @@ class ProductionController(AbstractExtendedBaseController):
         for f in flist:
             self.app.log.info("Running analysis defined by config file {}".format(f))
             os.chdir(os.path.abspath(os.path.dirname(f)))
-            if not self.pargs.restart:
+            if self.pargs.restart:
                 self.app.log.info("Removing old analysis files in {}".format(os.path.dirname(f)))
                 remove_files(f, **vars(self.pargs))
             else:
                 ## Find jobid if present in slurm and kill
-                self.app.log.warn("pm production run --restart not yet implemented")
+                self.app.log.warn("pm production run not yet implemented")
                 return
             cl = run_bcbb_command(f, **vars(self.pargs))
             self.app.cmd.command(cl)
