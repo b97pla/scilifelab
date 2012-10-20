@@ -8,6 +8,8 @@ from cement.core import controller, hook
 from scilifelab.pm.core.controller import AbstractExtendedBaseController, AbstractBaseController
 from scilifelab.utils.misc import query_yes_no, filtered_walk, walk
 from scilifelab.pm.lib.clean import purge_alignments
+from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command
+
 
 ## Main project controller
 class ProjectController(AbstractExtendedBaseController):
@@ -160,7 +162,7 @@ class BcbioRunController(AbstractBaseController):
             (['--genome_build'], dict(help="genome build ", action="store", default="hg19", type=str)),
             (['--only_failed'], dict(help="only run on failed samples ", action="store_true", default=False)),
             ]
-        stacked_on = 'project'
+        #stacked_on = 'project'
 
     def _sample_status(self, x):
         """Find the status of a sample.
@@ -172,7 +174,7 @@ class BcbioRunController(AbstractBaseController):
             return "FAIL"
 
     @controller.expose(help="run automated initial analysis on samples in a project")
-    def run(self):
+    def old_run(self):
         if not self._check_pargs(["project", "post_process", "analysis_type"]):
             return
         ## Gather sample yaml files
@@ -219,3 +221,37 @@ class BcbioRunController(AbstractBaseController):
             self.app.cmd.command(['automated_initial_analysis.py', os.path.abspath(self.pargs.post_process), new_dir, config_file])
             os.chdir(cur_dir)
 
+
+    ## FIXME: for now this is an exact copy of production.run. Since
+    ## this is a function related to bcbio, it should be put in an
+    ## extension ext_bcbio.py. Problem is: how can a controller be
+    ## stacked on two other controllers, namely production and
+    ## project?
+    @controller.expose(help="run bcbb pipeline")
+    def run(self):
+        if not self._check_pargs(["project"]):
+            return
+        flist = find_samples(os.path.abspath(os.path.join(self._meta.root_path, self._meta.path_id)), **vars(self.pargs))
+        if len(flist) > 0 and not query_yes_no("Going to start {} jobs... Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
+            return
+        orig_dir = os.path.abspath(os.getcwd())
+        for f in flist:
+            os.chdir(os.path.abspath(os.path.dirname(f)))
+            setup_sample(f, **vars(self.pargs))
+            os.chdir(orig_dir)
+        if self.pargs.only_setup:
+            return
+        ## Here process files again, removing if requested, and running the pipeline
+        for f in flist:
+            self.app.log.info("Running analysis defined by config file {}".format(f))
+            os.chdir(os.path.abspath(os.path.dirname(f)))
+            if self.pargs.restart:
+                self.app.log.info("Removing old analysis files in {}".format(os.path.dirname(f)))
+                remove_files(f, **vars(self.pargs))
+            else:
+                ## Find jobid if present in slurm and kill
+                self.app.log.warn("pm production run not yet implemented")
+                return
+            cl = run_bcbb_command(f, **vars(self.pargs))
+            self.app.cmd.command(cl)
+            os.chdir(orig_dir)
