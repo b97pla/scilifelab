@@ -11,8 +11,8 @@ from scilifelab.utils.timestamp import utc_time
 from cement.core import backend, controller, handler, hook
 from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.utils.timestamp import modified_within_days
-
 from scilifelab.bcbio.qc import FlowcellRunMetrics, SampleRunMetrics
+from scilifelab.pm.bcbio.utils import validate_fc_directory_format, fc_id, fc_parts, fc_fullname
 
 class RunMetricsController(AbstractBaseController):
     """
@@ -26,36 +26,18 @@ class RunMetricsController(AbstractBaseController):
         description = "Extension for dealing with QC data"
         arguments = [
             (['flowcell'], dict(help="Flowcell directory", nargs="?", default=None)),
-            ## FIXME: analysis is a confusing name
-            (['analysis'], dict(help="Root path to analysis folder", default=None, nargs="?")),
+            (['--runqc'], dict(help="Root path to qc data folder", default=None, nargs="?")),
             (['--project'], dict(help="Project id", default=None, action="store", type=str)),
             (['--sample'], dict(help="Sample id", default=None, action="store", type=str)),
             (['--mtime'], dict(help="Last modification time of directory (days): skip if older. Defaults to 1 day.", default=1, action="store", type=int)),
             ]
 
+    def _process_args(self):
+        self._meta.root_path = self.app.pargs.runqc if self.app.pargs.runqc else self.app.config.get("runqc", "root")
+
     @controller.expose(hide=True)
     def default(self):
         print self._help_text
-
-
-    ## Assuming standard directory structure
-    def _fc_id(self):
-        """Return fc id"""
-        pattern = "[0-9]+_[0-9A-Za-z]+_[0-9]+_[A-Z]([A-Z0-9]+)"
-        m = re.search(pattern, self.pargs.flowcell)
-        return m.group(1)
-
-    def _fc_fullname(self):
-        """Return fc name (fc_date_fc_name)"""
-        pattern = "([0-9]+)_[0-9A-Za-z]+_[0-9]+_([A-Z0-9]+)"
-        m = re.search(pattern, self.pargs.flowcell)
-        return "{}_{}".format(m.group(1), m.group(2))
-    
-    def _fc_parts(self):
-        """return fc_name and fc_date"""
-        pattern = "([0-9]+)_[0-9A-Za-z]+_[0-9]+_([A-Z0-9]+)"
-        m = re.search(pattern, self.pargs.flowcell)
-        return (m.group(1), m.group(2))
 
     ##############################
     ## New structures
@@ -70,7 +52,7 @@ class RunMetricsController(AbstractBaseController):
             self.app.log.warn(str(e))
             raise e
         fcdir = os.path.abspath(self.pargs.flowcell)
-        (fc_date, fc_name) = self._fc_parts()
+        (fc_date, fc_name) = fc_parts(self.pargs.flowcell)
         ## Check modification time
         if modified_within_days(fcdir, self.pargs.mtime):
             fc_kw = dict(path=fcdir, fc_date = fc_date, fc_name=fc_name)
@@ -103,7 +85,7 @@ class RunMetricsController(AbstractBaseController):
 
     def _collect_casava_qc(self):
         qc_objects = []
-        runinfo_csv = os.path.join(os.path.abspath(self.pargs.flowcell), "{}.csv".format(self._fc_id()))
+        runinfo_csv = os.path.join(os.path.abspath(self.pargs.flowcell), "{}.csv".format(fc_id(self.pargs.flowcell)))
         try:
             with open(runinfo_csv) as fh:
                 runinfo_reader = csv.reader(fh)
@@ -111,8 +93,8 @@ class RunMetricsController(AbstractBaseController):
         except IOError as e:
             self.app.log.warn(str(e))
             raise e
-        fcdir = os.path.join(os.path.abspath(self.pargs.analysis), self.pargs.flowcell)
-        (fc_date, fc_name) = self._fc_parts()
+        fcdir = os.path.join(os.path.abspath(self._meta.root_path), self.pargs.flowcell)
+        (fc_date, fc_name) = fc_parts(self.pargs.flowcell)
         ## Check modification time
         if modified_within_days(fcdir, self.pargs.mtime):
             fc_kw = dict(path=fcdir, fc_date = fc_date, fc_name=fc_name)
@@ -130,11 +112,11 @@ class RunMetricsController(AbstractBaseController):
             if self.app.pargs.sample and self.app.pargs.sample != d['SampleID']:
                 continue
                 
-            sampledir = os.path.join(os.path.abspath(self.pargs.analysis), d['SampleProject'].replace("__", "."), d['SampleID'])
+            sampledir = os.path.join(os.path.abspath(self._meta.root_path), d['SampleProject'].replace("__", "."), d['SampleID'])
             if not os.path.exists(sampledir):
                 self.app.log.warn("No such sample directory: {}".format(sampledir))
                 continue
-            sample_fcdir = os.path.join(sampledir, self._fc_fullname())
+            sample_fcdir = os.path.join(sampledir, fc_fullname(self.pargs.flowcell))
             if not os.path.exists(sample_fcdir):
                 self.app.log.warn("No such sample flowcell directory: {}".format(sample_fcdir))
                 continue
@@ -160,27 +142,35 @@ class RunMetricsController(AbstractBaseController):
 
     @controller.expose(help="Upload run metrics to statusdb")
     def upload_qc(self):
-        if not self._check_pargs(['flowcell', 'analysis', 'url']):
+        if not self._check_pargs(['flowcell']):
             return
-        runinfo_csv = os.path.join(os.path.abspath(self.pargs.flowcell), "{}.csv".format(self._fc_id()))
+        url = self.pargs.url if self.pargs.url else self.app.config.get("db", "url")
+        if not url:
+            self.app.log.warn("Please provide a valid url: got {}".format(url))
+            return
+        if not validate_fc_directory_format(self.pargs.flowcell):
+            self.app.log.warn("Path '{}' does not conform to bcbio flowcell directory format; aborting".format(self.pargs.flowcell))
+            return
+            
+        runinfo_csv = os.path.join(os.path.abspath(self.pargs.flowcell), "{}.csv".format(fc_id(self.pargs.flowcell)))
         runinfo_yaml = os.path.join(os.path.abspath(self.pargs.flowcell), "run_info.yaml")
-        (fc_date, fc_name) = self._fc_parts()
+        (fc_date, fc_name) = fc_parts(self.pargs.flowcell)
         if int(fc_date) < 120815:
-            self.log.info("Assuming pre-casava based file structure for {}".format(self._fc_id()))
+            self.log.info("Assuming pre-casava based file structure for {}".format(fc_id(self.pargs.flowcell)))
             qc_objects = self._collect_pre_casava_qc()
         else:
-            self.log.info("Assuming casava based file structure for {}".format(self._fc_id()))
+            self.log.info("Assuming casava based file structure for {}".format(fc_id(self.pargs.flowcell)))
             qc_objects = self._collect_casava_qc()
 
         if len(qc_objects) == 0:
-            self.log.info("No out-of-date qc objects for {}".format(self._fc_id()))
+            self.log.info("No out-of-date qc objects for {}".format(fc_id(self.pargs.flowcell)))
             return
         else:
             self.log.info("Retrieved {} updated qc objects".format(len(qc_objects)))
 
         self.app._meta.cmd_handler = 'couchdb'
         self.app._setup_cmd_handler()
-        self.app.cmd.connect(self.pargs.url, self.pargs.port)
+        self.app.cmd.connect(url, self.pargs.port)
         for obj in qc_objects:
             if self.app.pargs.debug:
                 self.log.debug("{}: {}".format(str(obj), obj["_id"]))
