@@ -22,6 +22,7 @@ class ProductionController(AbstractExtendedBaseController):
         arguments = [
             (['project'], dict(help="Project id", nargs="?", default=None)),
             (['-f', '--flowcell'], dict(help="Flowcell id")),
+            (['-S', '--sample'], dict(help="project sample id", action="store", default=None, type=str)),
             (['-l', '--lane'], dict(help="Lane id")),
             (['-b', '--barcode_id'], dict(help="Barcode id")),
             (['--from_pre_casava'], dict(help="Use pre-casava directory structure for gathering information", action="store_true", default=False)),
@@ -209,5 +210,5 @@ class ProductionController(AbstractExtendedBaseController):
                 self.app.log.warn("pm production run not yet implemented")
                 return
             (cl, platform_args) = run_bcbb_command(run_info, **vars(self.pargs))
-            self.app.cmd.command(cl, **{'platform_args' = platform_args})
+            self.app.cmd.command(cl, **{'platform_args':platform_args})
             os.chdir(orig_dir)

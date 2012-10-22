@@ -48,7 +48,6 @@ class DistributedCommandHandler(command.CommandHandler):
         if not self.app.pargs.job_account:
             self.app.log.warn("no job account provided; cannot proceed with drmaa command")
             return
-
         command = " ".join(cmd_args)
         def runpipe():
             if not os.getenv("DRMAA_LIBRARY_PATH"):
@@ -62,19 +61,29 @@ class DistributedCommandHandler(command.CommandHandler):
             jt = s.createJobTemplate()
             jt.remoteCommand = cmd_args[0]
             jt.args = cmd_args[1:]
-            jt.nativeSpecification = self.app.pargs.platform_args
-            if "--jobname" not in jt.nativeSpecification:
+            if kw['platform_args']:
+                platform_args = kw['platform_args']
+            else:
+                platform_args = []
+            if not "-J" or "--job-name" in platform_args:
                 jt.jobName = self.app.pargs.jobname
-            if "-t" or "--time" not in self.nativeSpecification:
-                jt.nativeSpecification = "{} -t {}".format(jt.nativeSpecification, self.app.pargs.time)
-            if "-A" or "--job_account" not in self.nativeSpecification:
-                jt.nativeSpecification = "{} -A {}".format(jt.nativeSpecification, self.app.pargs.job_account)
-            if "-t" or "--time" not in jt.nativeSpecification:
-                jt.nativeSpecification = "{} -p {}".format(jt.nativeSpecification, self.app.pargs.partition)
-            #self._meta.jobid = s.runJob(jt)
-            #self.app.log.info('Your job has been submitted with id ' + self._meta.jobid)
-            print jt
-            print jt.nativeSpecification
+            if not "-t" or "--time"  in platform_args:
+                platform_args.extend(["-t", self.app.pargs.time])
+            if not "-A" or "--job_account" in platform_args:
+                platform_args.extend(["-A", self.app.pargs.job_account])
+            if not "-p" or "--partition"  in platform_args:
+                platform_args.extend(["-p", self.app.pargs.partition])
+            if "-o" in platform_args:
+                #jt.outputPath = ":"+platform_args[platform_args.index("-o")+1]
+                del platform_args[platform_args.index("-o")+1]
+                del platform_args[platform_args.index("-o")]
+            if "-D" in platform_args:
+                #jt.workingDirectory = platform_args[platform_args.index("-D")+1]
+                del platform_args[platform_args.index("-D")+1]
+                del platform_args[platform_args.index("-D")]
+            jt.nativeSpecification = " ".join(platform_args)
+            self._meta.jobid = s.runJob(jt)
+            self.app.log.info('Your job has been submitted with id ' + self._meta.jobid)
             s.deleteJobTemplate(jt)
             s.exit()
             
@@ -107,9 +116,6 @@ def add_shared_distributed_options(app):
                           action='store', help='partition', default="core")
     app.args.add_argument('--max_node_jobs', type=int, default=10,
                           action='store', help='maximum number of node jobs (default 10)')
-    app.args.add_argument('--platform_args', type=str, default=None,
-                          action='store', help='platform specific arguments. Overrides flags --job_account, --jobname, --time, and --partition')
-
 
 def set_distributed_handler(app):
     """

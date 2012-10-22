@@ -22,6 +22,7 @@ j_doe_00_05 = os.path.abspath(os.path.join(os.curdir, "data", "production", "J.D
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 
 ANALYSIS_TYPE = 'Align_standard_seqcap'
+SAMPLE = 'P001_102_index6'
 
 class ProductionTest(PmFullTest):
     @classmethod
@@ -32,11 +33,11 @@ class ProductionTest(PmFullTest):
         if not os.path.exists(j_doe_00_04):
             shutil.copytree(j_doe_00_01, j_doe_00_04)
 
-    @classmethod
-    def tearDownClass(cls):
-        LOG.info("Removing directory tree {}".format(j_doe_00_04))
-        os.chdir(filedir)
-        shutil.rmtree(j_doe_00_04)
+    # @classmethod
+    # def tearDownClass(cls):
+    #     LOG.info("Removing directory tree {}".format(j_doe_00_04))
+    #     os.chdir(filedir)
+    #     shutil.rmtree(j_doe_00_04)
 
     def test_production_setup(self):
         self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--only_setup', '--restart', '--drmaa'], extensions = ['scilifelab.pm.ext.ext_distributed'])
@@ -49,6 +50,14 @@ class ProductionTest(PmFullTest):
         handler.register(ProductionController)
         self._run_app()
         os.chdir(filedir)
+    
+    def test_platform_args(self):
+        """Test the platform arguments for a run"""
+        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--amplicon', '--restart', '--sample', SAMPLE, '--drmaa', '-A', 'projectaccount'], extensions=['scilifelab.pm.ext.ext_distributed'])
+        handler.register(ProductionController)
+        self._run_app()
+        os.chdir(filedir)
+        
 
 
 class UtilsTest(SciLifeTest):
@@ -153,5 +162,4 @@ class UtilsTest(SciLifeTest):
                 cl = fh.read().split()
             cl = run_bcbb_command(f)
             self.assertIn("distributed_nextgen_pipeline.py",cl)
-
 
