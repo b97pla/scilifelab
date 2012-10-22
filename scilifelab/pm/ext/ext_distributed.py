@@ -30,12 +30,13 @@ class DistributedCommandHandler(command.CommandHandler):
         jobid = None
         """The submitted jobid"""
 
+        platform_args = None
+        """Platform specific arguments"""
+
     def command(self, cmd_args, capture=True, ignore_error=False, cwd=None, **kw):
         ## Is there no easier way to get at --drmaa and --sbatch?!?
         if '--drmaa' in self.app._meta.argv:
             self.drmaa(cmd_args, capture, ignore_error, cwd, **kw)
-        elif '--sbatch' in self.app._meta.argv:
-            self.sbatch(cmd_args, capture, ignore_error, cwd, **kw)
         else:
             pass
 
@@ -61,12 +62,19 @@ class DistributedCommandHandler(command.CommandHandler):
             jt = s.createJobTemplate()
             jt.remoteCommand = cmd_args[0]
             jt.args = cmd_args[1:]
-            jt.jobName = self.app.pargs.jobname
-            jt.nativeSpecification = "-A {} -p {} -t {}".format(self.app.pargs.job_account, self.app.pargs.partition, self.app.pargs.time)
-
-            self._meta.jobid = s.runJob(jt)
-            self.app.log.info('Your job has been submitted with id ' + self._meta.jobid)
-    
+            jt.nativeSpecification = self.app.pargs.platform_args
+            if "--jobname" not in jt.nativeSpecification:
+                jt.jobName = self.app.pargs.jobname
+            if "-t" or "--time" not in self.nativeSpecification:
+                jt.nativeSpecification = "{} -t {}".format(jt.nativeSpecification, self.app.pargs.time)
+            if "-A" or "--job_account" not in self.nativeSpecification:
+                jt.nativeSpecification = "{} -A {}".format(jt.nativeSpecification, self.app.pargs.job_account)
+            if "-t" or "--time" not in jt.nativeSpecification:
+                jt.nativeSpecification = "{} -p {}".format(jt.nativeSpecification, self.app.pargs.partition)
+            #self._meta.jobid = s.runJob(jt)
+            #self.app.log.info('Your job has been submitted with id ' + self._meta.jobid)
+            print jt
+            print jt.nativeSpecification
             s.deleteJobTemplate(jt)
             s.exit()
             
@@ -99,6 +107,9 @@ def add_shared_distributed_options(app):
                           action='store', help='partition', default="core")
     app.args.add_argument('--max_node_jobs', type=int, default=10,
                           action='store', help='maximum number of node jobs (default 10)')
+    app.args.add_argument('--platform_args', type=str, default=None,
+                          action='store', help='platform specific arguments. Overrides flags --job_account, --jobname, --time, and --partition')
+
 
 def set_distributed_handler(app):
     """
@@ -109,9 +120,6 @@ def set_distributed_handler(app):
     
     """
     if '--drmaa' in app._meta.argv:
-        app._meta.cmd_handler = 'distributed'
-        app._setup_cmd_handler()
-    elif '--sbatch' in app._meta.argv:
         app._meta.cmd_handler = 'distributed'
         app._setup_cmd_handler()
 
