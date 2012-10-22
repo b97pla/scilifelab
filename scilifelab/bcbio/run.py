@@ -195,5 +195,9 @@ def run_bcbb_command(run_info, post_process=None, **kw):
         analysis_script = DISTRIBUTED_ANALYSIS_SCRIPT
     else:
         analysis_script = PARALLELL_ANALYSIS_SCRIPT
+    if kw['distributed']:
+        platform_args = config["distributed"]["platform_args"].split()
+    else:
+        platform_args = None
     cl = [analysis_script, post_process, os.path.dirname(run_info), run_info]
-    return cl    
+    return (cl, platform_args)
