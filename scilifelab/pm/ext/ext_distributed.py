@@ -1,5 +1,5 @@
 """Distributed Extension"""
-
+import re
 import os
 import sys
 
@@ -81,6 +81,12 @@ class DistributedCommandHandler(command.CommandHandler):
                 #jt.workingDirectory = platform_args[platform_args.index("-D")+1]
                 del platform_args[platform_args.index("-D")+1]
                 del platform_args[platform_args.index("-D")]
+            idel = []
+            for i in range(len(platform_args)):
+                if platform_args[i].startswith("--mail"):
+                    idel.append(i)
+            for i in sorted(idel, reverse=True):
+                del platform_args [i]
             jt.nativeSpecification = " ".join(platform_args)
             self._meta.jobid = s.runJob(jt)
             self.app.log.info('Your job has been submitted with id ' + self._meta.jobid)
