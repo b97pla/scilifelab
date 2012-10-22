@@ -27,22 +27,22 @@ def _sample_status(x):
     else:
         return "FAIL"
 
-def find_samples(path, sample_id=None, pattern = "-bcbb-config.yaml$", only_failed=False, **kw):
+def find_samples(path, sample=None, pattern = "-bcbb-config.yaml$", only_failed=False, **kw):
     """Find bcbb config files in a path.
 
     :param path: path to search in
-    :param sample_id: a specific sample_id
+    :param sample: a specific sample, or a file consisting of -bcbb-config.yaml files
     :param pattern: pattern to search for
 
     :returns: list of file names
     """
     flist = []
-    if sample_id:
-        if os.path.exists(sample_id):
-            with open(sample_id) as fh:
+    if sample:
+        if os.path.exists(sample):
+            with open(sample) as fh:
                 flist = [x.rstrip() for x in fh.readlines()]
         else:
-            pattern = "{}{}".format(sample_id, pattern)
+            pattern = "{}{}".format(sample, pattern)
     def bcbb_yaml_filter(f):
         return re.search(pattern, f) != None
     if not flist:
@@ -50,8 +50,8 @@ def find_samples(path, sample_id=None, pattern = "-bcbb-config.yaml$", only_fail
     if only_failed:
         status = {x:_sample_status(x) for x in flist}
         flist = [x for x in flist if _sample_status(x)=="FAIL"]
-    if len(flist) == 0 and sample_id:
-        LOG.info("No such sample {}".format(sample_id))
+    if len(flist) == 0 and sample:
+        LOG.info("No such sample {}".format(sample))
     return [os.path.abspath(f) for f in flist]
 
 def setup_sample(f, analysis_type, google_report=False, no_only_run=False, amplicon=False, genome_build="hg19", **kw):
