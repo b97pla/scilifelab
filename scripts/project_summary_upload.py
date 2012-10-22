@@ -176,7 +176,8 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 		logging.warning("Google Document %s: Could not find spreadsheet" % str(project_name_swe + '_20158_XXX'))
 
 	# Get status etc from loaded document
-	try:
+	if 'y'=='y':
+#	try:
 		dummy, P_NP_colindex = get_column(content, versions[version][2])
 		dummy, No_reads_sequenced_colindex = get_column(content, versions[version][1])
 		dummy, customer_names_colindex = get_column(content, versions[version][3])
@@ -199,8 +200,10 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 			status = 'inconsistent' if striped_scilife_name in duplicates else info[key][0]
 			m_reads = 'inconsistent' if striped_scilife_name in duplicates else info[key][1]
 			cust_name = info[key][2]
+			prep = preps[key]
 			incoming_QC_status = 'F' if 'F' in prep else 'P'
-			try:
+			if 'u'=='u':
+#			try:
                 		if obj['samples'].has_key(striped_scilife_name):
                         		obj['samples'][striped_scilife_name]['status'] = status
                         	        obj['samples'][striped_scilife_name]['m_reads_sequenced'] = m_reads
@@ -210,17 +213,17 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 										'status': status,
 										'm_reads_sequenced': m_reads,
                                                                 		'incoming_QC_status': incoming_QC_status}
-			except:
-				pass
-        except:
-                pass
+#			except:
+#				pass
+			
+#        except:
+#                pass
 
 
         ### Get _id for sample_run_metrics 
         print '\nGetting _id for sample_run_metrics'
 
         info = find_samp_from_view(samp_db, project_name)
-
 
         if len(info.keys()) > 0:
                 print 'sample_run_metrics found on couchdb for project ' + project_name
@@ -231,7 +234,7 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
                 sci_name_raw = info[key][1]
                 scilife_name, preps = strip_scilife_name([sci_name_raw])
                 scilife_name = scilife_name[sci_name_raw]
-                prep = 'A' if preps[sci_name_raw] == '' else preps[sci_name_raw].replace('F','')
+                prep = 'A' if preps[sci_name_raw].replace('F','') == '' else preps[sci_name_raw].replace('F','')
                 if obj['samples'].has_key(scilife_name):
                         if obj['samples'][scilife_name].has_key("library_prep"):
 				if obj['samples'][scilife_name]["library_prep"].has_key(prep):
@@ -270,6 +273,8 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 		dummy, Av_sice_bp_colindex = get_column(content, versions[version][2],Finished_library_col)
 		row_ind, scilife_names_colindex = get_column(content, versions[version][0])
 		row_ind, prep_colindex = get_column(content, versions[version][1])
+		print Av_sice_bp_colindex
+		print 'dddddd'
 		info = {}
 		for j, row in enumerate(content):
 		        if (j > row_ind):
@@ -284,8 +289,11 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 	        for key in scilife_names:
 	        	striped_scilife_name = scilife_names[key]
 	                Av_sice = info[key][0]
-			prep=info[key][1]#    KOntrollera!!!!!
-			#prep=preps[key]
+			if info[key][1].strip() != '':
+				prep=info[key][1]#    KOntrollera!!!!!
+			elif preps[key].strip()!= '':
+				prep=preps[key]
+				prep = 'A' if preps[key].replace('F','') == '' else preps[key].replace('F','')
 	                try:
 	               		obj['samples'][striped_scilife_name]["library_prep"][prep]["average_size_bp"]=Av_sice
         	        except:
@@ -312,14 +320,16 @@ def make_client(credentials_file):
         return client
 
 def get_column(ssheet_content, header, col_cond=0):
-        colindex = ''
+	colindex=''
         for j, row in enumerate(ssheet_content):
-                for i, col in enumerate(row):
-                        if col_cond<=i:
-                                if str(col).strip().replace('\n','').replace(' ','') == header.replace(' ',''):
-                                        colindex = i
-                                        rowindex = j-1
-                                        return rowindex, colindex
+		if colindex == '':
+                	for i, col in enumerate(row):
+                	        if col_cond <= i and colindex == '':
+                	                if str(col).strip().replace('\n','').replace(' ','') == header.replace(' ',''):
+                	                        colindex = i
+		else:
+                        rowindex = j-1
+                        return rowindex, colindex
 
 
 #		COUCHDB
@@ -419,6 +429,8 @@ def  main(credentials_file, config_file, URL, proj_ID, all_projects):
                        			obj = get_proj_inf(proj_ID, samp_db, proj_db, credentials_file, config_file)
         				if obj['samples'].keys() != []:
                 				info = save_couchdb_obj(proj_db, obj)
+						if info:
+							print 'couchdb ' + info
 			except:
 				pass		
 	elif proj_ID is not None:
