@@ -21,6 +21,8 @@ j_doe_00_05 = os.path.abspath(os.path.join(os.curdir, "data", "production", "J.D
 
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 
+ANALYSIS_TYPE = 'Align_standard_seqcap'
+
 class ProductionTest(PmFullTest):
     @classmethod
     def setUpClass(cls):
@@ -37,7 +39,7 @@ class ProductionTest(PmFullTest):
         shutil.rmtree(j_doe_00_04)
 
     def test_production_setup(self):
-        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--only_setup', '--restart'])
+        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--only_setup', '--restart', '--drmaa'], extensions = ['scilifelab.pm.ext.ext_distributed'])
         handler.register(ProductionController)
         self._run_app()
         os.chdir(filedir)
@@ -75,11 +77,38 @@ class UtilsTest(SciLifeTest):
         """Test setting up samples, changing genome to rn4"""
         flist = find_samples(j_doe_00_05)
         for f in flist:
-            setup_sample(f, **{'analysis_type':'Align_standard_seqcap', 'genome_build':'rn4', 'dry_run':False})
+            setup_sample(f, **{'analysis_type':'Align_standard_seqcap', 'genome_build':'rn4', 'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'num_cores':8, 'distributed':False})
         for f in flist:
             with open(f, "r") as fh:
                 config = yaml.load(fh)
             self.assertEqual(config["details"][0]["multiplex"][0]["genome_build"], "rn4")
+
+            with open(f.replace("-bcbb-config.yaml", "-bcbb-command.txt")) as fh:
+                cl = fh.read().split()
+            self.assertIn("--no-google-report", cl)
+            self.assertIn("--only-run", cl)
+            with open(f.replace("-bcbb-config.yaml", "-post_process.yaml")) as fh:
+                config = yaml.load(fh)
+            self.assertEqual(config["custom_algorithms"][ANALYSIS_TYPE]["hybrid_bait"], 'rat_baits.interval_list')
+            self.assertEqual(config["custom_algorithms"][ANALYSIS_TYPE]["hybrid_target"], 'rat_targets.interval_list')
+            self.assertEqual(config["algorithm"]["num_cores"], 8)
+                
+
+        for f in flist:
+            setup_sample(f, **{'analysis_type':ANALYSIS_TYPE, 'genome_build':'rn4', 'dry_run':False,
+                               'no_only_run':True, 'google_report':True, 'analysis_type':'Align_standard_seqcap'
+                               , 'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'amplicon':True, 'num_cores':8, 'distributed':False})
+            with open(f, "r") as fh:
+                config = yaml.load(fh)
+            self.assertEqual(config["details"][0]["multiplex"][0]["genome_build"], "rn4")
+            with open(f.replace("-bcbb-config.yaml", "-bcbb-command.txt")) as fh:
+                cl = fh.read().split()
+            self.assertNotIn("--no-google-report", cl)
+            self.assertNotIn("--only-run", cl)
+            with open(f.replace("-bcbb-config.yaml", "-post_process.yaml")) as fh:
+                config = yaml.load(fh)
+            self.assertEqual(config["algorithm"]["mark_duplicates"], False)
+            self.assertEqual(config["custom_algorithms"][ANALYSIS_TYPE]["mark_duplicates"], False)
 
     def test_remove_files(self):
         """Test removing files"""
@@ -108,29 +137,21 @@ class UtilsTest(SciLifeTest):
     def test_bcbb_command(self):
         """Test output from command, changing analysis to amplicon and
         setting targets and baits"""
-        analysis_type = 'Align_standard_seqcap'
         flist = find_samples(j_doe_00_05)
         for f in flist:
-            setup_sample(f, **{'analysis_type':analysis_type, 'genome_build':'rn4', 'dry_run':False})
-            cl = run_bcbb_command(f, **{'analysis_type':'Align_standard_seqcap', 'dry_run':False,
-                                        'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list','automated_initial_analysis':False})
-            self.assertIn("--no-google-report", cl)
-            self.assertIn("--only-run", cl)
-            with open(f.replace("-bcbb-config.yaml", "-post_process.yaml")) as fh:
-                config = yaml.load(fh)
-            self.assertEqual(config["custom_algorithms"][analysis_type]["hybrid_bait"], 'rat_baits.interval_list')
-            self.assertEqual(config["custom_algorithms"][analysis_type]["hybrid_target"], 'rat_targets.interval_list')
-                
+            setup_sample(f, **{'analysis_type':ANALYSIS_TYPE, 'genome_build':'rn4', 'dry_run':False,
+                               'no_only_run':False, 'google_report':False, 'analysis_type':'Align_standard_seqcap',
+                               'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'amplicon':True, 'num_cores':8, 'distributed':False})
+            with open(f.replace("-bcbb-config.yaml", "-bcbb-command.txt")) as fh:
+                cl = fh.read().split()
+            cl = run_bcbb_command(f)
+            self.assertIn("automated_initial_analysis.py",cl)
+            setup_sample(f, **{'analysis_type':ANALYSIS_TYPE, 'genome_build':'rn4', 'dry_run':False,
+                               'no_only_run':False, 'google_report':False, 'analysis_type':'Align_standard_seqcap',
+                               'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'amplicon':True, 'num_cores':8, 'distributed':True})
+            with open(f.replace("-bcbb-config.yaml", "-bcbb-command.txt")) as fh:
+                cl = fh.read().split()
+            cl = run_bcbb_command(f)
+            self.assertIn("distributed_nextgen_pipeline.py",cl)
 
-        for f in flist:
-            setup_sample(f, **{'analysis_type':analysis_type, 'genome_build':'rn4', 'dry_run':False})
-            cl = run_bcbb_command(f, **{'no_only_run':True, 'google_report':True, 'analysis_type':'Align_standard_seqcap', 'dry_run':False,
-                                        'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'amplicon':True, 'automated_initial_analysis':False})
 
-            self.assertNotIn("--no-google-report", cl)
-            self.assertNotIn("--only-run", cl)
-            with open(f.replace("-bcbb-config.yaml", "-post_process.yaml")) as fh:
-                config = yaml.load(fh)
-            self.assertEqual(config["algorithm"]["mark_duplicates"], False)
-            self.assertEqual(config["custom_algorithms"][analysis_type]["mark_duplicates"], False)
-            

@@ -9,6 +9,15 @@ from scilifelab.log import minimal_logger
 
 LOG = minimal_logger(__name__)
 
+# The analysis script for running the pipeline in parallell mode (on one node)  
+PARALLELL_ANALYSIS_SCRIPT="automated_initial_analysis.py"
+# The analysis script for running the pipeline in distributed mode (across multiple nodes/cores)
+DISTRIBUTED_ANALYSIS_SCRIPT="distributed_nextgen_pipeline.py"
+# If True, will sanitize the run_info.yaml configuration file when running non-CASAVA analysis
+PROCESS_YAML = True
+# If True, will assign the distributed master process and workers to a separate RabbitMQ queue for each flowcell 
+FC_SPECIFIC_AMPQ = True
+
 def _sample_status(x):
     """Find the status of a sample.
     
@@ -45,7 +54,7 @@ def find_samples(path, sample_id=None, pattern = "-bcbb-config.yaml$", only_fail
         LOG.info("No such sample {}".format(sample_id))
     return [os.path.abspath(f) for f in flist]
 
-def setup_sample(f, analysis_type, genome_build="hg19", **kw):
+def setup_sample(f, analysis_type, google_report=False, no_only_run=False, amplicon=False, genome_build="hg19", **kw):
     """Setup config files, making backups and writing new files
 
     :param path: root path in which to search for samples
@@ -99,38 +108,12 @@ def setup_sample(f, analysis_type, genome_build="hg19", **kw):
                 config["details"][i]["multiplex"][0]["files"] = [x.replace(".gz", "") for x in seqfiles]
             else:
                 config["details"][i]["multiplex"][0]["files"] = ["{}.gz".format(x) for x in seqfiles]
+
     ## Remove config file and rewrite
     dry_unlink(f, kw['dry_run'])
     dry_write(f, yaml.dump(config), dry_run=kw['dry_run'])
 
-def remove_files(f, **kw):
-    ## Remove old files if requested
-    keep_files = ["-post_process.yaml$", "-post_process.yaml.bak$", "-bcbb-config.yaml$", "-bcbb-config.yaml.bak$",  "-bcbb-command.txt$", "-bcbb-command.txt.bak$", "_[0-9]+.fastq$", "_[0-9]+.fastq.gz$",
-                  "^[0-9][0-9]_.*.txt$"]
-    pattern = "|".join(keep_files)
-    def remove_filter_fn(f):
-        return re.search(pattern, f) == None
-
-    workdir = os.path.dirname(f)
-    remove_files = filtered_walk(workdir, remove_filter_fn)
-    remove_dirs = filtered_walk(workdir, remove_filter_fn, get_dirs=True)
-    if len(remove_files) == 0:
-        pass
-    if len(remove_files) > 0 and query_yes_no("Going to remove {} files and {} directories... Are you sure you want to continue?".format(len(remove_files), len(remove_dirs)), force=kw['force']):
-        [dry_unlink(x, dry_run=kw['dry_run']) for x in remove_files]
-        ## Sort directories by length so we don't accidentally try to remove a non-empty dir
-        [dry_rmdir(x, dry_run=kw['dry_run']) for x in sorted(remove_dirs, key=lambda x: len(x), reverse=True)]
-
-def run_bcbb_command(f, analysis_type, google_report=False, no_only_run=False, amplicon=False, **kw):
-    """Setup bcbb command to run
-    
-    :param f: file 
-    :param kw: keyword arguments
-    
-    :returns: command line to run
-    """
-    ## Run run_bcbb_pipeline
-    ## Modify bcbb-command if needed
+    ## setup bcbb-command if needed
     cmdfile = f.replace("-bcbb-config.yaml", "-bcbb-command.txt")
     with open(cmdfile) as fh:
         cmd = fh.read()
@@ -167,8 +150,50 @@ def run_bcbb_command(f, analysis_type, google_report=False, no_only_run=False, a
         LOG.info("setting amplicon analysis")
         pp['algorithm']['mark_duplicates'] = False
         pp['custom_algorithms'][analysis_type]['mark_duplicates'] = False
+    if kw['distributed']:
+        LOG.info("setting distributed execution")
+        pp['algorithm']['num_cores'] = 'messaging'
+    else:
+        LOG.info("setting parallell execution")
+        pp['algorithm']['num_cores'] = kw['num_cores']
     dry_unlink(ppfile, dry_run=kw['dry_run'])
     dry_write(ppfile, yaml.safe_dump(pp, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw['dry_run'])
-    if kw['automated_initial_analysis']:
-        cl = ['automated_initial_analysis.py', ppfile, os.path.dirname(f), f]
+
+
+def remove_files(f, **kw):
+    ## Remove old files if requested
+    keep_files = ["-post_process.yaml$", "-post_process.yaml.bak$", "-bcbb-config.yaml$", "-bcbb-config.yaml.bak$",  "-bcbb-command.txt$", "-bcbb-command.txt.bak$", "_[0-9]+.fastq$", "_[0-9]+.fastq.gz$",
+                  "^[0-9][0-9]_.*.txt$"]
+    pattern = "|".join(keep_files)
+    def remove_filter_fn(f):
+        return re.search(pattern, f) == None
+
+    workdir = os.path.dirname(f)
+    remove_files = filtered_walk(workdir, remove_filter_fn)
+    remove_dirs = filtered_walk(workdir, remove_filter_fn, get_dirs=True)
+    if len(remove_files) == 0:
+        pass
+    if len(remove_files) > 0 and query_yes_no("Going to remove {} files and {} directories... Are you sure you want to continue?".format(len(remove_files), len(remove_dirs)), force=kw['force']):
+        [dry_unlink(x, dry_run=kw['dry_run']) for x in remove_files]
+        ## Sort directories by length so we don't accidentally try to remove a non-empty dir
+        [dry_rmdir(x, dry_run=kw['dry_run']) for x in sorted(remove_dirs, key=lambda x: len(x), reverse=True)]
+
+def run_bcbb_command(run_info, post_process=None, **kw):
+    """Setup bcbb command to run
+    
+    :param run_info: run info file 
+    :param post_process: post process file
+    :param kw: keyword arguments
+    
+    :returns: command line to run
+    """
+    if not post_process:
+        post_process = run_info.replace("-bcbb-config.yaml", "-post_process.yaml")
+    with open(post_process, "r") as fh:
+        config = yaml.load(fh)
+    if str(config["algorithm"]["num_cores"]) == "messaging":
+        analysis_script = DISTRIBUTED_ANALYSIS_SCRIPT
+    else:
+        analysis_script = PARALLELL_ANALYSIS_SCRIPT
+    cl = [analysis_script, post_process, os.path.dirname(run_info), run_info]
     return cl    

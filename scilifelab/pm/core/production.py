@@ -35,7 +35,8 @@ class ProductionController(AbstractExtendedBaseController):
             (['--restart'], dict(help="restart analysis", action="store_true", default=False)),
             (['--no_only_run'], dict(help="run_bcbb parameter: don't setup", action="store_true", default=False)),
             (['--google_report'], dict(help="make a google report (default False)", action="store_false", default=True)),
-            (['--automated_initial_analysis'], dict(help="call automated_initial_analysis directly", action="store_false", default=True)),
+            (['--distributed'], dict(help="run distributed, changing 'num_cores' in  post_process to 'messaging': calls automated_initial_analysis.py", action="store_true", default=False)),
+            (['--num_cores'], dict(help="num_cores value; default 8", action="store", default=8, type=int)),
             (['--amplicon'], dict(help="amplicon-based analyses (e.g. HaloPlex), which means mark_duplicates is set to false", action="store_true", default=False)),
             (['--targets'], dict(help="sequence capture target file", action="store", default=None)),
             (['--baits'], dict(help="sequence capture baits file", action="store", default=None)),
@@ -190,23 +191,23 @@ class ProductionController(AbstractExtendedBaseController):
         if len(flist) > 0 and not query_yes_no("Going to start {} jobs... Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
             return
         orig_dir = os.path.abspath(os.getcwd())
-        for f in flist:
-            os.chdir(os.path.abspath(os.path.dirname(f)))
-            setup_sample(f, **vars(self.pargs))
+        for run_info in flist:
+            os.chdir(os.path.abspath(os.path.dirname(run_info)))
+            setup_sample(run_info, **vars(self.pargs))
             os.chdir(orig_dir)
         if self.pargs.only_setup:
             return
         ## Here process files again, removing if requested, and running the pipeline
-        for f in flist:
-            self.app.log.info("Running analysis defined by config file {}".format(f))
-            os.chdir(os.path.abspath(os.path.dirname(f)))
+        for run_info in flist:
+            self.app.log.info("Running analysis defined by config file {}".format(run_info))
+            os.chdir(os.path.abspath(os.path.dirname(run_info)))
             if self.pargs.restart:
-                self.app.log.info("Removing old analysis files in {}".format(os.path.dirname(f)))
-                remove_files(f, **vars(self.pargs))
+                self.app.log.info("Removing old analysis files in {}".format(os.path.dirname(run_info)))
+                remove_files(run_info, **vars(self.pargs))
             else:
                 ## Find jobid if present in slurm and kill
                 self.app.log.warn("pm production run not yet implemented")
                 return
-            cl = run_bcbb_command(f, **vars(self.pargs))
+            cl = run_bcbb_command(run_info, **vars(self.pargs))
             self.app.cmd.command(cl)
             os.chdir(orig_dir)
