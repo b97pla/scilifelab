@@ -72,7 +72,7 @@ class FastQWriter:
         return self.fname
     
     def write(self,record):
-        self._fh.write("\n".join(record))
+        self._fh.write("{}\n".format("\n".join([r.strip() for r in record])))
         self._records_written += 1
     
     def rwritten(self):
