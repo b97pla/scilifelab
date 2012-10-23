@@ -178,10 +178,8 @@ class RunMetricsController(AbstractBaseController):
         else:
             self.log.info("Retrieved {} updated qc objects".format(len(qc_objects)))
 
-        ## Make sure couchdb handler is set
-        if not '--couchdb' in self.app._meta.argv:
-            self.app._meta.cmd_handler = 'couchdb'
-            self.app._setup_cmd_handler()
+        self.app._meta.cmd_handler = 'couchdb'
+        self.app._setup_cmd_handler()
         self.app.cmd.connect(self.pargs.url, self.pargs.port)
         for obj in qc_objects:
             if self.app.pargs.debug:
@@ -193,6 +191,13 @@ class RunMetricsController(AbstractBaseController):
                 self.app.cmd.save("samples", obj, update_fn)
 
 def update_fn(db, obj):
+    """Compare object with object in db if present.
+
+    :param db: couch database
+    :param obj: database object to save
+
+    :returns: database object to save and database id if present
+    """
     t_utc = utc_time()
     def equal(a, b):
         a_keys = [str(x) for x in a.keys() if x not in ["_id", "_rev", "creation_time", "modification_time"]]
@@ -212,15 +217,15 @@ def update_fn(db, obj):
         dbobj = db.get(dbid.id, None)
     if dbobj is None:
         obj["creation_time"] = t_utc
-        return obj
+        return (obj, dbid)
     if equal(obj, dbobj):
-        return None
+        return (None, dbid)
     else:
         obj["creation_time"] = dbobj.get("creation_time")
         obj["modification_time"] = t_utc
         obj["_rev"] = dbobj.get("_rev")
         obj["_id"] = dbobj.get("_id")
-        return obj
+        return (obj, dbid)
 
 
 def load():

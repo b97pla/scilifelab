@@ -1,6 +1,6 @@
 import os
 import sys
-import scilifelab.utils.fastq_utils
+import scilifelab.utils.fastq_utils as fastq_utils
 import argparse
 
 def main():

@@ -206,9 +206,9 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
             for lane in sample_config:
                 if 'multiplex' in lane:
                     for sample in lane['multiplex']:
-                        sample['files'] = [os.path.basename(f) for f in sample_files if f.find("_%s_L00%d_" % (sample['sequence'],int(lane['lane']))) >= 0]
+                        sample['files'] = sorted([os.path.basename(f) for f in sample_files if f.find("_%s_L00%d_" % (sample['sequence'],int(lane['lane']))) >= 0])
                 else:
-                    lane['files'] = [os.path.basename(f) for f in sample_files if f.find("_L00%d_" % int(lane['lane'])) >= 0]
+                    lane['files'] = sorted([os.path.basename(f) for f in sample_files if f.find("_L00%d_" % int(lane['lane'])) >= 0])
                     
             sample_config = override_with_custom_config(sample_config,custom_config)
             
