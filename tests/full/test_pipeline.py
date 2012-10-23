@@ -6,3 +6,10 @@ class PipelineTest(SciLifeTest):
 
     def test_pipeline(self):
         pass
+
+    def test_platform_args(SciLifeTest):
+        pass
+
+    def test_bcbb_run(self):
+        """Test running the pipeline on one of the samples"""
+        
