@@ -61,13 +61,11 @@ class DistributedCommandHandler(command.CommandHandler):
                 platform_args = kw['platform_args']
             else:
                 platform_args = []
-            print platform_args
             platform_args = make_platform_args(jt, platform_args, **{'time':self.app.pargs.time, 'job_account':self.app.pargs.job_account, 'jobname':self.app.pargs.jobname, 'partition':self.app.pargs.partition})
-            print platform_args
             jt.nativeSpecification = " ".join(platform_args)
             
-            # self._meta.jobid = s.runJob(jt)
-            # self.app.log.info('Your job has been submitted with id ' + self._meta.jobid)
+            self._meta.jobid = s.runJob(jt)
+            self.app.log.info('Your job has been submitted with id ' + self._meta.jobid)
             s.deleteJobTemplate(jt)
             s.exit()
             
