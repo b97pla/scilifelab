@@ -2,18 +2,18 @@
 log module
 """
 import sys
-from logbook import Logger
 import logging
 
 
 def minimal_logger(namespace, debug=False):
-    """Make and return a minimal logger.
+    """Make and return a minimal console logger.
 
-    NOTE: this does apparently *not* work with logbook as I first
-    thought. Trick is to import logging and implement a logger that
-    way. Log handlers will then take care of output.
+    NOTE: this does apparently *not* work with logbook as I first thought, and
+    log handlers will *not* take care of output. If something is to be
+    logged to a file in a module, the logger has to be implemented for
+    that particular purpose.
 
-    The current function is copied from cement.core.backend. 
+    The current function is copied from cement.core.backend.
 
     :param namespace: namspace of logger
     """

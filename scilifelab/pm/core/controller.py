@@ -123,7 +123,8 @@ class AbstractExtendedBaseController(AbstractBaseController):
     def _setup(self, base_app):
         self._meta.arguments.append((['--pbzip2'], dict(help="Use pbzip2 as compressing device", default=False, action="store_true")))
         self._meta.arguments.append((['--pigz'], dict(help="Use pigz as compressing device", default=False, action="store_true")))
-        self._meta.arguments.append((['--sam'], dict(help="Workon fastq files", default=False, action="store_true")))
+        self._meta.arguments.append((['--sam'], dict(help="Workon sam files", default=False, action="store_true")))
+        self._meta.arguments.append((['--bam'], dict(help="Workon bam files", default=False, action="store_true")))
         self._meta.arguments.append((['--fastq'], dict(help="Workon fastq files", default=False, action="store_true")))
         self._meta.arguments.append((['--fastqbam'], dict(help="Workon fastq-fastq.bam files", default=False, action="store_true")))
         self._meta.arguments.append((['--pileup'], dict(help="Workon pileup files", default=False, action="store_true")))
@@ -157,6 +158,8 @@ class AbstractExtendedBaseController(AbstractBaseController):
             self._meta.file_pat += ["fastq-fastq.bam"]
         if self.pargs.sam:
             self._meta.file_pat += [".sam"]
+        if self.pargs.bam:
+            self._meta.file_pat += [".bam"]
         if self.pargs.split:
             self._meta.file_pat += [".intervals", ".bam", ".bai", ".vcf", ".idx"]
             self._meta.include_dirs += ["realign-split", "variants-split"]
@@ -185,6 +188,8 @@ class AbstractExtendedBaseController(AbstractBaseController):
     ## du
     @controller.expose(help="Calculate disk usage")
     def du(self):
+        if not self._check_pargs(["project"]):
+            return
         out = self.app.cmd.command(["du", "-hs", "{}".format(os.path.join(self._meta.root_path, self._meta.path_id))])
         if out:
             self.app._output_data["stdout"].write(out.rstrip())
@@ -192,6 +197,8 @@ class AbstractExtendedBaseController(AbstractBaseController):
     ## clean
     @controller.expose(help="Remove files")
     def clean(self):
+        if not self._check_pargs(["project"]):
+            return
         pattern = "|".join(["{}(.gz|.bz2)?$".format(x) for x in self._meta.file_pat])
         def clean_filter(f):
             if not pattern:
@@ -232,6 +239,8 @@ class AbstractExtendedBaseController(AbstractBaseController):
     @controller.expose(help="Decompress files")
     def decompress(self):
         """Decompress files"""
+        if not self._check_pargs(["project"]):
+            return
         self._meta.compress_opt = "-dv"
         if self.pargs.pbzip2:
             self._meta.compress_suffix = ".bz2"
@@ -241,6 +250,8 @@ class AbstractExtendedBaseController(AbstractBaseController):
     ## compress
     @controller.expose(help="Compress files")
     def compress(self):
+        if not self._check_pargs(["project"]):
+            return
         self._meta.compress_opt = "-v"
         pattern = "|".join(["{}$".format(x) for x in self._meta.file_pat])
         self._compress(pattern)

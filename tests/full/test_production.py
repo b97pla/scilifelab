@@ -3,6 +3,7 @@ import os
 import logbook
 import re
 import yaml
+import unittest
 
 from ..classes import SciLifeTest
 from classes import PmFullTest
@@ -23,7 +24,9 @@ filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 
 ANALYSIS_TYPE = 'Align_standard_seqcap'
 SAMPLE = 'P001_102_index6'
+FLOWCELL = '120924_AC003CCCXX'
 
+@unittest.skipIf(not os.getenv("MAILTO"), "not running production test: set $MAILTO environment variable to your mail address to test mailsend")
 class ProductionTest(PmFullTest):
     @classmethod
     def setUpClass(cls):
@@ -32,6 +35,21 @@ class ProductionTest(PmFullTest):
         LOG.info("Copy tree {} to {}".format(j_doe_00_01, j_doe_00_04))
         if not os.path.exists(j_doe_00_04):
             shutil.copytree(j_doe_00_01, j_doe_00_04)
+        ## Set P001_102_index6 to use devel partition and require mailto environment variable for test
+        pp = os.path.join(j_doe_00_04, SAMPLE, FLOWCELL, "{}-post_process.yaml".format(SAMPLE))
+        with open(pp) as fh:
+            config = yaml.load(fh)
+        platform_args = config["distributed"]["platform_args"].split()
+        platform_args[platform_args.index("-p") + 1] = "devel"
+        platform_args[platform_args.index("-t") + 1] = "00:10:00"
+        if not "--mail-user={}".format(os.getenv("MAILTO")) in platform_args:
+            platform_args.extend(["--mail-user={}".format(os.getenv("MAILTO"))])
+        if not "--mail-type=ALL" in platform_args:
+            platform_args.extend(["--mail-type=FAIL"])
+        config["distributed"]["platform_args"] = " ".join(platform_args)
+        with open(pp, "w") as fh:
+            fh.write(yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, width=1000))
+
 
     # @classmethod
     # def tearDownClass(cls):
@@ -50,7 +68,7 @@ class ProductionTest(PmFullTest):
         handler.register(ProductionController)
         self._run_app()
         os.chdir(filedir)
-    
+
     def test_platform_args(self):
         """Test the platform arguments for a run"""
         self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--amplicon', '--restart', '--sample', SAMPLE, '--drmaa', '-A', 'projectaccount'], extensions=['scilifelab.pm.ext.ext_distributed'])
