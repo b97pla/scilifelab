@@ -1,7 +1,7 @@
 """pm bcbio utils module"""
 import re
 
-FLOWCELL_DIRECTORY_PATTERN = "[0-9]+_[0-9A-Za-z]+_[0-9]+_[A-Z][A-Z0-9]+"
+FLOWCELL_DIRECTORY_PATTERN = "[0-9]+_[0-9A-Za-z]+_[0-9]+_[A-Z][A-Z0-9\-]+"
 
 def validate_fc_directory_format(flowcell):
     """Validate that path conforms to bcbio flowcell directory name"""

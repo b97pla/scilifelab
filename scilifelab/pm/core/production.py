@@ -212,3 +212,4 @@ class ProductionController(AbstractExtendedBaseController):
             (cl, platform_args) = run_bcbb_command(run_info, **vars(self.pargs))
             self.app.cmd.command(cl, **{'platform_args':platform_args})
             os.chdir(orig_dir)
+

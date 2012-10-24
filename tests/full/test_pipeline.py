@@ -12,4 +12,4 @@ class PipelineTest(SciLifeTest):
 
     def test_bcbb_run(self):
         """Test running the pipeline on one of the samples"""
-        
+        pass

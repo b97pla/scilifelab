@@ -6,6 +6,7 @@ import yaml
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractExtendedBaseController
 from scilifelab.bcbio.flowcell import *
+from scilifelab.lib.archive import flowcell_remove_status
 
 ## Main archive controller
 class ArchiveController(AbstractExtendedBaseController):
@@ -52,3 +53,11 @@ class ArchiveController(AbstractExtendedBaseController):
         else:            
             self.app._output_data['stdout'].write(str(fc))
 
+    @controller.expose(help="Verify flowcells that can be deleted from archive")
+    def rm_status(self):
+        """This function looks for flowcells that could be deleted
+        from archive and returns a list of flowcells with a KEEP/RM
+        flag."""
+        out_data = flowcell_remove_status(self.app.config.get("archive", "root"), self.app.config.get("production", "swestore"))
+        self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
+        self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
