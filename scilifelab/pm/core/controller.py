@@ -123,7 +123,9 @@ class AbstractExtendedBaseController(AbstractBaseController):
     def _setup(self, base_app):
         self._meta.arguments.append((['--pbzip2'], dict(help="Use pbzip2 as compressing device", default=False, action="store_true")))
         self._meta.arguments.append((['--pigz'], dict(help="Use pigz as compressing device", default=False, action="store_true")))
-        self._meta.arguments.append((['--sam'], dict(help="Workon fastq files", default=False, action="store_true")))
+        self._meta.arguments.append((['--sam'], dict(help="Workon sam files", default=False, action="store_true")))
+        self._meta.arguments.append((['--bam'], dict(help="Workon bam files", default=False, action="store_true")))
+
         self._meta.arguments.append((['--fastq'], dict(help="Workon fastq files", default=False, action="store_true")))
         self._meta.arguments.append((['--fastqbam'], dict(help="Workon fastq-fastq.bam files", default=False, action="store_true")))
         self._meta.arguments.append((['--pileup'], dict(help="Workon pileup files", default=False, action="store_true")))
@@ -157,6 +159,8 @@ class AbstractExtendedBaseController(AbstractBaseController):
             self._meta.file_pat += ["fastq-fastq.bam"]
         if self.pargs.sam:
             self._meta.file_pat += [".sam"]
+        if self.pargs.bam:
+            self._meta.file_pat += [".bam"]
         if self.pargs.split:
             self._meta.file_pat += [".intervals", ".bam", ".bai", ".vcf", ".idx"]
             self._meta.include_dirs += ["realign-split", "variants-split"]
