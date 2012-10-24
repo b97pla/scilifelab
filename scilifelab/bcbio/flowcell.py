@@ -171,7 +171,7 @@ class Flowcell(object):
         yaml_out = dict()
         for row in self.data:
             d = dict(zip(self.keys, row))
-            if not d.get("barcode_id", None):
+            if not d.get("sequence", None):
                 continue
             if not yaml_out.has_key(d['lane']):
                 yaml_out[d['lane']] = dict((k.replace("lane_", ""), d[k]) for k in self._out_yaml_keys['lane'] if k in d and not d[k] is None)
@@ -231,6 +231,11 @@ class Flowcell(object):
         fc = self.subset("lane", lane)
         return list(fc._column("name"))
 
+    def barcode_sequences(self, lane):
+        """List barcode sequences for a lane"""
+        fc = self.subset("lane", lane)
+        return list(fc._column("sequence"))
+
     def barcode_id_to_name(self, lane):
         """Map barcode id to name"""
         return dict(zip(self.barcodes(lane), self.names(lane)))
@@ -238,6 +243,14 @@ class Flowcell(object):
     def barcode_name_to_id(self, lane):
         """Map barcode name to id"""
         return dict(zip(self.names(lane), self.barcodes(lane)))
+
+    def barcode_sequence_to_id(self, lane):
+        """Map barcode sequence to id"""
+        return dict(zip(self.barcode_sequences(lane), self.names(lane)))
+
+    def barcode_name_to_sequence(self, lane):
+        """Map barcode name to sequence"""
+        return dict(zip(self.names(lane), self.barcode_sequences(lane)))
 
     def fc_with_unique_lanes(self):
         """Transform flowcell to one with unique lane numbers"""

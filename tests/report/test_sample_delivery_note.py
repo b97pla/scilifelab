@@ -1,12 +1,14 @@
 import os
 import unittest
 import ConfigParser
-from pyPdf import PdfFileWriter, PdfFileReader
-from scilifelab.report import sequencing_success, set_status
+import logbook
+
+from scilifelab.report import sequencing_success
 from scilifelab.report.rl import make_example_sample_note, make_note, sample_note_paragraphs, sample_note_headers, concatenate_notes
 from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectSummaryConnection
 
 filedir = os.path.abspath(os.path.realpath(os.path.dirname(__file__)))
+LOG = logbook.Logger(__name__)
 
 ## Cutoffs
 cutoffs = {
@@ -46,6 +48,7 @@ class TestSampleDeliveryNote(unittest.TestCase):
             self.user = None
             self.pw = None
             self.examples = {}
+            LOG.warning("No such file {}; will not run database connection tests".format(os.path.join(os.getenv("HOME"), "dbcon.ini")))
         else:
             config = ConfigParser.ConfigParser()
             config.readfp(open(os.path.join(os.getenv("HOME"), "dbcon.ini")))
@@ -56,12 +59,15 @@ class TestSampleDeliveryNote(unittest.TestCase):
                              "flowcell":config.get("examples", "flowcell"),
                              "project":config.get("examples", "project")}
 
-    def test_1_make_example_note(self):
+    def test_make_example_note(self):
         """Make example note"""
         make_example_sample_note(os.path.join(filedir, "test.pdf"))
 
-    def test_2_make_note(self):
+    def test_make_note(self):
         """Make a note subset by example flowcell and project"""
+        if not self.examples:
+            LOG.info("Not running test")
+            return
         s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
         fc_con = FlowcellRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
         p_con = ProjectSummaryConnection(username=self.user, password=self.pw, url=self.url)

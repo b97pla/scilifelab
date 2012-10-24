@@ -3,6 +3,9 @@ import sys
 import os
 import re
 import contextlib
+import scilifelab.log
+
+LOG = scilifelab.log.minimal_logger(__name__)
 
 ## yes or no: http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input
 def query_yes_no(question, default="yes", force=False):
@@ -59,7 +62,7 @@ def walk(rootdir):
         flist = flist + [os.path.join(root, x) for x in files]
     return flist
 
-def filtered_walk(rootdir, filter_fn, include_dirs=None, exclude_dirs=None): 
+def filtered_walk(rootdir, filter_fn, include_dirs=None, exclude_dirs=None, get_dirs=False): 
     """Perform a filtered directory walk.
 
     :param rootdir: Root directory
@@ -70,6 +73,7 @@ def filtered_walk(rootdir, filter_fn, include_dirs=None, exclude_dirs=None):
     :returns: Filtered file list 
     """
     flist = []
+    dlist = []
     for root, dirs, files in os.walk(rootdir):
         if include_dirs and len(set(root.split(os.sep)).intersection(set(include_dirs))) == 0:
             ## Also try re.search in case we have patterns
@@ -81,8 +85,12 @@ def filtered_walk(rootdir, filter_fn, include_dirs=None, exclude_dirs=None):
             continue
         if exclude_dirs and re.search("|".join(exclude_dirs), root):
             continue
+        dlist = dlist + [os.path.join(root, x) for x in dirs]
         flist = flist + [os.path.join(root, x) for x in filter(filter_fn, files)]
-    return flist
+    if get_dirs:
+        return dlist
+    else:
+        return flist
 
 def filtered_output(pattern, data):
     """
@@ -115,6 +123,8 @@ def safe_makedir(dname):
         except OSError:
             if not os.path.isdir(dname):
                 raise
+    else:
+        LOG.warning("Directory {} already exists; not making directory".format(dname))
     return dname
 
 @contextlib.contextmanager
@@ -131,4 +141,5 @@ def chdir(new_dir):
         yield
     finally:
         os.chdir(cur_dir)
+
 

@@ -7,6 +7,9 @@ import yaml
 from cement.core import controller, hook
 from scilifelab.pm.core.controller import AbstractExtendedBaseController, AbstractBaseController
 from scilifelab.utils.misc import query_yes_no, filtered_walk, walk
+from scilifelab.pm.lib.clean import purge_alignments
+from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command
+
 
 ## Main project controller
 class ProjectController(AbstractExtendedBaseController):
@@ -24,6 +27,7 @@ class ProjectController(AbstractExtendedBaseController):
             (['--finished'], dict(help="include finished project listing", action="store_true", default=False)),
             (['--intermediate'], dict(help="Work on intermediate data", default=False, action="store_true")),
             (['--data'], dict(help="Work on data folder", default=False, action="store_true")),
+            (['--minfilesize'], dict(help="Min file size to keep (in bytes). Default 2000.", default=2000, action="store", type=int)),
             ]
         flowcelldir = None
 
@@ -103,43 +107,21 @@ class ProjectController(AbstractExtendedBaseController):
         if not self.pargs.flowcell:
             self.log.warn("No flowcellid provided. Please provide a flowcellid from which to deliver. Available options are:\n\t{}".format("\n\t".join(self._flowcells())))
             return
-
+    
     ## purge_alignments
     @controller.expose(help="purge alignments in project folders")
-    def purge_alignments(self):
+    def purge(self):
         """Cleanup sam and bam files. In some cases, sam files
         persist. If the corresponding bam file exists, replace the sam
         file contents with a message that the file has been removed to
         save space.
         """
-        pattern = ".sam$"
-        def purge_filter(f):
-            if not pattern:
-                return
-            return re.search(pattern, f) != None
-
-        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), purge_filter)
-        if len(flist) == 0:
-            self.app.log.info("No sam files found")
+        if not self._check_pargs(["project"]):
             return
-        if len(flist) > 0 and not query_yes_no("Going to remove/cleanup {} sam files ({}...). Are you sure you want to continue?".format(len(flist), ",".join([os.path.basename(x) for x in flist[0:10]])), force=self.pargs.force):
-            return
-        for f in flist:
-            self.app.log.info("Purging sam file {}".format(f))
-            self.app.cmd.safe_unlink(f)
-            if os.path.exists(f.replace(".sam", ".bam")):
-                self.app.cmd.write(f, "File removed to save disk space: SAM converted to BAM")
-
-        ## Find bam files in alignments subfolders
-        pattern = ".bam$"
-        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), purge_filter, include_dirs=["alignments"])
-        for f in flist:
-            f_tgt = [f.replace(".bam", "-sort.bam"), os.path.join(os.path.dirname(os.path.dirname(f)),os.path.basename(f) )]
-            for tgt in f_tgt:
-                if os.path.exists(tgt):
-                    self.app.log.info("Purging bam file {}".format(f))
-                    self.app.cmd.safe_unlink(f)
-                    self.app.cmd.write(f, "File removed to save disk space: Moved to {}".format(os.path.abspath(tgt)))
+        if self.app.pargs.sam:
+            purge_alignments(path=os.path.join(self._meta.root_path, self._meta.path_id), dry_run=self.app.pargs.dry_run, force=self.app.pargs.force, fsize=self.app.pargs.minfilesize)
+        else:
+            purge_alignments(path=os.path.join(self._meta.root_path, self._meta.path_id), dry_run=self.app.pargs.dry_run, force=self.app.pargs.force, ftype="bam", fsize=self.app.pargs.minfilesize)
 
 class ProjectRmController(AbstractBaseController):
     class Meta:
@@ -180,7 +162,7 @@ class BcbioRunController(AbstractBaseController):
             (['--genome_build'], dict(help="genome build ", action="store", default="hg19", type=str)),
             (['--only_failed'], dict(help="only run on failed samples ", action="store_true", default=False)),
             ]
-        stacked_on = 'project'
+        #stacked_on = 'project'
 
     def _sample_status(self, x):
         """Find the status of a sample.
@@ -192,7 +174,7 @@ class BcbioRunController(AbstractBaseController):
             return "FAIL"
 
     @controller.expose(help="run automated initial analysis on samples in a project")
-    def run(self):
+    def old_run(self):
         if not self._check_pargs(["project", "post_process", "analysis_type"]):
             return
         ## Gather sample yaml files
@@ -239,3 +221,37 @@ class BcbioRunController(AbstractBaseController):
             self.app.cmd.command(['automated_initial_analysis.py', os.path.abspath(self.pargs.post_process), new_dir, config_file])
             os.chdir(cur_dir)
 
+
+    ## FIXME: for now this is an exact copy of production.run. Since
+    ## this is a function related to bcbio, it should be put in an
+    ## extension ext_bcbio.py. Problem is: how can a controller be
+    ## stacked on two other controllers, namely production and
+    ## project?
+    @controller.expose(help="run bcbb pipeline")
+    def run(self):
+        if not self._check_pargs(["project"]):
+            return
+        flist = find_samples(os.path.abspath(os.path.join(self._meta.root_path, self._meta.path_id)), **vars(self.pargs))
+        if len(flist) > 0 and not query_yes_no("Going to start {} jobs... Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
+            return
+        orig_dir = os.path.abspath(os.getcwd())
+        for f in flist:
+            os.chdir(os.path.abspath(os.path.dirname(f)))
+            setup_sample(f, **vars(self.pargs))
+            os.chdir(orig_dir)
+        if self.pargs.only_setup:
+            return
+        ## Here process files again, removing if requested, and running the pipeline
+        for f in flist:
+            self.app.log.info("Running analysis defined by config file {}".format(f))
+            os.chdir(os.path.abspath(os.path.dirname(f)))
+            if self.pargs.restart:
+                self.app.log.info("Removing old analysis files in {}".format(os.path.dirname(f)))
+                remove_files(f, **vars(self.pargs))
+            else:
+                ## Find jobid if present in slurm and kill
+                self.app.log.warn("pm production run not yet implemented")
+                return
+            cl = run_bcbb_command(f, **vars(self.pargs))
+            self.app.cmd.command(cl)
+            os.chdir(orig_dir)

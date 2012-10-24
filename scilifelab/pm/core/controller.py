@@ -8,8 +8,6 @@ from cement.core import interface, handler, controller, backend
 from scilifelab.pm.lib.help import PmHelpFormatter
 from scilifelab.utils.misc import filtered_output, query_yes_no, filtered_walk
 
-LOG = backend.minimal_logger(__name__)
-
 class AbstractBaseController(controller.CementBaseController):
     """
     This is an abstract base controller.
@@ -45,10 +43,10 @@ class AbstractBaseController(controller.CementBaseController):
         self._process_args()
         
         if not self.command:
-            LOG.debug("no command to dispatch")
+            self.app.log.debug("no command to dispatch")
         else:    
             func = self.exposed[self.command]     
-            LOG.debug("dispatching command: %s.%s" % \
+            self.app.log.debug("dispatching command: %s.%s" % \
                       (func['controller'], func['label']))
 
             if func['controller'] == self._meta.label:
@@ -65,14 +63,14 @@ class AbstractBaseController(controller.CementBaseController):
         raise NotImplementedError
 
     def _obsolete(self, msg):
-        self.log.warn("This function is obsolete.")
-        self.log.warn(msg)
+        self.app.log.warn("This function is obsolete.")
+        self.app.log.warn(msg)
 
     def _check_pargs(self, pargs, msg=None):
         """Check that list of pargs are present"""
         for p in pargs:
             if not self.pargs.__getattribute__(p):
-                self.log.warn("Required argument '{}' lacking".format(p))
+                self.app.log.warn("Required argument '{}' lacking".format(p))
                 return False
         return True
 
@@ -125,13 +123,15 @@ class AbstractExtendedBaseController(AbstractBaseController):
     def _setup(self, base_app):
         self._meta.arguments.append((['--pbzip2'], dict(help="Use pbzip2 as compressing device", default=False, action="store_true")))
         self._meta.arguments.append((['--pigz'], dict(help="Use pigz as compressing device", default=False, action="store_true")))
-        self._meta.arguments.append((['--sam'], dict(help="Workon fastq files", default=False, action="store_true")))
+        self._meta.arguments.append((['--sam'], dict(help="Workon sam files", default=False, action="store_true")))
+        self._meta.arguments.append((['--bam'], dict(help="Workon bam files", default=False, action="store_true")))
         self._meta.arguments.append((['--fastq'], dict(help="Workon fastq files", default=False, action="store_true")))
         self._meta.arguments.append((['--fastqbam'], dict(help="Workon fastq-fastq.bam files", default=False, action="store_true")))
         self._meta.arguments.append((['--pileup'], dict(help="Workon pileup files", default=False, action="store_true")))
         self._meta.arguments.append((['--split'], dict(help="Workon *-split directories", default=False, action="store_true")))
         self._meta.arguments.append((['--tmp'], dict(help="Workon staging (tx) and tmp directories", default=False, action="store_true")))
         self._meta.arguments.append((['--txt'], dict(help="Workon txt files", default=False, action="store_true")))
+        self._meta.arguments.append((['--glob'], dict(help="Workon freetext glob expression. CAUTION: using wildcard expressions will remove *everything* that matches.", default=None, action="store")))
         self._meta.arguments.append((['--move'], dict(help="Transfer file with move", default=False, action="store_true")))
         self._meta.arguments.append((['--copy'], dict(help="Transfer file with copy (default)", default=True, action="store_true")))
         self._meta.arguments.append((['--rsync'], dict(help="Transfer file with rsync", default=False, action="store_true")))
@@ -158,13 +158,17 @@ class AbstractExtendedBaseController(AbstractBaseController):
             self._meta.file_pat += ["fastq-fastq.bam"]
         if self.pargs.sam:
             self._meta.file_pat += [".sam"]
+        if self.pargs.bam:
+            self._meta.file_pat += [".bam"]
         if self.pargs.split:
             self._meta.file_pat += [".intervals", ".bam", ".bai", ".vcf", ".idx"]
             self._meta.include_dirs += ["realign-split", "variants-split"]
         if self.pargs.tmp:
             self._meta.file_pat += [".idx", ".vcf", ".bai", ".bam", ".idx", ".pdf"]
             self._meta.include_dirs += ["tmp", "tx"]
-
+        if self.pargs.glob:
+            self._meta.file_pat += [self.pargs.glob]
+            
         ## Setup zip program
         if self.pargs.pbzip2:
             self._meta.compress_prog = "pbzip2"
@@ -184,6 +188,8 @@ class AbstractExtendedBaseController(AbstractBaseController):
     ## du
     @controller.expose(help="Calculate disk usage")
     def du(self):
+        if not self._check_pargs(["project"]):
+            return
         out = self.app.cmd.command(["du", "-hs", "{}".format(os.path.join(self._meta.root_path, self._meta.path_id))])
         if out:
             self.app._output_data["stdout"].write(out.rstrip())
@@ -191,6 +197,8 @@ class AbstractExtendedBaseController(AbstractBaseController):
     ## clean
     @controller.expose(help="Remove files")
     def clean(self):
+        if not self._check_pargs(["project"]):
+            return
         pattern = "|".join(["{}(.gz|.bz2)?$".format(x) for x in self._meta.file_pat])
         def clean_filter(f):
             if not pattern:
@@ -231,6 +239,8 @@ class AbstractExtendedBaseController(AbstractBaseController):
     @controller.expose(help="Decompress files")
     def decompress(self):
         """Decompress files"""
+        if not self._check_pargs(["project"]):
+            return
         self._meta.compress_opt = "-dv"
         if self.pargs.pbzip2:
             self._meta.compress_suffix = ".bz2"
@@ -240,6 +250,8 @@ class AbstractExtendedBaseController(AbstractBaseController):
     ## compress
     @controller.expose(help="Compress files")
     def compress(self):
+        if not self._check_pargs(["project"]):
+            return
         self._meta.compress_opt = "-v"
         pattern = "|".join(["{}$".format(x) for x in self._meta.file_pat])
         self._compress(pattern)
