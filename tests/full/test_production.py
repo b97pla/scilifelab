@@ -4,12 +4,14 @@ import logbook
 import re
 import yaml
 import unittest
+import drmaa
 
 from ..classes import SciLifeTest
 from classes import PmFullTest
 
 from cement.core import handler
 from scilifelab.pm.core.production import ProductionController
+from scilifelab.pm.ext.ext_distributed import make_job_template_args, opt_to_dict
 from scilifelab.utils.misc import filtered_walk
 from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command
 
@@ -27,6 +29,7 @@ SAMPLE = 'P001_102_index6'
 FLOWCELL = '120924_AC003CCCXX'
 
 @unittest.skipIf(not os.getenv("MAILTO"), "not running production test: set $MAILTO environment variable to your mail address to test mailsend")
+@unittest.skipIf(not os.getenv("DRMAA_LIBRARY_PATH"), "not running production test: no $DRMAA_LIBRARY_PATH")
 class ProductionTest(PmFullTest):
     @classmethod
     def setUpClass(cls):
@@ -50,7 +53,9 @@ class ProductionTest(PmFullTest):
         with open(pp, "w") as fh:
             fh.write(yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, width=1000))
 
-
+    ## FIXME: since we're submitting jobs to drmaa, data will be
+    ## removed before the pipeline has finished. One solution would be
+    ## to run on one of the module production datasets
     # @classmethod
     # def tearDownClass(cls):
     #     LOG.info("Removing directory tree {}".format(j_doe_00_04))
@@ -71,13 +76,20 @@ class ProductionTest(PmFullTest):
 
     def test_platform_args(self):
         """Test the platform arguments for a run"""
-        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--amplicon', '--restart', '--sample', SAMPLE, '--drmaa', '-A', 'projectaccount'], extensions=['scilifelab.pm.ext.ext_distributed'])
+        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--amplicon', '--restart', '--sample', SAMPLE, '--drmaa'], extensions=['scilifelab.pm.ext.ext_distributed'])
+        handler.register(ProductionController)
+        self._run_app()
+        os.chdir(filedir)
+
+    def test_change_platform_args(self):
+        """Test that passing --time actually changes platform
+        arguments. These arguments should have precedence over
+        whatever is written in the config file."""
+        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--amplicon', '--restart', '--sample', SAMPLE, '--drmaa', '--time', '00:01:00', '-n'], extensions=['scilifelab.pm.ext.ext_distributed'])
         handler.register(ProductionController)
         self._run_app()
         os.chdir(filedir)
         
-
-
 class UtilsTest(SciLifeTest):
     @classmethod
     def setUpClass(cls):
@@ -180,4 +192,20 @@ class UtilsTest(SciLifeTest):
                 cl = fh.read().split()
             cl = run_bcbb_command(f)
             self.assertIn("distributed_nextgen_pipeline.py",cl)
-
+    
+    @unittest.skipIf(not os.getenv("DRMAA_LIBRARY_PATH"), "not running UtilsTest.test_platform: no $DRMAA_LIBRARY_PATH")
+    def test_platform_args(self):
+        """Test making platform args and changing them on the fly. """
+        pp = os.path.join(j_doe_00_05, SAMPLE, FLOWCELL, "{}-post_process.yaml".format(SAMPLE))
+        with open(pp) as fh:
+            config = yaml.load(fh)
+        platform_args = config["distributed"]["platform_args"].split()
+        self.assertIn("core", platform_args)
+        pargs = opt_to_dict(platform_args)
+        self.assertEqual("P001_102_index6-bcbb.log", pargs['-o'])
+        kw = {'time':'00:01:00', 'jobname':'test', 'partition':'devel'}
+        pargs = make_job_template_args(pargs, **kw)
+        self.assertEqual("devel", pargs['partition'])
+        nativeSpec = "-t {time} -p {partition} -A {account}".format(**pargs)
+        self.assertEqual("00:01:00", nativeSpec[3:11])
+                    
