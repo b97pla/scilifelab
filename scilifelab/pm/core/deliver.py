@@ -8,22 +8,9 @@ from cement.core import controller
 from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.report import sequencing_success
 from scilifelab.report.rl import *
-from scilifelab.report.qc import application_qc, fastq_screen
+from scilifelab.report.qc import application_qc, fastq_screen, qc_cutoff
 from scilifelab.report.delivery_notes import sample_status_note, project_status_note
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection
-
-## QC data cutoff values
-qc_cutoff = {
-    'rnaseq':{'PCT_PF_READS_ALIGNED':70,'PERCENT_DUPLICATION':30},
-    'reseq':{'PCT_PF_READS_ALIGNED':70,'PERCENT_DUPLICATION':30},
-    'WG-reseq':{'PCT_PF_READS_ALIGNED':70,'PERCENT_DUPLICATION':30},
-    'seqcap':{'PCT_PF_READS_ALIGNED':70,'PERCENT_ON_TARGET':60, 'PCT_TARGET_BASES_10X':90, 'PERCENT_DUPLICATION':30},
-    'customcap':{'PCT_PF_READS_ALIGNED':70, 'PERCENT_DUPLICATION':30},
-    'finished':{},
-    }
-## Mapping from genomics project list application names
-application_map = {'RNA-seq (Total RNA)':'rnaseq','WG re-seq':'WG-reseq','Resequencing':'reseq', 'Exome capture':'seqcap', 'Custom':'customcap', 'Finished library':'finished' , 'Custom capture':'customcap'}
-application_inv_map = {v:k for k, v in application_map.items()}
 
 ## Main delivery controller
 class DeliveryController(AbstractBaseController):

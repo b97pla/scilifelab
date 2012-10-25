@@ -42,3 +42,10 @@ class TestMisc(unittest.TestCase):
         flist = filtered_walk("data", filter_fn=self.filter_fn, include_dirs=["nophix"], exclude_dirs=["fastqc"])
         self.assertEqual(flist, ['data/nophix/file1.txt'])
 
+    def test_filtered_walk_get_dirs(self):
+        """Perform a filtered walk of data dir, getting dirs"""
+        flist = filtered_walk("data", filter_fn=self.filter_fn, include_dirs=["nophix"], exclude_dirs=["fastqc"], get_dirs=True)
+        print flist
+        flist = filtered_walk("data", filter_fn=self.filter_fn, include_dirs=["nophix"], exclude_dirs=["fastqc"], get_dirs=False)
+        print flist
+

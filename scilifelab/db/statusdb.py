@@ -56,6 +56,10 @@ class SampleRunMetricsConnection(Couch):
         self.name_proj_view = {k.key:k for k in self.db.view("names/name_proj", reduce=False)}
         self.name_fc_proj_view = {k.key:k for k in self.db.view("names/name_fc_proj", reduce=False)}
 
+    def _setup_views(self):
+        """ """
+        pass
+
     def get_entry(self, name, field=None):
         """Retrieve entry from db for a given name, subset to field if
         that value is passed.
@@ -85,7 +89,8 @@ class SampleRunMetricsConnection(Couch):
         self.log.debug("retrieving sample ids subset by flowcell '{}' and sample_prj '{}'".format(fc_id, sample_prj))
         fc_sample_ids = [self.name_fc_view[k].id for k in self.name_fc_view.keys() if self.name_fc_view[k].value == fc_id] if fc_id else []
         prj_sample_ids = [self.name_proj_view[k].id for k in self.name_proj_view.keys() if self.name_proj_view[k].value == sample_prj] if sample_prj else []
-        sample_ids = list(set(fc_sample_ids) & set(prj_sample_ids))
+        ## | -> union
+        sample_ids = list(set(fc_sample_ids) | set(prj_sample_ids))
         self.log.debug("Number of samples: {}, number of fc samples: {}, number of project samples: {}".format(len(sample_ids), len(fc_sample_ids), len(prj_sample_ids)))
         return sample_ids
 
@@ -238,7 +243,7 @@ class ProjectSummaryConnection(Couch):
                 use_ps_map = True
                 use_bc_map = True
             if use_ps_map:
-                ps_map = v.get('sample_run_metrics', None)
+                ps_map = self._get_sample_run_metrics(v)
                 sample_map[k] = _prune_ps_map(ps_map)
             if use_bc_map or not sample_map[k]:
                 if not sample_map[k]: self.log.info("Using barcode map since no information in project summary for sample '{}'".format(k))
@@ -250,6 +255,15 @@ class ProjectSummaryConnection(Couch):
                 else:
                     self.log.warn("Sample {} has inconsistent mappings: ps_map {} vs barcode_match {}".format(k, ps_map, bc_map))
         return sample_map
+
+    def _get_sample_run_metrics(self, v):
+        if v.get('library_prep', None):
+            library_preps = v.get('library_prep')
+            return {k:v for kk in library_preps.keys() for k, v in library_preps[kk]['sample_run_metrics'].items()} if library_preps else None
+        else:
+            return v.get('sample_run_metrics', None)
+            
+
         
     def get_ordered_amount(self, project_id, rounded=True, dec=1):
         """Get (rounded) ordered amount of reads in millions. 
