@@ -43,7 +43,7 @@ class DistributedCommandHandler(command.CommandHandler):
             pass
 
     def _check_args(self, **kw):
-        pargs = kw.get('platform_args', None)
+        pargs = kw.get('platform_args', [])
         if not self.app.pargs.account and "-A" not in pargs and "--account" not in pargs:
             return False
         if not self.app.pargs.jobname and "-J" not in pargs and "--jobname" not in pargs:
