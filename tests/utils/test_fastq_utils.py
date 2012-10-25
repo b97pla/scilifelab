@@ -10,6 +10,7 @@ import copy
 import scilifelab.utils.fastq_utils as fu
 import tests.generate_test_data as td
 import scilifelab.illumina.hiseq as hi
+from collections import Counter
 
 class TestFastQParser(unittest.TestCase):
     """Test the FastQParser functionality
@@ -189,5 +190,73 @@ class TestFastQUtils(unittest.TestCase):
             self.assertListEqual(sorted(headers),sorted(self.indexes[index]),
                                  "The parsed headers from demultiplexed fastq file do not match the expected")
             
-   
+
+class TestBarcodeExtractor(unittest.TestCase):
+    """Test class for the functionality
+    """
+    
+    def setUp(self):
+        """Set up a test fastq file
+        """
+        self.rootdir = tempfile.mkdtemp(prefix="test_extract_pre_casava_index_")
+        
+        # Set up a fastq file
+        fd, fqfile = tempfile.mkstemp(dir=self.rootdir,suffix=".fastq.gz")
+        os.close(fd)
+        fqw = fu.FastQWriter(fqfile)
+        
+        # Generate a set of indexes
+        seqlen = 101
+        bclen = 6
+        barcodes = dict(zip([td.generate_barcode(bclen) for i in xrange(100)],[random.randint(10,100) for i in xrange(100)]))
+        
+        # Generate fastq records and append the barcode
+        for barcode, nseqs in barcodes.items():
+            for i in xrange(nseqs):
+                rec = td.generate_fastq_record(**{'index': barcode, 'sequence_length': seqlen})
+                rec[1] = "{}{}A".format(rec[1],barcode)
+                fqw.write(rec)
+        fqw.close()
+        
+        self.sequence_length = seqlen
+        self.barcode_length = bclen
+        self.barcodes = barcodes
+        self.fastq_file = fqfile
+        
+    def tearDown(self):
+        shutil.rmtree(self.rootdir)
+        
+    def test_pre_casava_barcode_extractor(self):
+        """Test BarcodeExtractor for Casava 1.7 files
+        """
+        
+        # Create a barcode extractor object
+        bcx = fu.BarcodeExtractor(self.fastq_file,True,self.sequence_length,self.barcode_length)
+        
+        # Create a counter from the extracted barcodes 
+        obs_cnt = Counter(bcx).most_common()
+        # Cretae a counter from the true barcodes
+        exp_cnt = Counter(self.barcodes).most_common()
+
+        # Assert the observerd and expected barcode counts are the same
+        self.assertListEqual(sorted(obs_cnt), sorted(exp_cnt),
+                              "Extracted and expected barcode counts don't match")
+
+
+    def test_casava_barcode_extractor(self):
+        """Test BarcodeExtractor for Casava 1.8+ files
+        """
+        
+        # Create a barcode extractor object
+        bcx = fu.BarcodeExtractor(self.fastq_file)
+        
+        # Create a counter from the extracted barcodes  
+        obs_cnt = Counter(bcx).most_common()
+        # Cretae a counter from the true barcodes
+        exp_cnt = Counter(self.barcodes).most_common()
+
+        # Assert the observerd and expected barcode counts are the same
+        self.assertListEqual(sorted(obs_cnt), sorted(exp_cnt),
+                              "Extracted and expected barcode counts don't match")
+         
         

@@ -81,6 +81,41 @@ class FastQWriter:
     def close(self):
         self._fh.close()
 
+class BarcodeExtractor():
+    """Parse a FastQ-file and extract the barcode assumed to be at the 
+       given offset and of specified length
+    """
+    
+    def __init__(self,  fqfile, casava18=True, offset=101, length=6):
+        fh = open(fqfile)
+        if os.path.splitext(fqfile)[1] == ".gz":
+            self.fh = gzip.GzipFile(fileobj=fh)
+        else:
+            self.fh = fh
+        self.start = offset
+        self.end = offset+length
+        self.casava18 = casava18
+        self._next = self.setup_next(self.start, self.end)
+        
+    def __iter__(self):
+        return self
+    def next(self):
+        return self._next(self)
+    
+    def setup_next(self, start, end):
+        """Return the function to extract the barcode
+        """
+        if not self.casava18:
+            def _next(self):
+                _, seq, _, _ = [self.fh.next() for i in xrange(4)]
+                return seq[start:end]
+        else:
+            def _next(self):
+                header, _, _, _ = [self.fh.next() for i in xrange(4)]
+                return header.strip().rsplit(":",1)[1]
+        return _next
+
+
 def avgQ(record,offset=33):
     qual = record[3].strip()
     l = len(qual)

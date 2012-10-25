@@ -56,7 +56,15 @@ class TestHiSeqRun(unittest.TestCase):
             self.assertListEqual([str(e) for e in sdata.pop(0)],
                                  [d[col] for col in HiSeqRun._samplesheet_header()],
                                  "Parsed data row does not match entry in generated samplesheet")
-        
+            
+        # Assert that filtering on lane returns expected output
+        lanes = list(set([d["Lane"] for d in data]))
+        obs_lane_data = HiSeqRun.parse_samplesheet(samplesheet,lane=lanes[-1])
+        exp_lane_data = [d for d in data if str(d["Lane"]) == str(lanes[-1])]
+        self.assertListEqual(sorted(obs_lane_data),
+                             sorted(exp_lane_data),
+                             "Parsed data row does not match entry in generated samplesheet")
+            
     
     def test_get_project_names(self):
         """Get the projects from a samplesheet

@@ -30,15 +30,18 @@ class HiSeqRun(illumina.IlluminaRun):
                 "SampleProject"] 
 
     @staticmethod
-    def parse_samplesheet(samplesheet):
+    def parse_samplesheet(samplesheet, lane=None, sample_project=None, index=None):
         """Parse a .csv samplesheet and return a list of dictionaries with
         elements corresponding to rows of the samplesheet and keys corresponding
-        to the columns in the header
+        to the columns in the header. Optionally filter by lane and/or sample_project
+        and/or index
         """
         entries = []
         with open(samplesheet) as fh:
             csvr = csv.DictReader(fh, dialect='excel')
-            entries = [row for row in csvr]
+            entries = [row for row in csvr if (lane is None or row["Lane"] == lane) \
+                       and (sample_project is None or row["SampleProject"] == sample_project) \
+                       and (index is None or row["Index"] == index)]
         
         return entries
     
