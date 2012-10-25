@@ -54,6 +54,53 @@ class DistributedCommandHandler(command.CommandHandler):
             return False
         return True
 
+    def _save_job_id(self, **kw):
+        """Save jobid to file in working directory"""
+        JOBIDFILE = os.path.join(kw['workingDirectory'], "JOBID")
+        with open(JOBIDFILE, "w") as fh:
+            LOG.info("Saving jobid to file {}".format(JOBIDFILE))
+            fh.write(self._meta.jobid)
+
+    def _monitor_job(self, **kw):
+        """Check if job is currently being run or in queue. For now,
+        the user will manually have to terminate job before proceeding"""
+
+        JOBIDFILE = os.path.join(kw['workingDirectory'], "JOBID")
+        if not os.path.exists(JOBIDFILE):
+            return 
+        LOG.info("Will read {} for jobid".format(JOBIDFILE))
+        with open(JOBIDFILE) as fh:
+            jobid = fh.read()
+        ## http://code.google.com/p/drmaa-python/wiki/Tutorial
+        decodestatus = {
+            drmaa.JobState.UNDETERMINED: 'process status cannot be determined',
+            drmaa.JobState.QUEUED_ACTIVE: 'job is queued and active',
+            drmaa.JobState.SYSTEM_ON_HOLD: 'job is queued and in system hold',
+            drmaa.JobState.USER_ON_HOLD: 'job is queued and in user hold',
+            drmaa.JobState.USER_SYSTEM_ON_HOLD: 'job is queued and in user and system hold',
+            drmaa.JobState.RUNNING: 'job is running',
+            drmaa.JobState.SYSTEM_SUSPENDED: 'job is system suspended',
+            drmaa.JobState.USER_SUSPENDED: 'job is user suspended',
+            drmaa.JobState.DONE: 'job finished normally',
+            drmaa.JobState.FAILED: 'job finished, but failed',
+            }
+
+        try:
+            s = drmaa.Session()
+            s.initialize()
+            status = s.jobStatus(str(jobid))
+            LOG.info("Getting status for jobid {}".format(jobid))
+            LOG.info("{}".format(decodestatus[status]))
+            if status in [drmaa.JobState.QUEUED_ACTIVE, drmaa.JobState.RUNNING, drmaa.JobState.UNDETERMINED]:
+                LOG.warn("{}; please terminate job before proceeding".format(decodestatus[status]))
+                return True
+            s.exit()
+        except drmaa.errors.InternalException:
+            LOG.warn("No such jobid {}".format(jobid))
+            pass
+        return
+
+
     def drmaa(self, cmd_args, capture=True, ignore_error=False, cwd=None, **kw):
         if self.app.pargs.partition == "node" and self.app.pargs.max_node_jobs < self._meta.n_submitted_jobs:
             self.app.log.info("number of submitted jobs larger than maximum number of allowed node jobs; not submitting job")
@@ -62,6 +109,16 @@ class DistributedCommandHandler(command.CommandHandler):
         if not self._check_args(**kw):
             self.app.log.warn("missing argument; cannot proceed with drmaa command. Make sure you provide time, account, partition, and jobname")
             return
+        if kw['platform_args']:
+            platform_args = opt_to_dict(kw['platform_args'])
+        else:
+            platform_args = opt_to_dict([])
+        opt_d = make_job_template_args(platform_args, **vars(self.app.pargs))
+        if kw.get('monitorJob', False):
+            if self._monitor_job(**opt_d):
+                self.app.log.info("exiting from {}".format(__name__) )
+                return
+
         command = " ".join(cmd_args)
         def runpipe():
             s = drmaa.Session()
@@ -69,11 +126,6 @@ class DistributedCommandHandler(command.CommandHandler):
             jt = s.createJobTemplate()
             jt.remoteCommand = cmd_args[0]
             jt.args = cmd_args[1:]
-            if kw['platform_args']:
-                platform_args = opt_to_dict(kw['platform_args'])
-            else:
-                platform_args = opt_to_dict([])
-            opt_d = make_job_template_args(platform_args, **vars(self.app.pargs))
             jt.outputPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.relpath(opt_d['outputPath'], os.getenv("HOME"))
             jt.workingDirectory = drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.relpath(opt_d['workingDirectory'], os.getenv("HOME"))
             jt.jobName = opt_d['jobname']
@@ -81,6 +133,8 @@ class DistributedCommandHandler(command.CommandHandler):
             self.app.log.info("Submitting job with native specification {}".format(jt.nativeSpecification))
             self._meta.jobid = s.runJob(jt)
             self.app.log.info('Your job has been submitted with id ' + self._meta.jobid)
+            if kw.get('saveJobId', False):
+                self._save_job_id(**opt_d)
             s.deleteJobTemplate(jt)
             s.exit()
             

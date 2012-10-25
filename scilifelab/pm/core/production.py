@@ -221,6 +221,7 @@ class ProductionController(AbstractExtendedBaseController):
                 self.app.log.warn("pm production run not yet implemented")
                 return
             (cl, platform_args) = run_bcbb_command(run_info, **vars(self.pargs))
-            self.app.cmd.command(cl, **{'platform_args':platform_args})
+            print cl
+            self.app.cmd.command(cl, **{'platform_args':platform_args, 'monitorJob':True, 'saveJobId':True})
             os.chdir(orig_dir)
 

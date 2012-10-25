@@ -4,6 +4,7 @@ import logbook
 import re
 import yaml
 import unittest
+import time
 import drmaa
 
 from ..classes import SciLifeTest
@@ -48,7 +49,7 @@ class ProductionTest(PmFullTest):
         if not "--mail-user={}".format(os.getenv("MAILTO")) in platform_args:
             platform_args.extend(["--mail-user={}".format(os.getenv("MAILTO"))])
         if not "--mail-type=ALL" in platform_args:
-            platform_args.extend(["--mail-type=FAIL"])
+            platform_args.extend(["--mail-type=ALL"])
         config["distributed"]["platform_args"] = " ".join(platform_args)
         with open(pp, "w") as fh:
             fh.write(yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, width=1000))
@@ -76,6 +77,10 @@ class ProductionTest(PmFullTest):
 
     def test_platform_args(self):
         """Test the platform arguments for a run"""
+        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--amplicon', '--restart', '--sample', SAMPLE], extensions=['scilifelab.pm.ext.ext_distributed'])
+        handler.register(ProductionController)
+        self._run_app()
+        time.sleep(3)
         self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--amplicon', '--restart', '--sample', SAMPLE, '--drmaa'], extensions=['scilifelab.pm.ext.ext_distributed'])
         handler.register(ProductionController)
         self._run_app()
@@ -102,6 +107,8 @@ class ProductionTest(PmFullTest):
             return re.search(pattern, f) != None
         fastq_files = filtered_walk(j_doe_00_03, fastq_filter)
         self.assertEqual(len(fastq_files), 2)
+
+
         
         
 class UtilsTest(SciLifeTest):
