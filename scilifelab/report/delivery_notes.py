@@ -69,9 +69,12 @@ def sample_status_note(project_id=None, flowcell_id=None, user=None, password=No
     notes = []
     if not project:
         LOG.warn("No such project '{}'".format(project_id))
-        return
+        return output_data
     samples = p_con.map_srm_to_name(project_id, include_all=False, fc_id=flowcell_id, use_ps_map=use_ps_map, use_bc_map=use_bc_map, check_consistency=check_consistency)
-    for k,v  in samples.items():
+    if len(samples) == 0:
+        LOG.warn("No samples for project '{}', flowcell '{}'. Maybe there are no sample run metrics in statusdb?".format(project_id, flowcell_id))
+        return output_data
+    for k,v in samples.items():
         s_param = {}
         LOG.debug("working on sample '{}', sample run metrics name '{}', id '{}'".format(v["sample"], k, v["id"]))
         s_param.update(parameters)
@@ -109,7 +112,7 @@ def sample_status_note(project_id=None, flowcell_id=None, user=None, password=No
         s_param['success'] = sequencing_success(s_param, cutoffs)
         s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None or s_param[k] ==  ""})
         notes.append(make_note("{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"]), headers, paragraphs, **s_param))
-    concatenate_notes(notes, "{}_{}_{}_sample_summary.pdf".format(project_id, s["date"], s["flowcell"]))
+    concatenate_notes(notes, "{}_{}_{}_sample_summary.pdf".format(project_id, s.get("date", None), s.get("flowcell", None)))
     return output_data
 
 def project_status_note(project_id=None, user=None, password=None, url=None,

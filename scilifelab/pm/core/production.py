@@ -3,13 +3,14 @@
 import sys
 import os
 import re
+import subprocess
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractExtendedBaseController
 from scilifelab.utils.misc import query_yes_no, filtered_walk
 from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command
 from scilifelab.bcbio.flowcell import Flowcell
 from scilifelab.bcbio.status import status_query
-import subprocess
+from scilifelab.utils.string import strip_extensions
 
 ## Main production controller
 class ProductionController(AbstractExtendedBaseController):
@@ -94,8 +95,8 @@ class ProductionController(AbstractExtendedBaseController):
         if self.pargs.transfer_dir:
            outdir_pfx = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.transfer_dir, "data"))
         for sample in fc:
-            key = "{}_{}".format(sample['lane'], sample['barcode_id'])
-            sources = {"files":sample['files'], "results":sample['results']}
+            key = "{}_{}".format(sample['lane'], sample['sequence'])
+            sources = {"files": self._prune_sequence_files(sample['files']), "results":sample['results']}
             outdir = os.path.join(outdir_pfx, sample['name'], fc.fc_id())
             dirs = {"data":os.path.abspath(os.path.join(outdir_pfx, sample['name'], fc.fc_id())),
                     "intermediate":os.path.abspath(os.path.join(outdir_pfx, sample['name'], fc.fc_id()))}
@@ -109,7 +110,8 @@ class ProductionController(AbstractExtendedBaseController):
             fc_new.set_entry(key, 'results', targets['results'])
             ## Copy sample files - currently not doing lane files
             self._transfer_files(sources, targets)
-            self.app.cmd.write(os.path.join(dirs["data"], "{}-bcbb-config.yaml".format(sample['name'])), fc_new.as_yaml())
+            self.app.cmd.write(os.path.join(dirs["data"], "{}-bcbb-pm-config.yaml".format(sample['name'])), fc_new.as_yaml())
+
 
     def _to_pre_casava_structure(self, fc):
         dirs = {"data":os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data", fc.fc_id())),
@@ -120,8 +122,8 @@ class ProductionController(AbstractExtendedBaseController):
         self._make_output_dirs(dirs)
         fc_new = fc
         for sample in fc:
-            key = "{}_{}".format(sample['lane'], sample['barcode_id'])
-            sources = {"files":sample['files'], "results":sample['results']}
+            key = "{}_{}".format(sample['lane'], sample['sequence'])
+            sources = {"files": self._prune_sequence_files(sample['files']), "results":sample['results']}
             targets = {"files": [src.replace(fc.path, dirs["data"]) for src in sources['files']],
                        "results": [src.replace(fc.path, dirs["intermediate"]) for src in sources['results']]}
             fc_new.set_entry(key, 'files', targets['files'])
@@ -131,9 +133,6 @@ class ProductionController(AbstractExtendedBaseController):
             ## Copy sample files - currently not doing lane files
             self._transfer_files(sources, targets)
         self.app.cmd.write(os.path.join(dirs["data"], "project_run_info.yaml"), fc_new.as_yaml())
-
-        # with open(os.path.join(dirs["data"], "project_run_info.yaml"), "w") as yaml_out:
-        #     self.app.cmd.write(yaml_out, fc_new.as_yaml())
 
     def _from_pre_casava_structure(self):
         if not self._check_pargs(["project", "flowcell"]):
@@ -148,6 +147,19 @@ class ProductionController(AbstractExtendedBaseController):
         fc_new.collect_files(indir)        
         return fc_new
 
+    def _prune_sequence_files(self, flist):
+        """Sometimes fastq and fastq.gz files are present for the same
+        read. Make sure only one file is used, giving precedence to
+        the zipped file.
+        
+        :param flist: list of files
+        
+        :returns: pruned list of files
+        """
+        samples = {k[0]:{} for k in [strip_extensions(x, ['.gz']) for x in flist]}
+        tmp = {samples[str(k[0])].update({str(k[1]):True}) for k in [strip_extensions(x, ['.gz']) for x in flist]}
+        return ["{}.gz".format(k) if v.get('.gz', None) else k for k, v in samples.items()]
+
     def _make_output_dirs(self, dirs):
         if not os.path.exists(dirs["data"]):
             self.app.cmd.safe_makedir(dirs["data"])
@@ -159,7 +171,6 @@ class ProductionController(AbstractExtendedBaseController):
             if not os.path.exists(os.path.dirname(tgt)):
                 self.app.cmd.safe_makedir(os.path.dirname(tgt))
             self.app.cmd.transfer_file(src, tgt)
-
 
     @controller.expose(help="Transfer data")
     def transfer(self):

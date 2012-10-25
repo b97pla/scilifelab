@@ -89,6 +89,20 @@ class ProductionTest(PmFullTest):
         handler.register(ProductionController)
         self._run_app()
         os.chdir(filedir)
+
+    def test_casava_transfer(self):
+        """Test transfer of casava data from production to project"""
+        self.app = self.make_app(argv = ['production', 'transfer', 'J.Doe_00_03', '--debug', '--force', '--quiet'], extensions=[])
+        handler.register(ProductionController)
+        self._run_app()
+        os.chdir(filedir)
+        j_doe_00_03 = os.path.abspath(os.path.join(os.curdir, "data", "projects", "j_doe_00_03"))
+        pattern = ".fastq(.gz)?$"
+        def fastq_filter(f):
+            return re.search(pattern, f) != None
+        fastq_files = filtered_walk(j_doe_00_03, fastq_filter)
+        self.assertEqual(len(fastq_files), 2)
+        
         
 class UtilsTest(SciLifeTest):
     @classmethod
