@@ -1,7 +1,7 @@
 """Utilities for handling FastQ data"""
 import gzip
-
-PHRED_OFFSET = 33
+import os
+from scilifelab.illumina.hiseq import HiSeqRun
          
 class FastQParser:
     """Parser for fastq files, possibly compressed with gzip. 
@@ -9,7 +9,9 @@ class FastQParser:
        of a list with 4 elements corresponding to 1) Header, 
        2) Nucleotide sequence, 3) Optional header, 4) Qualities"""
     
-    def __init__(self,file):
+    def __init__(self,file,filter=None):
+        self.fname = file
+        self.filter = filter
         fh = open(file,"rb")
         if file.endswith(".gz"):
             self._fh = gzip.GzipFile(fileobj=fh)
@@ -19,14 +21,29 @@ class FastQParser:
         
     def __iter__(self):
         return self
+    
     def next(self):
-        record = []
-        for i in range(4):
-            record.append(self._fh.next().strip())
-        self._records_read += 1
+        if self.filter is None or len(self.filter.keys()) == 0:
+            return self._next()
+        while True:
+            record = self._next()
+            header = parse_header(record[0])
+            skip = False
+            for k, v in self.filter.items():
+                if k in header and header[k] not in v:
+                    skip = True
+                    break
+            if not skip:
+                return record 
+            self._records_read -= 1
         
-        return record
-
+    def _next(self):
+        self._records_read += 1
+        return [self._fh.next().strip() for n in range(4)]
+        
+    def name(self):
+        return self.fname
+    
     def rread(self):
         return self._records_read
 
@@ -43,6 +60,7 @@ class FastQWriter:
        will be compressed with gzip"""
        
     def __init__(self,file):
+        self.fname = file
         fh = open(file,"wb")
         if file.endswith(".gz"):
             self._fh = gzip.GzipFile(fileobj=fh)
@@ -50,9 +68,11 @@ class FastQWriter:
             self._fh = fh
         self._records_written = 0
         
+    def name(self):
+        return self.fname
+    
     def write(self,record):
-        for row in record:
-            self._fh.write("%s\n" % row.strip("\n"))
+        self._fh.write("{}\n".format("\n".join([r.strip() for r in record])))
         self._records_written += 1
     
     def rwritten(self):
@@ -61,13 +81,48 @@ class FastQWriter:
     def close(self):
         self._fh.close()
 
-def avgQ(record,offset=PHRED_OFFSET):
+class BarcodeExtractor():
+    """Parse a FastQ-file and extract the barcode assumed to be at the 
+       given offset and of specified length
+    """
+    
+    def __init__(self,  fqfile, casava18=True, offset=101, length=6):
+        fh = open(fqfile)
+        if os.path.splitext(fqfile)[1] == ".gz":
+            self.fh = gzip.GzipFile(fileobj=fh)
+        else:
+            self.fh = fh
+        self.start = offset
+        self.end = offset+length
+        self.casava18 = casava18
+        self._next = self.setup_next(self.start, self.end)
+        
+    def __iter__(self):
+        return self
+    def next(self):
+        return self._next(self)
+    
+    def setup_next(self, start, end):
+        """Return the function to extract the barcode
+        """
+        if not self.casava18:
+            def _next(self):
+                _, seq, _, _ = [self.fh.next() for i in xrange(4)]
+                return seq[start:end]
+        else:
+            def _next(self):
+                header, _, _, _ = [self.fh.next() for i in xrange(4)]
+                return header.strip().rsplit(":",1)[1]
+        return _next
+
+
+def avgQ(record,offset=33):
     qual = record[3].strip()
     l = len(qual)
     s = sum([ord(c) for c in qual])
     return round(float(s - l*offset)/l,1)
     
-def gtQ30(record,offset=PHRED_OFFSET):
+def gtQ30(record,offset=33):
     qual = record[3].strip()
     cutoff = 30 + offset
     g = 0
@@ -96,8 +151,75 @@ def parse_header(header):
             'is_filtered': (is_filtered == 'Y'),
             'control_number': int(control_number),
             'index': str(index)} # Note that MiSeq Reporter outputs a SampleSheet index rather than the index sequence
+
+def is_read_pair(rec1, rec2):
+    """Returns true if the two records belong to the same read pair, determined by matching the header strings and disregarding
+       the read field
+    """
+    r1 = rec1[0].split(' ')
+    r2 = rec2[0].split(' ')
+    return (len(r1) == 2 and len(r2) == 2 and r1[0] == r2[0] and r1[1][1:] == r2[1][1:])
+
+def demultiplex_fastq(outdir, samplesheet, fastq1, fastq2=None):
+    """Demultiplex a bcl-converted illumina fastq file. Assumes it has the index sequence
+    in the header a la CASAVA 1.8+
+    """
+    outfiles = {}
+    counts = {}
+    sdata = HiSeqRun.parse_samplesheet(samplesheet)
+    reads = [1]
+    if fastq2 is not None:
+        reads.append(2)
+        
+    # For each Lane-Index combination, create a file and open a filehandle
+    for sd in sdata:
+        lane = sd['Lane']
+        index = sd['Index']
+        if lane not in outfiles:
+            outfiles[lane] = {}
+            counts[lane] = {}
+        outfiles[lane][index] = []
+        counts[lane][index] = 0
+        for read in reads:
+            fname = "tmp_{}_{}_L00{}_R{}_001.fastq.gz".format(sd['SampleID'],
+                                                              index,
+                                                              lane,
+                                                              read)
+            outfiles[lane][index].append(FastQWriter(os.path.join(outdir,fname)))
     
+    # Parse the input file(s) and write the records to the appropriate output files
+    fhs = [FastQParser(fastq1)]
+    if fastq2 is not None:
+        fhs.append(FastQParser(fastq2))
+        
+    for r, fh in enumerate(fhs):
+        for record in fh:
+            header = parse_header(record[0])
+            lane = str(header['lane'])
+            index = header['index']
+            if lane in outfiles and index in outfiles[lane]:
+                outfiles[lane][index][r].write(record)
+                counts[lane][index] += 1
     
+    # Close filehandles and replace the handles with the file names
+    for lane in outfiles.keys():
+        for index in outfiles[lane].keys():
+            for r, fh in enumerate(outfiles[lane][index]):
+                fh.close()
+                fname = fh.name()
+                # If no sequences were written, remove the temporary file and the entry from the results
+                if counts[lane][index] == 0:
+                    os.unlink(fname)
+                    del outfiles[lane][index]
+                    break
+                
+                # Rename the temporary file to a persistent name
+                nname = fname.replace("tmp_","")
+                os.rename(fname,nname)
+                outfiles[lane][index][r] = nname
+    
+    return outfiles
+
     
     
     

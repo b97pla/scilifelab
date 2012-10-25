@@ -140,7 +140,7 @@ def setup_analysis(post_process_config, archive_dir, run_info_file):
         with open(post_process_config,"w") as fh:
             fh.write(yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, width=1000)) 
             
-    return [[os.getcwd(),post_process_config,archive_dir,run_info_file]]
+    return [[os.getcwd(),post_process_config,archive_dir,run_info_file]]   
         
 def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_config_file):
     """Parse the CASAVA 1.8+ generated flowcell directory and create a 
@@ -164,6 +164,8 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
     
     # Copy the basecall stats directory 
     _copy_basecall_stats(os.path.join(fc_dir_structure['fc_dir'],fc_dir_structure['basecall_stats_dir']), analysis_dir)
+    # Copy the undetermined indexes files
+    copy_undetermined_index_files(os.path.join(fc_dir_structure['fc_dir'],fc_dir_structure['data_dir']), analysis_dir)
     
     # Parse the custom_config_file
     custom_config = []
@@ -234,6 +236,51 @@ def _copy_basecall_stats(source_dir, destination_dir):
     files += [os.path.join(source_dir,"Plots")]
     files += [os.path.join(source_dir,"css")]
     do_rsync(files,dirname)
+    
+def copy_undetermined_index_files(casava_data_dir, dst_dir):
+    """Copy the fastq files with undetermined index reads to the destination directory
+    """
+    
+    # List of files to copy
+    copy_list = []
+    # List the directories containing the fastq files
+    fastq_dir_pattern = os.path.join(casava_data_dir,"Undetermined_indices","Sample_lane*")
+    # Pattern matching the fastq_files
+    fastq_file_pattern = "*.fastq.gz"
+    # Samplesheet name
+    samplesheet_pattern = "SampleSheet.csv"
+    samplesheets = []
+    for dir in glob.glob(fastq_dir_pattern):
+        copy_list += glob.glob(os.path.join(dir,fastq_file_pattern))
+        samplesheet = os.path.join(dir,samplesheet_pattern)
+        if os.path.exists(samplesheet):
+            samplesheets.append(samplesheet)
+    
+    # Merge the samplesheets into one
+    new_samplesheet = os.path.join(dst_dir,samplesheet_pattern)
+    new_samplesheet = _merge_samplesheets(samplesheets,new_samplesheet)
+    
+    # Rsync the fastq files to the destination directory
+    do_rsync(copy_list,dst_dir)
+
+def _merge_samplesheets(samplesheets, merged_samplesheet):
+    """Merge several .csv samplesheets into one
+    """
+    data = []
+    header = []
+    for samplesheet in samplesheets:
+        with open(samplesheet) as fh:
+            csvread = csv.DictReader(fh, dialect='excel')
+            header = csvread.fieldnames
+            for row in csvread:
+                data.append(row)
+                
+    with open(merged_samplesheet,"w") as outh:
+        csvwrite = csv.DictWriter(outh,header)
+        csvwrite.writeheader()
+        csvwrite.writerows(sorted(data, key=lambda d: (d['Lane'],d['Index'])))
+        
+    return merged_samplesheet
  
 def override_with_custom_config(org_config, custom_config):
     """Override the default configuration from the .csv samplesheets
