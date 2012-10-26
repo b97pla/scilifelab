@@ -77,13 +77,12 @@ class ProductionTest(PmFullTest):
 
     def test_platform_args(self):
         """Test the platform arguments for a run"""
-        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--amplicon', '--restart', '--sample', SAMPLE], extensions=['scilifelab.pm.ext.ext_distributed'])
-        handler.register(ProductionController)
-        self._run_app()
-        time.sleep(3)
         self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--amplicon', '--restart', '--sample', SAMPLE, '--drmaa'], extensions=['scilifelab.pm.ext.ext_distributed'])
         handler.register(ProductionController)
         self._run_app()
+        # self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--amplicon', '--restart', '--sample', SAMPLE, '--drmaa'], extensions=['scilifelab.pm.ext.ext_distributed'])
+        # handler.register(ProductionController)
+        # self._run_app()
         os.chdir(filedir)
 
     def test_change_platform_args(self):

@@ -1,5 +1,5 @@
 """Shell core module"""
-
+import psutil
 import subprocess
 
 from cement.core import backend, handler
@@ -7,7 +7,7 @@ from cement.utils import shell
 
 from scilifelab.pm.core import command
 
-Log = backend.minimal_logger(__name__)
+LOG = backend.minimal_logger(__name__)
 
 class ShCommandHandler(command.CommandHandler):
     """ 
@@ -22,6 +22,24 @@ class ShCommandHandler(command.CommandHandler):
 
         label = 'shell'
         """The string identifier of this handler."""
+
+    def _monitor(self, work_dir, idfile="PID"):
+        """Check for existing process"""
+        return self._monitor_process(work_dir, idfile="PID")
+
+    def _monitor_process(work_dir, idfile="PID"):
+        """Monitor existing process"""
+        PIDFILE = os.path.join(work_dir, idfile)
+        if not os.path.exists(PIDFILE):
+            return
+        with open(PIDFILE) as fh:
+            pid = fh.read()
+        if psutil.pid_exists(pid):
+            self.app.log.warn("pid {} still running; please terminate job before proceeding".format(pid))
+            return True
+        else:
+            return False
+            
 
     def command(self, cmd_args, capture=True, ignore_error=False, cwd=None, **kw):
         cmd = " ".join(cmd_args)

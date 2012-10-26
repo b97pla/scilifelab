@@ -54,21 +54,24 @@ class DistributedCommandHandler(command.CommandHandler):
             return False
         return True
 
-    def _save_job_id(self, **kw):
+    def _save_job_id(self, **job_args):
         """Save jobid to file in working directory"""
-        JOBIDFILE = os.path.join(kw['workingDirectory'], "JOBID")
+        JOBIDFILE = os.path.join(job_args['workingDirectory'], "JOBID")
         with open(JOBIDFILE, "w") as fh:
-            LOG.info("Saving jobid to file {}".format(JOBIDFILE))
+            self.app.log.info("Saving jobid {} to file {}".format(self._meta.jobid, JOBIDFILE))
             fh.write(self._meta.jobid)
 
-    def _monitor_job(self, **kw):
+    def _monitor(self, work_dir, idfile="JOBID"):
+        """Check for existing job"""
+        return self._monitor_job(idfile, **{'workingDirectory':work_dir})
+
+    def _monitor_job(self, idfile="JOBID", **job_args):
         """Check if job is currently being run or in queue. For now,
         the user will manually have to terminate job before proceeding"""
-
-        JOBIDFILE = os.path.join(kw['workingDirectory'], "JOBID")
+        JOBIDFILE = os.path.join(job_args['workingDirectory'], idfile)
         if not os.path.exists(JOBIDFILE):
             return 
-        LOG.info("Will read {} for jobid".format(JOBIDFILE))
+        self.app.log.debug("Will read {} for jobid".format(JOBIDFILE))
         with open(JOBIDFILE) as fh:
             jobid = fh.read()
         ## http://code.google.com/p/drmaa-python/wiki/Tutorial
@@ -89,14 +92,14 @@ class DistributedCommandHandler(command.CommandHandler):
             s = drmaa.Session()
             s.initialize()
             status = s.jobStatus(str(jobid))
-            LOG.info("Getting status for jobid {}".format(jobid))
-            LOG.info("{}".format(decodestatus[status]))
+            self.app.log.debug("Getting status for jobid {}".format(jobid))
+            self.app.log.info("{}".format(decodestatus[status]))
             if status in [drmaa.JobState.QUEUED_ACTIVE, drmaa.JobState.RUNNING, drmaa.JobState.UNDETERMINED]:
-                LOG.warn("{}; please terminate job before proceeding".format(decodestatus[status]))
+                self.app.log.warn("{}; please terminate job before proceeding".format(decodestatus[status]))
                 return True
             s.exit()
         except drmaa.errors.InternalException:
-            LOG.warn("No such jobid {}".format(jobid))
+            self.app.log.warn("No such jobid {}".format(jobid))
             pass
         return
 
@@ -113,9 +116,10 @@ class DistributedCommandHandler(command.CommandHandler):
             platform_args = opt_to_dict(kw['platform_args'])
         else:
             platform_args = opt_to_dict([])
-        opt_d = make_job_template_args(platform_args, **vars(self.app.pargs))
+        kw.update(**vars(self.app.pargs))
+        job_args = make_job_template_args(platform_args, **kw)
         if kw.get('monitorJob', False):
-            if self._monitor_job(**opt_d):
+            if self._monitor_job(**job_args):
                 self.app.log.info("exiting from {}".format(__name__) )
                 return
 
@@ -126,15 +130,15 @@ class DistributedCommandHandler(command.CommandHandler):
             jt = s.createJobTemplate()
             jt.remoteCommand = cmd_args[0]
             jt.args = cmd_args[1:]
-            jt.outputPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.relpath(opt_d['outputPath'], os.getenv("HOME"))
-            jt.workingDirectory = drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.relpath(opt_d['workingDirectory'], os.getenv("HOME"))
-            jt.jobName = opt_d['jobname']
-            jt.nativeSpecification = "-t {time} -p {partition} -A {account}".format(**opt_d)
+            jt.outputPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.relpath(job_args['outputPath'], os.getenv("HOME")))
+            jt.workingDirectory = drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.relpath(job_args['workingDirectory'], os.getenv("HOME"))
+            jt.jobName = job_args['jobname']
+            jt.nativeSpecification = "-t {time} -p {partition} -A {account}".format(**job_args)
             self.app.log.info("Submitting job with native specification {}".format(jt.nativeSpecification))
             self._meta.jobid = s.runJob(jt)
             self.app.log.info('Your job has been submitted with id ' + self._meta.jobid)
             if kw.get('saveJobId', False):
-                self._save_job_id(**opt_d)
+                self._save_job_id(**job_args)
             s.deleteJobTemplate(jt)
             s.exit()
             
@@ -159,15 +163,18 @@ def make_job_template_args(opt_d, **kw):
     """Given a dictionary of arguments, update with kw dict that holds arguments passed to argv.
 
     :param opt_d: dictionary of option key/value pairs
-    :param kw: dictionary of keywords
+    :param kw: dictionary of program arguments
+
+    :returns: dictionary of job arguments
     """
-    kw['jobname'] = kw.get('jobname', None) or opt_d.get('-J', None) or  opt_d.get('--job-name', None)
-    kw['time'] = kw.get('time', None) or opt_d.get('-t', None) or  opt_d.get('--time', None)
-    kw['partition'] = kw.get('partition', None) or opt_d.get('-p', None) or  opt_d.get('--partition', None)
-    kw['account'] = kw.get('account', None) or opt_d.get('-A', None) or  opt_d.get('--account', None)
-    kw['outputPath'] = kw.get('outputPath', os.curdir) or opt_d.get('-o', None)
-    kw['workingDirectory'] = kw.get('workingDirectory', None) or opt_d.get('-D', None) 
-    return kw
+    job_args = {}
+    job_args['jobname'] = kw.get('jobname', None) or opt_d.get('-J', None) or  opt_d.get('--job-name', None)
+    job_args['time'] = kw.get('time', None) or opt_d.get('-t', None) or  opt_d.get('--time', None)
+    job_args['partition'] = kw.get('partition', None) or opt_d.get('-p', None) or  opt_d.get('--partition', None)
+    job_args['account'] = kw.get('account', None) or opt_d.get('-A', None) or  opt_d.get('--account', None)
+    job_args['outputPath'] = kw.get('outputPath', None) or opt_d.get('-o', os.curdir)
+    job_args['workingDirectory'] = kw.get('workingDirectory', None) or opt_d.get('-D', None) 
+    return job_args
 
 def add_drmaa_option(app):
     """
