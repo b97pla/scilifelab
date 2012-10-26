@@ -42,6 +42,7 @@ class ProductionController(AbstractExtendedBaseController):
             (['--amplicon'], dict(help="amplicon-based analyses (e.g. HaloPlex), which means mark_duplicates is set to false", action="store_true", default=False)),
             (['--targets'], dict(help="sequence capture target file", action="store", default=None)),
             (['--baits'], dict(help="sequence capture baits file", action="store", default=None)),
+            (['--email'], dict(help="set user email address", action="store", default=None, type=str)),
             ]
 
     def _process_args(self):
@@ -213,14 +214,13 @@ class ProductionController(AbstractExtendedBaseController):
         for run_info in flist:
             self.app.log.info("Running analysis defined by config file {}".format(run_info))
             os.chdir(os.path.abspath(os.path.dirname(run_info)))
+            if self.app.cmd.monitor(work_dir=os.path.dirname(run_info)):
+                self.app.log.warn("Not running job")
+                continue
             if self.pargs.restart:
                 self.app.log.info("Removing old analysis files in {}".format(os.path.dirname(run_info)))
                 remove_files(run_info, **vars(self.pargs))
-            else:
-                ## Find jobid if present in slurm and kill
-                self.app.log.warn("pm production run not yet implemented")
-                return
             (cl, platform_args) = run_bcbb_command(run_info, **vars(self.pargs))
-            self.app.cmd.command(cl, **{'platform_args':platform_args})
+            self.app.cmd.command(cl, **{'platform_args':platform_args, 'saveJobId':True})
             os.chdir(orig_dir)
 
