@@ -162,7 +162,7 @@ class BcbioRunController(AbstractBaseController):
             (['--genome_build'], dict(help="genome build ", action="store", default="hg19", type=str)),
             (['--only_failed'], dict(help="only run on failed samples ", action="store_true", default=False)),
             ]
-        #stacked_on = 'project'
+        stacked_on = 'project'
 
     def _sample_status(self, x):
         """Find the status of a sample.
