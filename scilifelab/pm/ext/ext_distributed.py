@@ -180,7 +180,7 @@ def make_job_template_args(opt_d, **kw):
     job_args['email'] = kw.get('email', None) or opt_d.get('--mail-user', None) 
     invalid_keys = ["--mail-user", "--mail-type", "-o", "--output", "-D", "--workdir", "-J", "--job-name", "-p", "--partition", "-t", "--time", "-A", "--account"]
     extra_keys = [x for x in opt_d.keys() if x not in invalid_keys]
-    extra_args = " ".join(["{}={}".format(x, opt_d[x]) if x.startswith("--") else "{} {}".format(x, opt_d[x]) for x in extra_keys])
+    extra_args = ["{}={}".format(x, opt_d[x]) if x.startswith("--") else "{} {}".format(x, opt_d[x]) for x in extra_keys]
     job_args['extra'] = kw.get('extra_args', None) or extra_args
     job_args['extra'] = " ".join(job_args['extra'])
     return job_args
