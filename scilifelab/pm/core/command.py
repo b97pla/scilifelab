@@ -9,6 +9,7 @@ def cmd_interface_validator(cls, obj):
     members = [
         '_setup',
         'command',
+        'monitor',
         ]
     interface.validate(ICommand, obj, members)
 
@@ -33,6 +34,14 @@ class ICommand(interface.Interface):
         
         :param app_obj: The application object. 
                                 
+        """
+
+    def monitor(work_dir, idfile=None):
+        """
+        Check for process/job id file.
+        
+        :param work_dir: working directory
+        :param idfile: process/job id file
         """
 
     def command(cmd_args, capture=True, ignore_error=False, cwd=None, **kw):
