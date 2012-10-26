@@ -147,7 +147,7 @@ def setup_sample(f, analysis_type, google_report=False, no_only_run=False, ampli
 def remove_files(f, **kw):
     ## Remove old files if requested
     keep_files = ["-post_process.yaml$", "-post_process.yaml.bak$", "-bcbb-config.yaml$", "-bcbb-config.yaml.bak$",  "-bcbb-command.txt$", "-bcbb-command.txt.bak$", "_[0-9]+.fastq$", "_[0-9]+.fastq.gz$",
-                  "^[0-9][0-9]_.*.txt$", "JOBID"]
+                  "^[0-9][0-9]_.*.txt$", "JOBID", "PID"]
     pattern = "|".join(keep_files)
     def remove_filter_fn(f):
         return re.search(pattern, f) == None
