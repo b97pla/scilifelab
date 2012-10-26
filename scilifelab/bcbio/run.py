@@ -113,35 +113,19 @@ def setup_sample(f, analysis_type, google_report=False, no_only_run=False, ampli
     dry_unlink(f, kw['dry_run'])
     dry_write(f, yaml.dump(config), dry_run=kw['dry_run'])
 
-    ## setup bcbb-command if needed
-    cmdfile = f.replace("-bcbb-config.yaml", "-bcbb-command.txt")
-    with open(cmdfile) as fh:
-        cmd = fh.read()
-    cl = list(set(cmd.split()))
-    if not google_report:
-        if "-g" not in cl and "--no-google-report" not in cl:
-            cl.append("--no-google-report")
-    else:
-        if "-g" in cl:
-            cl.remove("-g")
-        if "--no-google-report" in cl:
-            cl.remove("--no-google-report")
-    if not no_only_run and "-r" not in cl or "--only-run" not in cl:
-        cl.append("--only-run")
-    else:
-        if "-r" in cl:
-            cl.remove("-r")
-        if "--only-run" in cl:
-            cl.remove("--only-run")
-
-    dry_unlink(cmdfile, dry_run=kw['dry_run'])
-    dry_write(cmdfile, " ".join(cl), dry_run=kw['dry_run'])
-
     ## Setup post process
     ppfile = f.replace("-bcbb-config.yaml", "-post_process.yaml")
     with open(ppfile) as fh:
         pp = yaml.load(fh)
 
+    ## Need to set working directory to path of bcbb-config.yaml file
+    if pp.get('distributed', {}).get('platform_args', None):
+        platform_args = pp['distributed']['platform_args'].split()
+        if "-D" in platform_args:
+            platform_args[platform_args.index("-D")+1] = os.path.dirname(f)
+        elif "--workdir" in platform_args:
+            platform_args[platform_args.index("--workdir")+1] = os.path.dirname(f)
+        pp['distributed']['platform_args'] = " ".join(platform_args)
     if kw['baits']:
         pp['custom_algorithms'][analysis_type]['hybrid_bait'] = kw['baits']
     if kw['targets']:
@@ -163,7 +147,7 @@ def setup_sample(f, analysis_type, google_report=False, no_only_run=False, ampli
 def remove_files(f, **kw):
     ## Remove old files if requested
     keep_files = ["-post_process.yaml$", "-post_process.yaml.bak$", "-bcbb-config.yaml$", "-bcbb-config.yaml.bak$",  "-bcbb-command.txt$", "-bcbb-command.txt.bak$", "_[0-9]+.fastq$", "_[0-9]+.fastq.gz$",
-                  "^[0-9][0-9]_.*.txt$"]
+                  "^[0-9][0-9]_.*.txt$", "JOBID", "PID"]
     pattern = "|".join(keep_files)
     def remove_filter_fn(f):
         return re.search(pattern, f) == None

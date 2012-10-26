@@ -43,12 +43,11 @@ class ProductionTest(PmFullTest):
         with open(pp) as fh:
             config = yaml.load(fh)
         platform_args = config["distributed"]["platform_args"].split()
-        platform_args[platform_args.index("-p") + 1] = "devel"
         platform_args[platform_args.index("-t") + 1] = "00:10:00"
         if not "--mail-user={}".format(os.getenv("MAILTO")) in platform_args:
             platform_args.extend(["--mail-user={}".format(os.getenv("MAILTO"))])
         if not "--mail-type=ALL" in platform_args:
-            platform_args.extend(["--mail-type=FAIL"])
+            platform_args.extend(["--mail-type=ALL"])
         config["distributed"]["platform_args"] = " ".join(platform_args)
         with open(pp, "w") as fh:
             fh.write(yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, width=1000))
@@ -102,7 +101,6 @@ class ProductionTest(PmFullTest):
             return re.search(pattern, f) != None
         fastq_files = filtered_walk(j_doe_00_03, fastq_filter)
         self.assertEqual(len(fastq_files), 2)
-        
         
 class UtilsTest(SciLifeTest):
     @classmethod
@@ -197,14 +195,14 @@ class UtilsTest(SciLifeTest):
                                'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'amplicon':True, 'num_cores':8, 'distributed':False})
             with open(f.replace("-bcbb-config.yaml", "-bcbb-command.txt")) as fh:
                 cl = fh.read().split()
-            cl = run_bcbb_command(f)
+            (cl, platform_args) = run_bcbb_command(f)
             self.assertIn("automated_initial_analysis.py",cl)
             setup_sample(f, **{'analysis_type':ANALYSIS_TYPE, 'genome_build':'rn4', 'dry_run':False,
                                'no_only_run':False, 'google_report':False, 'analysis_type':'Align_standard_seqcap',
                                'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'amplicon':True, 'num_cores':8, 'distributed':True})
             with open(f.replace("-bcbb-config.yaml", "-bcbb-command.txt")) as fh:
                 cl = fh.read().split()
-            cl = run_bcbb_command(f)
+            (cl, platform_args) = run_bcbb_command(f)
             self.assertIn("distributed_nextgen_pipeline.py",cl)
     
     @unittest.skipIf(not os.getenv("DRMAA_LIBRARY_PATH"), "not running UtilsTest.test_platform: no $DRMAA_LIBRARY_PATH")

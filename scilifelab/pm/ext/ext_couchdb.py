@@ -46,6 +46,9 @@ class CouchdbCommandHandler(command.CommandHandler):
     def command(self):
         pass
 
+    def monitor(self):
+        pass
+
     def connect(self, url, port="5984"):
         def runpipe():
             self._meta.url="http://{}:{}".format(url,port)

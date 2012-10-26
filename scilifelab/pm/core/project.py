@@ -157,10 +157,18 @@ class BcbioRunController(AbstractBaseController):
         description = 'Wrapper for bcbio analyses'
         arguments = [
             ## Also relies on the project argument from above
-            (['post_process'], dict(help="post process file", action="store", default=None, nargs="?", type=str)),
-            (['analysis_type'], dict(help="set analysis ", action="store", default=None, type=str, nargs="?")),
+            (['--post_process'], dict(help="post process file. Setting this will override sample-specific post process files. Currently not implemented.", action="store", default=None, nargs="?", type=str)),
             (['--genome_build'], dict(help="genome build ", action="store", default="hg19", type=str)),
             (['--only_failed'], dict(help="only run on failed samples ", action="store_true", default=False)),
+            (['--amplicon'], dict(help="amplicon-based analyses (e.g. HaloPlex), which means mark_duplicates is set to false", action="store_true", default=False)),
+            (['--targets'], dict(help="sequence capture target file", action="store", default=None)),
+            (['--baits'], dict(help="sequence capture baits file", action="store", default=None)),
+            (['--distributed'], dict(help="run distributed, changing 'num_cores' in  post_process to 'messaging': calls automated_initial_analysis.py", action="store_true", default=False)),
+            (['--num_cores'], dict(help="num_cores value; default 8", action="store", default=8, type=int)),
+            (['--only_setup'], dict(help="only perform setup", action="store_true", default=False)),
+            (['--restart'], dict(help="restart analysis", action="store_true", default=False)),
+            (['--analysis_type'], dict(help="set analysis type in bcbb config file", action="store", default="Align_standard_seqcap", type=str)),
+            (['--email'], dict(help="set user email address", action="store", default=None, type=str)),
             ]
         stacked_on = 'project'
 
@@ -173,85 +181,38 @@ class BcbioRunController(AbstractBaseController):
         else:
             return "FAIL"
 
-    @controller.expose(help="run automated initial analysis on samples in a project")
-    def old_run(self):
-        if not self._check_pargs(["project", "post_process", "analysis_type"]):
-            return
-        ## Gather sample yaml files
-        pattern = "-bcbb-config.yaml$"
-        flist = []
-        if self.pargs.sample:
-            if os.path.exists(self.pargs.sample):
-                with open(self.pargs.sample) as fh:
-                    flist = [x.rstrip() for x in fh.readlines()]
-            else:
-                pattern = "{}{}".format(self.pargs.sample, pattern)
-        def bcbb_yaml_filter(f):
-            return re.search(pattern, f) != None
-        if not flist:
-            flist = filtered_walk(os.path.join(self.app.controller._meta.project_root, self.pargs.project, "data"), bcbb_yaml_filter)
-        if self.pargs.only_failed:
-            status = {x:self._sample_status(x) for x in flist}
-            flist = [x for x in flist if self._sample_status(x)=="FAIL"]
-        if len(flist) == 0 and self.pargs.sample:
-            self.app.log.info("No such sample {}".format(self.pargs.sample))
-        if len(flist) > 0 and not query_yes_no("Going to start {} jobs... Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
-            return
-        for f in flist:
-            with open(f) as fh:
-                config = yaml.load(fh)
-            if self.pargs.analysis_type:
-                config["details"][0]["multiplex"][0]["analysis"] = self.pargs.analysis_type
-                config["details"][0]["analysis"] = self.pargs.analysis_type
-            if config["details"][0]["genome_build"] == 'unknown':
-                config["details"][0]["genome_build"] = self.pargs.genome_build
-            ## Check if files exist: if they don't, then change the suffix
-            config["details"][0]["multiplex"][0]["files"].sort()
-            if not os.path.exists(config["details"][0]["multiplex"][0]["files"][0]):
-                if os.path.splitext(config["details"][0]["multiplex"][0]["files"][0])[1] == ".gz":
-                    config["details"][0]["multiplex"][0]["files"] = [x.replace(".gz", "") for x in config["details"][0]["multiplex"][0]["files"]]
-                else:
-                    config["details"][0]["multiplex"][0]["files"] = ["{}.gz".format(x) for x in config["details"][0]["multiplex"][0]["files"]]
-            config_file = f.replace("-bcbb-config.yaml", "-pm-bcbb-analysis-config.yaml")
-            self.app.cmd.write(config_file, yaml.dump(config))
-            ## Run automated_initial_analysis.py
-            cur_dir = os.getcwd()
-            new_dir = os.path.abspath(os.path.dirname(f))
-            os.chdir(new_dir)
-            self.app.cmd.command(['automated_initial_analysis.py', os.path.abspath(self.pargs.post_process), new_dir, config_file])
-            os.chdir(cur_dir)
-
-
     ## FIXME: for now this is an exact copy of production.run. Since
     ## this is a function related to bcbio, it should be put in an
     ## extension ext_bcbio.py. Problem is: how can a controller be
     ## stacked on two other controllers, namely production and
     ## project?
-    @controller.expose(help="run bcbb pipeline")
+    @controller.expose(help="Run bcbb pipeline")
     def run(self):
         if not self._check_pargs(["project"]):
             return
-        flist = find_samples(os.path.abspath(os.path.join(self._meta.root_path, self._meta.path_id)), **vars(self.pargs))
+        flist = find_samples(os.path.abspath(os.path.join(self.app.controller._meta.project_root, self.app.controller._meta.path_id)), **vars(self.pargs))
         if len(flist) > 0 and not query_yes_no("Going to start {} jobs... Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
             return
         orig_dir = os.path.abspath(os.getcwd())
-        for f in flist:
-            os.chdir(os.path.abspath(os.path.dirname(f)))
-            setup_sample(f, **vars(self.pargs))
+        for run_info in flist:
+            os.chdir(os.path.abspath(os.path.dirname(run_info)))
+            setup_sample(run_info, **vars(self.pargs))
             os.chdir(orig_dir)
         if self.pargs.only_setup:
             return
+        if self.pargs.only_failed:
+            status = {x:self._sample_status(x) for x in flist}
+            flist = [x for x in flist if self._sample_status(x)=="FAIL"]
         ## Here process files again, removing if requested, and running the pipeline
-        for f in flist:
-            self.app.log.info("Running analysis defined by config file {}".format(f))
-            os.chdir(os.path.abspath(os.path.dirname(f)))
+        for run_info in flist:
+            self.app.log.info("Running analysis defined by config file {}".format(run_info))
+            os.chdir(os.path.abspath(os.path.dirname(run_info)))
+            if self.app.cmd.monitor(work_dir=os.path.dirname(run_info)):
+                self.app.log.warn("Not running job")
+                continue
             if self.pargs.restart:
-                self.app.log.info("Removing old analysis files in {}".format(os.path.dirname(f)))
-                remove_files(f, **vars(self.pargs))
-            else:
-                ## Find jobid if present in slurm and kill
-                self.app.log.warn("pm production run not yet implemented")
-                return
-            cl = run_bcbb_command(f, **vars(self.pargs))
-            self.app.cmd.command(cl)
+                self.app.log.info("Removing old analysis files in {}".format(os.path.dirname(run_info)))
+                remove_files(run_info, **vars(self.pargs))
+            (cl, platform_args) = run_bcbb_command(run_info, **vars(self.pargs))
+            self.app.cmd.command(cl, **{'platform_args':platform_args, 'saveJobId':True})
             os.chdir(orig_dir)
