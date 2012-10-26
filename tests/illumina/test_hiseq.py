@@ -17,7 +17,7 @@ class TestHiSeqRun(unittest.TestCase):
         
     def tearDown(self):
         shutil.rmtree(self.rootdir)
-    
+      
     def test_parse_samplesheet(self):
         """Write and parse a csv-file
         """

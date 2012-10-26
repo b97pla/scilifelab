@@ -4,6 +4,23 @@ A module for handling the files and directories from an illumina run
 
 import os
 import glob
+from scilifelab.illumina.index_definitions import BASIC_LOOKUP
+from scilifelab.utils.string import hamming_distance
+ 
+def map_index_name(index, mismatch=0):
+    """Map the index sequences to the known names, if possible. Requires the samplesheet module.
+    """
+    
+    names = []
+    for name, sequence in BASIC_LOOKUP.items():
+        try:
+            if index != sequence and hamming_distance(index,sequence) > mismatch:
+                continue
+            names.append(name)
+        except:
+            pass
+        
+    return names
 
 class IlluminaRun():
     

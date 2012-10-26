@@ -9,7 +9,7 @@ import bcbio.utils as utils
 import tests.generate_test_data as td
 import scilifelab.illumina as illumina
 from scilifelab.illumina import IlluminaRun
-  
+from scilifelab.illumina import map_index_name
         
 class TestIlluminaRun(unittest.TestCase):
     
@@ -18,7 +18,19 @@ class TestIlluminaRun(unittest.TestCase):
         
     def tearDown(self):
         shutil.rmtree(self.rootdir)
-    
+
+    def test_map_index_name(self):
+        """Map index sequences to names
+        """
+        
+        # Some test cases
+        from scilifelab.illumina.index_definitions import BASIC_LOOKUP
+        random_keys = [BASIC_LOOKUP.keys()[random.randint(0,len(BASIC_LOOKUP.keys())-1)] for n in xrange(25)]
+        
+        for name in random_keys:
+            self.assertIn(name,map_index_name(BASIC_LOOKUP[name],0),
+                          "Exact mapping did not return expected index name")
+      
     def test_get_flowcell(self):
         """Get flowcell from analysis directory
         """
