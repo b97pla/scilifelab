@@ -133,7 +133,7 @@ class DistributedCommandHandler(command.CommandHandler):
             jt.outputPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.relpath(job_args['outputPath'], os.getenv("HOME")))
             jt.workingDirectory = drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.relpath(job_args['workingDirectory'], os.getenv("HOME"))
             jt.jobName = job_args['jobname']
-            jt.nativeSpecification = "-t {time} -p {partition} -A {account}".format(**job_args)
+            jt.nativeSpecification = "-t {time} -p {partition} -A {account} {extra}".format(**job_args)
             if kw.get('email', None):
                 jt.email=[kw.get('email')]
             self.app.log.info("Submitting job with native specification {}".format(jt.nativeSpecification))
@@ -177,6 +177,9 @@ def make_job_template_args(opt_d, **kw):
     job_args['outputPath'] = kw.get('outputPath', None) or opt_d.get('-o', os.curdir)
     job_args['workingDirectory'] = kw.get('workingDirectory', None) or opt_d.get('-D', None) 
     job_args['email'] = kw.get('email', None) or opt_d.get('--mail-user', None) 
+    invalid_keys = ["--mail-user", "--mail-type", "-o", "--output", "-D", "--workdir", "-J", "--job-name", "-p", "--partition", "-t", "--time", "-A", "--account"]
+    extra_keys = [x for x in d.keys() if x not in invalid_keys]
+    job_args['extra'] = " ".join(["{}={}".format(x, d[x]) if x.startswith("--") else "{} {}".format(x, d[x]) for x in extra_keys])
     return job_args
 
 def add_drmaa_option(app):
