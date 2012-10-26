@@ -167,8 +167,6 @@ class BcbioRunController(AbstractBaseController):
             (['--num_cores'], dict(help="num_cores value; default 8", action="store", default=8, type=int)),
             (['--only_setup'], dict(help="only perform setup", action="store_true", default=False)),
             (['--restart'], dict(help="restart analysis", action="store_true", default=False)),
-            (['--no_only_run'], dict(help="run_bcbb parameter: don't setup", action="store_true", default=False)),
-            (['--google_report'], dict(help="make a google report (default False)", action="store_false", default=True)),
             (['--analysis_type'], dict(help="set analysis type in bcbb config file", action="store", default="Align_standard_seqcap", type=str)),
             (['--email'], dict(help="set user email address", action="store", default=None, type=str)),
             ]

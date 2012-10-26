@@ -113,30 +113,6 @@ def setup_sample(f, analysis_type, google_report=False, no_only_run=False, ampli
     dry_unlink(f, kw['dry_run'])
     dry_write(f, yaml.dump(config), dry_run=kw['dry_run'])
 
-    ## setup bcbb-command if needed
-    cmdfile = f.replace("-bcbb-config.yaml", "-bcbb-command.txt")
-    with open(cmdfile) as fh:
-        cmd = fh.read()
-    cl = list(set(cmd.split()))
-    if not google_report:
-        if "-g" not in cl and "--no-google-report" not in cl:
-            cl.append("--no-google-report")
-    else:
-        if "-g" in cl:
-            cl.remove("-g")
-        if "--no-google-report" in cl:
-            cl.remove("--no-google-report")
-    if not no_only_run and "-r" not in cl or "--only-run" not in cl:
-        cl.append("--only-run")
-    else:
-        if "-r" in cl:
-            cl.remove("-r")
-        if "--only-run" in cl:
-            cl.remove("--only-run")
-
-    dry_unlink(cmdfile, dry_run=kw['dry_run'])
-    dry_write(cmdfile, " ".join(cl), dry_run=kw['dry_run'])
-
     ## Setup post process
     ppfile = f.replace("-bcbb-config.yaml", "-post_process.yaml")
     with open(ppfile) as fh:

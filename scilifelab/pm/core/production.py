@@ -35,8 +35,6 @@ class ProductionController(AbstractExtendedBaseController):
             (['--only_failed'], dict(help="only run on failed samples ", action="store_true", default=False)),
             (['--only_setup'], dict(help="only perform setup", action="store_true", default=False)),
             (['--restart'], dict(help="restart analysis", action="store_true", default=False)),
-            (['--no_only_run'], dict(help="run_bcbb parameter: don't setup", action="store_true", default=False)),
-            (['--google_report'], dict(help="make a google report (default False)", action="store_false", default=True)),
             (['--distributed'], dict(help="run distributed, changing 'num_cores' in  post_process to 'messaging': calls automated_initial_analysis.py", action="store_true", default=False)),
             (['--num_cores'], dict(help="num_cores value; default 8", action="store", default=8, type=int)),
             (['--amplicon'], dict(help="amplicon-based analyses (e.g. HaloPlex), which means mark_duplicates is set to false", action="store_true", default=False)),
