@@ -142,6 +142,14 @@ def setup_sample(f, analysis_type, google_report=False, no_only_run=False, ampli
     with open(ppfile) as fh:
         pp = yaml.load(fh)
 
+    ## Need to set working directory to path of bcbb-config.yaml file
+    if pp.get('distributed', {}).get('platform_args', None):
+        platform_args = pp['distributed']['platform_args'].split()
+        if "-D" in platform_args:
+            platform_args[platform_args.index("-D")+1] = os.path.dirname(f)
+        elif "--workdir" in platform_args:
+            platform_args[platform_args.index("--workdir")+1] = os.path.dirname(f)
+        pp['distributed']['platform_args'] = " ".join(platform_args)
     if kw['baits']:
         pp['custom_algorithms'][analysis_type]['hybrid_bait'] = kw['baits']
     if kw['targets']:

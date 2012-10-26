@@ -9,7 +9,7 @@ def cmd_interface_validator(cls, obj):
     members = [
         '_setup',
         'command',
-        '_monitor',
+        'monitor',
         ]
     interface.validate(ICommand, obj, members)
 
@@ -36,7 +36,7 @@ class ICommand(interface.Interface):
                                 
         """
 
-    def _monitor(work_dir, idfile=None):
+    def monitor(work_dir, idfile=None):
         """
         Check for process/job id file.
         

@@ -54,14 +54,14 @@ class DistributedCommandHandler(command.CommandHandler):
             return False
         return True
 
-    def _save_job_id(self, **job_args):
+    def _save_job_id(self, idfile="JOBID", **job_args):
         """Save jobid to file in working directory"""
-        JOBIDFILE = os.path.join(job_args['workingDirectory'], "JOBID")
+        JOBIDFILE = os.path.join(job_args['workingDirectory'], idfile)
         with open(JOBIDFILE, "w") as fh:
             self.app.log.info("Saving jobid {} to file {}".format(self._meta.jobid, JOBIDFILE))
             fh.write(self._meta.jobid)
 
-    def _monitor(self, work_dir, idfile="JOBID"):
+    def monitor(self, work_dir, idfile="JOBID"):
         """Check for existing job"""
         return self._monitor_job(idfile, **{'workingDirectory':work_dir})
 
@@ -134,6 +134,8 @@ class DistributedCommandHandler(command.CommandHandler):
             jt.workingDirectory = drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.relpath(job_args['workingDirectory'], os.getenv("HOME"))
             jt.jobName = job_args['jobname']
             jt.nativeSpecification = "-t {time} -p {partition} -A {account}".format(**job_args)
+            if kw.get('email', None):
+                jt.email=[kw.get('email')]
             self.app.log.info("Submitting job with native specification {}".format(jt.nativeSpecification))
             self._meta.jobid = s.runJob(jt)
             self.app.log.info('Your job has been submitted with id ' + self._meta.jobid)
@@ -174,6 +176,7 @@ def make_job_template_args(opt_d, **kw):
     job_args['account'] = kw.get('account', None) or opt_d.get('-A', None) or  opt_d.get('--account', None)
     job_args['outputPath'] = kw.get('outputPath', None) or opt_d.get('-o', os.curdir)
     job_args['workingDirectory'] = kw.get('workingDirectory', None) or opt_d.get('-D', None) 
+    job_args['email'] = kw.get('email', None) or opt_d.get('--mail-user', None) 
     return job_args
 
 def add_drmaa_option(app):
