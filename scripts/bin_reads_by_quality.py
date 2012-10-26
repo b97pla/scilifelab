@@ -51,9 +51,9 @@ def process_fastq(fastq_r1, fastq_r2, bins, phred_offset, casava17):
         r1h = r1[0].split()
         r2h = r2[0].split()
         if not casava17:
-            assert r2h[0] == r1h[0] and r2h[1][1:] == r1h[1][1:], "FATAL: Read identifiers differ for paired reads (%s and %s)" % (r1[0],r2[0])
+            assert r2h[0] == r1h[0] and r2h[1][1:] == r1h[1][1:], "FATAL: Read identifiers differ for paired reads ({:s} and {:s})".format(r1[0],r2[0])
         else:
-            assert r2h[0:-1] == r1h[0:-1], "FATAL: Read identifiers differ for paired reads (%s and %s)" % (r1[0],r2[0])
+            assert r2h[0:-1] == r1h[0:-1], "FATAL: Read identifiers differ for paired reads ({:s} and {:s})".format(r1[0],r2[0])
             
         bin = min(int(round(fastq_utils.avgQ(r1,phred_offset))),int(round(fastq_utils.avgQ(r2,phred_offset))))
         
