@@ -4,6 +4,7 @@ import os
 import sys
 import drmaa
 import itertools
+import argparse
 
 from cement.core import backend, handler, hook
 
@@ -133,7 +134,7 @@ class DistributedCommandHandler(command.CommandHandler):
             jt.outputPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.relpath(job_args['outputPath'], os.getenv("HOME")))
             jt.workingDirectory = drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.relpath(job_args['workingDirectory'], os.getenv("HOME"))
             jt.jobName = job_args['jobname']
-            jt.nativeSpecification = "-t {time} -p {partition} -A {account}".format(**job_args)
+            jt.nativeSpecification = "-t {time} -p {partition} -A {account} {extra}".format(**job_args)
             if kw.get('email', None):
                 jt.email=[kw.get('email')]
             self.app.log.info("Submitting job with native specification {}".format(jt.nativeSpecification))
@@ -177,6 +178,11 @@ def make_job_template_args(opt_d, **kw):
     job_args['outputPath'] = kw.get('outputPath', None) or opt_d.get('-o', os.curdir)
     job_args['workingDirectory'] = kw.get('workingDirectory', None) or opt_d.get('-D', None) 
     job_args['email'] = kw.get('email', None) or opt_d.get('--mail-user', None) 
+    invalid_keys = ["--mail-user", "--mail-type", "-o", "--output", "-D", "--workdir", "-J", "--job-name", "-p", "--partition", "-t", "--time", "-A", "--account"]
+    extra_keys = [x for x in opt_d.keys() if x not in invalid_keys]
+    extra_args = " ".join(["{}={}".format(x, opt_d[x]) if x.startswith("--") else "{} {}".format(x, opt_d[x]) for x in extra_keys])
+    job_args['extra'] = kw.get('extra_args', None) or extra_args
+    job_args['extra'] = " ".join(job_args['extra'])
     return job_args
 
 def add_drmaa_option(app):
@@ -205,6 +211,8 @@ def add_shared_distributed_options(app):
                           action='store', help='time limit', default=None)
     group.add_argument('--partition', type=str,
                           action='store', help='partition (node, core or devel)', default=None)
+    group.add_argument('--extra_args', type=str,  nargs=argparse.REMAINDER,
+                          action='store', help='extra arguments to pass to drmaa native specification. NOTE: must be supplied last since it uses remaining part of argument list', default=None)
     group.add_argument('--max_node_jobs', type=int, default=10,
                           action='store', help='maximum number of node jobs (default 10)')
 
