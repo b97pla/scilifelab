@@ -4,6 +4,7 @@ import os
 import sys
 import drmaa
 import itertools
+import argparse
 
 from cement.core import backend, handler, hook
 
@@ -178,8 +179,10 @@ def make_job_template_args(opt_d, **kw):
     job_args['workingDirectory'] = kw.get('workingDirectory', None) or opt_d.get('-D', None) 
     job_args['email'] = kw.get('email', None) or opt_d.get('--mail-user', None) 
     invalid_keys = ["--mail-user", "--mail-type", "-o", "--output", "-D", "--workdir", "-J", "--job-name", "-p", "--partition", "-t", "--time", "-A", "--account"]
-    extra_keys = [x for x in d.keys() if x not in invalid_keys]
-    job_args['extra'] = " ".join(["{}={}".format(x, d[x]) if x.startswith("--") else "{} {}".format(x, d[x]) for x in extra_keys])
+    extra_keys = [x for x in opt_d.keys() if x not in invalid_keys]
+    extra_args = " ".join(["{}={}".format(x, opt_d[x]) if x.startswith("--") else "{} {}".format(x, opt_d[x]) for x in extra_keys])
+    job_args['extra'] = kw.get('extra_args', None) or extra_args
+    job_args['extra'] = " ".join(job_args['extra'])
     return job_args
 
 def add_drmaa_option(app):
@@ -208,6 +211,8 @@ def add_shared_distributed_options(app):
                           action='store', help='time limit', default=None)
     group.add_argument('--partition', type=str,
                           action='store', help='partition (node, core or devel)', default=None)
+    group.add_argument('--extra_args', type=str,  nargs=argparse.REMAINDER,
+                          action='store', help='extra arguments to pass to drmaa native specification. NOTE: must be supplied last since it uses remaining part of argument list', default=None)
     group.add_argument('--max_node_jobs', type=int, default=10,
                           action='store', help='maximum number of node jobs (default 10)')
 
