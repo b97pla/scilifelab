@@ -164,8 +164,6 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
     
     # Copy the basecall stats directory 
     _copy_basecall_stats(os.path.join(fc_dir_structure['fc_dir'],fc_dir_structure['basecall_stats_dir']), analysis_dir)
-    # Copy the undetermined indexes files
-    copy_undetermined_index_files(os.path.join(fc_dir_structure['fc_dir'],fc_dir_structure['data_dir']), analysis_dir)
     
     # Parse the custom_config_file
     custom_config = []
