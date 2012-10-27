@@ -9,12 +9,21 @@ import glob
 import copy
 from cStringIO import StringIO
 from scilifelab.utils.misc import filtered_walk
+from scilifelab.log import minimal_logger
+
+LOG = minimal_logger(__name__)
 
 ## FIX ME: what should be returned from object functions, and what
 ## should be done behind the scenes?
 
 ## FIX ME: make generic flowcell object, that then Illumina, MiSeq,
 ## SOLiD subclass from
+
+## FIX ME: the representation of flowcells and samples is still
+## cumbersome. One solution would be to use DataFrame from pandas. For
+## casava structure, grouping/collection of files should be done on a
+## sample-level basis, making the flowcell object slightly obsolete in
+## these cases.
 
 class Flowcell(object):
     """Class for handling (Illumina) run information.
@@ -36,6 +45,8 @@ class Flowcell(object):
     samples = dict()
     ## lane files
     lane_files = dict()
+    ## results
+    results = list()
     
     # keys to be printed for yaml output
     _out_yaml_keys = dict(lane= ['lane', 'lane_description', 'flowcell_id', 'lane_analysis', 'genome_build'],
@@ -142,7 +153,7 @@ class Flowcell(object):
         self.samples = {}
         for row in self.data:
             d = dict(zip(self.keys, row))
-            key = "{}_{}".format(d['lane'], d['barcode_id'])
+            key = "{}_{}".format(d['lane'], d['sequence'])
             self.samples[key] = i
             i += 1
             
@@ -213,6 +224,9 @@ class Flowcell(object):
         i = self.keys.index(label)
         return [row[i] for row in self.data if not row[i] is None]
 
+    def _row(self, i):
+        return self.data[i]
+
     def projects(self):
         """List flowcell projects"""
         return list(set(self._column("sample_prj")))
@@ -244,13 +258,17 @@ class Flowcell(object):
         """Map barcode name to id"""
         return dict(zip(self.names(lane), self.barcodes(lane)))
 
-    def barcode_sequence_to_id(self, lane):
-        """Map barcode sequence to id"""
+    def barcode_sequence_to_name(self, lane):
+        """Map barcode sequence to name"""
         return dict(zip(self.barcode_sequences(lane), self.names(lane)))
 
     def barcode_name_to_sequence(self, lane):
         """Map barcode name to sequence"""
         return dict(zip(self.names(lane), self.barcode_sequences(lane)))
+
+    def barcode_id_to_sequence(self, lane):
+        """Map barcode id to sequence"""
+        return dict(zip(self.barcodes(lane), self.barcode_sequences(lane)))
 
     def fc_with_unique_lanes(self):
         """Transform flowcell to one with unique lane numbers"""
@@ -315,8 +333,8 @@ class Flowcell(object):
             pattern = "{}_[0-9]+_.?{}(_nophix)?_{}*{}".format(sample['lane'], sample['flowcell_id'], sample['barcode_id'], ext)
             glob_pfx.append(pattern)
             # Catch sample files for casava
-            glob_pfx.append("^{}-.*\.*")
-        # Catch pipeline output
+            glob_pfx.append("^{}[_\-].*\.*".format(sample['name']))
+        # Catch pipeline output - these files are currently not processed
         glob_pfx.append("^[0-1][0-9].*\.txt")
         glob_pfx.append("^bcbb_software_versions\.txt")
         return glob_pfx
@@ -345,10 +363,18 @@ class Flowcell(object):
     # 1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics
     # 1_120829_AA001AAAXX_nophix_1-sort-dup.insert_metrics
     # 1_120829_AA001AAAXX_nophix_1-sort.bam
+    # Casava files
+    # P003_101_index6_CGTTAA_L004_R2_001.fastq
+    # 09_realign_sample.txt
+    # P003_101_index6-bcbb-command.txt
     def classify_file(self, f):
-        """Classify file by lane and sample.
+        """Classify file by lane and sample. Generate unique keys from
+        lane and barcode sequence. Updates flowcell object during file
+        classification.
 
-        FIXME: does not work with casava folder and sample naming structure
+        :param f: file name
+        
+        :returns: None
         """
         re_lane = re.compile('^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?\.(filter|bc)_metrics|^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_[12]_fastq.txt')
         m_lane = re_lane.search(os.path.basename(f))
@@ -362,22 +388,40 @@ class Flowcell(object):
         if m_sample:
             lane = m_sample.group(1)
             sample = m_sample.group(3)
-            key = "{}_{}".format(lane, sample)
+            sequence = self.barcode_id_to_sequence(lane).get(int(sample), None)
+            key = "{}_{}".format(lane, sequence)
             if sample == "unmatched":
                 self.lane_files[lane].append(os.path.abspath(f))
                 return
             if f.find("fastq.txt") > 0:
                 self.append_to_entry(key, "files", os.path.abspath(f))
+                return
             else:
                 self.append_to_entry(key, "results", os.path.abspath(f))
-        else:
-            return 
+                return
+
+        names = self._column("name")
+        pattern = "|".join("^({}).*".format(x) for x in names)
+        re_casava_sample = re.compile(pattern)
+        m_casava_sample = re_casava_sample.search(os.path.basename(f))
+        if m_casava_sample:
+            row = self._row(names.index(m_casava_sample.group(1)))
+            key = "{}_{}".format(row[0], row[10])
+            if re.search("fastq(\.gz)?$", f):
+                LOG.debug("Adding sequence file {} to files, key {}".format(f, key))
+                self.append_to_entry(key, "files", os.path.abspath(f))
+                return
+            else:
+                LOG.debug("Adding file {} to results, key {}".format(f, key))
+                self.append_to_entry(key, "results", os.path.abspath(f))
+                return
         return
 
     def collect_files(self, path, project=None):
         """Collect files for a given project.
 
-        FIXME: does not work entirely for casava-like folder structure"""
+        :param path: path to search in 
+        """
         if project:
             fc = self.subset("sample_prj", project)
         else:
