@@ -18,29 +18,36 @@ class FastQParser:
         else:
             self._fh = fh
         self._records_read = 0
+        self._next = setup_next()
         
     def __iter__(self):
         return self
     
     def next(self):
+        return self._next(self)
+
+    def setup_next(self):
+        """Return the function to return the next record
+        """
         if self.filter is None or len(self.filter.keys()) == 0:
-            return self._next()
-        while True:
-            record = self._next()
-            header = parse_header(record[0])
-            skip = False
-            for k, v in self.filter.items():
-                if k in header and header[k] not in v:
-                    skip = True
-                    break
-            if not skip:
-                return record 
-            self._records_read -= 1
-        
-    def _next(self):
-        self._records_read += 1
-        return [self._fh.next().strip() for n in range(4)]
-        
+            def _next(self):
+                self._records_read += 1
+                return [self._fh.next().strip() for n in range(4)]
+        else:
+            def _next(self):
+                while True:
+                    record = [self._fh.next().strip() for n in range(4)]
+                    header = parse_header(record[0])
+                    skip = False
+                    for k, v in self.filter.items():
+                        if k in header and header[k] not in v:
+                            skip = True
+                            break
+                    if not skip:
+                        self._records_read += 1
+                        return record 
+        return _next
+    
     def name(self):
         return self.fname
     
@@ -152,10 +159,14 @@ def parse_header(header):
             'control_number': int(control_number),
             'index': str(index)} # Note that MiSeq Reporter outputs a SampleSheet index rather than the index sequence
 
-def is_read_pair(rec1, rec2):
+def is_read_pair(rec1, rec2, casava18=True):
     """Returns true if the two records belong to the same read pair, determined by matching the header strings and disregarding
        the read field
     """
+    # Handle pre-casava1.8 headers
+    if not casava18:
+        return (rec1[0][0:-1] == rec2[0][0:-1])
+    
     r1 = rec1[0].split(' ')
     r2 = rec2[0].split(' ')
     return (len(r1) == 2 and len(r2) == 2 and r1[0] == r2[0] and r1[1][1:] == r2[1][1:])
