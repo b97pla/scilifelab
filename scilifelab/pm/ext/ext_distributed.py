@@ -113,7 +113,7 @@ class DistributedCommandHandler(command.CommandHandler):
         if not self._check_args(**kw):
             self.app.log.warn("missing argument; cannot proceed with drmaa command. Make sure you provide time, account, partition, and jobname")
             return
-        if kw['platform_args']:
+        if kw.get('platform_args', None):
             platform_args = opt_to_dict(kw['platform_args'])
         else:
             platform_args = opt_to_dict([])
