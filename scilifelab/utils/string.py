@@ -12,6 +12,13 @@ def replace_ascii(str):
     str = str.replace(u'\xf6','o') 
     return str.encode('ascii','replace')
 
+def hamming_distance(s1, s2):
+    """Calculate the Hamming distance between two strings of equal lengths.
+    Raise ValueError if strings are of unequal length.
+    """
+    if len(s1) != len(s2): raise ValueError('strings of unequal length')
+    return sum(ch1 != ch2 for ch1, ch2 in zip(s1, s2))    
+
 def strip_extensions(fn, ext=[]):
     """Strip extensions from a filename.
 
@@ -27,4 +34,3 @@ def strip_extensions(fn, ext=[]):
     if not m:
         return (fn, None)
     return (fn.replace(m.group(1), ""), m.group(1))
-
