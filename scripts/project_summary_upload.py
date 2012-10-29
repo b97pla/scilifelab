@@ -47,15 +47,11 @@ import couchdb
 
 def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_file):
 
-	logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
-			    filename='proj_coucdb.log', level=logging.INFO)
-
 	project_name = _replace_ascii(_to_unicode(project_name_swe))
 	key = find_proj_from_view(proj_db, project_name)
 	if not key: key = uuid4().hex
 
-        logging.info(str('Handling proj ' + project_name + ' ' + key))
-        print key
+        logger.info('Handling proj %s %s' % (project_name, key))
 
         obj={'application': '',
 	     'customer_reference': '',
@@ -69,15 +65,14 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 
 
 	### Get minimal #M reads and uppnexid from Genomics Project list
-	print '\nGetting minimal #M reads and uppnexid from Genomics Project list for project ' + project_name_swe
+	logger.debug('Getting minimal #M reads and uppnexid from Genomics Project list for project %s' % project_name_swe)
 
 	config = cl.load_config(config_file)
 	p = pm.ProjectMetaData(project_name, config)
 	if p.project_name is None:
 		p = pm.ProjectMetaData(project_name_swe, config)
 	if p.project_name is None:
-		print project_name + ' not found in genomics project list'
-		logging.warning(str('Google Document Genomics Project list: ' + project_name + ' not found')) 
+		logger.warning('Google Document Genomics Project list: %s not found' % project_name) 
 	else:
 		if p.min_reads_per_sample.strip() != '':
                 	obj['min_m_reads_per_sample_ordered'] = float(p.min_reads_per_sample)
@@ -89,7 +84,7 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 
 
 	### 20132
-	print '\nTrying to find Scilife Sample names from table 20132'
+	logger.debug('Trying to find Scilife Sample names from table 20132')
 
        	versions = {"01": ["Data", 'Sample name Scilife (Index included)'],
 		    "02": ["Sheet1", 'Sample name Scilife'],
@@ -101,16 +96,15 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 	feed = bcbio.google.spreadsheet.get_spreadsheets_feed(client, project_name_swe + '_20132', False)
 	if len(feed.entry) == 0:
     		ssheet = None
-		logging.warning("Google Document %s: Could not find spreadsheet" % str(project_name_swe + '_20132_XXX'))
-		print "Could not find spreadsheet" 
+		logger.warning("Could not find spreadsheet 20132 for %s" % project_name_swe)
 	else:
     		ssheet = feed.entry[0].title.text
   		version	= ssheet.split('_20132_')[1].split(' ')[0].split('_')[0]
 		wsheet = versions[version][0]
 		header = versions[version][1]
 		content, ws_key, ss_key = get_google_document(ssheet, wsheet, credentials_file)
-		print "Document found"
-		print ssheet	
+		logger.debug("Document found")
+		logger.debug(ssheet)	
 
 	# Get Scilife Sample names
 	try:    
@@ -127,7 +121,7 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 				except:
 					pass
 
-		print 'Names found'
+		logger.debug('Names found')
                 scilife_names,preps = strip_scilife_name(info.keys())
                 for key in scilife_names:
                         scilife_name = scilife_names[key]
@@ -141,11 +135,11 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 			except:
 				pass
         except:
-		print 'Names not found'
+		logger.debug('Names not found')
                 pass
 
 	### 20158
-	print '\nGetting Sample Status from table 20158'
+	logger.debug('Getting Sample Status from table 20158')
 
         versions = {"01": ['Sample name Scilife', "Total reads per sample", 
 			"Passed=P/ not passed=NP*", 'Sample name from customer'],
@@ -156,7 +150,7 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 
         # Load google document
 	mistakes = ["_", " _", " ", ""]
-	found = 'FALSE'
+	found = FALSE
 	for m in mistakes:
 		feed = bcbio.google.spreadsheet.get_spreadsheets_feed(client, project_name_swe + m + '20158', False)
         	if len(feed.entry) != 0:
@@ -164,20 +158,18 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 				ssheet = feed.entry[0].title.text
 				version = ssheet.split(str(m + '20158_'))[1].split(' ')[0].split('_')[0]	
 				content, ws_key, ss_key = get_google_document(ssheet, "Sheet1", credentials_file)
-				found = 'TRUE'
+				found = TRUE
 				break
                 	except:
 				pass
-	if found == 'TRUE':
-		print 'Google document found!'
-		print ssheet
+	if found:
+		logger.debug('Google document found')
+		logger.debug(ssheet)
 	else:
-		print 'Google document NOT found!'
-		logging.warning("Google Document %s: Could not find spreadsheet" % str(project_name_swe + '_20158_XXX'))
+		logger.warning("Could not find spreadsheet 20158 for %s" % project_name_swe)
 
 	# Get status etc from loaded document
-	if 'y'=='y':
-#	try:
+	try:
 		dummy, P_NP_colindex = get_column(content, versions[version][2])
 		dummy, No_reads_sequenced_colindex = get_column(content, versions[version][1])
 		dummy, customer_names_colindex = get_column(content, versions[version][3])
@@ -202,34 +194,28 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 			cust_name = info[key][2]
 			prep = preps[key]
 			incoming_QC_status = 'F' if 'F' in prep else 'P'
-			if 'u'=='u':
-#			try:
-                		if obj['samples'].has_key(striped_scilife_name):
-                        		obj['samples'][striped_scilife_name]['status'] = status
-                        	        obj['samples'][striped_scilife_name]['m_reads_sequenced'] = m_reads
-				else:
-					obj['samples'][striped_scilife_name] = {'customer_name': cust_name, 
-										'scilife_name': striped_scilife_name,
-										'status': status,
-										'm_reads_sequenced': m_reads,
-                                                                		'incoming_QC_status': incoming_QC_status}
-#			except:
-#				pass
+                	if obj['samples'].has_key(striped_scilife_name):
+                        	obj['samples'][striped_scilife_name]['status'] = status
+                                obj['samples'][striped_scilife_name]['m_reads_sequenced'] = m_reads
+			else:
+				obj['samples'][striped_scilife_name] = {'customer_name': cust_name, 
+									'scilife_name': striped_scilife_name,
+									'status': status,
+									'm_reads_sequenced': m_reads,
+                                                               		'incoming_QC_status': incoming_QC_status}
 			
-#        except:
-#                pass
+        except:
+                pass
 
 
         ### Get _id for sample_run_metrics 
-        print '\nGetting _id for sample_run_metrics'
-
+        logger.debug('Getting _id for sample_run_metrics')
         info = find_samp_from_view(samp_db, project_name)
 
         if len(info.keys()) > 0:
-                print 'sample_run_metrics found on couchdb for project ' + project_name
+                logger.debug('sample_run_metrics found on couchdb for project %s' % project_name)
         else:
-                print 'no sample_run_metrics found on couchdb for project ' + project_name
-                logging.warning(str('CouchDB: No sample_run_metrics found for project ' + project_name))
+                logger.warning('No sample_run_metrics found for project %s' % project_name)
         for key in info:
                 sci_name_raw = info[key][1]
                 scilife_name, preps = strip_scilife_name([sci_name_raw])
@@ -245,27 +231,27 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 				obj['samples'][scilife_name]["library_prep"]={prep:{"sample_run_metrics":{info[key][0]:key}}}
 
         ### 20135
-        print '\nGetting average read length from table 20135'
+        logger.debug('Getting average read length from table 20135')
 
 	versions = {"04": ['SciLifeLab ID','Prep version (A, B etc)','Average size (bp)'],
 	            "05": ['SciLifeLab ID','Prep version (A, B etc)','Average size (bp)'],
 	            "06": ['SciLifeLab ID','Prep version (A, B etc)','Average size (bp)']}
 	mistakes = ["_","_ ", " _", " ", ""]
-	found = 'FALSE'
+	found = FALSE
 
 	for m in mistakes:
 	        feed = bcbio.google.spreadsheet.get_spreadsheets_feed(client, project_name_swe + m + '20135', False)
 	        if len(feed.entry) != 0:
 	                ssheet = feed.entry[0].title.text
-	                version = ssheet.split('20135')[1].replace('_',' ').lstrip(' ').split(' ')[0]
+			version = ssheet.split('20135')[1].replace('_',' ').lstrip(' ').split(' ')[0]
 	                content, ws_key, ss_key = get_google_document(ssheet, "Library QC", credentials_file)
-	                found = 'TRUE'
+	                found = TRUE
                 
-	if found == 'TRUE':
-        	print 'Google document found!'
-		print ssheet
+	if found:
+        	logger.debug('Google document found')
+		logger.debug(ssheet)
 	else:
-	        print 'Google document NOT found!'
+	        logger.debug('Google document not found')
 
 	# Get average read length from loaded document
 	try:
@@ -273,8 +259,6 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 		dummy, Av_sice_bp_colindex = get_column(content, versions[version][2],Finished_library_col)
 		row_ind, scilife_names_colindex = get_column(content, versions[version][0])
 		row_ind, prep_colindex = get_column(content, versions[version][1])
-		print Av_sice_bp_colindex
-		print 'dddddd'
 		info = {}
 		for j, row in enumerate(content):
 		        if (j > row_ind):
@@ -302,6 +286,31 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
                 pass
 	return obj
 
+
+
+#		LOGGING
+def my_logging(log_file):
+        logger = logging.getLogger("logger")
+        logger.setLevel(logging.DEBUG)
+
+        # file handler
+        fh = logging.FileHandler(log_file)
+        fh.setLevel(logging.INFO)
+        
+        # console handler
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.DEBUG)
+
+        # formatter
+        formatter = logging.Formatter(
+        "%(asctime)s (%(levelname)s) : %(message)s")
+        fh.setFormatter(formatter)
+
+        # add handlers to logger
+        logger.addHandler(ch)
+        logger.addHandler(fh)
+
+        return logger
 
 
 #		GOOGLE DOCS
@@ -401,7 +410,7 @@ def strip_scilife_name(names):
         preps = 'F_BCDE'
         for name_init in names:
 		prep = ''
-		name = name_init.replace('-', '_').replace(' ', '').split("_index")[0].strip().lstrip('P')
+		name = name_init.replace('-', '_').replace(' ', '').split("_index")[0].strip()
 		if name != '':
 			while name[-1] in preps:
 				prep = name[-1] + prep
@@ -430,7 +439,7 @@ def  main(credentials_file, config_file, URL, proj_ID, all_projects):
         				if obj['samples'].keys() != []:
                 				info = save_couchdb_obj(proj_db, obj)
 						if info:
-							print 'couchdb ' + info
+							logger.debug('couchdb %s' % info)
 			except:
 				pass		
 	elif proj_ID is not None:
@@ -438,11 +447,10 @@ def  main(credentials_file, config_file, URL, proj_ID, all_projects):
         	if obj['samples'].keys() != []:
                 	info = save_couchdb_obj(proj_db, obj)
 	else:
-		print 'Argument error'
+		logger.debug('Argument error')
 	if info:
-		print 'couchdb ' + info
-        	logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', filename='proj_coucdb.log', level=logging.INFO)
-		logging.info('CouchDB: ' + obj['_id'] + ' ' + obj['project_id'] + ' ' + info)
+		logger.debug('couchdb %s' % info)
+		logger.info('CouchDB: %s %s %s' % (obj['_id'], obj['project_id'], info))
 
 if __name__ == '__main__':
     	usage = """Usage:	python project_summary_upload.py <url> [options]
@@ -454,7 +462,7 @@ Options (Only one option is acceptab):
      	-p <project_ID>,	upploads the project <project_ID> into couchDB                                         
 
 """
-
+	logger = my_logging('proj_coucdb.log')
     	parser = OptionParser(usage=usage)
     	parser.add_option("-p", "--project", dest="project_ID", default=None)
     	parser.add_option("-a", "--all_projects", dest="all_projects", action="store_true", default=False)
@@ -471,18 +479,6 @@ Options (Only one option is acceptab):
                   'all_projects': options.all_projects}
 
     	main(CREDENTIALS_FILE, CONFIG_FILE, *args, **kwargs)
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
