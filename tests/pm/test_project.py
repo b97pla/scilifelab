@@ -75,17 +75,17 @@ class ProjectTest(PmTest):
         handler.register(ProjectController)
         self._run_app()
 
-    def test_4_compress_distributed(self):
+    def test_compress_distributed(self):
         """Test distributed compression of project data"""
         if os.getenv("DRMAA_LIBRARY_PATH"):
-            self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '-n', '--force'] , extensions=['scilifelab.pm.ext.ext_distributed'])
+            self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '--jobname', 'compressdist', '-t', '00:01:00', '--partition', 'devel', '--force', '-n'] , extensions=['scilifelab.pm.ext.ext_distributed'])
             handler.register(ProjectController)
             self._run_app()
 
-    def test_4_decompress_distributed(self):
+    def test_decompress_distributed(self):
         """Test distributed compression of project data"""
         if os.getenv("DRMAA_LIBRARY_PATH"):
-            self.app = self.make_app(argv = ['project', 'decompress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '-n', '--force'] , extensions=['scilifelab.pm.ext.ext_distributed'])
+            self.app = self.make_app(argv = ['project', 'decompress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'devel', '-n',  '--force'] , extensions=['scilifelab.pm.ext.ext_distributed'])
             handler.register(ProjectController)
             self._run_app()
 
