@@ -65,5 +65,17 @@ class ProjectTest(PmFullTest):
         self._run_app()
         os.chdir(filedir)
 
-
+    def test_project_monitor_job_fake_jobid(self):
+        """Add fake JOBID and make sure command doesn't fail"""
+        s = "P001_102_index6"
+        jobidfile = os.path.join(j_doe_00_04, s, "121015_BB002BBBXX", "JOBID")
+        LOG.info("Writing to jobid file {}".format(jobidfile))
+        with open(jobidfile, "w") as fh:
+            fh.write("1")
+        self.app = self.make_app(argv = ['project', 'run', 'j_doe_00_04', '--drmaa', '--partition', 'devel', '-t', '00:10:00', '--sample', s, '--debug', '--force', '--quiet'], extensions=['scilifelab.pm.ext.ext_distributed'])
+        handler.register(ProjectController)
+        handler.register(BcbioRunController)
+        self._run_app()
+        os.chdir(filedir)
+    
         

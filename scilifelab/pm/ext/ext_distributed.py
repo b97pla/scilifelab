@@ -88,20 +88,19 @@ class DistributedCommandHandler(command.CommandHandler):
             drmaa.JobState.DONE: 'job finished normally',
             drmaa.JobState.FAILED: 'job finished, but failed',
             }
-
+        s = drmaa.Session()
+        s.initialize()
         try:
-            s = drmaa.Session()
-            s.initialize()
             status = s.jobStatus(str(jobid))
             self.app.log.debug("Getting status for jobid {}".format(jobid))
             self.app.log.info("{}".format(decodestatus[status]))
             if status in [drmaa.JobState.QUEUED_ACTIVE, drmaa.JobState.RUNNING, drmaa.JobState.UNDETERMINED]:
                 self.app.log.warn("{}; please terminate job before proceeding".format(decodestatus[status]))
                 return True
-            s.exit()
         except drmaa.errors.InternalException:
             self.app.log.warn("No such jobid {}".format(jobid))
             pass
+        s.exit()
         return
 
 
