@@ -233,7 +233,7 @@ class AbstractExtendedBaseController(AbstractBaseController):
             sys.exit()
         for f in flist:
             self.log.info("{}ing {}".format(label, f))
-            self.app.cmd.command([self._meta.compress_prog, self._meta.compress_opt, "%s" % f], label, ignore_error=True, **{'workingDirectory':os.path.dirname(f), 'outputPath':os.path.dirname(f)})
+            self.app.cmd.command([self._meta.compress_prog, self._meta.compress_opt, "%s" % f], label, ignore_error=True, **{'workingDirectory':os.path.dirname(f), 'outputPath':os.path.join(os.path.dirname(f), "{}-{}-drmaa.log".format(label, os.path.basename(f)))})
 
     ## decompress
     @controller.expose(help="Decompress files")

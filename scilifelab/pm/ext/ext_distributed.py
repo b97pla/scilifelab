@@ -130,9 +130,13 @@ class DistributedCommandHandler(command.CommandHandler):
             jt = s.createJobTemplate()
             jt.remoteCommand = cmd_args[0]
             jt.args = cmd_args[1:]
-            jt.outputPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.relpath(job_args['outputPath'], os.getenv("HOME")))
-            jt.workingDirectory = drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.relpath(job_args['workingDirectory'], os.getenv("HOME"))
             jt.jobName = job_args['jobname']
+            if os.path.isdir(job_args['outputPath']):
+                jt.outputPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.relpath(job_args['outputPath'], os.getenv("HOME")), jt.jobName + "-drmaa.log")
+            else:
+             jt.outputPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.relpath(job_args['outputPath'], os.getenv("HOME")))
+            jt.workingDirectory = drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.relpath(job_args['workingDirectory'], os.getenv("HOME"))
+
             jt.nativeSpecification = "-t {time} -p {partition} -A {account} {extra}".format(**job_args)
             if kw.get('email', None):
                 jt.email=[kw.get('email')]
