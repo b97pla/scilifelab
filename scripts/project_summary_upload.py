@@ -150,7 +150,7 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 
         # Load google document
 	mistakes = ["_", " _", " ", ""]
-	found = FALSE
+	found = False
 	for m in mistakes:
 		feed = bcbio.google.spreadsheet.get_spreadsheets_feed(client, project_name_swe + m + '20158', False)
         	if len(feed.entry) != 0:
@@ -158,7 +158,7 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 				ssheet = feed.entry[0].title.text
 				version = ssheet.split(str(m + '20158_'))[1].split(' ')[0].split('_')[0]	
 				content, ws_key, ss_key = get_google_document(ssheet, "Sheet1", credentials_file)
-				found = TRUE
+				found = True
 				break
                 	except:
 				pass
@@ -237,7 +237,7 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 	            "05": ['SciLifeLab ID','Prep version (A, B etc)','Average size (bp)'],
 	            "06": ['SciLifeLab ID','Prep version (A, B etc)','Average size (bp)']}
 	mistakes = ["_","_ ", " _", " ", ""]
-	found = FALSE
+	found = False
 
 	for m in mistakes:
 	        feed = bcbio.google.spreadsheet.get_spreadsheets_feed(client, project_name_swe + m + '20135', False)
@@ -245,7 +245,7 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 	                ssheet = feed.entry[0].title.text
 			version = ssheet.split('20135')[1].replace('_',' ').lstrip(' ').split(' ')[0]
 	                content, ws_key, ss_key = get_google_document(ssheet, "Library QC", credentials_file)
-	                found = TRUE
+	                found = True
                 
 	if found:
         	logger.debug('Google document found')
