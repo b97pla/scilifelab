@@ -4,6 +4,8 @@ import argparse
 import datetime
 import scilifelab.bcbio.filesystem as bcbio
 import scilifelab.utils.slurm as slurm
+from scilifelab.illumina import IlluminaRun
+from scilifelab.illumina.hiseq import HiSeqRun
 
 def status_query(archive_dir, analysis_dir, flowcell, project, brief):
     """Get a status report of the progress of flowcells based on a snapshot of the file system
@@ -12,19 +14,19 @@ def status_query(archive_dir, analysis_dir, flowcell, project, brief):
     last_step = 14
     status = []
     # Process each flowcell in the archive directory
-    for fcdir in bcbio.get_flowcelldirs(archive_dir,flowcell):
+    for fcdir in IlluminaRun.get_flowcell(archive_dir,flowcell):
         fc_status = {}
         fc_status['flowcell'] = os.path.basename(fcdir)
         
         # Locate the samplesheet
-        samplesheet = bcbio.get_samplesheet(fcdir)
+        samplesheet = IlluminaRun.get_samplesheet(fcdir)
         if samplesheet is None:
             print("{}***ERROR***: Could not locate samplesheet in flowcell directory. Skipping..")
             continue
         fc_status['samplesheet'] = samplesheet
 
         # Get a list of the projects in the samplesheet
-        projects = bcbio.get_projects(samplesheet,project)
+        projects = HiSeqRun.get_project_names(samplesheet)
         if len(projects) == 0:
             print("\t***WARNING***: No projects matched your filter [{}] for flowcell. Skipping..".format(project))
             continue
@@ -44,7 +46,7 @@ def status_query(archive_dir, analysis_dir, flowcell, project, brief):
             proj_status['project_dir'] = pdir
             proj_status['samples'] = []
             proj_status['no_finished_samples'] = 0
-            samples = bcbio.get_project_samples(samplesheet, proj)
+            samples = HiSeqRun.get_project_sample_ids(samplesheet, proj)
             for smpl in samples:
                 smpl = smpl.replace("__",".")
                 sample_status = {}
@@ -56,7 +58,7 @@ def status_query(archive_dir, analysis_dir, flowcell, project, brief):
                 sample_status['sample_dir'] = sdir
                 
                 # Match the flowcell we're processing to the sample flowcell directories
-                sample_fc = [d for d in bcbio.get_flowcelldirs(sdir) if d.split("_")[-1] == fcdir.split("_")[-1]]
+                sample_fc = [d for d in IlluminaRun.get_flowcell(sdir) if d.split("_")[-1] == fcdir.split("_")[-1]]
                 if len(sample_fc) == 0:
                     continue
                 sample_fc = sample_fc[0]

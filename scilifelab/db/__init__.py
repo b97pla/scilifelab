@@ -45,6 +45,9 @@ class Couch(Database):
         self.url_string = "http://{}:{}".format(self.url, self.port)
         if log:
             self.log = log
+        if not self.url:
+            self.log.warn("Please provide a valid url for database connection")
+            return None
         super(Couch, self).__init__(**kwargs)
         if not self.con:
             raise ConnectionError("Connection failed for url {}".format(self.url_string))

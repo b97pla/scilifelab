@@ -5,6 +5,7 @@ from cement.core import backend
 
 config_defaults = backend.defaults('production', 'archive', 'config', 'project','log', 'distributed', 'db')
 config_defaults['production']['root']  = None
+config_defaults['production']['swestore']  = None
 config_defaults['archive']['root']  = None
 config_defaults['project']['root']  = None
 config_defaults['project']['repos']  = None

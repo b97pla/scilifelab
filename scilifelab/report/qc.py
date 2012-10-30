@@ -117,6 +117,7 @@ def fastq_screen(project_id=None, flowcell_id=None,
     s_con = SampleRunMetricsConnection(username=user, password=password, url=url)
     samples = s_con.get_samples(fc_id=flowcell_id, sample_prj=project_id)
     for s in samples:
+        LOG.debug("Checking fastq_screen data for sample {}".format(s))
         fqscreen_data = s.get("fastq_scr", {})
         output_data["stdout"].write(s["barcode_name"] + "\n")
         if fqscreen_data:
