@@ -11,6 +11,9 @@ from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_b
 from scilifelab.bcbio.flowcell import Flowcell
 from scilifelab.bcbio.status import status_query
 from scilifelab.utils.string import strip_extensions
+from scilifelab.utils.timestamp import utc_time
+
+FINISHED_FILE = "FINISHED_AND_DELIVERED"
 
 ## Main production controller
 class ProductionController(AbstractExtendedBaseController):
@@ -23,7 +26,7 @@ class ProductionController(AbstractExtendedBaseController):
         arguments = [
             (['project'], dict(help="Project id", nargs="?", default=None)),
             (['-f', '--flowcell'], dict(help="Flowcell id")),
-            (['-S', '--sample'], dict(help="project sample id", action="store", default=None, type=str)),
+            (['-S', '--sample'], dict(help="Project sample id. If sample is a file, read file and use sample names within it. Sample names can also be given as full paths to bcbb-config.yaml configuration file.", action="store", default=None, type=str)),
             (['-l', '--lane'], dict(help="Lane id")),
             (['-b', '--barcode_id'], dict(help="Barcode id")),
             (['--from_pre_casava'], dict(help="Use pre-casava directory structure for gathering information", action="store_true", default=False)),
@@ -222,3 +225,35 @@ class ProductionController(AbstractExtendedBaseController):
             self.app.cmd.command(cl, **{'platform_args':platform_args, 'saveJobId':True})
             os.chdir(orig_dir)
 
+    ## Command for touching file that indicates finished samples 
+    @controller.expose(help="Touch finished samples. Creates a file FINISHED_AND_DELIVERED with a utc time stamp.")
+    def touch_finished(self):
+        if not self._check_pargs(["project", "sample"]):
+            return
+        if os.path.exists(self.pargs.sample) and os.path.isfile(self.pargs.sample):
+            with open(self.pargs.sample) as fh:
+                slist = [x.rstrip() for x in fh.readlines()]
+        else:
+            slist = [self.pargs.sample]
+        for s in slist:
+            spath = os.path.join(self._meta.root_path, self._meta.path_id, s)
+            if not os.path.exists(spath):
+                self.app.log.warn("No such path {}; skipping".format(spath))
+                continue
+            rsync_src = os.path.join(self._meta.root_path, self._meta.path_id, s) + os.sep
+            rsync_tgt = os.path.join(self.app.config.get("runqc", "root"), self.pargs.project, s) + os.sep
+            cl = ["rsync {} {} {}".format(self.app.config.get("runqc", "rsync_sample_opts"), rsync_src, rsync_tgt)]
+            self.app.log.info("Checking if runqc uptodate with command '{}'".format(" ".join(cl)))
+            out = self.app.cmd.command(cl, **{'shell':True})
+            if not out.find("total size is 0"):
+                self.app.log.info("Some files need to be updated. Rsync output:")
+                print "********"
+                print out
+                print "********"
+                continue
+            self.app.log.info("Touching file {} for sample {}".format(FINISHED_FILE, s))
+            with open(os.path.join(spath, FINISHED_FILE), "w") as fh:
+                t_utc = utc_time()
+                fh.write(t_utc)
+
+        

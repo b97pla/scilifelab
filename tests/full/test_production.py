@@ -15,7 +15,6 @@ from scilifelab.pm.ext.ext_distributed import make_job_template_args, opt_to_dic
 from scilifelab.utils.misc import filtered_walk
 from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command
 
-
 LOG = logbook.Logger(__name__)
 
 j_doe_00_01 = os.path.abspath(os.path.join(os.curdir, "data", "production", "J.Doe_00_01"))
@@ -101,7 +100,40 @@ class ProductionTest(PmFullTest):
             return re.search(pattern, f) != None
         fastq_files = filtered_walk(j_doe_00_03, fastq_filter)
         self.assertEqual(len(fastq_files), 2)
-        
+
+    def test_touch_finished(self):
+        """Test touching finished files"""
+        SAMPLE2 = "P001_101_index3"
+        finished = os.path.join(os.curdir, "data", "production", "J.Doe_00_01", SAMPLE, "FINISHED_AND_DELIVERED")
+        finished2 = os.path.join(os.curdir, "data", "production", "J.Doe_00_01", SAMPLE2, "FINISHED_AND_DELIVERED")
+        if os.path.exists(finished):
+            os.unlink(finished)
+        if os.path.exists(finished2):
+            os.unlink(finished2)
+        self.app = self.make_app(argv = ['production', 'touch-finished', 'J.Doe_00_01', '--debug', '--force', '--sample', SAMPLE], extensions=[])
+        handler.register(ProductionController)
+        self._run_app()
+        self.assertTrue(os.path.exists(finished))
+        samplefile = os.path.join(os.curdir, "data", "production", "J.Doe_00_01", "finished_sample.txt")
+        with open(samplefile, "w") as fh:
+            fh.write(SAMPLE + "\n")
+            fh.write(SAMPLE2 + "\n")
+        self.app = self.make_app(argv = ['production', 'touch-finished', 'J.Doe_00_01', '--debug', '--force', '--sample', samplefile], extensions=[])
+        handler.register(ProductionController)
+        self._run_app()
+        self.assertTrue(os.path.exists(finished2))
+        ## Make sure rsync fails
+        self.app = self.make_app(argv = ['production', 'touch-finished', 'J.Doe_00_01', '--debug', '--force', '--sample', samplefile], extensions=[])
+        handler.register(ProductionController)
+        try:
+            self.app.setup()
+            self.app.config.set("runqc", "root", self.app.config.get("runqc", "root").replace("production", "projects"))
+            with self.app.log.log_setup.applicationbound():
+                self.app.run()
+                self.app.render(self.app._output_data)
+        finally:
+            self.app.close()
+
 class UtilsTest(SciLifeTest):
     @classmethod
     def setUpClass(cls):
@@ -221,3 +253,4 @@ class UtilsTest(SciLifeTest):
         nativeSpec = "-t {time} -p {partition} -A {account}".format(**pargs)
         self.assertEqual("00:01:00", nativeSpec[3:11])
                     
+
