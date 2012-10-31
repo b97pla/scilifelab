@@ -144,9 +144,9 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
         versions = {"01": ['Sample name Scilife', "Total reads per sample", 
 			"Passed=P/ not passed=NP*", 'Sample name from customer'],
                     "02": ["Sample name (SciLifeLab)", "Total number of reads (Millions)", 
-			"Based on total number of reads", 'Sample name (customer)'],
+			"Based on total number of reads after mapping and duplicate removal", 'Sample name (customer)'],
                     "03": ["Sample name (SciLifeLab)", "Total number of reads (Millions)", 
-			"Based on total number of reads", 'Sample name (customer)']}
+			"Based on total number of reads after mapping and duplicate removal", 'Sample name (customer)']}
 
         # Load google document
 	mistakes = ["_", " _", " ", ""]
