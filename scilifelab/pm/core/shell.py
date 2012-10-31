@@ -54,7 +54,7 @@ class ShCommandHandler(command.CommandHandler):
     def command(self, cmd_args, capture=True, ignore_error=False, cwd=None, **kw):
         cmd = " ".join(cmd_args)
         def runpipe():
-            (stdout, stderr, returncode) = shell.exec_cmd(cmd, kw.get('shell', False))
+            (stdout, stderr, returncode) = shell.exec_cmd(cmd_args, kw.get('shell', False))
             if returncode and not ignore_error:
                if capture:
                    self.app.log.error(stderr)
