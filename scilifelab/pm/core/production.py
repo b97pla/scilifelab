@@ -245,7 +245,7 @@ class ProductionController(AbstractExtendedBaseController):
             cl = ["rsync {} {} {}".format(self.app.config.get("runqc", "rsync_sample_opts"), rsync_src, rsync_tgt)]
             self.app.log.info("Checking if runqc uptodate with command '{}'".format(" ".join(cl)))
             out = self.app.cmd.command(cl, **{'shell':True})
-            if not out.find("total size is 0"):
+            if not self.pargs.dry_run and not out.find("total size is 0"):
                 self.app.log.info("Some files need to be updated. Rsync output:")
                 print "********"
                 print out
