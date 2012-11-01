@@ -35,8 +35,7 @@ def sample_map_fn_id(sample_run_name, prj_sample):
         return None
 
 def _prune_ps_map(ps_map):
-    """Only use srm_ids that end with [ACGT]+ or "NoIndex" 
-
+    """Only use srm_ids that end with [ACGT]+ or NoIndex
     """
     if not ps_map:
         return None
@@ -55,7 +54,7 @@ class SampleRunMetricsConnection(Couch):
         self.name_fc_view = {k.key:k for k in self.db.view("names/name_fc", reduce=False)}
         self.name_proj_view = {k.key:k for k in self.db.view("names/name_proj", reduce=False)}
         self.name_fc_proj_view = {k.key:k for k in self.db.view("names/name_fc_proj", reduce=False)}
-
+    
     def _setup_views(self):
         """ """
         pass

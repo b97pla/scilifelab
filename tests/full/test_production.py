@@ -197,15 +197,12 @@ class UtilsTest(SciLifeTest):
 
             with open(f.replace("-bcbb-config.yaml", "-bcbb-command.txt")) as fh:
                 cl = fh.read().split()
-            self.assertIn("--no-google-report", cl)
-            self.assertIn("--only-run", cl)
             with open(f.replace("-bcbb-config.yaml", "-post_process.yaml")) as fh:
                 config = yaml.load(fh)
             self.assertEqual(config["custom_algorithms"][ANALYSIS_TYPE]["hybrid_bait"], 'rat_baits.interval_list')
             self.assertEqual(config["custom_algorithms"][ANALYSIS_TYPE]["hybrid_target"], 'rat_targets.interval_list')
             self.assertEqual(config["algorithm"]["num_cores"], 8)
                 
-
         for f in flist:
             setup_sample(f, **{'analysis_type':ANALYSIS_TYPE, 'genome_build':'rn4', 'dry_run':False,
                                'no_only_run':True, 'google_report':True, 'analysis_type':'Align_standard_seqcap'
@@ -215,8 +212,6 @@ class UtilsTest(SciLifeTest):
             self.assertEqual(config["details"][0]["multiplex"][0]["genome_build"], "rn4")
             with open(f.replace("-bcbb-config.yaml", "-bcbb-command.txt")) as fh:
                 cl = fh.read().split()
-            self.assertNotIn("--no-google-report", cl)
-            self.assertNotIn("--only-run", cl)
             with open(f.replace("-bcbb-config.yaml", "-post_process.yaml")) as fh:
                 config = yaml.load(fh)
             self.assertEqual(config["algorithm"]["mark_duplicates"], False)

@@ -54,7 +54,7 @@ def find_samples(path, sample=None, pattern = "-bcbb-config.yaml$", only_failed=
         LOG.info("No such sample {}".format(sample))
     return [os.path.abspath(f) for f in flist]
 
-def setup_sample(f, analysis_type, google_report=False, no_only_run=False, amplicon=False, genome_build="hg19", **kw):
+def setup_sample(f, analysis_type, amplicon=False, genome_build="hg19", **kw):
     """Setup config files, making backups and writing new files
 
     :param path: root path in which to search for samples
