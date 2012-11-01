@@ -4,7 +4,7 @@ import ConfigParser
 import logbook
 import pandas as pd
 from pandas.core.format import set_eng_float_format
-from scilifelab.db.statusdb import SampleRunMetricsConnection
+from scilifelab.db.statusdb import ProjectSummaryConnection
 from ..classes import SciLifeTest
 
 filedir = os.path.abspath(__file__)
@@ -36,8 +36,8 @@ class TestQCData(SciLifeTest):
         if not self.examples:
             LOG.info("Not running test")
             return
-        s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
-        qcdata = s_con.get_qc_data(self.examples["project"], self.examples["flowcell"])
+        p_con = ProjectSummaryConnection(username=self.user, password=self.pw, url=self.url)
+        qcdata = p_con.get_qc_data(self.examples["project"], self.examples["flowcell"])
         qcdf = pd.DataFrame(qcdata)
         print qcdf
         set_eng_float_format(accuracy=1, use_eng_prefix=True)

@@ -88,8 +88,8 @@ class SampleRunMetricsConnection(Couch):
         self.log.debug("retrieving sample ids subset by flowcell '{}' and sample_prj '{}'".format(fc_id, sample_prj))
         fc_sample_ids = [self.name_fc_view[k].id for k in self.name_fc_view.keys() if self.name_fc_view[k].value == fc_id] if fc_id else []
         prj_sample_ids = [self.name_proj_view[k].id for k in self.name_proj_view.keys() if self.name_proj_view[k].value == sample_prj] if sample_prj else []
-        ## | -> union
-        sample_ids = list(set(fc_sample_ids) | set(prj_sample_ids))
+        ## | -> union, want intersection
+        sample_ids = list(set(fc_sample_ids) & set(prj_sample_ids))
         self.log.debug("Number of samples: {}, number of fc samples: {}, number of project samples: {}".format(len(sample_ids), len(fc_sample_ids), len(prj_sample_ids)))
         return sample_ids
 
