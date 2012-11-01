@@ -8,6 +8,8 @@ from cement.utils import shell
 from scilifelab.pm.core.production import ProductionController
 from test_default import PmTest
 
+filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+
 class PmShellTest(PmTest):
     def test_1_wait(self):
         """Test that submitted shell jobs are run sequentially"""
@@ -25,7 +27,7 @@ class PmHsMetricsTest(PmTest):
         self.app = self.make_app(argv=['production', 'hs-metrics', 'J.Doe_00_01', '-f', '120829_SN0001_0001_AA001AAAXX', '--region_file', 'regionfile', '--force', '-n'], extensions=['scilifelab.pm.ext.ext_hs_metrics'])
         handler.register(ProductionController)
         self._run_app()
-        hsmetrics_str = "(DRY_RUN): java -Xmx3g -jar {}/CalculateHsMetrics.jar INPUT={}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_8-sort-dup.bam TARGET_INTERVALS={}/regionfile BAIT_INTERVALS={}/regionfile OUTPUT={}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_8-sort-dup.hs_metrics VALIDATION_STRINGENCY=SILENT".format(os.getenv("PICARD_HOME"), self.app.config.get("production", "root"), os.path.abspath(os.curdir), os.path.abspath(os.curdir), self.app.config.get("production", "root"))
+        hsmetrics_str = "(DRY_RUN): java -Xmx3g -jar {}/CalculateHsMetrics.jar INPUT={}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_8-sort-dup.bam TARGET_INTERVALS={}/regionfile BAIT_INTERVALS={}/regionfile OUTPUT={}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_8-sort-dup.hs_metrics VALIDATION_STRINGENCY=SILENT".format(os.getenv("PICARD_HOME"), self.app.config.get("production", "root"), filedir, filedir, self.app.config.get("production", "root"))
         self.eq(hsmetrics_str, str(self.app._output_data['stderr'].getvalue().rstrip().split("\n")[-1]))
 
     def test_2_hsmetrics_empty(self):
@@ -38,8 +40,8 @@ class PmHsMetricsTest(PmTest):
 
     def test_3_hsmetrics_drmaa(self):
         """Run hs metrics over drmaa"""
-        self.app = self.make_app(argv=['production', 'hs-metrics', 'J.Doe_00_01',  '-f', '120829_SN0001_0001_AA001AAAXX', '--region_file', 'regionfile', '--force',  '-A', 'jobaccount', '--drmaa', '-n'], extensions=['scilifelab.pm.ext.ext_hs_metrics', 'scilifelab.pm.ext.ext_distributed'])
+        self.app = self.make_app(argv=['production', 'hs-metrics', 'J.Doe_00_01',  '-f', '120829_SN0001_0001_AA001AAAXX', '--region_file', 'regionfile', '--force',  '-A', 'jobaccount', '--jobname', 'jobname', '--partition', 'node', '--time', '10:00:00', '--drmaa', '-n'], extensions=['scilifelab.pm.ext.ext_hs_metrics', 'scilifelab.pm.ext.ext_distributed'])
         handler.register(ProductionController)
         self._run_app()
-        hsmetrics_str = "(DRY_RUN): java -Xmx3g -jar {}/CalculateHsMetrics.jar INPUT={}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_8-sort-dup.bam TARGET_INTERVALS={}/regionfile BAIT_INTERVALS={}/regionfile OUTPUT={}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_8-sort-dup.hs_metrics VALIDATION_STRINGENCY=SILENT".format(os.getenv("PICARD_HOME"), self.app.config.get("production", "root"), os.path.abspath(os.curdir), os.path.abspath(os.curdir), self.app.config.get("production", "root"))
+        hsmetrics_str = "(DRY_RUN): java -Xmx3g -jar {}/CalculateHsMetrics.jar INPUT={}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_8-sort-dup.bam TARGET_INTERVALS={}/regionfile BAIT_INTERVALS={}/regionfile OUTPUT={}/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_nophix_8-sort-dup.hs_metrics VALIDATION_STRINGENCY=SILENT".format(os.getenv("PICARD_HOME"), self.app.config.get("production", "root"), filedir, filedir, self.app.config.get("production", "root"))
         self.eq(hsmetrics_str, str(self.app._output_data['stderr'].getvalue().rstrip().split("\n")[-1]))
