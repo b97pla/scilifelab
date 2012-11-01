@@ -1,4 +1,4 @@
-"""bcbio extension"""
+"""pm bcbio extension"""
 import os
 import re
 
@@ -8,7 +8,7 @@ from scilifelab.utils.misc import query_yes_no, filtered_walk
 
 class BcbioRunController(AbstractBaseController):
     class Meta:
-        label = 'runbcbio2'
+        label = 'bcbio'
         description = 'Wrapper for bcbio analyses'
 
     def _setup(self, app):
@@ -67,5 +67,3 @@ class BcbioRunController(AbstractBaseController):
             (cl, platform_args) = run_bcbb_command(run_info, **vars(self.pargs))
             self.app.cmd.command(cl, **{'platform_args':platform_args, 'saveJobId':True})
             os.chdir(orig_dir)
-
-

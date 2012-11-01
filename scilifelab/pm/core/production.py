@@ -12,6 +12,10 @@ from scilifelab.bcbio.flowcell import Flowcell
 from scilifelab.bcbio.status import status_query
 from scilifelab.utils.string import strip_extensions
 from scilifelab.pm.core.bcbio import BcbioRunController
+from scilifelab.utils.timestamp import utc_time
+
+FINISHED_FILE = "FINISHED_AND_DELIVERED"
+REMOVED_FILE = "FINISHED_AND_REMOVED"
 
 ## Main production controller
 class ProductionController(AbstractExtendedBaseController, BcbioRunController):
@@ -24,7 +28,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
         arguments = [
             (['project'], dict(help="Project id", nargs="?", default=None)),
             (['-f', '--flowcell'], dict(help="Flowcell id")),
-            (['-S', '--sample'], dict(help="project sample id", action="store", default=None, type=str)),
+            (['-S', '--sample'], dict(help="Project sample id. If sample is a file, read file and use sample names within it. Sample names can also be given as full paths to bcbb-config.yaml configuration file.", action="store", default=None, type=str)),
             (['-l', '--lane'], dict(help="Lane id")),
             (['-b', '--barcode_id'], dict(help="Barcode id")),
             (['--from_pre_casava'], dict(help="Use pre-casava directory structure for gathering information", action="store_true", default=False)),
@@ -182,4 +186,74 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
             else:
                 self._to_casava_structure(fc)
 
+    ## Command for touching file that indicates finished samples 
+    @controller.expose(help="Touch finished samples. Creates a file FINISHED_AND_DELIVERED with a utc time stamp.")
+    def touch_finished(self):
+        if not self._check_pargs(["project", "sample"]):
+            return
+        if os.path.exists(self.pargs.sample) and os.path.isfile(self.pargs.sample):
+            with open(self.pargs.sample) as fh:
+                slist = [x.rstrip() for x in fh.readlines()]
+        else:
+            slist = [self.pargs.sample]
+        for s in slist:
+            spath = os.path.join(self._meta.root_path, self._meta.path_id, s)
+            if not os.path.exists(spath):
+                self.app.log.warn("No such path {}; skipping".format(spath))
+                continue
+            rsync_src = os.path.join(self._meta.root_path, self._meta.path_id, s) + os.sep
+            rsync_tgt = os.path.join(self.app.config.get("runqc", "root"), self.pargs.project, s) + os.sep
+            cl = ["rsync {} {} {}".format(self.app.config.get("runqc", "rsync_sample_opts"), rsync_src, rsync_tgt)]
+            self.app.log.info("Checking if runqc uptodate with command '{}'".format(" ".join(cl)))
+            out = self.app.cmd.command(cl, **{'shell':True})
+            if not self.pargs.dry_run and not out.find("total size is 0"):
+                self.app.log.info("Some files need to be updated. Rsync output:")
+                print "********"
+                print out
+                print "********"
+                continue
+            if not query_yes_no("Going to touch file {} for sample {}; continue?".format(FINISHED_FILE, s), force=self.pargs.force):
+                continue
+            self.app.log.info("Touching file {} for sample {}".format(FINISHED_FILE, s))
+            with open(os.path.join(spath, FINISHED_FILE), "w") as fh:
+                t_utc = utc_time()
+                fh.write(t_utc)
+
+    ## Command for removing samples that have a FINISHED_FILE flag 
+    @controller.expose(help="Remove finished samples for a project. Searches for FINISHED_AND_DELIVERED and removes sample contents if file is present.")
+    def remove_finished(self):
+        if not self._check_pargs(["project"]):
+            return
+        # Don't filter out files
+        def filter_fn(f):
+            return True
+        slist = os.listdir(os.path.join(self._meta.root_path, self._meta.path_id))
+        for s in slist:
+            spath = os.path.join(self._meta.root_path, self._meta.path_id, s)
+            if not os.path.isdir(spath):
+                continue
+            # Crucial!!! Must make sure 
+            if not os.path.exists(os.path.join(spath, FINISHED_FILE)):
+                self.app.log.info("Sample {} not finished; skipping".format(s))
+                continue
+            flist = filtered_walk(spath, filter_fn)
+            dlist = filtered_walk(spath, filter_fn, get_dirs=True)
+            if os.path.exists(os.path.join(spath, REMOVED_FILE)):
+                self.app.log.info("Sample {} already removed; skipping".format(s))
+                continue
+            if len(flist) > 0 and not query_yes_no("Will remove directory {} containing {} files; continue?".format(s, len(flist)), force=self.pargs.force):
+                continue
+            self.app.log.info("Removing {} files from {}".format(len(flist), spath))            
+            for f in flist:
+                if f == os.path.join(spath, FINISHED_FILE):
+                    continue
+                self.app.cmd.safe_unlink(f)
+            self.app.log.info("Removing {} directories from {}".format(len(dlist), spath))
+            for d in sorted(dlist, reverse=True):
+                self.app.cmd.safe_rmdir(d)
+            if not self.pargs.dry_run:
+                with open(os.path.join(spath, REMOVED_FILE), "w") as fh:
+                    t_utc = utc_time()
+                    fh.write(t_utc)
+        
 
