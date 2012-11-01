@@ -37,7 +37,7 @@ class PmProductionTest(PmTest):
         handler.register(ProductionController)
         self._run_app()
         res = shell.exec_cmd(["ls", "-1", os.path.join(delivery_dir, "P1_101F_index1", "120829_AA001AAAXX")])
-        self.eq(set(['1_120829_AA001AAAXX_barcode', '1_120829_AA001AAAXX_nophix_1-sort-dup.align_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.bam', '1_120829_AA001AAAXX_nophix_1-sort-dup.dup_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.insert_metrics', '1_120829_AA001AAAXX_nophix_1-sort.bam', 'P1_101F_index1-bcbb-config.yaml', 'alignments']),set(res[0].split()))
+        self.eq(set(['1_120829_AA001AAAXX_barcode', '1_120829_AA001AAAXX_nophix_1-sort-dup.align_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.bam', '1_120829_AA001AAAXX_nophix_1-sort-dup.dup_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.insert_metrics', '1_120829_AA001AAAXX_nophix_1-sort.bam', 'P1_101F_index1-bcbb-pm-config.yaml', 'alignments']),set(list(sorted(res[0].split()))))
     
     def test_4_from_pre_to_pre_casava_transfer(self):
         """Test pre_casava transfer to project directory"""
@@ -86,7 +86,7 @@ class PmProductionTest(PmTest):
         delivery_dir = os.path.abspath(os.path.join(filedir, "data", "projects", "j_doe_00_04_custom", "data"))
         with open(os.path.join(delivery_dir, "P001_101_index3", "120924_CC003CCCXX", "P001_101_index3-bcbb-config.yaml")) as fh:
             runinfo_yaml = yaml.load(fh)
-        self.eq(runinfo_yaml['details'][0]['multiplex'][0]['files'], [os.path.join(delivery_dir, "P001_101_index3", "120924_CC003CCCXX", "nophix", x) for x in ['1_120924_CC003CCCXX_7_nophix_1_fastq.txt.gz', '1_120924_CC003CCCXX_7_nophix_2_fastq.txt.gz']])
+        self.eq(runinfo_yaml['details'][0]['multiplex'][0]['files'], ['P001_101_index3_TGACCA_L001_R1_001.fastq', 'P001_101_index3_TGACCA_L001_R2_001.fastq'] )
         res = shell.exec_cmd(["ls", "-1", os.path.join(delivery_dir,  "P001_101_index3", "120924_CC003CCCXX")])
-        self.eq(set(res[0].split()), set(['1_120924_CC003CCCXX_7_nophix-sort-dup-insert.pdf', '1_120924_CC003CCCXX_7_nophix-sort-dup-summary.aux', '1_120924_CC003CCCXX_7_nophix-sort-dup-summary.log', '1_120924_CC003CCCXX_7_nophix-sort-dup-summary.pdf', '1_120924_CC003CCCXX_7_nophix-sort-dup-summary.tex', '1_120924_CC003CCCXX_7_nophix-sort-dup.align_metrics', '1_120924_CC003CCCXX_7_nophix-sort-dup.bam', '1_120924_CC003CCCXX_7_nophix-sort.bam', '1_120924_CC003CCCXX_7_nophix-sort-dup.dup_metrics', '1_120924_CC003CCCXX_7_nophix-sort-dup.hs_metrics', '1_120924_CC003CCCXX_7_nophix-sort-dup.insert_metrics', 'P001_101_index3-bcbb-config.yaml', 'alignments', 'fastq_screen', 'nophix']))
-    
+        self.eq(set(res[0].split()), set(['1_120924_CC003CCCXX_7_nophix-sort-dup-insert.pdf', '1_120924_CC003CCCXX_7_nophix-sort-dup-summary.aux', '1_120924_CC003CCCXX_7_nophix-sort-dup-summary.log', '1_120924_CC003CCCXX_7_nophix-sort-dup-summary.pdf', '1_120924_CC003CCCXX_7_nophix-sort-dup-summary.tex', '1_120924_CC003CCCXX_7_nophix-sort-dup.align_metrics', '1_120924_CC003CCCXX_7_nophix-sort-dup.bam', '1_120924_CC003CCCXX_7_nophix-sort.bam', '1_120924_CC003CCCXX_7_nophix-sort-dup.dup_metrics', '1_120924_CC003CCCXX_7_nophix-sort-dup.hs_metrics', '1_120924_CC003CCCXX_7_nophix-sort-dup.insert_metrics', 'P001_101_index3-bcbb-config.yaml', 'P001_101_index3-bcbb-pm-config.yaml', 'alignments', 'fastq_screen', 'nophix', 'P001_101_index3_TGACCA_L001_R1_001.fastq', 'P001_101_index3-post_process.yaml', 'P001_101_index3_TGACCA_L001_R2_001.fastq','P001_101_index3-bcbb-command.txt','P001_101_index3-bcbb.log']))
+
