@@ -388,11 +388,11 @@ class Flowcell(object):
         if m_sample:
             lane = m_sample.group(1)
             sample = m_sample.group(3)
-            sequence = self.barcode_id_to_sequence(lane).get(int(sample), None)
-            key = "{}_{}".format(lane, sequence)
             if sample == "unmatched":
                 self.lane_files[lane].append(os.path.abspath(f))
                 return
+            sequence = self.barcode_id_to_sequence(lane).get(int(sample), None)
+            key = "{}_{}".format(lane, sequence)
             if f.find("fastq.txt") > 0:
                 self.append_to_entry(key, "files", os.path.abspath(f))
                 return
