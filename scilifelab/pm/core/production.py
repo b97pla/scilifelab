@@ -252,6 +252,8 @@ class ProductionController(AbstractExtendedBaseController):
                 print out
                 print "********"
                 continue
+            if not query_yes_no("Going to touch file {} for sample {}; continue?".format(FINISHED_FILE, s), force=self.pargs.force):
+                continue
             self.app.log.info("Touching file {} for sample {}".format(FINISHED_FILE, s))
             with open(os.path.join(spath, FINISHED_FILE), "w") as fh:
                 t_utc = utc_time()
