@@ -17,28 +17,30 @@ from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_b
 
 LOG = logbook.Logger(__name__)
 
-j_doe_00_01 = os.path.abspath(os.path.join(os.curdir, "data", "production", "J.Doe_00_01"))
-j_doe_00_04 = os.path.abspath(os.path.join(os.curdir, "data", "production", "J.Doe_00_04"))
-j_doe_00_05 = os.path.abspath(os.path.join(os.curdir, "data", "production", "J.Doe_00_05"))
-
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+
+j_doe_00_01 = os.path.abspath(os.path.join(filedir, "data", "production", "J.Doe_00_01"))
+j_doe_00_04 = os.path.abspath(os.path.join(filedir, "data", "production", "J.Doe_00_04"))
+j_doe_00_05 = os.path.abspath(os.path.join(filedir, "data", "production", "J.Doe_00_05"))
+
+
 
 ANALYSIS_TYPE = 'Align_standard_seqcap'
 SAMPLES =  ['P001_101_index3', 'P001_102_index6']
 FLOWCELL = '120924_AC003CCCXX'
 
 FINISHED = {
-    'J.Doe_00_01': {'P001_101_index3': os.path.join(os.curdir, "data", "production", "J.Doe_00_01", SAMPLES[0], "FINISHED_AND_DELIVERED"),
-                    'P001_102_index6': os.path.join(os.curdir, "data", "production", "J.Doe_00_01", SAMPLES[1], "FINISHED_AND_DELIVERED")},
-    'J.Doe_00_04': {'P001_101_index3': os.path.join(os.curdir, "data", "production", "J.Doe_00_04", SAMPLES[0], "FINISHED_AND_DELIVERED"),
-                    'P001_102_index6': os.path.join(os.curdir, "data", "production", "J.Doe_00_04", SAMPLES[1], "FINISHED_AND_DELIVERED")}
+    'J.Doe_00_01': {'P001_101_index3': os.path.join(filedir, "data", "production", "J.Doe_00_01", SAMPLES[0], "FINISHED_AND_DELIVERED"),
+                    'P001_102_index6': os.path.join(filedir, "data", "production", "J.Doe_00_01", SAMPLES[1], "FINISHED_AND_DELIVERED")},
+    'J.Doe_00_04': {'P001_101_index3': os.path.join(filedir, "data", "production", "J.Doe_00_04", SAMPLES[0], "FINISHED_AND_DELIVERED"),
+                    'P001_102_index6': os.path.join(filedir, "data", "production", "J.Doe_00_04", SAMPLES[1], "FINISHED_AND_DELIVERED")}
     }
 
 REMOVED = {
-    'J.Doe_00_01': {'P001_101_index3': os.path.join(os.curdir, "data", "production", "J.Doe_00_01", SAMPLES[0], "FINISHED_AND_REMOVED"),
-                    'P001_102_index6': os.path.join(os.curdir, "data", "production", "J.Doe_00_01", SAMPLES[1], "FINISHED_AND_REMOVED")},
-    'J.Doe_00_04': {'P001_101_index3': os.path.join(os.curdir, "data", "production", "J.Doe_00_04", SAMPLES[0], "FINISHED_AND_REMOVED"),
-                    'P001_102_index6': os.path.join(os.curdir, "data", "production", "J.Doe_00_04", SAMPLES[1], "FINISHED_AND_REMOVED")}
+    'J.Doe_00_01': {'P001_101_index3': os.path.join(filedir, "data", "production", "J.Doe_00_01", SAMPLES[0], "FINISHED_AND_REMOVED"),
+                    'P001_102_index6': os.path.join(filedir, "data", "production", "J.Doe_00_01", SAMPLES[1], "FINISHED_AND_REMOVED")},
+    'J.Doe_00_04': {'P001_101_index3': os.path.join(filedir, "data", "production", "J.Doe_00_04", SAMPLES[0], "FINISHED_AND_REMOVED"),
+                    'P001_102_index6': os.path.join(filedir, "data", "production", "J.Doe_00_04", SAMPLES[1], "FINISHED_AND_REMOVED")}
     }
 
 
@@ -116,7 +118,7 @@ class ProductionTest(PmFullTest):
         handler.register(ProductionController)
         self._run_app()
         os.chdir(filedir)
-        j_doe_00_03 = os.path.abspath(os.path.join(os.curdir, "data", "projects", "j_doe_00_03"))
+        j_doe_00_03 = os.path.abspath(os.path.join(filedir, "data", "projects", "j_doe_00_03"))
         pattern = ".fastq(.gz)?$"
         def fastq_filter(f):
             return re.search(pattern, f) != None
@@ -129,7 +131,7 @@ class ProductionTest(PmFullTest):
         handler.register(ProductionController)
         self._run_app()
         self.assertTrue(os.path.exists(FINISHED['J.Doe_00_01'][SAMPLES[0]]))
-        samplefile = os.path.join(os.curdir, "data", "production", "J.Doe_00_01", "finished_sample.txt")
+        samplefile = os.path.join(filedir, "data", "production", "J.Doe_00_01", "finished_sample.txt")
         with open(samplefile, "w") as fh:
             fh.write(SAMPLES[0] + "\n")
             fh.write(SAMPLES[1] + "\n")
