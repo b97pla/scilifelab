@@ -18,18 +18,15 @@ class HsMetricsController(AbstractBaseController):
         description = 'Extension for running hs_metrics'
         stacked_on = 'production'
         arguments = [
-            (['--region_file'], dict(help="Region definition file", default=None)),
-            (['--bait_file'], dict(help="Region bait definition file", default=None)),
-            ## FIX ME: This should be called bcbb_file_type and be loaded via an extension
             (['--hs_file_type'], dict(help="File type glob", default="sort-dup")),
             ]
 
     @controller.expose(help="Calculate hs metrics for samples")
     def hs_metrics(self):
-        if not self._check_pargs(["project", "region_file"]):
+        if not self._check_pargs(["project", "targets"]):
             return
-        if not self.pargs.bait_file:
-            self.pargs.bait_file = self.pargs.region_file
+        if not self.pargs.baits:
+            self.pargs.baits = self.pargs.targets
         self.log.info("hs_metrics: This is a temporary solution for calculating hs metrics for samples using picard tools")
         pattern = "{}.bam$".format(self.pargs.hs_file_type)
         def filter_fn(f):
@@ -46,7 +43,7 @@ class HsMetricsController(AbstractBaseController):
             ### Issue with calling java from
             ### subprocess:http://stackoverflow.com/questions/9795249/issues-with-wrapping-java-program-with-pythons-subprocess-module
             ### Actually not an issue: command line arguments have to be done the right way
-            cl = ["java"] + ["-{}".format(self.pargs.java_opts)] +  ["-jar", "{}/CalculateHsMetrics.jar".format(os.getenv("PICARD_HOME"))] + ["INPUT={}".format(f)] + ["TARGET_INTERVALS={}".format(os.path.abspath(self.pargs.region_file))] + ["BAIT_INTERVALS={}".format(os.path.abspath(self.pargs.bait_file))] +  ["OUTPUT={}".format(f.replace(".bam", ".hs_metrics"))] + ["VALIDATION_STRINGENCY=SILENT"]
+            cl = ["java"] + ["-{}".format(self.pargs.java_opts)] +  ["-jar", "{}/CalculateHsMetrics.jar".format(os.getenv("PICARD_HOME"))] + ["INPUT={}".format(f)] + ["TARGET_INTERVALS={}".format(os.path.abspath(self.pargs.targets))] + ["BAIT_INTERVALS={}".format(os.path.abspath(self.pargs.baits))] +  ["OUTPUT={}".format(f.replace(".bam", ".hs_metrics"))] + ["VALIDATION_STRINGENCY=SILENT"]
             out = self.app.cmd.command(cl)
             if out:
                 self.app._output_data["stdout"].write(out.rstrip())

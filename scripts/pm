@@ -6,7 +6,7 @@ from scilifelab.pm.lib.config import config_defaults
 from scilifelab.pm import PmApp
 from scilifelab.pm.core.controller import PmController
 from scilifelab.pm.core.output import PmOutputHandler
-from scilifelab.pm.core.project import ProjectController, BcbioRunController, ProjectRmController
+from scilifelab.pm.core.project import ProjectController, ProjectRmController
 from scilifelab.pm.core.archive import ArchiveController
 from scilifelab.pm.core.production import ProductionController
 from scilifelab.pm.core.deliver import DeliveryController, DeliveryReportController
@@ -21,7 +21,7 @@ app = PmApp('pm',
             output_handler = PmOutputHandler, 
             config_files = [CONFIGFILE], 
             extensions = ['json',
-                          'scilifelab.pm.ext.ext_distributed',                        
+                          #'scilifelab.pm.ext.ext_distributed',                        
                           'scilifelab.pm.ext.ext_hs_metrics',
                           'scilifelab.pm.ext.ext_bcbio',
                           'scilifelab.pm.ext.ext_qc',
@@ -35,7 +35,6 @@ try:
     handler.register(ProjectController)
     handler.register(ArchiveController)
     handler.register(ProductionController)
-    handler.register(BcbioRunController)
     handler.register(ProjectRmController)
     handler.register(DeliveryController)
     handler.register(DeliveryReportController)
