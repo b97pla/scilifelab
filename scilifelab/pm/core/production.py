@@ -14,6 +14,7 @@ from scilifelab.utils.string import strip_extensions
 from scilifelab.utils.timestamp import utc_time
 
 FINISHED_FILE = "FINISHED_AND_DELIVERED"
+REMOVED_FILE = "FINISHED_AND_REMOVED"
 
 ## Main production controller
 class ProductionController(AbstractExtendedBaseController):
@@ -256,4 +257,40 @@ class ProductionController(AbstractExtendedBaseController):
                 t_utc = utc_time()
                 fh.write(t_utc)
 
+    ## Command for removing samples that have a FINISHED_FILE flag 
+    @controller.expose(help="Remove finished samples for a project. Searches for FINISHED_AND_DELIVERED and removes sample contents if file is present.")
+    def remove_finished(self):
+        if not self._check_pargs(["project"]):
+            return
+        # Don't filter out files
+        def filter_fn(f):
+            return True
+        slist = os.listdir(os.path.join(self._meta.root_path, self._meta.path_id))
+        for s in slist:
+            spath = os.path.join(self._meta.root_path, self._meta.path_id, s)
+            if not os.path.isdir(spath):
+                continue
+            # Crucial!!! Must make sure 
+            if not os.path.exists(os.path.join(spath, FINISHED_FILE)):
+                self.app.log.info("Sample {} not finished; skipping".format(s))
+                continue
+            flist = filtered_walk(spath, filter_fn)
+            dlist = filtered_walk(spath, filter_fn, get_dirs=True)
+            if os.path.exists(os.path.join(spath, REMOVED_FILE)):
+                self.app.log.info("Sample {} already removed; skipping".format(s))
+                continue
+            if len(flist) > 0 and not query_yes_no("Will remove directory {} containing {} files; continue?".format(s, len(flist)), force=self.pargs.force):
+                continue
+            self.app.log.info("Removing {} files from {}".format(len(flist), spath))            
+            for f in flist:
+                if f == os.path.join(spath, FINISHED_FILE):
+                    continue
+                self.app.cmd.safe_unlink(f)
+            self.app.log.info("Removing {} directories from {}".format(len(dlist), spath))
+            for d in sorted(dlist, reverse=True):
+                self.app.cmd.safe_rmdir(d)
+            if not self.pargs.dry_run:
+                with open(os.path.join(spath, REMOVED_FILE), "w") as fh:
+                    t_utc = utc_time()
+                    fh.write(t_utc)
         

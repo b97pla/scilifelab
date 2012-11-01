@@ -24,8 +24,23 @@ j_doe_00_05 = os.path.abspath(os.path.join(os.curdir, "data", "production", "J.D
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 
 ANALYSIS_TYPE = 'Align_standard_seqcap'
-SAMPLE = 'P001_102_index6'
+SAMPLES =  ['P001_101_index3', 'P001_102_index6']
 FLOWCELL = '120924_AC003CCCXX'
+
+FINISHED = {
+    'J.Doe_00_01': {'P001_101_index3': os.path.join(os.curdir, "data", "production", "J.Doe_00_01", SAMPLES[0], "FINISHED_AND_DELIVERED"),
+                    'P001_102_index6': os.path.join(os.curdir, "data", "production", "J.Doe_00_01", SAMPLES[1], "FINISHED_AND_DELIVERED")},
+    'J.Doe_00_04': {'P001_101_index3': os.path.join(os.curdir, "data", "production", "J.Doe_00_04", SAMPLES[0], "FINISHED_AND_DELIVERED"),
+                    'P001_102_index6': os.path.join(os.curdir, "data", "production", "J.Doe_00_04", SAMPLES[1], "FINISHED_AND_DELIVERED")}
+    }
+
+REMOVED = {
+    'J.Doe_00_01': {'P001_101_index3': os.path.join(os.curdir, "data", "production", "J.Doe_00_01", SAMPLES[0], "FINISHED_AND_REMOVED"),
+                    'P001_102_index6': os.path.join(os.curdir, "data", "production", "J.Doe_00_01", SAMPLES[1], "FINISHED_AND_REMOVED")},
+    'J.Doe_00_04': {'P001_101_index3': os.path.join(os.curdir, "data", "production", "J.Doe_00_04", SAMPLES[0], "FINISHED_AND_REMOVED"),
+                    'P001_102_index6': os.path.join(os.curdir, "data", "production", "J.Doe_00_04", SAMPLES[1], "FINISHED_AND_REMOVED")}
+    }
+
 
 @unittest.skipIf(not os.getenv("MAILTO"), "not running production test: set $MAILTO environment variable to your mail address to test mailsend")
 @unittest.skipIf(not os.getenv("DRMAA_LIBRARY_PATH"), "not running production test: no $DRMAA_LIBRARY_PATH")
@@ -38,7 +53,7 @@ class ProductionTest(PmFullTest):
         if not os.path.exists(j_doe_00_04):
             shutil.copytree(j_doe_00_01, j_doe_00_04)
         ## Set P001_102_index6 to use devel partition and require mailto environment variable for test
-        pp = os.path.join(j_doe_00_04, SAMPLE, FLOWCELL, "{}-post_process.yaml".format(SAMPLE))
+        pp = os.path.join(j_doe_00_04, SAMPLES[1], FLOWCELL, "{}-post_process.yaml".format(SAMPLES[1]))
         with open(pp) as fh:
             config = yaml.load(fh)
         platform_args = config["distributed"]["platform_args"].split()
@@ -50,6 +65,13 @@ class ProductionTest(PmFullTest):
         config["distributed"]["platform_args"] = " ".join(platform_args)
         with open(pp, "w") as fh:
             fh.write(yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, width=1000))
+        for k in FINISHED.keys():
+            for v in FINISHED[k].values():
+                if os.path.exists(v):
+                    os.unlink(v)
+            for v in REMOVED[k].values():
+                if os.path.exists(v):
+                    os.unlink(v)
 
     ## FIXME: since we're submitting jobs to drmaa, data will be
     ## removed before the pipeline has finished. One solution would be
@@ -74,7 +96,7 @@ class ProductionTest(PmFullTest):
 
     def test_platform_args(self):
         """Test the platform arguments for a run"""
-        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--amplicon', '--restart', '--sample', SAMPLE, '--drmaa'], extensions=['scilifelab.pm.ext.ext_distributed'])
+        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--amplicon', '--restart', '--sample', SAMPLES[1], '--drmaa'], extensions=['scilifelab.pm.ext.ext_distributed'])
         handler.register(ProductionController)
         self._run_app()
         os.chdir(filedir)
@@ -83,7 +105,7 @@ class ProductionTest(PmFullTest):
         """Test that passing --time actually changes platform
         arguments. These arguments should have precedence over
         whatever is written in the config file."""
-        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--amplicon', '--restart', '--sample', SAMPLE, '--drmaa', '--time', '00:01:00', '-n'], extensions=['scilifelab.pm.ext.ext_distributed'])
+        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_04', '--debug', '--force', '--amplicon', '--restart', '--sample', SAMPLES[1], '--drmaa', '--time', '00:01:00', '-n'], extensions=['scilifelab.pm.ext.ext_distributed'])
         handler.register(ProductionController)
         self._run_app()
         os.chdir(filedir)
@@ -103,25 +125,18 @@ class ProductionTest(PmFullTest):
 
     def test_touch_finished(self):
         """Test touching finished files"""
-        SAMPLE2 = "P001_101_index3"
-        finished = os.path.join(os.curdir, "data", "production", "J.Doe_00_01", SAMPLE, "FINISHED_AND_DELIVERED")
-        finished2 = os.path.join(os.curdir, "data", "production", "J.Doe_00_01", SAMPLE2, "FINISHED_AND_DELIVERED")
-        if os.path.exists(finished):
-            os.unlink(finished)
-        if os.path.exists(finished2):
-            os.unlink(finished2)
-        self.app = self.make_app(argv = ['production', 'touch-finished', 'J.Doe_00_01', '--debug', '--force', '--sample', SAMPLE], extensions=[])
+        self.app = self.make_app(argv = ['production', 'touch-finished', 'J.Doe_00_01', '--debug', '--force', '--sample', SAMPLES[0]], extensions=[])
         handler.register(ProductionController)
         self._run_app()
-        self.assertTrue(os.path.exists(finished))
+        self.assertTrue(os.path.exists(FINISHED['J.Doe_00_01'][SAMPLES[0]]))
         samplefile = os.path.join(os.curdir, "data", "production", "J.Doe_00_01", "finished_sample.txt")
         with open(samplefile, "w") as fh:
-            fh.write(SAMPLE + "\n")
-            fh.write(SAMPLE2 + "\n")
+            fh.write(SAMPLES[0] + "\n")
+            fh.write(SAMPLES[1] + "\n")
         self.app = self.make_app(argv = ['production', 'touch-finished', 'J.Doe_00_01', '--debug', '--force', '--sample', samplefile], extensions=[])
         handler.register(ProductionController)
         self._run_app()
-        self.assertTrue(os.path.exists(finished2))
+        self.assertTrue(os.path.exists(FINISHED['J.Doe_00_01'][SAMPLES[1]]))
         ## Make sure rsync fails
         self.app = self.make_app(argv = ['production', 'touch-finished', 'J.Doe_00_01', '--debug', '--force', '--sample', samplefile], extensions=[])
         handler.register(ProductionController)
@@ -133,6 +148,18 @@ class ProductionTest(PmFullTest):
                 self.app.render(self.app._output_data)
         finally:
             self.app.close()
+
+    def test_remove_finished(self):
+        self.app = self.make_app(argv = ['production', 'touch-finished', 'J.Doe_00_04', '--debug', '--force', '--sample', SAMPLES[1]], extensions=[])
+        handler.register(ProductionController)
+        self._run_app()
+        self.assertTrue(os.path.exists(FINISHED['J.Doe_00_04'][SAMPLES[1]]))
+        ## Remove file, dry
+        self.app = self.make_app(argv = ['production', 'remove-finished', 'J.Doe_00_04', '--debug', '--force', '-n'], extensions=[])
+        handler.register(ProductionController)
+        self._run_app()
+
+
 
 class UtilsTest(SciLifeTest):
     @classmethod
@@ -240,7 +267,7 @@ class UtilsTest(SciLifeTest):
     @unittest.skipIf(not os.getenv("DRMAA_LIBRARY_PATH"), "not running UtilsTest.test_platform: no $DRMAA_LIBRARY_PATH")
     def test_platform_args(self):
         """Test making platform args and changing them on the fly. """
-        pp = os.path.join(j_doe_00_05, SAMPLE, FLOWCELL, "{}-post_process.yaml".format(SAMPLE))
+        pp = os.path.join(j_doe_00_05, SAMPLES[1], FLOWCELL, "{}-post_process.yaml".format(SAMPLES[1]))
         with open(pp) as fh:
             config = yaml.load(fh)
         platform_args = config["distributed"]["platform_args"].split()
