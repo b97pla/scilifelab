@@ -44,15 +44,19 @@ class DeliveryReportController(AbstractBaseController):
         arguments = [
             (['project_id'], dict(help="Project id. Standard format is 'J.Doe_00_00'", default=None, nargs="?")),
             (['flowcell_id'], dict(help="Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?")),
-            (['-u', '--uppnex_id'], dict(help="Manually insert Uppnex project ID into the report.", default=None, action="store", type=str)),
-            (['-o', '--ordered_million_reads'], dict(help="Manually insert the ordered number of read pairs (in millions)", default=None, action="store", type=str)),
-            (['-r', '--customer_reference'], dict(help="Manually insert customer reference (the customer's name for the project) into reports", default=None, action="store", type=str)),
-            (['--check_consistency'], dict(help="Check consistency of project sample name mapping to sample run metrics names", default=False, action="store_true")),
-            (['--use_ps_map'], dict(help="Use project summary mapping in cases where no sample_run_metrics is available", default=True, action="store_false")),
-            (['--use_bc_map'], dict(help="Use sample run metrics barcode mapping in cases where no sample_run_metrics is available", default=False, action="store_true")),
-            (['--application'], dict(help="Set application for qc evaluation. One of '{}'".format(",".join(qc_cutoff.keys())), action="store", type=str, default=None)),
-            (['--exclude_sample_ids'], dict(help="Exclude project sample ids from report generation. Provide project sample ids separated by spaces, as in '--exclude_sample_ids PS1 PS2' ", action="store", default=[], nargs="+"))
             ]
+
+    def _setup(self, app):
+        group = app.args.add_argument_group('Reporting options', 'Options that affect report output')
+        group.add_argument('--exclude_sample_ids', help="Exclude project sample ids from report generation. Provide project sample ids separated by spaces, as in '--exclude_sample_ids PS1 PS2' ", action="store", default=[], nargs="+")
+        group.add_argument('-u', '--uppnex_id', help="Manually insert Uppnex project ID into the report.", default=None, action="store", type=str)
+        group.add_argument('-o', '--ordered_million_reads', help="Manually insert the ordered number of read pairs (in millions)", default=None, action="store", type=str)
+        group.add_argument('-r', '--customer_reference', help="Manually insert customer reference (the customer's name for the project) into reports", default=None, action="store", type=str)
+        group.add_argument('--check_consistency', help="Check consistency of project sample name mapping to sample run metrics names", default=False, action="store_true")
+        group.add_argument('--use_ps_map', help="Use project summary mapping in cases where no sample_run_metrics is available", default=True, action="store_false")
+        group.add_argument('--use_bc_map', help="Use sample run metrics barcode mapping in cases where no sample_run_metrics is available", default=False, action="store_true")
+        group.add_argument('--application', help="Set application for qc evaluation. One of '{}'".format(",".join(qc_cutoff.keys())), action="store", type=str, default=None)
+        super(DeliveryReportController, self)._setup(app)
 
     def _process_args(self):
         pass

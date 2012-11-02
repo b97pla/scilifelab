@@ -235,7 +235,7 @@ def _add_casava_results(runinfo):
         tmp.append(Template("data/production/${sample_prj}/${name}/120924_CC003CCCXX/${name}_${sequence}_L00${lane}_R2_001.fastq").render(**k))
 
         ## Add meta files to root folder
-        file_types = ["-bcbb-command.txt","-bcbb-command.txtre","-bcbb.log","-post_process.yaml"]
+        file_types = ["-bcbb-command.txt","-bcbb.log","-post_process.yaml"]
         for x in file_types:
             k.update(ext=x)
             tmp.append(Template("data/production/${sample_prj}/${name}/120924_CC003CCCXX/${name}${ext}").render(**k))
