@@ -6,7 +6,7 @@ import re
 import subprocess
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractExtendedBaseController
-from scilifelab.utils.misc import query_yes_no, filtered_walk
+from scilifelab.utils.misc import query_yes_no, filtered_walk, opt_to_dict
 from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command
 from scilifelab.bcbio.flowcell import Flowcell
 from scilifelab.bcbio.status import status_query
@@ -114,8 +114,9 @@ class ProductionController(AbstractExtendedBaseController):
             ## Copy sample files - currently not doing lane files
             self._transfer_files(sources, targets)
             self.app.cmd.write(os.path.join(dirs["data"], "{}-bcbb-pm-config.yaml".format(sample['name'])), fc_new.as_yaml())
+        ## Rewrite platform_args; only keep time, workdir, account, partition, outpath and jobname
 
-
+            
     def _to_pre_casava_structure(self, fc):
         dirs = {"data":os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data", fc.fc_id())),
                 "intermediate":os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "intermediate", fc.fc_id()))}
@@ -272,7 +273,6 @@ class ProductionController(AbstractExtendedBaseController):
             spath = os.path.join(self._meta.root_path, self._meta.path_id, s)
             if not os.path.isdir(spath):
                 continue
-            # Crucial!!! Must make sure 
             if not os.path.exists(os.path.join(spath, FINISHED_FILE)):
                 self.app.log.info("Sample {} not finished; skipping".format(s))
                 continue
