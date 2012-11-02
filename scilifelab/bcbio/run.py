@@ -6,6 +6,7 @@ import yaml
 from scilifelab.utils.misc import filtered_walk, query_yes_no
 from scilifelab.utils.dry import dry_write, dry_backup, dry_unlink, dry_rmdir
 from scilifelab.log import minimal_logger
+from scilifelab.bcbio import sort_post_process_fastq, update_post_process
 
 LOG = minimal_logger(__name__)
 
@@ -86,32 +87,15 @@ def setup_sample(f, analysis_type, amplicon=False, genome_build="hg19", **kw):
         LOG.info("Making backup of {} in {}".format(ppf, ppf_bak))
         dry_backup(ppf, dry_run=kw['dry_run'])
 
-    ## FIXME: write cleaner way of updating config
-    nsamples = len(config["details"])
-    for i in range(0, nsamples):
-        if analysis_type and config["details"][i]["multiplex"][0]["analysis"] != analysis_type:
-            LOG.info("Setting analysis_type to {} for sample {}".format(analysis_type, config["details"][i]["multiplex"][0]["name"]))
-        
-            config["details"][i]["multiplex"][0]["analysis"] = analysis_type
-            config["details"][i]["analysis"] = analysis_type
-        if config["details"][i]["genome_build"] == 'unknown' or config["details"][i]["multiplex"][0]["genome_build"] != genome_build:
-            LOG.info("Setting genome_build to {}".format(genome_build))
-            config["details"][i]["genome_build"] = genome_build
-            config["details"][i]["multiplex"][0]["genome_build"] = genome_build
-        ## Check if files exist: if they don't, then change the suffix
-        config["details"][i]["multiplex"][0]["files"].sort()
-        seqfiles = config["details"][i]["multiplex"][0]["files"]
-        if not os.path.exists(seqfiles[0]):
-            (_, ext) = os.path.splitext(seqfiles[0])
-            LOG.warn("Couldn't find {} file; will look for {} files".format(os.path.abspath(seqfiles[0]), ext))
-            if ext == ".gz":
-                config["details"][i]["multiplex"][0]["files"] = [x.replace(".gz", "") for x in seqfiles]
-            else:
-                config["details"][i]["multiplex"][0]["files"] = ["{}.gz".format(x) for x in seqfiles]
+    if analysis_type:
+        config = update_post_process(config, "analysis_type", analysis_type)
+    if genome_build:
+        config = update_post_process(config, "genome_build", genome_build)
+    config = sort_post_process_fastq(config)
 
     ## Remove config file and rewrite
     dry_unlink(f, kw['dry_run'])
-    dry_write(f, yaml.dump(config), dry_run=kw['dry_run'])
+    dry_write(f, yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw['dry_run'])
 
     ## Setup post process
     ppfile = f.replace("-bcbb-config.yaml", "-post_process.yaml")
