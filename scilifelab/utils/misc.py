@@ -3,6 +3,7 @@ import sys
 import os
 import re
 import contextlib
+import itertools
 import scilifelab.log
 
 LOG = scilifelab.log.minimal_logger(__name__)
@@ -143,3 +144,17 @@ def chdir(new_dir):
         os.chdir(cur_dir)
 
 
+
+def opt_to_dict(opts):
+    """Transform option list to a dictionary.
+
+    :param opts: option list
+    
+    :returns: option dictionary
+    """
+    if isinstance(opts, dict):
+        return
+    args = list(itertools.chain.from_iterable([x.split("=") for x in opts]))
+    opt_d = {k: True if v.startswith('-') else v
+             for k,v in zip(args, args[1:]+["--"]) if k.startswith('-')}
+    return opt_d

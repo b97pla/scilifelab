@@ -11,8 +11,8 @@ from classes import PmFullTest
 
 from cement.core import handler
 from scilifelab.pm.core.production import ProductionController
-from scilifelab.pm.ext.ext_distributed import make_job_template_args, opt_to_dict
-from scilifelab.utils.misc import filtered_walk
+from scilifelab.pm.ext.ext_distributed import make_job_template_args
+from scilifelab.utils.misc import filtered_walk, opt_to_dict
 from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command
 
 LOG = logbook.Logger(__name__)
