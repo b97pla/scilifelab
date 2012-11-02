@@ -3,6 +3,7 @@ import sys
 import os
 import re
 import contextlib
+import itertools
 import scilifelab.log
 
 LOG = scilifelab.log.minimal_logger(__name__)
