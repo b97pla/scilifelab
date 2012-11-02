@@ -181,11 +181,6 @@ class BcbioRunController(AbstractBaseController):
         else:
             return "FAIL"
 
-    ## FIXME: for now this is an exact copy of production.run. Since
-    ## this is a function related to bcbio, it should be put in an
-    ## extension ext_bcbio.py. Problem is: how can a controller be
-    ## stacked on two other controllers, namely production and
-    ## project?
     @controller.expose(help="Run bcbb pipeline")
     def run(self):
         if not self._check_pargs(["project"]):
