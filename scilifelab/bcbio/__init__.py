@@ -58,11 +58,11 @@ def sort_sample_config_fastq(conf):
             runinfo[i]["multiplex"][j]["files"].sort()
             seqfiles = runinfo[i]["multiplex"][0]["files"]
             for k in range(0, len(seqfiles)):
-                if not os.path.exists(seqfiles[k]):
+                if not os.path.exists(os.path.abspath(seqfiles[k])):
                     (_, ext) = os.path.splitext(seqfiles[k])
                     if ext == ".gz":
                         LOG.warn("Couldn't find gz file; will set use extension .fastq")
-                        runinfo[i]["multiplex"][j]["files"][k].replace(".gz", "")
+                        runinfo[i]["multiplex"][j]["files"][k] = runinfo[i]["multiplex"][j]["files"][k].replace(".gz", "")
                     else:
                         LOG.warn("Couldn't find fastq file; will set use extension .gz")
                         runinfo[i]["multiplex"][j]["files"][k] = "{}.gz".format(runinfo[i]["multiplex"][j]["files"][k])
