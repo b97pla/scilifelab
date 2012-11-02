@@ -6,7 +6,7 @@ import yaml
 from scilifelab.utils.misc import filtered_walk, query_yes_no
 from scilifelab.utils.dry import dry_write, dry_backup, dry_unlink, dry_rmdir
 from scilifelab.log import minimal_logger
-from scilifelab.bcbio import sort_post_process_fastq, update_post_process
+from scilifelab.bcbio import sort_sample_config_fastq, update_sample_config
 
 LOG = minimal_logger(__name__)
 
@@ -55,7 +55,7 @@ def find_samples(path, sample=None, pattern = "-bcbb-config.yaml$", only_failed=
         LOG.info("No such sample {}".format(sample))
     return [os.path.abspath(f) for f in flist]
 
-def setup_sample(f, analysis_type, amplicon=False, genome_build="hg19", **kw):
+def setup_sample(f, analysis, amplicon=False, genome_build="hg19", **kw):
     """Setup config files, making backups and writing new files
 
     :param path: root path in which to search for samples
@@ -87,11 +87,11 @@ def setup_sample(f, analysis_type, amplicon=False, genome_build="hg19", **kw):
         LOG.info("Making backup of {} in {}".format(ppf, ppf_bak))
         dry_backup(ppf, dry_run=kw['dry_run'])
 
-    if analysis_type:
-        config = update_post_process(config, "analysis_type", analysis_type)
+    if analysis:
+        config = update_sample_config(config, "analysis", analysis)
     if genome_build:
-        config = update_post_process(config, "genome_build", genome_build)
-    config = sort_post_process_fastq(config)
+        config = update_sample_config(config, "genome_build", genome_build)
+    config = sort_sample_config_fastq(config)
 
     ## Remove config file and rewrite
     dry_unlink(f, kw['dry_run'])
@@ -101,7 +101,6 @@ def setup_sample(f, analysis_type, amplicon=False, genome_build="hg19", **kw):
     ppfile = f.replace("-bcbb-config.yaml", "-post_process.yaml")
     with open(ppfile) as fh:
         pp = yaml.load(fh)
-
     ## Need to set working directory to path of bcbb-config.yaml file
     if pp.get('distributed', {}).get('platform_args', None):
         platform_args = pp['distributed']['platform_args'].split()
@@ -111,13 +110,15 @@ def setup_sample(f, analysis_type, amplicon=False, genome_build="hg19", **kw):
             platform_args[platform_args.index("--workdir")+1] = os.path.dirname(f)
         pp['distributed']['platform_args'] = " ".join(platform_args)
     if kw['baits']:
-        pp['custom_algorithms'][analysis_type]['hybrid_bait'] = kw['baits']
+        pp['custom_algorithms'][analysis]['hybrid_bait'] = kw['baits']
     if kw['targets']:
-        pp['custom_algorithms'][analysis_type]['hybrid_target'] = kw['targets']
+        pp['custom_algorithms'][analysis]['hybrid_target'] = kw['targets']
+    if kw['galaxy_config']:
+        pp['galaxy_config'] = kw['galaxy_config']
     if amplicon:
         LOG.info("setting amplicon analysis")
         pp['algorithm']['mark_duplicates'] = False
-        pp['custom_algorithms'][analysis_type]['mark_duplicates'] = False
+        pp['custom_algorithms'][analysis]['mark_duplicates'] = False
     if kw['distributed']:
         LOG.info("setting distributed execution")
         pp['algorithm']['num_cores'] = 'messaging'

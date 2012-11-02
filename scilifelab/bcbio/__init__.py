@@ -25,10 +25,10 @@ def prune_pp_platform_args(conf, keep_opts = POST_PROCESS_OPTS):
         newconf['distributed']['platform_args'] = " ".join(platform_args)
     return newconf
 
-def update_post_process(conf, key, value):
-    """Update post process dictionary fields 'key' to value.
+def update_sample_config(conf, key, value):
+    """Update sample config dictionary fields 'key' to value.
 
-    :param conf: post process configuration. 
+    :param conf: sample configuration. 
     :param key: key to update
     :param value: update key to value
 
@@ -43,11 +43,11 @@ def update_post_process(conf, key, value):
             runinfo[i]["multiplex"][j][key] = value
     return {'details':runinfo}
     
-def sort_post_process_fastq(conf):
-    """Sort fastq entires in post process config file, at the same
+def sort_sample_config_fastq(conf):
+    """Sort fastq entires in sample config file, at the same
     time adding/subtracting gz extension if present/absent.
 
-    :param conf: post process configuration
+    :param conf: sample configuration
     
     :returns: updated post process file
     """
@@ -60,9 +60,10 @@ def sort_post_process_fastq(conf):
             for k in range(0, len(seqfiles)):
                 if not os.path.exists(seqfiles[k]):
                     (_, ext) = os.path.splitext(seqfiles[k])
-                    LOG.warn("Couldn't find {} file; will set input file to {}{}".format(os.path.abspath(seqfiles[k]), os.path.abspath(seqfiles[k]), ext))
                     if ext == ".gz":
+                        LOG.warn("Couldn't find gz file; will set use extension .fastq")
                         runinfo[i]["multiplex"][j]["files"][k].replace(".gz", "")
                     else:
+                        LOG.warn("Couldn't find fastq file; will set use extension .gz")
                         runinfo[i]["multiplex"][j]["files"][k] = "{}.gz".format(runinfo[i]["multiplex"][j]["files"][k])
     return {'details':runinfo}
