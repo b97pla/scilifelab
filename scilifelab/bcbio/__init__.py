@@ -68,9 +68,10 @@ def update_sample_config(conf, key, value):
     runinfo = newconf.get("details") if newconf.get("details", None) else newconf
     for i in range(0, len(runinfo)):
         runinfo[i][key] = value
-        for j in range(0, len(runinfo[i].get("multiplex"))):
-            LOG.info("Setting {} to {} for sample {}".format(key, value, runinfo[i]["multiplex"][j]["name"]))
-            runinfo[i]["multiplex"][j][key] = value
+        if runinfo[i].get("multiplex", None):
+            for j in range(0, len(runinfo[i].get("multiplex"))):
+                LOG.info("Setting {} to {} for sample {}".format(key, value, runinfo[i]["multiplex"][j]["name"]))
+                runinfo[i]["multiplex"][j][key] = value
     newconf['details'] = runinfo
     return newconf
 
@@ -102,7 +103,6 @@ def sort_sample_config_fastq(conf):
     newconf = copy.deepcopy(conf)
     runinfo = newconf.get("details") if newconf.get("details", None) else newconf
     for i in range(0, len(runinfo)):
-        print runinfo[i]
         if runinfo[i].get("multiplex", None):
             for j in range(0, len(runinfo[i].get("multiplex"))):
                 runinfo[i]["multiplex"][j]["files"].sort()

@@ -14,9 +14,7 @@ class BcbioRunController(AbstractBaseController):
 
     def _setup(self, app):
         group = app.args.add_argument_group('Bcbio argument group', 'Options for bcbio')
-        group.add_argument('-M', '--merge_analysis', action='store_true',
-                       help='Run merge analysis. If a sample has data from more than one run, a \'total\' directory will be setup.', default=False)
-        group.add_argument('--post_process', help="post process file. Setting this will override sample-specific post process files. Currently not implemented.", action="store", default=None, nargs="?", type=str)
+        group.add_argument('--post_process', help="post process file. Setting this will override sample-specific post process files.", action="store", default=None, nargs="?", type=str)
         group.add_argument('--genome_build', help="genome build ", action="store", default=None, type=str)
         group.add_argument('--only_failed', help="only run on failed samples ", action="store_true", default=False)
         group.add_argument('--amplicon', help="amplicon-based analyses (e.g. HaloPlex), which means mark_duplicates is set to false", action="store_true", default=False)
@@ -27,8 +25,9 @@ class BcbioRunController(AbstractBaseController):
         group.add_argument('--only_setup', help="only perform setup", action="store_true", default=False)
         group.add_argument('--restart', help="restart analysis", action="store_true", default=False)
         group.add_argument('--analysis', help="set analysis type in bcbb config file", action="store", default=None, type=str)
+        group.add_argument('--workingDirectory', help="set working directory", action="store", default=None, type=str)
         group.add_argument('--snpEff', help="set snpEff program in post process", action="store", default=None, type=str)
-        group.add_argument('--no_merged', help="dot't do merged sample analysis for samples with multiple sample runs", action="store_true", default=False)
+        group.add_argument('--merged', help="do merged sample analysis for samples with multiple sample runs", action="store_true", default=False)
         super(BcbioRunController, self)._setup(app)
 
     def _sample_status(self, x):
@@ -44,8 +43,10 @@ class BcbioRunController(AbstractBaseController):
     def run(self):
         if not self._check_pargs(["project"]):
             return
+        if self.pargs.post_process:
+            self.pargs.post_process = os.path.abspath(self.pargs.post_process)
         flist = find_samples(os.path.abspath(os.path.join(self.app.controller._meta.project_root, self.app.controller._meta.path_id)), **vars(self.pargs))
-        if not self.pargs.no_merged:
+        if self.pargs.merged:
             ##  Setup merged samples and append to flist if new list longer
             flist = setup_merged_samples(flist, **vars(self.pargs))
         if len(flist) > 0 and not query_yes_no("Going to start {} jobs... Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
@@ -71,5 +72,5 @@ class BcbioRunController(AbstractBaseController):
                 self.app.log.info("Removing old analysis files in {}".format(os.path.dirname(run_info)))
                 remove_files(run_info, **vars(self.pargs))
             (cl, platform_args) = run_bcbb_command(run_info, **vars(self.pargs))
-            self.app.cmd.command(cl, **{'platform_args':platform_args, 'saveJobId':True})
+            self.app.cmd.command(cl, **{'platform_args':platform_args, 'saveJobId':True, 'workingDirectory':self.pargs.get("workingDirectory", os.path.dirname(run_info))})
             os.chdir(orig_dir)

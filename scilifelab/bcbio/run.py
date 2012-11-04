@@ -76,7 +76,7 @@ def setup_merged_samples(flist, sample_group_fn=_group_samples, **kw):
             f = v[v.keys()[0]]
             out_d = os.path.join(os.path.dirname(os.path.dirname(f)), MERGED_SAMPLE_OUTPUT_DIR)
             LOG.info("Sample {} has {} sample runs; setting up merge analysis in {}".format(k, len(v), out_d))
-            dry_makedir(out_d, dry_run=kw.get('dry_run', True))
+            dry_makedir(out_d, dry_run=False)
             pp = kw.get("post_process") if kw.get("post_process", None) else f.replace("-bcbb-config.yaml", "-post_process.yaml")
             with open(pp) as fh:
                 conf = yaml.load(fh)
@@ -127,6 +127,8 @@ def setup_sample(f, analysis, amplicon=False, genome_build="hg19", **kw):
     :param path: root path in which to search for samples
     :param dry_run: dry run flag
     """
+    if not os.path.exists(f):
+        return
     with open(f) as fh:
         config = yaml.load(fh)
     ## Check for correctly formatted config
@@ -150,10 +152,11 @@ def setup_sample(f, analysis, amplicon=False, genome_build="hg19", **kw):
 
     ## Save post_process file to backup if it doesn't exist
     ppf = f.replace("-bcbb-config.yaml", "-post_process.yaml")
-    ppf_bak = ppf.replace("-post_process.yaml", "-post_process.yaml.bak")
-    if not os.path.exists(ppf_bak):
-        LOG.info("Making backup of {} in {}".format(ppf, ppf_bak))
-        dry_backup(ppf, dry_run=kw['dry_run'])
+    if os.path.exists(ppf):
+        ppf_bak = ppf.replace("-post_process.yaml", "-post_process.yaml.bak")
+        if not os.path.exists(ppf_bak):
+            LOG.info("Making backup of {} in {}".format(ppf, ppf_bak))
+            dry_backup(ppf, dry_run=kw['dry_run'])
 
     if analysis:
         config = update_sample_config(config, "analysis", analysis)
@@ -166,39 +169,39 @@ def setup_sample(f, analysis, amplicon=False, genome_build="hg19", **kw):
     dry_write(f, yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw['dry_run'])
 
     ## Setup post process
-    ppfile = f.replace("-bcbb-config.yaml", "-post_process.yaml")
-    with open(ppfile) as fh:
-        pp = yaml.load(fh)
-    ## Need to set working directory to path of bcbb-config.yaml file
-    if pp.get('distributed', {}).get('platform_args', None):
-        platform_args = pp['distributed']['platform_args'].split()
-        if "-D" in platform_args:
-            platform_args[platform_args.index("-D")+1] = os.path.dirname(f)
-        elif "--workdir" in platform_args:
-            platform_args[platform_args.index("--workdir")+1] = os.path.dirname(f)
-        pp['distributed']['platform_args'] = " ".join(platform_args)
-    ## Change keys for all analyses
-    for anl in pp.get('custom_algorithms',{}).keys():
-        if kw.get('baits', None):
-            pp['custom_algorithms'][anl]['hybrid_bait'] = kw['baits']
-        if kw.get('targets', None):
-            pp['custom_algorithms'][anl]['hybrid_target'] = kw['targets']
+    if not kw.get("post_process", None):
+        ppfile = f.replace("-bcbb-config.yaml", "-post_process.yaml")
+        with open(ppfile) as fh:
+            pp = yaml.load(fh)
+        ## Need to set working directory to path of bcbb-config.yaml file
+        if pp.get('distributed', {}).get('platform_args', None):
+            platform_args = pp['distributed']['platform_args'].split()
+            if "-D" in platform_args:
+                platform_args[platform_args.index("-D")+1] = os.path.dirname(f)
+            elif "--workdir" in platform_args:
+                platform_args[platform_args.index("--workdir")+1] = os.path.dirname(f)
+            pp['distributed']['platform_args'] = " ".join(platform_args)
+        ## Change keys for all analyses
+        for anl in pp.get('custom_algorithms',{}).keys():
+            if kw.get('baits', None):
+                pp['custom_algorithms'][anl]['hybrid_bait'] = kw['baits']
+            if kw.get('targets', None):
+                pp['custom_algorithms'][anl]['hybrid_target'] = kw['targets']
+            if amplicon:
+                pp['custom_algorithms'][anl]['mark_duplicates'] = False
         if amplicon:
-            pp['custom_algorithms'][anl]['mark_duplicates'] = False
-    if amplicon:
-        LOG.info("setting amplicon analysis")
-        pp['algorithm']['mark_duplicates'] = False
-    if kw.get('galaxy_config', None):
-        pp['galaxy_config'] = kw['galaxy_config']
-    if kw.get('distributed', None):
-        LOG.info("setting distributed execution")
-        pp['algorithm']['num_cores'] = 'messaging'
-    else:
-        LOG.info("setting parallell execution")
-        pp['algorithm']['num_cores'] = kw['num_cores']
-    dry_unlink(ppfile, dry_run=kw['dry_run'])
-    dry_write(ppfile, yaml.safe_dump(pp, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw['dry_run'])
-
+            LOG.info("setting amplicon analysis")
+            pp['algorithm']['mark_duplicates'] = False
+        if kw.get('galaxy_config', None):
+            pp['galaxy_config'] = kw['galaxy_config']
+        if kw.get('distributed', None):
+            LOG.info("setting distributed execution")
+            pp['algorithm']['num_cores'] = 'messaging'
+        else:
+            LOG.info("setting parallell execution")
+            pp['algorithm']['num_cores'] = kw['num_cores']
+        dry_unlink(ppfile, dry_run=kw['dry_run'])
+        dry_write(ppfile, yaml.safe_dump(pp, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw['dry_run'])
 
 def remove_files(f, **kw):
     ## Remove old files if requested
