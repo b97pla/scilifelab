@@ -13,7 +13,7 @@ from cement.core import handler
 from scilifelab.pm.core.production import ProductionController
 from scilifelab.pm.ext.ext_distributed import make_job_template_args
 from scilifelab.utils.misc import filtered_walk, opt_to_dict
-from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command
+from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command, setup_merged_samples
 
 LOG = logbook.Logger(__name__)
 
@@ -184,6 +184,11 @@ class UtilsTest(SciLifeTest):
         self.assertEqual(len(flist), 3)
         flist = find_samples(j_doe_00_05, **{'only_failed':True})
         self.assertEqual(len(flist), 0)
+
+    def test_setup_merged_samples(self):
+        """Test setting up merged samples"""
+        flist = find_samples(j_doe_00_05)
+        setup_merged_samples(flist, **{'dry_run':False})
 
     def test_setup_samples(self):
         """Test setting up samples, changing genome to rn4"""

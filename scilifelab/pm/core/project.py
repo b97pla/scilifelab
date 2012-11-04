@@ -144,4 +144,3 @@ class ProjectRmController(AbstractBaseController):
             self.app.cmd.safe_unlink(f)
         self.app.log.info("removing {}".format(indir))
         self.app.cmd.safe_rmdir(indir)
-

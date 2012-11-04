@@ -7,9 +7,8 @@ import yaml
 import subprocess
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractExtendedBaseController
-from scilifelab.utils.misc import query_yes_no, filtered_walk, opt_to_dict
+from scilifelab.utils.misc import query_yes_no, filtered_walk
 from scilifelab.bcbio import prune_pp_platform_args
-from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command
 from scilifelab.bcbio.flowcell import Flowcell
 from scilifelab.bcbio.status import status_query
 from scilifelab.utils.string import strip_extensions

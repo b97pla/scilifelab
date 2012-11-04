@@ -3,9 +3,10 @@ import os
 import re
 import yaml
 
-from scilifelab.utils.misc import filtered_walk, query_yes_no
-from scilifelab.utils.dry import dry_write, dry_backup, dry_unlink, dry_rmdir
+from scilifelab.utils.misc import filtered_walk, query_yes_no, opt_to_dict
+from scilifelab.utils.dry import dry_write, dry_backup, dry_unlink, dry_rmdir, dry_makedir
 from scilifelab.log import minimal_logger
+from scilifelab.bcbio import sort_sample_config_fastq, update_sample_config, update_pp_platform_args, merge_sample_config
 
 LOG = minimal_logger(__name__)
 
@@ -17,6 +18,8 @@ DISTRIBUTED_ANALYSIS_SCRIPT="distributed_nextgen_pipeline.py"
 PROCESS_YAML = True
 # If True, will assign the distributed master process and workers to a separate RabbitMQ queue for each flowcell 
 FC_SPECIFIC_AMPQ = True
+## Name of merged sample output directory
+MERGED_SAMPLE_OUTPUT_DIR = "TOTAL"
 
 def _sample_status(x):
     """Find the status of a sample.
@@ -26,6 +29,64 @@ def _sample_status(x):
         return "PASS"
     else:
         return "FAIL"
+
+
+def _group_samples(flist):
+    """Group samples by sample name and flowcell
+    
+    This function assumes flist consists of bcbb-config.yaml files. It reads each file
+    and extracts sample name and flowcell for subsequent grouping.
+
+    :param flist: list of bcbb-config.yaml files
+
+    :returns: dictionary of samples grouped by name and flowcell
+    """
+    sample_d = {}
+    for f in flist:
+        with open(f) as fh:
+            conf = yaml.load(fh)
+        sample_id = conf.get("details", [])[0].get("multiplex", [])[0].get("name", None)
+        if not sample_id:
+            LOG.warn("No sample_id found in file {}; skipping".format(f))
+            continue
+        fc_id = conf.get("details", [])[0].get("flowcell_id", None)
+        if not fc_id:
+            LOG.warn("No flowcell_id found in file {}; skipping".format(f))
+            continue
+        if not sample_id in sample_d.keys():
+            sample_d[sample_id] = {fc_id:f}
+        else:
+            sample_d[sample_id][fc_id] = f
+    return sample_d
+            
+def setup_merged_samples(flist, sample_group_fn=_group_samples, **kw):
+    """Setup analysis that merges multiple sample runs.
+
+    :param flist: list of file names, by default *-bcbb-config.yaml files
+    :param sample_group_fn: function that groups files into samples and sample runs. The function takes flist as input.
+
+    :returns: updated flist with config files for merged samples
+    """
+    sample_d = sample_group_fn(flist)
+    for k, v in sample_d.iteritems():
+        if len(v) > 1:
+            f = v[v.keys()[0]]
+            out_d = os.path.join(os.path.dirname(os.path.dirname(f)), MERGED_SAMPLE_OUTPUT_DIR)
+            LOG.info("Sample {} has {} sample runs; setting up merge analysis in {}".format(k, len(v), out_d))
+            dry_makedir(out_d, dry_run=kw.get('dry_run', True))
+            pp = kw.get("post_process") if kw.get("post_process", None) else f.replace("-bcbb-config.yaml", "-post_process.yaml")
+            with open(pp) as fh:
+                conf = yaml.load(fh)
+            conf = update_pp_platform_args(conf, **{'jobname': "{}_total".format(k), 'workdir': out_d, 'output': "{}_total-bcbb.log".format(k) })
+            pp_new = os.path.join(out_d, os.path.basename(pp))
+            dry_unlink(pp_new, dry_run=kw.get('dry_run', True))
+            dry_write(pp_new, yaml.safe_dump(conf, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw.get('dry_run', True))
+            ## Setup merged bcbb-config file
+            bcbb_config = merge_sample_config(v.values(), sample=k)
+            bcbb_config_file = os.path.join(out_d, "{}-bcbb-config-total.yaml".format(k))
+            dry_unlink(bcbb_config_file, dry_run=kw.get('dry_run', True))
+            dry_write(bcbb_config_file, yaml.safe_dump(bcbb_config, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw.get('dry_run', True))
+
 
 def find_samples(path, sample=None, pattern = "-bcbb-config.yaml$", only_failed=False, **kw):
     """Find bcbb config files in a path.
@@ -54,7 +115,7 @@ def find_samples(path, sample=None, pattern = "-bcbb-config.yaml$", only_failed=
         LOG.info("No such sample {}".format(sample))
     return [os.path.abspath(f) for f in flist]
 
-def setup_sample(f, analysis_type, amplicon=False, genome_build="hg19", **kw):
+def setup_sample(f, analysis, amplicon=False, genome_build="hg19", **kw):
     """Setup config files, making backups and writing new files
 
     :param path: root path in which to search for samples
@@ -86,38 +147,20 @@ def setup_sample(f, analysis_type, amplicon=False, genome_build="hg19", **kw):
         LOG.info("Making backup of {} in {}".format(ppf, ppf_bak))
         dry_backup(ppf, dry_run=kw['dry_run'])
 
-    ## FIXME: write cleaner way of updating config
-    nsamples = len(config["details"])
-    for i in range(0, nsamples):
-        if analysis_type and config["details"][i]["multiplex"][0]["analysis"] != analysis_type:
-            LOG.info("Setting analysis_type to {} for sample {}".format(analysis_type, config["details"][i]["multiplex"][0]["name"]))
-        
-            config["details"][i]["multiplex"][0]["analysis"] = analysis_type
-            config["details"][i]["analysis"] = analysis_type
-        if config["details"][i]["genome_build"] == 'unknown' or config["details"][i]["multiplex"][0]["genome_build"] != genome_build:
-            LOG.info("Setting genome_build to {}".format(genome_build))
-            config["details"][i]["genome_build"] = genome_build
-            config["details"][i]["multiplex"][0]["genome_build"] = genome_build
-        ## Check if files exist: if they don't, then change the suffix
-        config["details"][i]["multiplex"][0]["files"].sort()
-        seqfiles = config["details"][i]["multiplex"][0]["files"]
-        if not os.path.exists(seqfiles[0]):
-            (_, ext) = os.path.splitext(seqfiles[0])
-            LOG.warn("Couldn't find {} file; will look for {} files".format(os.path.abspath(seqfiles[0]), ext))
-            if ext == ".gz":
-                config["details"][i]["multiplex"][0]["files"] = [x.replace(".gz", "") for x in seqfiles]
-            else:
-                config["details"][i]["multiplex"][0]["files"] = ["{}.gz".format(x) for x in seqfiles]
+    if analysis:
+        config = update_sample_config(config, "analysis", analysis)
+    if genome_build:
+        config = update_sample_config(config, "genome_build", genome_build)
+    config = sort_sample_config_fastq(config)
 
     ## Remove config file and rewrite
     dry_unlink(f, kw['dry_run'])
-    dry_write(f, yaml.dump(config), dry_run=kw['dry_run'])
+    dry_write(f, yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw['dry_run'])
 
     ## Setup post process
     ppfile = f.replace("-bcbb-config.yaml", "-post_process.yaml")
     with open(ppfile) as fh:
         pp = yaml.load(fh)
-
     ## Need to set working directory to path of bcbb-config.yaml file
     if pp.get('distributed', {}).get('platform_args', None):
         platform_args = pp['distributed']['platform_args'].split()
@@ -127,13 +170,15 @@ def setup_sample(f, analysis_type, amplicon=False, genome_build="hg19", **kw):
             platform_args[platform_args.index("--workdir")+1] = os.path.dirname(f)
         pp['distributed']['platform_args'] = " ".join(platform_args)
     if kw['baits']:
-        pp['custom_algorithms'][analysis_type]['hybrid_bait'] = kw['baits']
+        pp['custom_algorithms'][analysis]['hybrid_bait'] = kw['baits']
     if kw['targets']:
-        pp['custom_algorithms'][analysis_type]['hybrid_target'] = kw['targets']
+        pp['custom_algorithms'][analysis]['hybrid_target'] = kw['targets']
+    if kw['galaxy_config']:
+        pp['galaxy_config'] = kw['galaxy_config']
     if amplicon:
         LOG.info("setting amplicon analysis")
         pp['algorithm']['mark_duplicates'] = False
-        pp['custom_algorithms'][analysis_type]['mark_duplicates'] = False
+        pp['custom_algorithms'][analysis]['mark_duplicates'] = False
     if kw['distributed']:
         LOG.info("setting distributed execution")
         pp['algorithm']['num_cores'] = 'messaging'

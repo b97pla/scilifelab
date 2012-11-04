@@ -5,6 +5,7 @@ import re
 from cement.core import backend, controller, handler, hook
 from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.utils.misc import query_yes_no, filtered_walk
+from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command, setup_merged_samples
 
 class BcbioRunController(AbstractBaseController):
     class Meta:
@@ -16,7 +17,7 @@ class BcbioRunController(AbstractBaseController):
         group.add_argument('-M', '--merge_analysis', action='store_true',
                        help='Run merge analysis. If a sample has data from more than one run, a \'total\' directory will be setup.', default=False)
         group.add_argument('--post_process', help="post process file. Setting this will override sample-specific post process files. Currently not implemented.", action="store", default=None, nargs="?", type=str)
-        group.add_argument('--genome_build', help="genome build ", action="store", default="hg19", type=str)
+        group.add_argument('--genome_build', help="genome build ", action="store", default=None, type=str)
         group.add_argument('--only_failed', help="only run on failed samples ", action="store_true", default=False)
         group.add_argument('--amplicon', help="amplicon-based analyses (e.g. HaloPlex), which means mark_duplicates is set to false", action="store_true", default=False)
         group.add_argument('--targets', help="sequence capture target file", action="store", default=None)
@@ -25,7 +26,9 @@ class BcbioRunController(AbstractBaseController):
         group.add_argument('--num_cores', help="num_cores value; default 8", action="store", default=8, type=int)
         group.add_argument('--only_setup', help="only perform setup", action="store_true", default=False)
         group.add_argument('--restart', help="restart analysis", action="store_true", default=False)
-        group.add_argument('--analysis_type', help="set analysis type in bcbb config file", action="store", default="Align_standard_seqcap", type=str)
+        group.add_argument('--analysis', help="set analysis type in bcbb config file", action="store", default=None, type=str)
+        group.add_argument('--snpEff', help="set snpEff program in post process", action="store", default=None, type=str)
+        group.add_argument('--no_merged', help="dot't do merged sample analysis for samples with multiple sample runs", action="store_true", default=False)
         super(BcbioRunController, self)._setup(app)
 
     def _sample_status(self, x):
@@ -42,6 +45,9 @@ class BcbioRunController(AbstractBaseController):
         if not self._check_pargs(["project"]):
             return
         flist = find_samples(os.path.abspath(os.path.join(self.app.controller._meta.project_root, self.app.controller._meta.path_id)), **vars(self.pargs))
+        if not self.pargs.no_merged:
+            ##  Setup merged samples and append to flist if new list longer
+            flist = setup_merged_samples(flist)
         if len(flist) > 0 and not query_yes_no("Going to start {} jobs... Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
             return
         orig_dir = os.path.abspath(os.getcwd())
