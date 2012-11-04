@@ -6,6 +6,8 @@ import yaml
 from scilifelab.utils.misc import opt_to_dict
 from scilifelab.log import minimal_logger
 
+from bcbio.pipeline.run_info import _unique_flowcell_info
+
 LOG = minimal_logger(__name__)
 
 POST_PROCESS_OPTS = ["-t", "--time", "-A", "--account", "-p", "--partition", "-D", "--workdir", "-o", "--output", "-J", "--job-name"]
@@ -69,7 +71,25 @@ def update_sample_config(conf, key, value):
         for j in range(0, len(runinfo[i].get("multiplex"))):
             LOG.info("Setting {} to {} for sample {}".format(key, value, runinfo[i]["multiplex"][j]["name"]))
             runinfo[i]["multiplex"][j][key] = value
-    return {'details':runinfo}
+    newconf['details'] = runinfo
+    return newconf
+
+def get_sample_analysis(conf):
+    """Get the analysis defined in a config file.
+
+    :param conf: bcbb config file
+
+    :returns: list of analyses
+    """
+    analysis = []
+    runinfo = conf.get("details") if conf.get("details", None) else conf
+    for i in range(0, len(runinfo)):
+        analysis.extend([runinfo[i].get("analysis", None)])
+        for j in range(0, len(runinfo[i].get("multiplex"))):
+            analysis.extend([runinfo[i]["multiplex"][j].get("analysis", None)])
+        analysis.extend([None])
+    return list(set(analysis) - set([None]))
+    
     
 def sort_sample_config_fastq(conf):
     """Sort fastq entires in sample config file, at the same
@@ -94,7 +114,8 @@ def sort_sample_config_fastq(conf):
                     else:
                         LOG.warn("Couldn't find fastq file; will set use extension .gz")
                         runinfo[i]["multiplex"][j]["files"][k] = "{}.gz".format(runinfo[i]["multiplex"][j]["files"][k])
-    return {'details':runinfo}
+    newconf['details'] = runinfo
+    return newconf
 
 def merge_sample_config(flist, sample):
     """Merge sample config files, making unique lanes if necessary.
@@ -117,8 +138,10 @@ def merge_sample_config(flist, sample):
             lane = lane + 1
             runinfo[i]["description"] = str(sample)
             for j in range(0, len(runinfo[i].get("multiplex"))):
-                seqfiles = [os.path.join(f, x) for x in runinfo[i]["multiplex"][0]["files"]]
+                seqfiles = [os.path.join(os.path.dirname(f), x) for x in runinfo[i]["multiplex"][0]["files"]]
                 runinfo[i]["multiplex"][0]["files"] = seqfiles
         newconf['details'].extend(runinfo)
-    newconf['fc_date'] = datetime.datetime.now().strftime("%y%m%d")
+    (fc_name, fc_date) = _unique_flowcell_info()
+    newconf['fc_date'] = fc_date
+    newconf['fc_name'] = "TOTAL"
     return newconf

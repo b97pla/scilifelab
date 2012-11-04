@@ -47,7 +47,7 @@ class BcbioRunController(AbstractBaseController):
         flist = find_samples(os.path.abspath(os.path.join(self.app.controller._meta.project_root, self.app.controller._meta.path_id)), **vars(self.pargs))
         if not self.pargs.no_merged:
             ##  Setup merged samples and append to flist if new list longer
-            flist = setup_merged_samples(flist)
+            flist = setup_merged_samples(flist, **vars(self.pargs))
         if len(flist) > 0 and not query_yes_no("Going to start {} jobs... Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
             return
         orig_dir = os.path.abspath(os.getcwd())

@@ -6,7 +6,7 @@ import yaml
 from scilifelab.utils.misc import filtered_walk, query_yes_no, opt_to_dict
 from scilifelab.utils.dry import dry_write, dry_backup, dry_unlink, dry_rmdir, dry_makedir
 from scilifelab.log import minimal_logger
-from scilifelab.bcbio import sort_sample_config_fastq, update_sample_config, update_pp_platform_args, merge_sample_config
+from scilifelab.bcbio import sort_sample_config_fastq, update_sample_config, update_pp_platform_args, merge_sample_config, get_sample_analysis
 
 LOG = minimal_logger(__name__)
 
@@ -35,7 +35,7 @@ def _group_samples(flist):
     """Group samples by sample name and flowcell
     
     This function assumes flist consists of bcbb-config.yaml files. It reads each file
-    and extracts sample name and flowcell for subsequent grouping.
+    and extracts sample name and flowcell for subsequent grouping. Exclude MERGED_SAMPLE_OUTPUT_DIR from grouping.
 
     :param flist: list of bcbb-config.yaml files
 
@@ -43,6 +43,8 @@ def _group_samples(flist):
     """
     sample_d = {}
     for f in flist:
+        if os.path.dirname(f).endswith(MERGED_SAMPLE_OUTPUT_DIR):
+            continue
         with open(f) as fh:
             conf = yaml.load(fh)
         sample_id = conf.get("details", [])[0].get("multiplex", [])[0].get("name", None)
@@ -67,6 +69,7 @@ def setup_merged_samples(flist, sample_group_fn=_group_samples, **kw):
 
     :returns: updated flist with config files for merged samples
     """
+    new_flist = []
     sample_d = sample_group_fn(flist)
     for k, v in sample_d.iteritems():
         if len(v) > 1:
@@ -83,9 +86,12 @@ def setup_merged_samples(flist, sample_group_fn=_group_samples, **kw):
             dry_write(pp_new, yaml.safe_dump(conf, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw.get('dry_run', True))
             ## Setup merged bcbb-config file
             bcbb_config = merge_sample_config(v.values(), sample=k)
-            bcbb_config_file = os.path.join(out_d, "{}-bcbb-config-total.yaml".format(k))
+            bcbb_config_file = os.path.join(out_d, os.path.basename(v.values()[0]))
             dry_unlink(bcbb_config_file, dry_run=kw.get('dry_run', True))
             dry_write(bcbb_config_file, yaml.safe_dump(bcbb_config, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw.get('dry_run', True))
+            ##new_flist.extend(v.values())
+            new_flist.extend([bcbb_config_file])
+    return new_flist
 
 
 def find_samples(path, sample=None, pattern = "-bcbb-config.yaml$", only_failed=False, **kw):
@@ -127,6 +133,7 @@ def setup_sample(f, analysis, amplicon=False, genome_build="hg19", **kw):
     if not config.get("details", None):
         LOG.warn("Couldn't find 'details' section in config file: aborting setup!")
         return
+
     ## Save file to backup if backup doesn't exist
     f_bak = f.replace("-bcbb-config.yaml", "-bcbb-config.yaml.bak")
     if not os.path.exists(f_bak):
@@ -135,10 +142,11 @@ def setup_sample(f, analysis, amplicon=False, genome_build="hg19", **kw):
 
     ## Save command file to backup if it doesn't exist
     cmdf = f.replace("-bcbb-config.yaml", "-bcbb-command.txt")
-    cmdf_bak = cmdf.replace("-bcbb-command.txt", "-bcbb-command.txt.bak")
-    if not os.path.exists(cmdf_bak):
-        LOG.info("Making backup of {} in {}".format(cmdf, cmdf_bak))
-        dry_backup(os.path.abspath(cmdf), dry_run=kw['dry_run'])
+    if os.path.exists(cmdf):
+        cmdf_bak = cmdf.replace("-bcbb-command.txt", "-bcbb-command.txt.bak")
+        if not os.path.exists(cmdf_bak):
+            LOG.info("Making backup of {} in {}".format(cmdf, cmdf_bak))
+            dry_backup(os.path.abspath(cmdf), dry_run=kw['dry_run'])
 
     ## Save post_process file to backup if it doesn't exist
     ppf = f.replace("-bcbb-config.yaml", "-post_process.yaml")
@@ -169,17 +177,20 @@ def setup_sample(f, analysis, amplicon=False, genome_build="hg19", **kw):
         elif "--workdir" in platform_args:
             platform_args[platform_args.index("--workdir")+1] = os.path.dirname(f)
         pp['distributed']['platform_args'] = " ".join(platform_args)
-    if kw['baits']:
-        pp['custom_algorithms'][analysis]['hybrid_bait'] = kw['baits']
-    if kw['targets']:
-        pp['custom_algorithms'][analysis]['hybrid_target'] = kw['targets']
-    if kw['galaxy_config']:
-        pp['galaxy_config'] = kw['galaxy_config']
+    ## Change keys for all analyses
+    for anl in pp.get('custom_algorithms',{}).keys():
+        if kw.get('baits', None):
+            pp['custom_algorithms'][anl]['hybrid_bait'] = kw['baits']
+        if kw.get('targets', None):
+            pp['custom_algorithms'][anl]['hybrid_target'] = kw['targets']
+        if amplicon:
+            pp['custom_algorithms'][anl]['mark_duplicates'] = False
     if amplicon:
         LOG.info("setting amplicon analysis")
         pp['algorithm']['mark_duplicates'] = False
-        pp['custom_algorithms'][analysis]['mark_duplicates'] = False
-    if kw['distributed']:
+    if kw.get('galaxy_config', None):
+        pp['galaxy_config'] = kw['galaxy_config']
+    if kw.get('distributed', None):
         LOG.info("setting distributed execution")
         pp['algorithm']['num_cores'] = 'messaging'
     else:
