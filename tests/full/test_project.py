@@ -47,7 +47,7 @@ class ProjectTest(PmFullTest):
 
     def test_project_merge_run(self):
         """Test running an merged sample in project folder"""
-        self.app = self.make_app(argv = ['project', 'run', 'j_doe_00_04', '--email', os.getenv("MAILTO"), '-t', '00:15:00', '--partition', 'core', '--sample', "P001_101_index3", '--debug', '--force', '--quiet'], extensions=['scilifelab.pm.ext.ext_distributed'])
+        self.app = self.make_app(argv = ['project', 'run', 'j_doe_00_04', '--email', os.getenv("MAILTO"), '-t', '00:15:00', '--partition', 'core', '--sample', "P001_101_index3", '--debug', '--force', '--quiet', '--num_cores', '1'], extensions=['scilifelab.pm.ext.ext_distributed'])
         handler.register(ProjectController)
         self._run_app()
         os.chdir(filedir)
