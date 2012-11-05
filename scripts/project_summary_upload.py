@@ -221,6 +221,15 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
                 scilife_name, preps = strip_scilife_name([sci_name_raw])
                 scilife_name = scilife_name[sci_name_raw]
                 prep = 'A' if preps[sci_name_raw].replace('F','') == '' else preps[sci_name_raw].replace('F','')
+		
+		if not obj['samples'].has_key(scilife_name):
+			scilife_name_old = convert_to_old_sci_format(scilife_name)
+			try:
+				if obj['samples'].has_key(scilife_name_old):
+					scilife_name = scilife_name_old
+			except:
+				pass
+
                 if obj['samples'].has_key(scilife_name):
                         if obj['samples'][scilife_name].has_key("library_prep"):
 				if obj['samples'][scilife_name]["library_prep"].has_key(prep):
@@ -394,6 +403,15 @@ def _replace_ascii(str):
     str = str.replace(u'\xd6','O')
     str = str.replace(u'\xf6','o')
     return str.encode('ascii','replace')
+
+def convert_to_old_sci_format(scilife_name):
+	if scilife_name[0]=='P':
+		try:
+			return str(int(scilife_name.split('_')[1])-100)
+		except:
+			return None
+	else:
+		return None
 
 def find_duplicates(list):
 	dup = []
