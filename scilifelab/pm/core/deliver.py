@@ -8,7 +8,7 @@ from cement.core import controller
 from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.report import sequencing_success
 from scilifelab.report.rl import *
-from scilifelab.report.qc import application_qc, fastq_screen, qc_cutoff
+from scilifelab.report.qc import application_qc, fastq_screen, QC_CUTOFF
 from scilifelab.report.delivery_notes import sample_status_note, project_status_note
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection
 
@@ -55,7 +55,7 @@ class DeliveryReportController(AbstractBaseController):
         group.add_argument('--check_consistency', help="Check consistency of project sample name mapping to sample run metrics names", default=False, action="store_true")
         group.add_argument('--use_ps_map', help="Use project summary mapping in cases where no sample_run_metrics is available", default=True, action="store_false")
         group.add_argument('--use_bc_map', help="Use sample run metrics barcode mapping in cases where no sample_run_metrics is available", default=False, action="store_true")
-        group.add_argument('--application', help="Set application for qc evaluation. One of '{}'".format(",".join(qc_cutoff.keys())), action="store", type=str, default=None)
+        group.add_argument('--application', help="Set application for qc evaluation. One of '{}'".format(",".join(QC_CUTOFF.keys())), action="store", type=str, default=None)
         super(DeliveryReportController, self)._setup(app)
 
     def _process_args(self):

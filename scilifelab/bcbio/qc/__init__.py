@@ -420,8 +420,12 @@ class SampleRunMetrics(RunMetrics):
     def read_picard_metrics(self):
         self.log.debug("read_picard_metrics for sample {}, project {}, lane {} in run {}".format(self["barcode_name"], self["sample_prj"], self["lane"], self["flowcell"]))
         picard_parser = ExtendedPicardMetricsParser()
-        pattern = "|".join(["{}_[0-9]+_[0-9A-Za-z]+(_nophix)?_{}-.*.(align|hs|insert|dup)_metrics".format(self["lane"], self["barcode_id"]),
-                            "{}_[0-9]+_[0-9A-Za-z]+_{}(_nophix)?-.*.(align|hs|insert|dup)_metrics".format(self["lane"], self["barcode_id"])])
+        if self.get("barcode_id"):
+            pattern = "|".join(["{}_[0-9]+_[0-9A-Za-z]+(_nophix)?_{}-.*.(align|hs|insert|dup)_metrics".format(self["lane"], self["barcode_id"]),
+                                "{}_[0-9]+_[0-9A-Za-z]+_{}(_nophix)?-.*.(align|hs|insert|dup)_metrics".format(self["lane"], self["barcode_id"])])
+        else:
+            pattern = "|".join(["{}_[0-9]+_[0-9A-Za-z]+(_nophix)?-.*.(align|hs|insert|dup)_metrics".format(self["lane"])])
+
         files = self.filter_files(pattern)
         if len(files) == 0:
             self.log.warn("no picard metrics files for sample {}; pattern {}".format(self["barcode_name"], pattern))

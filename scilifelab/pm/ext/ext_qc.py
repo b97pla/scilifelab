@@ -24,13 +24,12 @@ class RunMetricsController(AbstractBaseController):
     class Meta:
         label = 'qc'
         description = "Extension for dealing with QC data"
-        arguments = [
-            (['flowcell'], dict(help="Flowcell directory", nargs="?", default=None)),
-            (['--runqc'], dict(help="Root path to qc data folder", default=None, nargs="?")),
-            (['--project'], dict(help="Project id", default=None, action="store", type=str)),
-            (['--sample'], dict(help="Sample id", default=None, action="store", type=str)),
-            (['--mtime'], dict(help="Last modification time of directory (days): skip if older. Defaults to 1 day.", default=1, action="store", type=int)),
-            ]
+        arguments = [(['flowcell'], dict(help="Flowcell directory", nargs="?", default=None)),
+                     (['--runqc'],  dict(help="Root path to qc data folder", default=None, nargs="?")),
+                     (['--project'], dict(help="Project id", default=None, action="store", type=str)),
+                     (['--sample'], dict(help="Sample id", default=None, action="store", type=str)),
+                     (['--mtime'], dict(help="Last modification time of directory (days): skip if older. Defaults to 1 day.", default=1, action="store", type=int))]
+
 
     def _process_args(self):
         self._meta.root_path = self.app.pargs.runqc if self.app.pargs.runqc else self.app.config.get("runqc", "root")
@@ -216,7 +215,6 @@ def update_fn(db, obj):
         obj["_rev"] = dbobj.get("_rev")
         obj["_id"] = dbobj.get("_id")
         return (obj, dbid)
-
 
 def load():
     """Called by the framework when the extension is 'loaded'."""

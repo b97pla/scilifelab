@@ -1,11 +1,18 @@
 """pm bcbio extension"""
 import os
 import re
+import yaml
 
 from cement.core import backend, controller, handler, hook
 from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.utils.misc import query_yes_no, filtered_walk
 from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command, setup_merged_samples
+from scilifelab.report.qc import compile_qc 
+import scilifelab.log
+
+LOG = scilifelab.log.minimal_logger(__name__)
+
+BCBIO_EXCLUDE_DIRS = ['realign-split', 'variants-split', 'tmp', 'tx', 'fastqc', 'fastq_screen', 'alignments', 'nophix']
 
 class BcbioRunController(AbstractBaseController):
     class Meta:
@@ -25,9 +32,10 @@ class BcbioRunController(AbstractBaseController):
         group.add_argument('--only_setup', help="only perform setup", action="store_true", default=False)
         group.add_argument('--restart', help="restart analysis", action="store_true", default=False)
         group.add_argument('--analysis', help="set analysis type in bcbb config file", action="store", default=None, type=str)
-        group.add_argument('--workingDirectory', help="set working directory", action="store", default=None, type=str)
         group.add_argument('--snpEff', help="set snpEff program in post process", action="store", default=None, type=str)
         group.add_argument('--merged', help="do merged sample analysis for samples with multiple sample runs", action="store_true", default=False)
+        group.add_argument('--new_config', help="make new config file", action="store_true", default=False)
+        group.add_argument('--hs_file_type', help="File type glob", default="sort-dup")
         super(BcbioRunController, self)._setup(app)
 
     def _sample_status(self, x):
@@ -72,5 +80,50 @@ class BcbioRunController(AbstractBaseController):
                 self.app.log.info("Removing old analysis files in {}".format(os.path.dirname(run_info)))
                 remove_files(run_info, **vars(self.pargs))
             (cl, platform_args) = run_bcbb_command(run_info, **vars(self.pargs))
-            self.app.cmd.command(cl, **{'platform_args':platform_args, 'saveJobId':True, 'workingDirectory':self.pargs.get("workingDirectory", os.path.dirname(run_info))})
+            self.app.cmd.command(cl, **{'platform_args':platform_args, 'saveJobId':True, 'workingDirectory':os.path.dirname(run_info)})
             os.chdir(orig_dir)
+
+    @controller.expose(help="Compile qc metrics based on result files")
+    def compile_qc(self):
+        """Compile qc metrics for samples without statusdb information."""
+        if not self._check_pargs(["project"]):
+            return
+        kw = {'exclude_dirs': BCBIO_EXCLUDE_DIRS}
+        kw.update(**vars(self.pargs))
+        out_data = compile_qc(path=os.path.abspath(os.path.join(self.app.controller._meta.project_root, self.app.controller._meta.path_id)), **kw)
+        self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
+        self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
+
+    @controller.expose(help="Calculate hs metrics for samples")
+    def hs_metrics(self):
+        if not self._check_pargs(["project", "targets"]):
+            return
+        if not self.pargs.baits:
+            self.pargs.baits = self.pargs.targets
+        self.log.info("hs_metrics: This is a temporary solution for calculating hs metrics for samples using picard tools")
+        pattern = "{}.bam$".format(self.pargs.hs_file_type)
+        def filter_fn(f):
+            return re.search(pattern, f) != None
+        ### FIX ME: this isn't caught by _process_args
+        path =  self.pargs.flowcell if self.pargs.flowcell else self.pargs.project
+        if self.pargs.sample:
+            if os.path.exists(self.pargs.sample):
+                with open(self.pargs.sample) as fh:
+                    flist = [x.rstrip() for x in fh.readlines()]
+            else:
+                pattern = "{}{}".format(sample, pattern)
+        if not flist:
+            flist = filtered_walk(os.path.join(self.config.get(self.app.controller._meta.label, "root"), path), filter_fn=filter_fn, exclude_dirs=['nophix', 'alignments', 'fastqc', 'fastq_screen'])
+        if not query_yes_no("Going to run hs_metrics on {} files. Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
+            return
+        for f in flist:
+            self.log.info("running CalculateHsMetrics on {}".format(f))
+            ### Issue with calling java from
+            ### subprocess:http://stackoverflow.com/questions/9795249/issues-with-wrapping-java-program-with-pythons-subprocess-module
+            ### Actually not an issue: command line arguments have to be done the right way
+            cl = ["java"] + ["-{}".format(self.pargs.java_opts)] +  ["-jar", "{}/CalculateHsMetrics.jar".format(os.getenv("PICARD_HOME"))] + ["INPUT={}".format(f)] + ["TARGET_INTERVALS={}".format(os.path.abspath(self.pargs.targets))] + ["BAIT_INTERVALS={}".format(os.path.abspath(self.pargs.baits))] +  ["OUTPUT={}".format(f.replace(".bam", ".hs_metrics"))] + ["VALIDATION_STRINGENCY=SILENT"]
+            out = self.app.cmd.command(cl)
+            if out:
+                self.app._output_data["stdout"].write(out.rstrip())
+
+

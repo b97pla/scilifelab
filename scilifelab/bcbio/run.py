@@ -87,8 +87,9 @@ def setup_merged_samples(flist, sample_group_fn=_group_samples, **kw):
             ## Setup merged bcbb-config file
             bcbb_config = merge_sample_config(v.values(), sample=k)
             bcbb_config_file = os.path.join(out_d, os.path.basename(v.values()[0]))
-            dry_unlink(bcbb_config_file, dry_run=kw.get('dry_run', True))
-            dry_write(bcbb_config_file, yaml.safe_dump(bcbb_config, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw.get('dry_run', True))
+            if not os.path.exists(bcbb_config_file) or kw.get('new_config', False):
+                dry_unlink(bcbb_config_file, dry_run=kw.get('dry_run', True))
+                dry_write(bcbb_config_file, yaml.safe_dump(bcbb_config, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw.get('dry_run', True))
             ##new_flist.extend(v.values())
             new_flist.extend([bcbb_config_file])
     return new_flist
@@ -113,7 +114,7 @@ def find_samples(path, sample=None, pattern = "-bcbb-config.yaml$", only_failed=
     def bcbb_yaml_filter(f):
         return re.search(pattern, f) != None
     if not flist:
-        flist = filtered_walk(path, bcbb_yaml_filter)
+        flist = filtered_walk(path, bcbb_yaml_filter, exclude_dirs=kw.get("exclude_dirs", None), include_dirs=kw.get("include_dirs", None))
     if only_failed:
         status = {x:_sample_status(x) for x in flist}
         flist = [x for x in flist if _sample_status(x)=="FAIL"]
