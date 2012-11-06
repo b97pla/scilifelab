@@ -2,11 +2,12 @@
 import os
 import re
 import yaml
+import shutil
 
 from cement.core import backend, controller, handler, hook
 from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.utils.misc import query_yes_no, filtered_walk
-from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command, setup_merged_samples
+from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command, setup_merged_samples, get_vcf_files
 from scilifelab.report.qc import compile_qc 
 import scilifelab.log
 
@@ -126,4 +127,34 @@ class BcbioRunController(AbstractBaseController):
             if out:
                 self.app._output_data["stdout"].write(out.rstrip())
 
-
+    @controller.expose(help="Perform basic variant summary")
+    def vcf_summary(self):
+        if not self._check_pargs(["project"]):
+            return
+        flist = find_samples(os.path.abspath(os.path.join(self.app.controller._meta.project_root, self.app.controller._meta.path_id)), **vars(self.pargs))
+        vcf_d = get_vcf_files(flist)
+        ## Traverse files, copy to result directory, run bgzip and tabix, and merge vcfs to one file
+        outdir = os.path.join(os.path.abspath(os.path.join(self.app.controller._meta.project_root, self.app.controller._meta.path_id, "intermediate", "results", "vcf")))
+        if not os.path.exists(outdir):
+            self.app.cmd.safe_makedir(outdir)
+        for k, v in vcf_d.iteritems():
+            print v
+            if v.endswith(".gz"):
+                tgt = os.path.join(outdir, os.path.basename(v).replace("TOTAL", "TOTAL_{}".format(k)))
+                v = v.replace(".gz", "")
+                tgt = tgt.replace(".gz", "")
+            else:
+                ## bgzip
+                LOG.info("Running bgzip on {}".format(v))
+                cl = ["bgzip", v]
+                self.app.cmd.command(cl)
+            ##if not os.path.exists("{}.gz.tbi"):
+            ## tabix
+            LOG.info("Running tabix on {}.gz".format(v))
+            cl = ["tabix", "-f", "-p", "vcf", "{}.gz".format(v)]
+            self.app.cmd.command(cl)
+            self.app.cmd.link("{}.gz".format(v), "{}.gz".format(tgt))
+            self.app.cmd.link("{}.gz.tbi".format(v), "{}.gz.tbi".format(tgt))
+        ## Make all-variants file
+        # all_variants = os.path.join(outdir, "all-variants.vcf")
+        # cl = vcf-merge `ls -1 *.vcf.gz | tr '\n', ' '` > all-variants.vcf

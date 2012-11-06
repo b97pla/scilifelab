@@ -5,6 +5,8 @@ import re
 import yaml
 import unittest
 import drmaa
+import pandas as pd
+import numpy as np
 
 from ..classes import SciLifeTest
 from classes import PmFullTest
@@ -13,7 +15,7 @@ from cement.core import handler
 from scilifelab.pm.core.production import ProductionController
 from scilifelab.pm.ext.ext_distributed import make_job_template_args
 from scilifelab.utils.misc import filtered_walk, opt_to_dict
-from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command, setup_merged_samples
+from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command, setup_merged_samples, sample_table, get_vcf_files
 
 LOG = logbook.Logger(__name__)
 
@@ -172,11 +174,11 @@ class UtilsTest(SciLifeTest):
         if not os.path.exists(j_doe_00_05):
             shutil.copytree(j_doe_00_01, j_doe_00_05)
 
-    @classmethod
-    def tearDownClass(cls):
-        LOG.info("Removing directory tree {}".format(j_doe_00_05))
-        os.chdir(filedir)
-        shutil.rmtree(j_doe_00_05)
+    # @classmethod
+    # def tearDownClass(cls):
+    #     LOG.info("Removing directory tree {}".format(j_doe_00_05))
+    #     os.chdir(filedir)
+    #     shutil.rmtree(j_doe_00_05)
 
     def test_find_samples(self):
         """Test finding samples"""
@@ -283,3 +285,16 @@ class UtilsTest(SciLifeTest):
         self.assertEqual("00:01:00", nativeSpec[3:11])
                     
 
+    def test_sample_table(self):
+        """Test making a sample table"""
+        flist = find_samples(j_doe_00_01)
+        samples = sample_table(flist)
+        grouped = samples.groupby("sample")
+        self.assertEqual(len(grouped.groups["P001_101_index3"]), 2)
+        self.assertEqual(len(grouped.groups["P001_102_index6"]), 1)
+
+    def test_summarize_variants(self):
+        """Test summarizing variants"""
+        flist = find_samples(j_doe_00_01)
+        vcf_d = get_vcf_files(flist)
+            

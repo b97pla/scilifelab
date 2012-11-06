@@ -2,6 +2,9 @@
 import os
 import re
 import yaml
+import glob
+
+import pandas as pd
 
 from scilifelab.utils.misc import filtered_walk, query_yes_no, opt_to_dict
 from scilifelab.utils.dry import dry_write, dry_backup, dry_unlink, dry_rmdir, dry_makedir
@@ -30,8 +33,7 @@ def _sample_status(x):
     else:
         return "FAIL"
 
-
-def _group_samples(flist):
+def _group_samples(flist, include_merged=False):
     """Group samples by sample name and flowcell
     
     This function assumes flist consists of bcbb-config.yaml files. It reads each file
@@ -43,15 +45,21 @@ def _group_samples(flist):
     """
     sample_d = {}
     for f in flist:
-        if os.path.dirname(f).endswith(MERGED_SAMPLE_OUTPUT_DIR):
+        if not include_merged and os.path.dirname(f).endswith(MERGED_SAMPLE_OUTPUT_DIR):
             continue
         with open(f) as fh:
             conf = yaml.load(fh)
-        sample_id = conf.get("details", [])[0].get("multiplex", [])[0].get("name", None)
+        if conf.get("details", [])[0].get("multiplex", []):
+            sample_id = conf.get("details", [])[0].get("multiplex", [])[0].get("name", None)
+        else:
+            sample_id = conf.get("details", [])[0].get("description")
         if not sample_id:
             LOG.warn("No sample_id found in file {}; skipping".format(f))
             continue
-        fc_id = conf.get("details", [])[0].get("flowcell_id", None)
+        if conf.get("details", [])[0].get("flowcell_id", None):
+            fc_id = conf.get("details", [])[0].get("flowcell_id")
+        else:
+            fc_id = conf.get("fc_name", None)
         if not fc_id:
             LOG.warn("No flowcell_id found in file {}; skipping".format(f))
             continue
@@ -60,7 +68,70 @@ def _group_samples(flist):
         else:
             sample_d[sample_id][fc_id] = f
     return sample_d
-            
+
+## FIXME: make pandas data frame of all samples, with info about lane,
+## flowcell, date, barcode_id, path, sample name -> makes searching for files much easier
+def sample_table(flist):
+    """Make a table from bcbb-config yaml files.
+
+    :param flist: file list of config files
+
+    :returns: data frame
+    """
+    samples = []
+    for f in flist:
+        path = os.path.dirname(f)
+        with open(f) as fh:
+            conf = yaml.load(fh)
+        runinfo = conf.get("details") if conf.get("details", None) else conf
+        for info in runinfo:
+            lane = info.get("lane", None)
+            fc_name = info.get("flowcell_id", None)
+            fc_date = info.get("fc_date", None)
+            if info.get("multiplex", None):
+                for mp in info.get("multiplex"):
+                    barcode_id = mp.get("barcode_id", None)
+                    sample = mp.get("name", None)
+                    samples.append([sample, lane, barcode_id, fc_name, fc_date, path])
+            else:
+                barcode_id = None
+                sample = info.get("description", None)
+                fc_name = conf.get("fc_name", None)
+                fc_date = conf.get("fc_date", None)
+                samples.append([sample, lane, barcode_id, fc_name, fc_date, path])
+    return pd.DataFrame(samples, columns=["sample", "lane", "barcode_id", "fc_name", "fc_date", "path"])
+                                  
+def get_vcf_files(flist, vcfext="sort-gatkrecal-realign-variants-combined"):
+    """Get dictionary of vcf files.
+
+    :param flist: yaml sample config file list
+
+    """
+    vcf_d = {}
+    samples = sample_table(flist)
+    grouped = samples.groupby("sample")
+    for name, group in grouped:
+        LOG.debug("Getting vcf file for sample {}".format(name))
+        if len(group) > 1:
+            pattern = "*_{}-{}.vcf*".format(MERGED_SAMPLE_OUTPUT_DIR, vcfext)
+            path = os.path.join(os.path.dirname(group["path"].values[0]), MERGED_SAMPLE_OUTPUT_DIR)
+        else:
+            pattern = "{}_*_*{}*_{}*-{}.vcf*".format(group["lane"].values[0], group["fc_name"].values[0], str(group["barcode_id"].values[0]).rstrip(".0"), vcfext)
+            path = group["path"].values[0]
+        if not os.path.exists(path):
+            LOG.info("No merge information for sample {}; skipping".format(name))
+        files = glob.glob(os.path.join(path, pattern))
+        def vcf_filt(f):
+            return re.search(".vcf$|.vcf.gz$", f) != None
+        files = [x for x in files if vcf_filt(x)]
+        if len(files) == 0:
+            LOG.warn("No matching file found for pattern {} in {}; skipping".format(pattern, path))
+            continue
+        if len(files) > 1:
+            LOG.warn("More than 1 matching file found for pattern {}; only using first".format(pattern))
+        vcf_d[name] = files[0]
+    return vcf_d
+
 def setup_merged_samples(flist, sample_group_fn=_group_samples, **kw):
     """Setup analysis that merges multiple sample runs.
 
