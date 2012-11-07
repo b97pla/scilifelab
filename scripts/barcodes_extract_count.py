@@ -21,28 +21,15 @@ def extract_barcodes(fqfile, nindex=25, casava18=True, offset=101, bclen=6, expe
         
     return counts
 
-def write_metrics(counts, outfile=None):
-    """Write the counts to a csv metrics file
+def write_metrics(counts):
+    """Write the counts to stdout
     """
-    
-    try:
-        if outfile is not None:
-            outh = open(outfile,"w")
-        else:
-            outh = sys.stdout
-
-        # Write the metrics data
-        if len(counts) > 0:
-            csvw = csv.DictWriter(outh, counts[0].keys())
-            csvw.writeheader()
-            csvw.writerows(counts)
-        
-    finally:
-        if outfile is not None:
-            outh.close()
-     
-    return outfile
-       
+    # Write the metrics data
+    if len(counts) > 0:
+        csvw = csv.DictWriter(sys.stdout, counts[0].keys())
+        csvw.writeheader()
+        csvw.writerows(counts)
+          
 def generate_mismatches(src):
     """
     Generate a list of all possible nucleotide sequences with one 
@@ -97,8 +84,6 @@ def main():
                         help="The csv samplesheet for the run. If supplied, will be used together with --lane to exclude expected barcodes")
     parser.add_argument('--lane', dest='lane', action='store', default=None, 
                         help="The lane to be analyzed. Used together with --csv-file to exclude expected barcodes")
-    parser.add_argument('-m','--metrics-file', dest='outfile', action='store', default=None,
-                        help="The output metrics file to write to. Default is stdout")
     parser.add_argument('infile', action='store',
                         help="The input FastQ file to process. Can be gzip compressed")
     
@@ -110,7 +95,7 @@ def main():
         expected = get_expected(args.csvfile,args.lane)
     
     counts = extract_barcodes(args.infile, args.nindex, args.casava18, args.offset, args.barcode_length, expected)
-    write_metrics(counts,args.outfile)
+    write_metrics(counts)
     
 if __name__ == "__main__":
     main()
