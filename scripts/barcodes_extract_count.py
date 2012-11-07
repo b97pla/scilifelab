@@ -40,10 +40,11 @@ def generate_mismatches(src):
     src_list = list(src)
     for i in xrange(len(src_list)):
         # Change to all possible nucleotides
-        for n in "ACGT":
+        for n in "ACGTN":
             src_list[i] = n
             seqs.append("".join(src_list))
-    
+        src_list[i] = src[i]
+        
     return list(set(seqs))
 
 def remove_expected(bc_counter, expected_bc, mismatch=False):
