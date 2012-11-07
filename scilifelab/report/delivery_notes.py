@@ -2,8 +2,8 @@
 import re
 import itertools
 from cStringIO import StringIO
-
-from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection
+from collections import Counter
+from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, calc_avg_qv
 from scilifelab.report import sequencing_success
 from scilifelab.report.rl import make_note, concatenate_notes, sample_note_paragraphs, sample_note_headers, project_note_paragraphs, project_note_headers, make_sample_table
 import scilifelab.log
@@ -70,27 +70,21 @@ def sample_status_note(project_id=None, flowcell_id=None, user=None, password=No
     if not project:
         LOG.warn("No such project '{}'".format(project_id))
         return output_data
-    samples = p_con.map_srm_to_name(project_id, include_all=False, fc_id=flowcell_id, use_ps_map=use_ps_map, use_bc_map=use_bc_map, check_consistency=check_consistency)
+    samples = s_con.get_samples(sample_prj=project_id, fc_id=flowcell_id)
     if len(samples) == 0:
         LOG.warn("No samples for project '{}', flowcell '{}'. Maybe there are no sample run metrics in statusdb?".format(project_id, flowcell_id))
         return output_data
-    for k,v in samples.items():
+    sample_count = Counter([x.get("barcode_name") for x in samples])
+    for s in samples:
         s_param = {}
-        LOG.debug("working on sample '{}', sample run metrics name '{}', id '{}'".format(v["sample"], k, v["id"]))
+        LOG.debug("working on sample '{}', sample run metrics name '{}', id '{}'".format(s.get("barcode_name", None), s.get("name", None), s.get("_id", None)))
         s_param.update(parameters)
-        if not v['id'] is None:
-            if not s_con.name_fc_view[k].value == flowcell_id:
-                LOG.debug("skipping sample '{}' since it isn't run on flowcell {}".format(k, flowcell_id))
-                continue
-        else:
-            if re.search("NOSRM", k):
-                LOG.warn("No sample run metrics information for project sample '{}'".format(k.strip("NOSRM_")))
-                continue
-        s = s_con.get_entry(k)
         s_param.update({key:s[srm_to_parameter[key]] for key in srm_to_parameter.keys()})
-        fc = "{}_{}".format(s["date"], s["flowcell"])
+        fc = "{}_{}".format(s.get("date"), s.get("flowcell"))
         s_param["phix_error_rate"] = fc_con.get_phix_error_rate(str(fc), s["lane"])
-        s_param['avg_quality_score'] = s_con.calc_avg_qv(s["name"])
+        s_param['avg_quality_score'] = calc_avg_qv(s)
+        if not s_param['avg_quality_score']:
+            LOG.warn("Calculation of average quality failed for sample {}, id {}".format(s.get("name"), s.get("_id")))
         err_stat = "OK"
         qv_stat = "OK"
         if s_param["phix_error_rate"] > cutoffs["phix_err_cutoff"]:
@@ -108,10 +102,28 @@ def sample_status_note(project_id=None, flowcell_id=None, user=None, password=No
             s_param["uppnex_project_id"] = uppnex_id
         if customer_reference:
             s_param["customer_reference"] = customer_reference
-        s_param['customer_name'] = project['samples'].get(v["sample"], {}).get("customer_name", None)
+        ## FIX ME: This is where we need a key in SampleRunMetrics that provides a mapping to a project sample name
+        project_sample = p_con.get_project_sample(project_id, s["barcode_name"])
+        if project_sample:
+            project_sample_d = {x:y for d in [v["sample_run_metrics"] for k,v in project_sample["library_prep"].iteritems()] for x,y in d.iteritems()}
+            if s["name"] not in project_sample_d.keys():
+                LOG.warn("'{}' not found in project sample run metrics for project".format(s["name"]) )
+            else:
+                if s["_id"] == project_sample_d[s["name"]]:
+                    LOG.debug("project sample run metrics mapping found: '{}' : '{}'".format(s["name"], project_sample_d[s["name"]]))
+                else:
+                    LOG.warn("inconsistent mapping for '{}': '{}' != '{}' (project summary id)".format(s["name"], s["_id"], project_sample_d[s["name"]]))
+            s_param['customer_name'] = project_sample.get("customer_name", None)
+        else:
+            s_param['customer_name'] = None
+            LOG.warn("No project sample name found for sample run name '{}'".format(s["barcode_name"]))
         s_param['success'] = sequencing_success(s_param, cutoffs)
         s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None or s_param[k] ==  ""})
-        notes.append(make_note("{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"]), headers, paragraphs, **s_param))
+        if sample_count[s.get("barcode_name")] > 1:
+            outfile = "{}_{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"], s["lane"])
+        else:
+            outfile = "{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"])
+        notes.append(make_note(outfile, headers, paragraphs, **s_param))
     concatenate_notes(notes, "{}_{}_{}_sample_summary.pdf".format(project_id, s.get("date", None), s.get("flowcell", None)))
     return output_data
 
