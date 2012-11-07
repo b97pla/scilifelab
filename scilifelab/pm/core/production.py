@@ -3,10 +3,12 @@
 import sys
 import os
 import re
+import yaml
 import subprocess
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractExtendedBaseController
-from scilifelab.utils.misc import query_yes_no, filtered_walk
+from scilifelab.utils.misc import query_yes_no, filtered_walk, opt_to_dict
+from scilifelab.bcbio import prune_pp_platform_args
 from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command
 from scilifelab.bcbio.flowcell import Flowcell
 from scilifelab.bcbio.status import status_query
@@ -34,8 +36,8 @@ class ProductionController(AbstractExtendedBaseController):
             (['--to_pre_casava'], dict(help="Use pre-casava directory structure for delivery", action="store_true", default=False)),
             (['--transfer_dir'], dict(help="Transfer data to transfer_dir instead of sample_prj dir", action="store", default=None)),
             (['--brief'], dict(help="Output brief information from status queries", action="store_true", default=False)),
-            (['--analysis_type'], dict(help="set analysis type in bcbb config file", action="store", default="Align_standard_seqcap", type=str)),
-            (['--genome_build'], dict(help="genome build ", action="store", default="hg19", type=str)),
+            (['--analysis'], dict(help="set analysis in bcbb config file", action="store", default=None, type=str)),
+            (['--genome_build'], dict(help="genome build ", action="store", default=None, type=str)),
             (['--only_failed'], dict(help="only run on failed samples ", action="store_true", default=False)),
             (['--only_setup'], dict(help="only perform setup", action="store_true", default=False)),
             (['--restart'], dict(help="restart analysis", action="store_true", default=False)),
@@ -114,7 +116,23 @@ class ProductionController(AbstractExtendedBaseController):
             ## Copy sample files - currently not doing lane files
             self._transfer_files(sources, targets)
             self.app.cmd.write(os.path.join(dirs["data"], "{}-bcbb-pm-config.yaml".format(sample['name'])), fc_new.as_yaml())
-
+        ## Rewrite platform_args; only keep time, workdir, account, partition, outpath and jobname
+        pattern = "-post_process.yaml$"
+        def pp_yaml_filter(f):
+            return re.search(pattern, f) != None
+        ppfiles = filtered_walk(dirs["data"], pp_yaml_filter)
+        for pp in ppfiles:
+            self.app.log.debug("Rewriting platform args for {}".format(pp))
+            with open(pp, "r") as fh:
+                conf = yaml.load(fh)
+            if not conf:
+                self.app.log.warn("No configuration for {}".format(pp))
+                continue
+            newconf = prune_pp_platform_args(conf)
+            if newconf == conf:
+                continue
+            self.app.cmd.safe_unlink(pp)
+            self.app.cmd.write(pp, yaml.safe_dump(newconf, default_flow_style=False, allow_unicode=True, width=1000))
 
     def _to_pre_casava_structure(self, fc):
         dirs = {"data":os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data", fc.fc_id())),
@@ -272,7 +290,6 @@ class ProductionController(AbstractExtendedBaseController):
             spath = os.path.join(self._meta.root_path, self._meta.path_id, s)
             if not os.path.isdir(spath):
                 continue
-            # Crucial!!! Must make sure 
             if not os.path.exists(os.path.join(spath, FINISHED_FILE)):
                 self.app.log.info("Sample {} not finished; skipping".format(s))
                 continue

@@ -150,7 +150,6 @@ class DistributedCommandHandler(command.CommandHandler):
             
         return self.dry(command, runpipe)
 
-
 def opt_to_dict(opts):
     """Transform option list to a dictionary.
 

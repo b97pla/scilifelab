@@ -78,7 +78,7 @@ class PmProductionTest(PmTest):
         handler.register(ProductionController)
         self._run_app()
 
-    def test_7_from_casava_to_casava_transfer(self):
+    def test_from_casava_to_casava_custom_transfer(self):
         """Test from casava to casava transfer to custom project directory"""
         self.app = self.make_app(argv = ['production', 'transfer', 'J.Doe_00_04', '--transfer_dir', 'j_doe_00_04_custom'])
         handler.register(ProductionController)
@@ -86,7 +86,7 @@ class PmProductionTest(PmTest):
         delivery_dir = os.path.abspath(os.path.join(filedir, "data", "projects", "j_doe_00_04_custom", "data"))
         with open(os.path.join(delivery_dir, "P001_101_index3", "120924_CC003CCCXX", "P001_101_index3-bcbb-config.yaml")) as fh:
             runinfo_yaml = yaml.load(fh)
-        self.eq(runinfo_yaml['details'][0]['multiplex'][0]['files'], ['P001_101_index3_TGACCA_L001_R1_001.fastq', 'P001_101_index3_TGACCA_L001_R2_001.fastq'] )
+        self.eq(runinfo_yaml['details'][0]['multiplex'][0]['files'], [os.path.join(delivery_dir, "P001_101_index3", "120924_CC003CCCXX", "nophix", x) for x in ['1_120924_CC003CCCXX_7_nophix_1_fastq.txt.gz', '1_120924_CC003CCCXX_7_nophix_2_fastq.txt.gz']] )
         res = shell.exec_cmd(["ls", "-1", os.path.join(delivery_dir,  "P001_101_index3", "120924_CC003CCCXX")])
-        self.eq(set(res[0].split()), set(['1_120924_CC003CCCXX_7_nophix-sort-dup-insert.pdf', '1_120924_CC003CCCXX_7_nophix-sort-dup-summary.aux', '1_120924_CC003CCCXX_7_nophix-sort-dup-summary.log', '1_120924_CC003CCCXX_7_nophix-sort-dup-summary.pdf', '1_120924_CC003CCCXX_7_nophix-sort-dup-summary.tex', '1_120924_CC003CCCXX_7_nophix-sort-dup.align_metrics', '1_120924_CC003CCCXX_7_nophix-sort-dup.bam', '1_120924_CC003CCCXX_7_nophix-sort.bam', '1_120924_CC003CCCXX_7_nophix-sort-dup.dup_metrics', '1_120924_CC003CCCXX_7_nophix-sort-dup.hs_metrics', '1_120924_CC003CCCXX_7_nophix-sort-dup.insert_metrics', 'P001_101_index3-bcbb-config.yaml', 'P001_101_index3-bcbb-pm-config.yaml', 'alignments', 'fastq_screen', 'nophix', 'P001_101_index3_TGACCA_L001_R1_001.fastq', 'P001_101_index3-post_process.yaml', 'P001_101_index3_TGACCA_L001_R2_001.fastq','P001_101_index3-bcbb-command.txt','P001_101_index3-bcbb.log']))
+        self.eq(len(set(res[0].split())), 22)
 

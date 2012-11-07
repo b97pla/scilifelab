@@ -158,7 +158,7 @@ class BcbioRunController(AbstractBaseController):
         arguments = [
             ## Also relies on the project argument from above
             (['--post_process'], dict(help="post process file. Setting this will override sample-specific post process files. Currently not implemented.", action="store", default=None, nargs="?", type=str)),
-            (['--genome_build'], dict(help="genome build ", action="store", default="hg19", type=str)),
+            (['--genome_build'], dict(help="genome build ", action="store", default=None, type=str)),
             (['--only_failed'], dict(help="only run on failed samples ", action="store_true", default=False)),
             (['--amplicon'], dict(help="amplicon-based analyses (e.g. HaloPlex), which means mark_duplicates is set to false", action="store_true", default=False)),
             (['--targets'], dict(help="sequence capture target file", action="store", default=None)),
@@ -167,8 +167,9 @@ class BcbioRunController(AbstractBaseController):
             (['--num_cores'], dict(help="num_cores value; default 8", action="store", default=8, type=int)),
             (['--only_setup'], dict(help="only perform setup", action="store_true", default=False)),
             (['--restart'], dict(help="restart analysis", action="store_true", default=False)),
-            (['--analysis_type'], dict(help="set analysis type in bcbb config file", action="store", default="Align_standard_seqcap", type=str)),
+            (['--analysis'], dict(help="set analysis type in bcbb config file", action="store", default=None, type=str)),
             (['--email'], dict(help="set user email address", action="store", default=None, type=str)),
+            (['--galaxy_config'], dict(help="set location of universe_wsgi.ini file", action="store", default=None, type=str)),
             ]
         stacked_on = 'project'
 
@@ -181,11 +182,6 @@ class BcbioRunController(AbstractBaseController):
         else:
             return "FAIL"
 
-    ## FIXME: for now this is an exact copy of production.run. Since
-    ## this is a function related to bcbio, it should be put in an
-    ## extension ext_bcbio.py. Problem is: how can a controller be
-    ## stacked on two other controllers, namely production and
-    ## project?
     @controller.expose(help="Run bcbb pipeline")
     def run(self):
         if not self._check_pargs(["project"]):
