@@ -109,17 +109,17 @@ def setup_sample(f, analysis, amplicon=False, genome_build="hg19", **kw):
         elif "--workdir" in platform_args:
             platform_args[platform_args.index("--workdir")+1] = os.path.dirname(f)
         pp['distributed']['platform_args'] = " ".join(platform_args)
-    if kw['baits']:
+    if kw.get('baits', None):
         pp['custom_algorithms'][analysis]['hybrid_bait'] = kw['baits']
-    if kw['targets']:
+    if kw.get('targets', None):
         pp['custom_algorithms'][analysis]['hybrid_target'] = kw['targets']
-    if kw['galaxy_config']:
+    if kw.get('galaxy_config', None):
         pp['galaxy_config'] = kw['galaxy_config']
     if amplicon:
         LOG.info("setting amplicon analysis")
         pp['algorithm']['mark_duplicates'] = False
         pp['custom_algorithms'][analysis]['mark_duplicates'] = False
-    if kw['distributed']:
+    if kw.get('distributed', None):
         LOG.info("setting distributed execution")
         pp['algorithm']['num_cores'] = 'messaging'
     else:

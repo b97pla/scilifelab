@@ -8,6 +8,12 @@ from scilifelab.bcbio.qc import FlowcellRunMetrics, SampleRunMetrics
 filedir = os.path.abspath(__file__)
 LOG = logbook.Logger(__name__)
 
+config = ConfigParser.ConfigParser()
+if os.path.exists(os.path.join(os.getenv("HOME"), "dbcon.ini")):
+    config.readfp(open(os.path.join(os.getenv("HOME"), "dbcon.ini")))
+
+@unittest.skipIf(not os.path.exists(os.path.join(os.getenv("HOME"), "dbcon.ini")), "no {}/dbcon.ini file; skipping test".format(os.getenv("HOME")))
+@unittest.skipIf(not config.has_section("statusdb"), "no statusdb config section: skipping")
 class TestQCUpload(unittest.TestCase):
     def setUp(self):
         if not os.path.exists(os.path.join(os.getenv("HOME"), "dbcon.ini")):
@@ -17,8 +23,6 @@ class TestQCUpload(unittest.TestCase):
             self.examples = {}
             LOG.warning("No such file {}; will not run database connection tests".format(os.path.join(os.getenv("HOME"), "dbcon.ini")))
         else:
-            config = ConfigParser.ConfigParser()
-            config.readfp(open(os.path.join(os.getenv("HOME"), "dbcon.ini")))
             self.url = config.get("couchdb", "url")
             self.user = config.get("couchdb", "username")
             self.pw = config.get("couchdb", "password")
