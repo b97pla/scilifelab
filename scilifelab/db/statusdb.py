@@ -3,7 +3,25 @@ import re
 from itertools import izip
 from scilifelab.db import Couch
 
-def match_project_name_to_barcode_name(project_sample_name, sample_run_name):
+def calc_avg_qv(srm):
+    """Calculate average quality score for a sample based on
+    FastQC results.
+    
+    FastQC reports QV results in the field 'Per sequence quality scores', 
+    where the subfields 'Count' and 'Quality' refer to the counts of a given quality value.
+    
+    :param srm: sample run metrics
+    
+    :returns avg_qv: Average quality value score.
+    """
+    try:
+        count = [float(x) for x in srm["fastqc"]["stats"]["Per sequence quality scores"]["Count"]]
+        quality = srm["fastqc"]["stats"]["Per sequence quality scores"]["Quality"]
+        return round(sum([x*int(y) for x,y in izip(count, quality)])/sum(count), 1)
+    except:
+        return None
+
+def _match_project_name_to_barcode_name(project_sample_name, sample_run_name):
     """Name mapping from project summary sample id to run info sample id"""
     if not project_sample_name.startswith("P"):
         sid = re.search("(\d+)_?([A-Z])?_",sample_run_name)
@@ -112,30 +130,6 @@ class SampleRunMetricsConnection(Couch):
         """Make sure we don't change db from samples"""
         pass
 
-    ## FIX ME: operations on sample run metrics objects should be
-    ## separated from the connection. Either implement a
-    ## sample_run_metrics object (subclassing ViewResults) with this
-    ## function or move to utils or similar
-    def calc_avg_qv(self, name):
-        """Calculate average quality score for a sample based on
-        FastQC results.
-        
-        FastQC reports QV results in the field 'Per sequence quality scores', 
-        where the subfields 'Count' and 'Quality' refer to the counts of a given quality value.
-        
-        :param name: sample name
-        
-        :returns avg_qv: Average quality value score.
-        """
-        srm = self.get_entry(name)
-        try:
-            count = [float(x) for x in srm["fastqc"]["stats"]["Per sequence quality scores"]["Count"]]
-            quality = srm["fastqc"]["stats"]["Per sequence quality scores"]["Quality"]
-            return round(sum([x*int(y) for x,y in izip(count, quality)])/sum(count), 1)
-        except:
-            self.log.warn("Calculation of average quality failed for sample {}, id {}".format(srm["name"], srm["_id"]))
-            return None
-
 
 class FlowcellRunMetricsConnection(Couch):
     def __init__(self, **kwargs):
@@ -202,6 +196,52 @@ class ProjectSummaryConnection(Couch):
         """Make sure we don't change db from projects"""
         pass
 
+    def get_project_sample(self, project_id, sample_run_name, use_ps_map=True, use_bc_map=False,  check_consistency=False):
+        """Get project sample name for a SampleRunMetrics barcode_name.
+        
+        :param project_id: the project id
+        :param barcode_name: the barcode name of a sample run
+        :param use_ps_map: use and give precedence to the project summary mapping to sample run metrics (default True)
+        :param use_bc_map: use and give precedence to the barcode match mapping to sample run metrics (default False)
+        :param check_consistency: use both mappings and check consistency (default False)
+
+        :returns: project sample name or None
+        """
+        # library_prep = re.search("P[0-9]+_[0-9]+([A-F])", sample_run_name)
+        project = self.get_entry(project_id)
+        if not project:
+            return None
+        project_samples = project.get('samples', None)
+        if sample_run_name in project_samples.keys():
+            return project_samples[sample_run_name]
+        for project_sample_name in project_samples.keys():
+            if not sample_run_name.startswith("P"):
+                sid = re.search("(\d+)_?([A-Z])?_",sample_run_name)
+                if str(sid.group(1)) == str(project_sample_name):
+                    return project_samples[project_sample_name]
+                m = re.search("(_index[0-9]+)", sample_run_name)
+                if not m:
+                    index = ""
+                else:
+                    index = m.group(1)
+                    sid = re.search("([A-Za-z0-9\_]+)(\_index[0-9]+)?", sample_run_name.replace(index, ""))
+                    if str(sid.group(1)) == str(project_sample_name):
+                        return project_samples[project_sample_name]
+            else:
+                if str(sample_run_name).startswith(str(project_sample_name)):
+                    return project_samples[project_sample_name]
+                elif str(sample_run_name).startswith(str(project_sample_name).rstrip("F")):
+                    return project_samples[project_sample_name]
+                elif str(sample_run_name).startswith(str(project_sample_name).rstrip("B")):
+                    return project_samples[project_sample_name]
+                elif str(sample_run_name).startswith(str(project_sample_name).rstrip("C")):
+                    return project_samples[project_sample_name]
+                elif str(sample_run_name).startswith(str(project_sample_name).rstrip("D")):
+                    return project_samples[project_sample_name]
+                elif str(sample_run_name).startswith(str(project_sample_name).rstrip("E")):
+                    return project_samples[project_sample_name]
+        return None
+
     def map_srm_to_name(self, project_id, include_all=True, **args):
         """Map sample run metrics names to project sample names for a
         project, possibly subset by flowcell id.
@@ -249,7 +289,7 @@ class ProjectSummaryConnection(Couch):
                 sample_map[k] = _prune_ps_map(ps_map)
             if use_bc_map or not sample_map[k]:
                 if not sample_map[k]: self.log.info("Using barcode map since no information in project summary for sample '{}'".format(k))
-                bc_map = {s["name"]:s["_id"] for s in srm_samples if match_project_name_to_barcode_name(k, s.get("barcode_name", None))}
+                bc_map = {s["name"]:s["_id"] for s in srm_samples if _match_project_name_to_barcode_name(k, s.get("barcode_name", None))}
                 sample_map[k] = bc_map
             if check_consistency:
                 if ps_map == bc_map:
@@ -264,9 +304,7 @@ class ProjectSummaryConnection(Couch):
             return {k:v for kk in library_preps.keys() for k, v in library_preps[kk]['sample_run_metrics'].items()} if library_preps else None
         else:
             return v.get('sample_run_metrics', None)
-            
 
-        
     def get_ordered_amount(self, project_id, rounded=True, dec=1):
         """Get (rounded) ordered amount of reads in millions. 
 

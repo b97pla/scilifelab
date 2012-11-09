@@ -176,15 +176,14 @@ def application_qc(project_id=None, flowcell_id=None, application=None,
     output_data = {'stdout':StringIO(), 'stderr':StringIO()}
     p_con = ProjectSummaryConnection(username=user, password=password, url=url)
     project = p_con.get_entry(project_id)
-    if not project is None:
-        qc_data = p_con.get_qc_data(project_id, flowcell_id)
-        if project.get("application") not in application_map.keys():
-            if not application:
-                LOG.warn("No such application {}. Please use the application option (available choices {})".format(application, ",".join(qc_cutoff.keys())))
-                return output_data
-            application = application
-        else:
-            application = application_map[project.get("application")]
+    qc_data = p_con.get_qc_data(project_id, flowcell_id)
+
+    if project.get("application") not in application_map.keys():
+        if not application:
+            LOG.warn("No such application {}. Please use the application option (available choices {})".format(application, ",".join(qc_cutoff.keys())))
+            return
+        application = application
+
     else:
         LOG.info("No such project {} in project summary. Trying to get qc data anyway.".format(project_id))
         if not application:

@@ -106,6 +106,7 @@ class BcbioRunController(AbstractBaseController):
         def filter_fn(f):
             return re.search(pattern, f) != None
         ### FIX ME: this isn't caught by _process_args
+        flist = []
         path =  self.pargs.flowcell if self.pargs.flowcell else self.pargs.project
         if self.pargs.sample:
             if os.path.exists(self.pargs.sample):
