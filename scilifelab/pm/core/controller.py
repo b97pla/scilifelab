@@ -16,6 +16,7 @@ class AbstractBaseController(controller.CementBaseController):
     All controllers should inherit from this class.
     """
     class Meta:
+        pattern = ""
         arguments = [
             (['-n', '--dry_run'], dict(help="dry_run - don't actually do anything", action="store_true", default=False)),
             (['--force'], dict(help="force execution", action="store_true", default=False)),
@@ -91,8 +92,9 @@ class AbstractExtendedBaseController(AbstractBaseController):
         compress_opt = "-v"
         compress_prog = "gzip"
         compress_suffix = ".gz"
-        file_pat = []
+        file_ext = []
         include_dirs = []
+        wildcard = []
         root_path = None
         path_id = None
 
@@ -130,6 +132,8 @@ class AbstractExtendedBaseController(AbstractBaseController):
             if not self._meta.path_id:
                 self.app.log.warn("not running {} on root directory".format(self.command))
                 sys.exit()
+        if self.pargs.flowcell:
+            self._meta.wildcard += [self.pargs.flowcell]
         elif self.command in ["ls"]:
             if not self._meta.path_id:
                 self._meta.path_id = ""
@@ -137,25 +141,25 @@ class AbstractExtendedBaseController(AbstractBaseController):
             pass
         ## Setup file patterns to use
         if self.pargs.fastq:
-            self._meta.file_pat += [".fastq", "fastq.txt", ".fq"]
+            self._meta.file_ext += [".fastq", "fastq.txt", ".fq"]
         if self.pargs.pileup:
-            self._meta.file_pat += [".pileup", "-pileup"]
+            self._meta.file_ext += [".pileup", "-pileup"]
         if self.pargs.txt:
-            self._meta.file_pat += [".txt"]
+            self._meta.file_ext += [".txt"]
         if self.pargs.fastqbam:
-            self._meta.file_pat += ["fastq-fastq.bam"]
+            self._meta.file_ext += ["fastq-fastq.bam"]
         if self.pargs.sam:
-            self._meta.file_pat += [".sam"]
+            self._meta.file_ext += [".sam"]
         if self.pargs.bam:
-            self._meta.file_pat += [".bam"]
+            self._meta.file_ext += [".bam"]
         if self.pargs.split:
-            self._meta.file_pat += [".intervals", ".bam", ".bai", ".vcf", ".idx"]
+            self._meta.file_ext += [".intervals", ".bam", ".bai", ".vcf", ".idx"]
             self._meta.include_dirs += ["realign-split", "variants-split"]
         if self.pargs.tmp:
-            self._meta.file_pat += [".idx", ".vcf", ".bai", ".bam", ".idx", ".pdf"]
+            self._meta.file_ext += [".idx", ".vcf", ".bai", ".bam", ".idx", ".pdf"]
             self._meta.include_dirs += ["tmp", "tx"]
         if self.pargs.glob:
-            self._meta.file_pat += [self.pargs.glob]
+            self._meta.file_ext += [self.pargs.glob]
             
         ## Setup zip program
         if self.pargs.pbzip2:
@@ -165,6 +169,14 @@ class AbstractExtendedBaseController(AbstractBaseController):
 
         if self._meta.path_id:
             assert os.path.exists(os.path.join(self._meta.root_path, self._meta.path_id)), "no such folder '{}' in {} directory '{}'".format(self._meta.path_id, self._meta.label, self._meta.root_path)
+            
+    def _filter_fn(self, f):
+        if not self._meta.pattern:
+            return False
+        if self.pargs.flowcell:
+            if not re.search(self.pargs.flowcell, f):
+                return False
+        return re.search(self._meta.pattern, f) != None
 
     @controller.expose(hide=True)
     def default(self):
@@ -184,15 +196,10 @@ class AbstractExtendedBaseController(AbstractBaseController):
     def clean(self):
         if not self._check_pargs(["project"]):
             return
-        pattern = "|".join(["{}(.gz|.bz2)?$".format(x) for x in self._meta.file_pat])
-        def clean_filter(f):
-            if not pattern:
-                return
-            return re.search(pattern , f) != None
-
-        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), clean_filter, include_dirs=self._meta.include_dirs)
+        self._meta.pattern = "|".join(["{}(.gz|.bz2)?$".format(x) for x in self._meta.file_ext])
+        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), self._meta.filter_fn, include_dirs=self._meta.include_dirs)
         if len(flist) == 0:
-            self.app.log.info("No files matching pattern '{}' found".format(pattern))
+            self.app.log.info("No files matching pattern '{}' found".format(self._meta.pattern))
             return
         if len(flist) > 0 and not query_yes_no("Going to remove {} files ({}...). Are you sure you want to continue?".format(len(flist), ",".join([os.path.basename(x) for x in flist[0:10]])), force=self.pargs.force):
             return
@@ -200,19 +207,14 @@ class AbstractExtendedBaseController(AbstractBaseController):
             self.app.log.info("removing {}".format(f))
             self.app.cmd.safe_unlink(f)
 
-    def _compress(self, pattern, label="compress"):
-        def compress_filter(f):
-            if not pattern:
-                return
-            return re.search(pattern, f) != None
-
+    def _compress(self, label="compress"):
         if self.pargs.input_file:
             flist = [self.pargs.input_file]
         else:
-            flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), compress_filter)
+            flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), self._filter_fn)
 
         if len(flist) == 0:
-            self.app.log.info("No files matching pattern '{}' found".format(pattern))
+            self.app.log.info("No files matching pattern '{}' found".format(self._meta.pattern))
             return
         if len(flist) > 0 and not query_yes_no("Going to {} {} files ({}...). Are you sure you want to continue?".format(label, len(flist), ",".join([os.path.basename(x) for x in flist[0:10]])), force=self.pargs.force):
             sys.exit()
@@ -229,8 +231,8 @@ class AbstractExtendedBaseController(AbstractBaseController):
         self._meta.compress_opt = "-dv"
         if self.pargs.pbzip2:
             self._meta.compress_suffix = ".bz2"
-        pattern = "|".join(["{}{}$".format(x, self._meta.compress_suffix) for x in self._meta.file_pat])
-        self._compress(pattern, label="decompress")
+        self._meta.pattern = "|".join(["{}{}$".format(x, self._meta.compress_suffix) for x in self._meta.file_ext])
+        self._compress(label="decompress")
         
     ## compress
     @controller.expose(help="Compress files")
@@ -238,13 +240,8 @@ class AbstractExtendedBaseController(AbstractBaseController):
         if not self._check_pargs(["project"]):
             return
         self._meta.compress_opt = "-v"
-        pattern = "|".join(["{}$".format(x) for x in self._meta.file_pat])
-        self._compress(pattern)
-
-    def file_filter(f):
-        if not pattern:
-            return
-        return re.search(pattern, f) != None
+        self._meta.pattern = "|".join(["{}$".format(x) for x in self._meta.file_ext])
+        self._compress()
 
     ## ls
     @controller.expose(help="List root folder")
@@ -252,8 +249,8 @@ class AbstractExtendedBaseController(AbstractBaseController):
         if self._meta.path_id == "":
             self._ls(self._meta.root_path, filter_output=True)
         else:
-            if self._meta.file_pat:
-                pattern = "|".join(["{}$".format(x) for x in self._meta.file_pat])
+            if self._meta.file_ext:
+                pattern = "|".join(["{}$".format(x) for x in self._meta.file_ext])
                 flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), file_filter)
                 if flist:
                     self.app._output_data["stdout"].write("\n".join(flist))

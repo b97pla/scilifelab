@@ -28,8 +28,6 @@ j_doe_00_01 = os.path.abspath(os.path.join(filedir, "data", "production", "J.Doe
 j_doe_00_04 = os.path.abspath(os.path.join(filedir, "data", "production", "J.Doe_00_04"))
 j_doe_00_05 = os.path.abspath(os.path.join(filedir, "data", "production", "J.Doe_00_05"))
 
-
-
 ANALYSIS_TYPE = 'Align_standard_seqcap'
 GALAXY_CONFIG = os.path.abspath(os.path.join(filedir, "data", "config"))
 SAMPLES =  ['P001_101_index3', 'P001_102_index6']
@@ -48,6 +46,41 @@ REMOVED = {
     'J.Doe_00_04': {'P001_101_index3': os.path.join(filedir, "data", "production", "J.Doe_00_04", SAMPLES[0], "FINISHED_AND_REMOVED"),
                     'P001_102_index6': os.path.join(filedir, "data", "production", "J.Doe_00_04", SAMPLES[1], "FINISHED_AND_REMOVED")}
     }
+
+
+
+class ProductionConsoleTest(PmFullTest):
+    """Class for testing functions without drmaa"""
+
+    def setUp(self):
+        pass
+
+    def test_compression_suite(self):
+        """Test various combinations of compression, decompression, cleaning"""
+        self.app = self.make_app(argv = ['production', 'decompress', 'J.Doe_00_01', '--debug', '--force', '--fastq',  '-n'])
+        handler.register(ProductionController)
+        self._run_app()
+        l1 = self.app._output_data["stderr"].getvalue()
+        self.app = self.make_app(argv = ['production', 'decompress', 'J.Doe_00_01', '-f', FLOWCELL, '--debug', '--force', '--fastq',  '-n'])
+        handler.register(ProductionController)
+        self._run_app()
+        l2 = self.app._output_data["stderr"].getvalue()
+        self.assertTrue(len(l1) > len(l2))
+        os.chdir(filedir)
+
+    def test_run(self):
+        """Test various combinations of compression, decompression, cleaning"""
+        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_01', '--debug', '--force', '--fastq',  '-n'])
+        handler.register(ProductionController)
+        self._run_app()
+        l1 = self.app._output_data["stderr"].getvalue()
+        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_01', '-f', FLOWCELL, '--debug', '--force', '--fastq',  '-n'])
+        handler.register(ProductionController)
+        self._run_app()
+        l2 = self.app._output_data["stderr"].getvalue()
+        self.assertTrue(len(l1) > len(l2))
+        os.chdir(filedir)
+        
 
 
 @unittest.skipIf(not os.getenv("MAILTO"), "not running production test: set $MAILTO environment variable to your mail address to test mailsend")

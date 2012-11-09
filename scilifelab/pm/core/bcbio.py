@@ -54,7 +54,10 @@ class BcbioRunController(AbstractBaseController):
             return
         if self.pargs.post_process:
             self.pargs.post_process = os.path.abspath(self.pargs.post_process)
-        flist = find_samples(os.path.abspath(os.path.join(self.app.controller._meta.project_root, self.app.controller._meta.path_id)), **vars(self.pargs))
+        flist = find_samples(os.path.abspath(os.path.join(self.app.controller._meta.root_path, self.app.controller._meta.path_id)), **vars(self.pargs))
+        # Add filtering on flowcell if necessary
+        self._meta.pattern = ".*"
+        flist = [x for x in flist if self._filter_fn(x)]
         if self.pargs.merged:
             ##  Setup merged samples and append to flist if new list longer
             flist = setup_merged_samples(flist, **vars(self.pargs))
