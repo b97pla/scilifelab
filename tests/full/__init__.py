@@ -46,6 +46,32 @@ B002BBBXX,1,P001_101_index3,hg19,TGACCA,J__Doe_00_01,N,R1,NN,J__Doe_00_01
 B003BBBXX,2,P002_101_index3,hg19,TGACCA,J__Doe_00_02,N,R1,NN,J__Doe_00_02"""
 NSAMPLES = sum([(len(SAMPLESHEETS[k].split("\n"))-1) for k in SAMPLESHEETS.keys()])
 PROJECTS = ["J.Doe_00_01", "J.Doe_00_02", "J.Doe_00_03"]
+RUNINFO=Template("""<?xml version="1.0"?>
+<RunInfo xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Version="2">
+  <Run Id="${flowcell}" Number="1">
+    <Flowcell>${fc_id}</Flowcell>
+    <Instrument>${instrument}</Instrument>
+    <Date>${date}</Date>
+    <Reads>
+      <Read Number="1" NumCycles="101" IsIndexedRead="N" />
+      <Read Number="2" NumCycles="7" IsIndexedRead="Y" />
+      <Read Number="3" NumCycles="101" IsIndexedRead="N" />
+    </Reads>
+    <FlowcellLayout LaneCount="8" SurfaceCount="2" SwathCount="3" TileCount="16" />
+    <AlignToPhiX>
+      <Lane>1</Lane>
+      <Lane>2</Lane>
+      <Lane>3</Lane>
+      <Lane>4</Lane>
+      <Lane>5</Lane>
+      <Lane>6</Lane>
+      <Lane>7</Lane>
+      <Lane>8</Lane>
+    </AlignToPhiX>
+  </Run>
+</RunInfo>
+""")
+
 ## Genome metadata
 genomes = {'hg19':{'species':'Hsapiens', 'label':'Human (hg19)'},
            'phix':{'species':'phix', 'label':'phiX174'}}
@@ -84,6 +110,7 @@ def setUpModule():
     _check_requirements()
     ## Add function to check existence of output files
     _install_1000g_test_files(os.path.join(os.path.dirname(__file__), "data", "production"))
+
     _install_phix()
     dbsnp = _install_dbsnp_entrez()
     (omni_out, hapmap_out, mills_out) = _install_training_data()
@@ -198,7 +225,7 @@ def _install_1000g_test_files(data_dir):
     r1 = os.path.join(tmpdir, "reads_1.fq")
     r2 = os.path.join(tmpdir, "reads_2.fq")
     _pair_fastq_files(r1, r2, os.path.join(tmpdir, "seqs"))
-
+    ## Install archive files
     _make_casava_archive_files(FLOWCELL["C003CCCXX"], "C003CCCXX", os.path.join(tmpdir, "seqs"))
     ## FIXME: startiter doesn't work, now generating identical files
     _make_casava_archive_files(FLOWCELL["B002BBBXX"], "B002BBBXX", os.path.join(tmpdir, "seqs"))
@@ -269,6 +296,8 @@ def _make_casava_archive_files(fc, ssname, prefix, startiter = 1, nseqout=1000):
         safe_makedir(fc_dir)
     with open(os.path.join(fc_dir, "{}.csv".format(ssname)), "w") as fh:
         fh.write(SAMPLESHEETS[ssname])
+    with open(os.path.join(fc_dir, "RunInfo.xml"), "w") as fh:
+        fh.write(RUNINFO.render(**{'flowcell':"none", 'fc_id':"none", 'date':"date", 'instrument':"intsr"}))
     outf1 = []
     outf2 = []
     basecall_stats_dir = os.path.join(fc_dir, "Unaligned", "Basecall_Stats_{}".format(ssname))

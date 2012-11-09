@@ -1,4 +1,5 @@
 import os
+import couchdb
 import unittest
 import ConfigParser
 import logbook
