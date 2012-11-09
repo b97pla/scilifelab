@@ -5,7 +5,7 @@ import logbook
 
 from scilifelab.report import sequencing_success
 from scilifelab.report.rl import make_example_sample_note, make_note, sample_note_paragraphs, sample_note_headers, concatenate_notes
-from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectSummaryConnection
+from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectSummaryConnection, calc_avg_qv
 
 filedir = os.path.abspath(os.path.realpath(os.path.dirname(__file__)))
 LOG = logbook.Logger(__name__)
@@ -91,7 +91,7 @@ class TestSampleDeliveryNote(unittest.TestCase):
             s_param.update({key:s[srm_to_parameter[key]] for key in srm_to_parameter.keys()})
             fc = "{}_{}".format(s["date"], s["flowcell"])
             s_param["phix_error_rate"] = fc_con.get_phix_error_rate(str(fc), s["lane"])
-            s_param['avg_quality_score'] = s_con.calc_avg_qv(s["name"])
+            s_param['avg_quality_score'] = calc_avg_qv(s["name"])
             s_param['rounded_read_count'] = round(float(s_param['rounded_read_count'])/1e6,1) if s_param['rounded_read_count'] else None
             s_param['customer_name'] = project['samples'][v["sample"]].get('customer_name', None)
             s_param['success'] = sequencing_success(s_param, cutoffs)

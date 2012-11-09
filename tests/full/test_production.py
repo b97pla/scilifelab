@@ -199,15 +199,17 @@ class UtilsTest(SciLifeTest):
     def test_setup_samples(self):
         """Test setting up samples, changing genome to rn4"""
         flist = find_samples(j_doe_00_05)
+        
         for f in flist:
             setup_sample(f, **{'analysis':'Align_standard_seqcap', 'genome_build':'rn4', 'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'num_cores':8, 'distributed':False})
         for f in flist:
             with open(f, "r") as fh:
                 config = yaml.load(fh)
-            self.assertEqual(config["details"][0]["multiplex"][0]["genome_build"], "rn4")
+            if config["details"][0].get("multiplex", None):
+                self.assertEqual(config["details"][0]["multiplex"][0]["genome_build"], "rn4")
+            else:
+                self.assertEqual(config["details"][0]["genome_build"], "rn4")
 
-            with open(f.replace("-bcbb-config.yaml", "-bcbb-command.txt")) as fh:
-                cl = fh.read().split()
             with open(f.replace("-bcbb-config.yaml", "-post_process.yaml")) as fh:
                 config = yaml.load(fh)
             self.assertEqual(config["custom_algorithms"][ANALYSIS_TYPE]["hybrid_bait"], 'rat_baits.interval_list')
@@ -220,9 +222,10 @@ class UtilsTest(SciLifeTest):
                                'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'amplicon':True, 'num_cores':8, 'distributed':False})
             with open(f, "r") as fh:
                 config = yaml.load(fh)
-            self.assertEqual(config["details"][0]["multiplex"][0]["genome_build"], "rn4")
-            with open(f.replace("-bcbb-config.yaml", "-bcbb-command.txt")) as fh:
-                cl = fh.read().split()
+            if config["details"][0].get("multiplex", None):
+                self.assertEqual(config["details"][0]["multiplex"][0]["genome_build"], "rn4")
+            else:
+                self.assertEqual(config["details"][0]["genome_build"], "rn4")
             with open(f.replace("-bcbb-config.yaml", "-post_process.yaml")) as fh:
                 config = yaml.load(fh)
             self.assertEqual(config["algorithm"]["mark_duplicates"], False)
