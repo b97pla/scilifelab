@@ -26,18 +26,16 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
     class Meta:
         label = 'production'
         description = 'Manage production'
-        arguments = [
-            (['project'], dict(help="Project id", nargs="?", default=None)),
-            (['-f', '--flowcell'], dict(help="Flowcell id")),
-            (['-S', '--sample'], dict(help="Project sample id. If sample is a file, read file and use sample names within it. Sample names can also be given as full paths to bcbb-config.yaml configuration file.", action="store", default=None, type=str)),
-            (['-l', '--lane'], dict(help="Lane id")),
-            (['-b', '--barcode_id'], dict(help="Barcode id")),
-            (['--from_pre_casava'], dict(help="Use pre-casava directory structure for gathering information", action="store_true", default=False)),
-            (['--to_pre_casava'], dict(help="Use pre-casava directory structure for delivery", action="store_true", default=False)),
-            (['--transfer_dir'], dict(help="Transfer data to transfer_dir instead of sample_prj dir", action="store", default=None)),
-            (['--brief'], dict(help="Output brief information from status queries", action="store_true", default=False)),
-            ]
 
+    def _setup(self, base_app):
+        ## Adding arguments to existing groups requires setting up parent class first
+        super(ProductionController, self)._setup(base_app)
+        group = [x for x in self.app.args._action_groups if x.title == 'file transfer'][0]
+        group.add_argument('--from_pre_casava', help="Transfer file with move", default=False, action="store_true")
+        group.add_argument('--to_pre_casava', help="Use pre-casava directory structure for delivery", action="store_true", default=False)
+        group.add_argument('--transfer_dir', help="Transfer data to transfer_dir instead of sample_prj dir", action="store", default=None)
+        base_app.args.add_argument('--brief', help="Output brief information from status queries", action="store_true", default=False)
+    
     def _process_args(self):
         # Set root path for parent class
         ## FIXME: use abspath?

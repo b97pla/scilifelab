@@ -21,8 +21,8 @@ class DeliveryController(AbstractBaseController):
         label = 'deliver'
         description = 'Deliver data'
         arguments = [
-            (['project_id'], dict(help="Project id. Standard format is 'J.Doe_00_00'", default=None, nargs="?")),
-            (['flowcell_id'], dict(help="Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?")),
+            (['project'], dict(help="Project id. Standard format is 'J.Doe_00_00'", default=None, nargs="?")),
+            (['flowcell'], dict(help="Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?")),
             (['uppmax_project'], dict(help="Uppmax project.", default=None, nargs="?")),
             (['-i', '--interactive'], dict(help="Interactively select samples to be delivered", default=False, action="store_true")),
             (['-a', '--deliver-all-fcs'], dict(help="rsync samples from all flow cells", default=False, action="store_true")),
@@ -30,7 +30,7 @@ class DeliveryController(AbstractBaseController):
 
     @controller.expose(hide=True)
     def default(self):
-        if not self._check_pargs(["project_id", "flowcell_id", "uppmax_project"]):
+        if not self._check_pargs(["project", "flowcell", "uppmax_project"]):
             return
         
 ## Main delivery controller
@@ -42,8 +42,8 @@ class DeliveryReportController(AbstractBaseController):
         label = 'report'
         description = 'Make delivery reports and assess qc'
         arguments = [
-            (['project_id'], dict(help="Project id. Standard format is 'J.Doe_00_00'", default=None, nargs="?")),
-            (['flowcell_id'], dict(help="Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?")),
+            (['project'], dict(help="Project id. Standard format is 'J.Doe_00_00'", default=None, nargs="?")),
+            (['flowcell'], dict(help="Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?")),
             ]
 
     def _setup(self, app):
@@ -67,7 +67,7 @@ class DeliveryReportController(AbstractBaseController):
 
     @controller.expose(help="Print FastQ screen output for a project/flowcell")
     def fqscreen(self):
-        if not self._check_pargs(["project_id"]):
+        if not self._check_pargs(["project"]):
             return
         out_data = fastq_screen(**vars(self.pargs))
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
@@ -76,7 +76,7 @@ class DeliveryReportController(AbstractBaseController):
 
     @controller.expose(help="Print summary QC data for a flowcell/project for application QC control")
     def application_qc(self):
-        if not self._check_pargs(["project_id"]):
+        if not self._check_pargs(["project"]):
             return
         out_data = application_qc(**vars(self.pargs))
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
@@ -85,7 +85,7 @@ class DeliveryReportController(AbstractBaseController):
 
     @controller.expose(help="Make sample status note")
     def sample_status(self):
-        if not self._check_pargs(["project_id", "flowcell_id"]):
+        if not self._check_pargs(["project", "flowcell"]):
             return
         out_data = sample_status_note(**vars(self.pargs))
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
@@ -93,6 +93,6 @@ class DeliveryReportController(AbstractBaseController):
 
     @controller.expose(help="Make project status note")
     def project_status(self):
-        if not self._check_pargs(["project_id"]):
+        if not self._check_pargs(["project"]):
             return
         project_status_note(**vars(self.pargs))

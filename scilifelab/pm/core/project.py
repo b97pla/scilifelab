@@ -19,17 +19,17 @@ class ProjectController(AbstractExtendedBaseController, BcbioRunController):
     class Meta:
         label = 'project'
         description = 'Manage projects'
-        arguments = [
-            (['project'], dict(help="Scilife project id (e.g. j_doe_00_00)", default=None, action="store", nargs="?")),
-            (['-g', '--git'], dict(help="Initialize git directory in repos and project gitdir", default=False, action="store_true")),
-            (['-S', '--sample'], dict(help="project sample id", action="store", default=None, type=str)),
-            (['-F', '--flowcell'], dict(help="project flowcell id", action="store", default=None, type=str)),
-            (['--finished'], dict(help="include finished project listing", action="store_true", default=False)),
-            (['--intermediate'], dict(help="Work on intermediate data", default=False, action="store_true")),
-            (['--data'], dict(help="Work on data folder", default=False, action="store_true")),
-            (['--minfilesize'], dict(help="Min file size to keep (in bytes). Default 2000.", default=2000, action="store", type=int)),
-            ]
         flowcelldir = None
+
+    def _setup(self, base_app):
+        super(ProjectController, self)._setup(base_app)
+        base_app.args.add_argument('-g', '--git', help="Initialize git directory in repos and project gitdir", default=False, action="store_true")
+        base_app.args.add_argument('--minfilesize', help="Min file size to keep (in bytes). Default 2000.", default=2000, action="store", type=int)
+        group = base_app.args.add_argument_group('Project path group.', 'Options to restrict operations to certain paths.')
+        group.add_argument('--finished', help="include finished project listing", action="store_true", default=False)
+        group.add_argument('--intermediate', help="Work on intermediate data", default=False, action="store_true")
+        group.add_argument('--data', help="Work on data folder", default=False, action="store_true")
+
 
     ## Remember: need to do argument processing here also for stacked controllers
     ## FIX ME: _process_args should be called in the stacked controller
