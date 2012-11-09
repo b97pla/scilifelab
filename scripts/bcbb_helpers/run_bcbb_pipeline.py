@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import drmaa
 import os
 import sys
 import glob

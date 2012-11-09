@@ -4,16 +4,19 @@ import logbook
 import re
 import yaml
 import unittest
-import drmaa
 import pandas as pd
 import numpy as np
+
+try:
+    import drmaa
+except:
+    pass
 
 from ..classes import SciLifeTest
 from classes import PmFullTest
 
 from cement.core import handler
 from scilifelab.pm.core.production import ProductionController
-from scilifelab.pm.ext.ext_distributed import make_job_template_args
 from scilifelab.utils.misc import filtered_walk, opt_to_dict
 from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command, setup_merged_samples, sample_table, get_vcf_files
 
@@ -28,6 +31,7 @@ j_doe_00_05 = os.path.abspath(os.path.join(filedir, "data", "production", "J.Doe
 
 
 ANALYSIS_TYPE = 'Align_standard_seqcap'
+GALAXY_CONFIG = os.path.abspath(os.path.join(filedir, "data", "config"))
 SAMPLES =  ['P001_101_index3', 'P001_102_index6']
 FLOWCELL = '120924_AC003CCCXX'
 
@@ -196,7 +200,7 @@ class UtilsTest(SciLifeTest):
         """Test setting up samples, changing genome to rn4"""
         flist = find_samples(j_doe_00_05)
         for f in flist:
-            setup_sample(f, **{'analysis_type':'Align_standard_seqcap', 'genome_build':'rn4', 'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'num_cores':8, 'distributed':False})
+            setup_sample(f, **{'analysis':'Align_standard_seqcap', 'genome_build':'rn4', 'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'num_cores':8, 'distributed':False})
         for f in flist:
             with open(f, "r") as fh:
                 config = yaml.load(fh)
@@ -211,9 +215,9 @@ class UtilsTest(SciLifeTest):
             self.assertEqual(config["algorithm"]["num_cores"], 8)
                 
         for f in flist:
-            setup_sample(f, **{'analysis_type':ANALYSIS_TYPE, 'genome_build':'rn4', 'dry_run':False,
-                               'no_only_run':True, 'google_report':True, 'analysis_type':'Align_standard_seqcap'
-                               , 'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'amplicon':True, 'num_cores':8, 'distributed':False})
+            setup_sample(f, **{'analysis':ANALYSIS_TYPE, 'genome_build':'rn4', 'dry_run':False,
+                               'no_only_run':True, 'google_report':True,
+                               'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'amplicon':True, 'num_cores':8, 'distributed':False})
             with open(f, "r") as fh:
                 config = yaml.load(fh)
             self.assertEqual(config["details"][0]["multiplex"][0]["genome_build"], "rn4")
@@ -253,15 +257,15 @@ class UtilsTest(SciLifeTest):
         setting targets and baits"""
         flist = find_samples(j_doe_00_05)
         for f in flist:
-            setup_sample(f, **{'analysis_type':ANALYSIS_TYPE, 'genome_build':'rn4', 'dry_run':False,
-                               'no_only_run':False, 'google_report':False, 'analysis_type':'Align_standard_seqcap',
+            setup_sample(f, **{'analysis':ANALYSIS_TYPE, 'genome_build':'rn4', 'dry_run':False,
+                               'no_only_run':False, 'google_report':False,
                                'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'amplicon':True, 'num_cores':8, 'distributed':False})
             with open(f.replace("-bcbb-config.yaml", "-bcbb-command.txt")) as fh:
                 cl = fh.read().split()
             (cl, platform_args) = run_bcbb_command(f)
             self.assertIn("automated_initial_analysis.py",cl)
-            setup_sample(f, **{'analysis_type':ANALYSIS_TYPE, 'genome_build':'rn4', 'dry_run':False,
-                               'no_only_run':False, 'google_report':False, 'analysis_type':'Align_standard_seqcap',
+            setup_sample(f, **{'analysis':ANALYSIS_TYPE, 'genome_build':'rn4', 'dry_run':False,
+                               'no_only_run':False, 'google_report':False, 
                                'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'amplicon':True, 'num_cores':8, 'distributed':True})
             with open(f.replace("-bcbb-config.yaml", "-bcbb-command.txt")) as fh:
                 cl = fh.read().split()
@@ -271,6 +275,7 @@ class UtilsTest(SciLifeTest):
     @unittest.skipIf(not os.getenv("DRMAA_LIBRARY_PATH"), "not running UtilsTest.test_platform: no $DRMAA_LIBRARY_PATH")
     def test_platform_args(self):
         """Test making platform args and changing them on the fly. """
+        from scilifelab.pm.ext.ext_distributed import make_job_template_args
         pp = os.path.join(j_doe_00_05, SAMPLES[1], FLOWCELL, "{}-post_process.yaml".format(SAMPLES[1]))
         with open(pp) as fh:
             config = yaml.load(fh)

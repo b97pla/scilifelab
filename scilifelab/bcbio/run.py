@@ -240,7 +240,7 @@ def setup_sample(f, analysis, amplicon=False, genome_build="hg19", **kw):
     dry_unlink(f, kw['dry_run'])
     dry_write(f, yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw['dry_run'])
 
-    ## Setup post process
+    ## Setup post process only if not provided at command line
     if not kw.get("post_process", None):
         ppfile = f.replace("-bcbb-config.yaml", "-post_process.yaml")
         with open(ppfile) as fh:
