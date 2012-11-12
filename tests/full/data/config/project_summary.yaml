@@ -1,0 +1,47 @@
+- application: de novo
+  customer_reference: "GnuGenome"
+  min_m_reads_per_sample_ordered: .1
+  no_of_samples: 2
+  project_id: J.Doe_00_01
+  samples:
+    P001_101_index3:
+      library_prep:
+        A:
+          sample_run_metrics: 
+            - 1_120924_AC003CCCXX_TGACCA
+            - 1_121015_BB002BBBXX_TGACCA
+    P001_102_index6:
+      library_prep:
+        A:
+          sample_run_metrics: 
+            - 2_120924_AC003CCCXX_ACAGTG
+- application: RNA-Seq
+  customer_reference: "GeneExp"
+  min_m_reads_per_sample_ordered: .2
+  no_of_samples: 2
+  project_id: J.Doe_00_02
+  samples:
+    P002_101_index3:
+      library_prep:
+        A:
+          sample_run_metrics: 
+            - 3_120924_AC003CCCXX_TGACCA
+            - 2_121015_BB002BBBXX_TGACCA
+    P002_102_index6:
+      library_prep:
+        A:
+          sample_run_metrics: 
+            - 3_120924_AC003CCCXX_ACAGTG
+- application: sequence_capture
+  customer_reference: "SeqCap"
+  min_m_reads_per_sample_ordered: .5
+  no_of_samples: 1
+  project_id: J.Doe_00_03
+  samples:
+    P003_101_index6:
+      library_prep:
+        A:
+          sample_run_metrics: 
+            - 4_120924_AC003CCCXX_CGTTAA
+      
+  

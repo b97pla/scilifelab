@@ -2,9 +2,13 @@ import os
 import csv
 import yaml
 import couchdb
+from couchdb.design import ViewDefinition
 import unittest
+import time
 import logbook
+import socket
 
+from classes import PmFullTest
 from scilifelab.pm.ext.ext_couchdb import CouchdbCommandHandler
 from scilifelab.pm.ext.ext_qc import update_fn
 from scilifelab.db.statusdb import SampleRunMetricsConnection
@@ -20,19 +24,40 @@ flowcell = os.path.join(filedir, "data", "archive", "120924_SN0002_0003_AC003CCC
 
 project = os.path.join(filedir, "data", "production", "J.Doe_00_01")
 
+## Try connecting to server
+has_couchdb = True
+try:
+    server = couchdb.Server()
+    dbstats = server.stats()
+except socket.error as e:
+    has_couchdb = False
+    LOG.info("To run db tests setup a local couchdb server at http://localhost:5984")
+    time.sleep(3)
+    pass
+    
 DATABASES = ["samples-test", "projects-test", "flowcell-test"]
-@unittest.skipIf(not couchdb.Server(), "No couchdb server running in http://localhost:5984")
+@unittest.skipIf(not has_couchdb, "No couchdb server running in http://localhost:5984")
 class TestCouchDB(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Create test databases in local server"""
-        db = couchdb.Server()
+        if not has_couchdb:
+            return
+        server = couchdb.Server()
         ## Create databases
         for x in DATABASES:
-            if not db.__contains__(x):
+            if not server.__contains__(x):
                 LOG.info("Creating database {}".format(x))
-                db.create(x)
+                server.create(x)
         ## Create views
+        db = server["samples-test"]
+        samples_name_view = ViewDefinition('names', 'name', '''function(doc) {if (!doc["name"].match(/_[0-9]+$/)) {emit(doc["name"], null);}}''')
+        samples_name_view.sync(db)
+        ## Create project summary
+        with open(os.path.join(filedir, "data", "config", "project_summary.yaml")) as fh:
+            prj_sum = yaml.load(fh)
+        print prj_sum
+
 
     # @classmethod
     # def tearDownClass(cls):
