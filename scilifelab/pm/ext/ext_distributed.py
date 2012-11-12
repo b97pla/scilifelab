@@ -2,7 +2,10 @@
 import re
 import os
 import sys
-import drmaa
+try:
+    import drmaa
+except:
+    pass
 import itertools
 import argparse
 
@@ -234,7 +237,7 @@ def set_distributed_handler(app):
 def load():
     """Called by the framework when the extension is 'loaded'."""
     if not os.getenv("DRMAA_LIBRARY_PATH"):
-        self.app.log.warn("No environment variable $DRMAA_LIBRARY_PATH: loading {} failed".format(__name__))
+        LOG.warn("No environment variable $DRMAA_LIBRARY_PATH: loading {} failed".format(__name__))
         return
     hook.register('post_setup', add_drmaa_option)
     hook.register('post_setup', add_shared_distributed_options)

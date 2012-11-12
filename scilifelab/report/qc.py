@@ -55,7 +55,7 @@ def application_qc(project_id=None, flowcell_id=None, application=None,
         
     if project.get("application") not in application_map.keys():
         if not application:
-            LOG.warn("No such application {}. Please use the application option (available choices {})".format(app_label, ",".join(qc_cutoff.keys())))
+            LOG.warn("No such application {}. Please use the application option (available choices {})".format(application, ",".join(qc_cutoff.keys())))
             return
         application = application
     else:
