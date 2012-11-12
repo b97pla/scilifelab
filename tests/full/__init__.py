@@ -14,6 +14,7 @@ from Bio import Entrez
 
 from scilifelab.utils.misc import safe_makedir, filtered_walk
 from scilifelab.bcbio.flowcell import Flowcell
+from scilifelab.pm.bcbio.utils import fc_id, fc_parts, fc_fullname
 
 LOG = logbook.Logger(__name__)
 
@@ -297,7 +298,7 @@ def _make_casava_archive_files(fc, ssname, prefix, startiter = 1, nseqout=1000):
     with open(os.path.join(fc_dir, "{}.csv".format(ssname)), "w") as fh:
         fh.write(SAMPLESHEETS[ssname])
     with open(os.path.join(fc_dir, "RunInfo.xml"), "w") as fh:
-        fh.write(RUNINFO.render(**{'flowcell':"none", 'fc_id':"none", 'date':"date", 'instrument':"intsr"}))
+        fh.write(RUNINFO.render(**{'flowcell':os.path.basename(fc), 'fc_id':fc_id(fc), 'date':fc_parts(fc)[0], 'instrument':split("_", fc)[1]}))
     outf1 = []
     outf2 = []
     basecall_stats_dir = os.path.join(fc_dir, "Unaligned", "Basecall_Stats_{}".format(ssname))

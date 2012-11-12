@@ -3,6 +3,19 @@ import re
 from itertools import izip
 from scilifelab.db import Couch
 
+## Statusdb views essential for pm qc functionality
+## FIXME: import ViewDefinition from couchdb.design and create views if not present
+VIEWS = {'samples' : {'names': {'name' : '''function(doc) {if (!doc["name"].match(/_[0-9]+$/)) {emit(doc["name"], null);}}''',
+                                'name_fc' : '''function(doc) {if (!doc["name"].match(/_[0-9]+$/)) {emit(doc["name"], doc["flowcell"]);}}''',
+                                'name_fc_proj' : '''var list; function(doc) {if (!doc["name"].match(/_[0-9]+$/)) {list = [doc["flowcell"], doc["sample_prj"]];emit(doc["name"], list);}}''',
+                                'name_proj' : '''function(doc) {if (!doc["name"].match(/_[0-9]+$/)) {emit(doc["name"], doc["sample_prj"]);}}''',
+                                'id_to_name' : '''function(doc) {emit(doc["_id"], doc["name"]);}''',
+                                }},
+         'flowcells' : {'names' : {'name' : '''function(doc) {emit(doc["name"], null);}''',
+                                   'id_to_name' : '''function(doc) {emit(doc["_id"], doc["name"]);}'''}},
+         'projects' : {'project' : {'project_id' : '''function(doc) {emit(doc.project_id, doc._id)}'''}}
+         }
+
 def calc_avg_qv(srm):
     """Calculate average quality score for a sample based on
     FastQC results.
