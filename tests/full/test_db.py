@@ -11,7 +11,7 @@ import socket
 from classes import PmFullTest
 from scilifelab.pm.ext.ext_qc import update_fn
 from scilifelab.db.statusdb import SampleRunMetricsConnection, VIEWS
-from scilifelab.bcbio.qc import FlowcellRunMetrics, SampleRunMetrics
+from scilifelab.bcbio.qc import FlowcellRunMetrics, SampleRunMetrics, QCLEVELS
 from scilifelab.pm.bcbio.utils import fc_id, fc_parts, fc_fullname
 
 filedir = os.path.dirname(os.path.abspath(__file__))
@@ -94,6 +94,10 @@ def _save_samples(flowcell):
         obj.parse_fastq_screen()
         obj.parse_bc_metrics()
         obj.read_fastqc_metrics()
+        if d['Operator'].endswith("failed"):
+            obj["qcstatus"]["instrument_run_qc"] = QCLEVELS["FAIL"]
+        else:
+            obj["qcstatus"]["instrument_run_qc"] = QCLEVELS["PASS"]
         _save(db, obj, update_fn)
         
 def _save_flowcell(flowcell):

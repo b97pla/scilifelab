@@ -16,6 +16,12 @@ LOG = backend.minimal_logger("bcbio")
 from bcbio.broad.metrics import PicardMetricsParser
 from bcbio.pipeline.qcsummary import FastQCParser
 
+## QC labels
+QCLEVELS = {'PASS' : "P",
+            'NOTPASSED' : "NP",
+            'FAIL' : "FAIL",
+            'NOTAVAILABLE' : "NA"}
+
 class MetricsParser():
     """Basic class for parsing metrics"""
     def __init__(self, log=None):
@@ -403,7 +409,10 @@ class SampleRunMetrics(RunMetrics):
         self["barcode_type"] = barcode_type
         self["genomes_filter_out"] = genomes_filter_out
         self["name"] = "{}_{}_{}_{}".format(lane, date, flowcell, sequence)
-        
+        self["qcstatus"] = {"instrument_run_qc" : QCLEVELS["NOTAVAILABLE"],
+                            "flowcell_run_qc" : QCLEVELS["NOTAVAILABLE"],
+                            "data_integrity_qc" : QCLEVELS["NOTAVAILABLE"],
+                            "application_qc" : QCLEVELS["NOTAVAILABLE"]}
         ## Metrics
         self["fastqc"] = {}
         self["fastq_scr"] = {}
