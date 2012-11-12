@@ -85,8 +85,9 @@ class TestCouchDB(unittest.TestCase):
             
 
     def test_fc_upload(self):
+        server = couchdb.Server()
+        db = server["flowcell-test"]
         fcdir = flowcell
-        print fcdir
         (fc_date, fc_name) = fc_parts(flowcell)
         fc_kw = dict(path=fcdir, fc_date = fc_date, fc_name=fc_name)
         fcobj = FlowcellRunMetrics(**fc_kw)
@@ -94,3 +95,4 @@ class TestCouchDB(unittest.TestCase):
         fcobj.parse_bc_metrics()
         fcobj.parse_demultiplex_stats_htm()
         fcobj.parse_samplesheet_csv()
+        db.save(fcobj)
