@@ -57,7 +57,6 @@ class TestFastQParser(unittest.TestCase):
         fqr = fu.FastQParser(self.example_fq,filter=fltr)
         for r in fqr:
             pass
-        
         self.assertEqual(expected,fqr.rread(),
                          "The returned number of filtered reads based on indexes did not match expected number")
 

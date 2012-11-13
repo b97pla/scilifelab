@@ -55,7 +55,7 @@ def application_qc(project_id=None, flowcell_id=None, application=None,
         
     if project.get("application") not in application_map.keys():
         if not application:
-            LOG.warn("No such application {}. Please use the application option (available choices {})".format(app_label, ",".join(qc_cutoff.keys())))
+            LOG.warn("No such application {}. Please use the application option (available choices {})".format(application, ",".join(qc_cutoff.keys())))
             return
         application = application
     else:
@@ -117,7 +117,7 @@ def fastq_screen(project_id=None, flowcell_id=None,
     s_con = SampleRunMetricsConnection(username=user, password=password, url=url)
     samples = s_con.get_samples(fc_id=flowcell_id, sample_prj=project_id)
     for s in samples:
-        LOG.debug("Checking fastq_screen data for sample {}".format(s))
+        LOG.debug("Checking fastq_screen data for sample {}, id {}, project {}".format(s.get("name", None), s.get("_id", None), s.get("sample_prj", None)))
         fqscreen_data = s.get("fastq_scr", {})
         output_data["stdout"].write(s["barcode_name"] + "\n")
         if fqscreen_data:

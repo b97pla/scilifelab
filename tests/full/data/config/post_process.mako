@@ -31,7 +31,7 @@ algorithm:
   java_memory: 3g
   save_diskspace: true
   screen_contaminants: false
-  filter_phix: true
+  filter_phix: false
   upload_fastq: true
 
 distributed:
