@@ -30,7 +30,7 @@ class TestIlluminaRun(unittest.TestCase):
         os.mkdir(self.exp_unmatched_directory)
         
         # Create a basecall stats directory
-        self.exp_basecall_stats = os.path.join(self.exp_seqdir,"Basecall_stats_{}".format(self.exp_fcid))
+        self.exp_basecall_stats = os.path.join(self.exp_seqdir,"Basecall_Stats_{}".format(self.exp_fcid))
         os.mkdir(self.exp_basecall_stats)
         
         self.run = IlluminaRun(self.exp_fcdir)
@@ -147,14 +147,14 @@ class TestIlluminaRun(unittest.TestCase):
         """Get the basecall stats directory
         """
         # Assert ambiguous matches raises exception
-        d = os.path.join(self.exp_seqdir,"Basecall_stats_ABC123CXX")
+        d = os.path.join(self.exp_seqdir,"Basecall_Stats_ABC123CXX")
         os.mkdir(d)
         with self.assertRaises(ValueError):
             self.run.get_basecall_stats()
         os.rmdir(d)
         
         self.assertEqual(self.run.get_basecall_stats(), self.exp_basecall_stats,
-                         "Did not get correct Basecall_stats directory")
+                         "Did not get correct Basecall_Stats directory")
         
     def test_get_unmatched_reads(self):
         """Get the undetermined indexes reads

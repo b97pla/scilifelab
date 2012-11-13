@@ -27,7 +27,7 @@ class IlluminaRun():
     
     def __init__(self, base):
         self.base = base
-        self.samplesheet = get_samplesheet(self.base)
+        self.samplesheet = IlluminaRun.get_samplesheet(self.base)
         
     @staticmethod
     def get_samplesheet(base_dir):
@@ -104,7 +104,7 @@ class IlluminaRun():
         basecall_stats_dir_pattern = os.path.join(self.get_sequence_dir(),"Basecall_Stats_*")
         basecall_stats_dir = glob.glob(basecall_stats_dir_pattern)
         if len(basecall_stats_dir) > 1:
-            raise ValueError("ambiguous Basecall_stats directories: {}".format("; ".join(basecall_stats_dir)))
+            raise ValueError("ambiguous Basecall_Stats directories: {}".format("; ".join(basecall_stats_dir)))
         if len(basecall_stats_dir) == 1:
             return basecall_stats_dir[0]
         return None
