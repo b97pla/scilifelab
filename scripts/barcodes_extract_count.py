@@ -24,14 +24,9 @@ def extract_barcodes(fqfile, nindex, casava18, offset, bclen, mismatch, expected
         
     return counts
 
-def write_metrics(counts, outfile=None):
-    """Write the counts to a csv metrics file
+def write_metrics(counts):
+    """Write the counts to a csv stdout
     """
-    
-    if outfile is not None:
-        outh = open(outfile,"w")
-    else:
-        outh = sys.stdout
         
     # Write the metrics data
     if len(counts) > 0:
@@ -39,11 +34,6 @@ def write_metrics(counts, outfile=None):
         csvw.writeheader()
         csvw.writerows(counts)
         
-    if outfile is not None:
-        outh.close()
-        
-    return outfile
-       
 def generate_mismatches(src):
     """
     Generate a list of all possible nucleotide sequences with one 
@@ -54,9 +44,11 @@ def generate_mismatches(src):
     src_list = list(src)
     for i in xrange(len(src_list)):
         # Change to all possible nucleotides
-        for n in "ACGT":
+        for n in "ACGTN":
             src_list[i] = n
             seqs.append("".join(src_list))
+        # Reset the mutated nucleotide
+        src_list[i] = src[i]
     
     return list(set(seqs))
 
@@ -100,8 +92,8 @@ def main():
                         help="The csv samplesheet for the run. If supplied, will be used together with --lane to exclude expected barcodes")
     parser.add_argument('--lane', dest='lane', action='store', default=None, 
                         help="The lane to be analyzed. Used together with --csv-file to exclude expected barcodes")
-    parser.add_argument('-m','--metrics-file', dest='outfile', action='store', default=None,
-                        help="The output metrics file to write to. Default is stdout")
+#    parser.add_argument('-m','--metrics-file', dest='outfile', action='store', default=None,
+#                        help="The output metrics file to write to. Default is stdout")
     parser.add_argument('infile', action='store',
                         help="The input FastQ file to process. Can be gzip compressed")
     
@@ -112,8 +104,8 @@ def main():
     if args.csvfile is not None:
         expected = get_expected(args.csvfile,args.lane)
     
-    counts = extract_barcodes(args.infile, args.nindex, args.casava18, args.offset, args.barcode_length, args.mismatch, expected)
-    write_metrics(counts,args.outfile)
+    counts = extract_barcodes(args.infile, int(args.nindex), args.casava18, int(args.offset), int(args.barcode_length), args.mismatch, expected)
+    write_metrics(counts)
     
 if __name__ == "__main__":
     main()

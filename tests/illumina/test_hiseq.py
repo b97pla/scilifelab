@@ -113,25 +113,5 @@ class TestHiSeqRun(unittest.TestCase):
         for proj, sample in samples.items():
             self.assertListEqual(sorted(sample),sorted(HiSeqRun.get_project_sample_ids(ssheet,proj)),
                                  "The returned list of samples did not match the original")
-
-    def test_get_unmatched_reads(self):
-        """Get the undetermined indexes reads
-        """
-        
-        # Create some files representing undetermined index reads
-        lanes = [1,3,5,7]
-        readfiles = []
-        for lane in lanes:
-            fdir = os.path.join(self.hiseq._unmatched_dir(),"Sample_lane{:d}".format(lane))
-            readfiles.append([os.path.join(fdir,"lane{l:d}_Undetermined_L00{l:d}_R{r:d}_*.fastq.gz".format(l=lane, r=read)) for read in [1,2]])
-            os.makedirs(fdir)
-            for readfile in readfiles[-1]:
-                utils.touch_file(readfile)
-        
-            # Assert that the correct files are returned
-            self.assertListEqual(sorted(readfiles[-1]),
-                                 sorted(self.hiseq.get_unmatched_reads(lanes=[lane])[0]),
-                                 "Did not get expected undetermined indexes reads")
-
-                
+   
     
