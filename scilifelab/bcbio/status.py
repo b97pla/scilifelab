@@ -1,9 +1,19 @@
 import os
 import datetime
 import scilifelab.bcbio.filesystem as bcbio
-import scilifelab.utils.slurm as slurm
 
+try:
+    import scilifelab.utils.slurm as slurm
+except:
+    class DummyWrapper():
+        """A dummy wrapper that will just return an empty list
+        """
+        def get_slurm_jobid(self, *args, **kwargs):
+            return []
+    
+    slurm = DummyWrapper()
 
+    
 def status_query(archive_dir, analysis_dir, flowcell, project, brief=False):
     """Get a status report of the progress of flowcells based on a snapshot of the file system
     """

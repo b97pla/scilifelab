@@ -6,7 +6,7 @@ from scilifelab.utils.fastq_utils import BarcodeExtractor
 from scilifelab.illumina.hiseq import HiSeqRun
 from collections import Counter
       
-def extract_barcodes(fqfile, nindex=25, casava18=True, offset=101, bclen=6, expected=[], mismatch=True):
+def extract_barcodes(fqfile, lane, nindex=25, casava18=True, offset=101, bclen=6, expected=[], mismatch=True):
     """Parse the fastq file and extract barcodes. Return a dict structure suitable for upload to StatusDB
     """
     
@@ -16,7 +16,8 @@ def extract_barcodes(fqfile, nindex=25, casava18=True, offset=101, bclen=6, expe
     counts = []
     
     for bc, count in c.most_common(nindex):
-        counts.append({'Index': bc,
+        counts.append({'Lane': lane,
+                       'Index': bc,
                        'Reads': count})
         
     return counts
@@ -84,22 +85,20 @@ def main():
     parser.add_argument('--csv-file', dest='csvfile', action='store', default=None, 
                         help="The csv samplesheet for the run. If supplied, will be used together with --lane " \
                         "to exclude expected barcodes")
-    parser.add_argument('--lane', dest='lane', action='store', default=None, 
-                        help="The lane to be analyzed. Used together with --csv-file to exclude expected barcodes")
     parser.add_argument('--no-mismatch', dest='mismatch', action='store_false', default=True, 
                         help="Require exact match for excluding known barcodes. "\
                         "Default is to allow one mismatch")
     parser.add_argument('infile', action='store',
                         help="The input FastQ file to process. Can be gzip compressed")
-    
+    parser.add_argument('lane', dest='lane', action='store', default=None, 
+                        help="The lane to be analyzed")
     
     args = parser.parse_args()
-    assert args.csvfile is None or args.lane is not None, "--lane must be specified if --csv-file is supplied"
     expected = []
     if args.csvfile is not None:
         expected = get_expected(args.csvfile,args.lane)
     
-    counts = extract_barcodes(args.infile, args.nindex, args.casava18, args.offset, args.barcode_length, expected, args.mismatch)
+    counts = extract_barcodes(args.infile, args.lane, args.nindex, args.casava18, args.offset, args.barcode_length, expected, args.mismatch)
     write_metrics(counts)
     
 if __name__ == "__main__":
