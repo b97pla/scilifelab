@@ -206,7 +206,7 @@ class ProjectSummaryConnection(Couch):
         :param use_bc_map: use and give precedence to the barcode match mapping to sample run metrics (default False)
         :param check_consistency: use both mappings and check consistency (default False)
 
-        :returns: project sample name or None
+        :returns: project sample or None
         """
         # library_prep = re.search("P[0-9]+_[0-9]+([A-F])", sample_run_name)
         project = self.get_entry(project_id)
@@ -216,7 +216,7 @@ class ProjectSummaryConnection(Couch):
         if sample_run_name in project_samples.keys():
             return project_samples[sample_run_name]
         for project_sample_name in project_samples.keys():
-            if not sample_run_name.startswith("P"):
+            if not re.search("^P([0-9][0-9][0-9])", sample_run_name):
                 sid = re.search("(\d+)_?([A-Z])?_",sample_run_name)
                 if str(sid.group(1)) == str(project_sample_name):
                     return project_samples[project_sample_name]
@@ -227,6 +227,12 @@ class ProjectSummaryConnection(Couch):
                     index = m.group(1)
                     sid = re.search("([A-Za-z0-9\_]+)(\_index[0-9]+)?", sample_run_name.replace(index, ""))
                     if str(sid.group(1)) == str(project_sample_name):
+                        return project_samples[project_sample_name]
+                    if str(sid.group(1)) == str(project_samples[project_sample_name].get("customer_name", None)):
+                        return project_samples[project_sample_name]
+                    ## customer well names contain a 0, as in 11A07; run names don't always
+                    ## FIXME: a function should convert customer name to standard forms in cases like these
+                    if str(sid.group(1)) == str(project_samples[project_sample_name].get("customer_name", None).replace("0", "")):
                         return project_samples[project_sample_name]
             else:
                 if str(sample_run_name).startswith(str(project_sample_name)):
@@ -248,7 +254,7 @@ class ProjectSummaryConnection(Couch):
         project, possibly subset by flowcell id.
 
         :param project_id: project id
-        :param **kw: keyword arguments to be passed to map_name_to_srm
+         :param **kw: keyword arguments to be passed to map_name_to_srm
         """
         samples = self.map_name_to_srm(project_id, **args)
         srm_to_name = {}
