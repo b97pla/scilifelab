@@ -13,11 +13,24 @@ import scilifelab.log
 
 LOG = scilifelab.log.minimal_logger(__name__)
 
+def _get_ordered_million_reads(sample_name, ordered_million_reads):
+    """Retrieve ordered million reads for sample
+
+    :param sample_name: sample name
+    :param ordered_million_reads: parsed option passed to application
+
+    :returns: ordered number of reads or None"""
+    if isinstance(ordered_million_reads, dict):
+        if sample_name in ordered_million_reads:
+            return ordered_million_reads[sample_name]
+        else:
+            return ordered_million_reads.get("default", None)
+    else:
+        return ordered_million_reads
 
 def sample_status_note(project_id=None, flowcell_id=None, user=None, password=None, url=None,
-                       use_ps_map=True, use_bc_map=False, check_consistency=False, 
                        ordered_million_reads=None, uppnex_id=None, customer_reference=None,
-                       no_qcinfo=True, **kw):
+                       **kw):
     """Make a sample status note. Used keywords:
 
     :param project_id: project id
@@ -25,9 +38,6 @@ def sample_status_note(project_id=None, flowcell_id=None, user=None, password=No
     :param user: db user name
     :param password: db password
     :param url: db url
-    :param use_ps_map: use project summary mapping
-    :param use_bc_map: use project to barcode name mapping
-    :param check_consistency: check consistency between mappings
     :param ordered_million_reads: number of ordered reads in millions
     :param uppnex_id: the uppnex id
     :param customer_reference: customer project name
@@ -60,8 +70,8 @@ def sample_status_note(project_id=None, flowcell_id=None, user=None, password=No
     output_data["stdout"].write("PhiX error cutoff: > {:3}\n".format(cutoffs['phix_err_cutoff']))
     output_data["stdout"].write("QV cutoff        : < {:3}\n".format(cutoffs['qv_cutoff']))
     output_data["stdout"].write("************************\n\n")
-    output_data["stdout"].write("{:>18}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format("Scilifelab ID", "PhiXError", "ErrorStatus", "AvgQV", "QVStatus"))
-    output_data["stdout"].write("{:>18}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format("=============", "=========", "===========", "=====", "========"))
+    output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format("Scilifelab ID", "Lane", "PhiXError", "ErrorStatus", "AvgQV", "QVStatus"))
+    output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format("=============", "====", "=========", "===========", "=====", "========"))
     ## Connect and run
     s_con = SampleRunMetricsConnection(username=user, password=password, url=url)
     fc_con = FlowcellRunMetricsConnection(username=user, password=password, url=url)
@@ -74,6 +84,12 @@ def sample_status_note(project_id=None, flowcell_id=None, user=None, password=No
         LOG.warn("No such project '{}'".format(project_id))
         return output_data
     samples = s_con.get_samples(sample_prj=project_id, fc_id=flowcell_id)
+    if ordered_million_reads:
+        if os.path.exists(ordered_million_reads):
+            with open(ordered_million_reads) as fh:
+                ordered_million_reads = json.load(fh)
+        else:
+            ordered_million_reads = ast.literal_eval(ordered_million_reads)
     if len(samples) == 0:
         LOG.warn("No samples for project '{}', flowcell '{}'. Maybe there are no sample run metrics in statusdb?".format(project_id, flowcell_id))
         return output_data
@@ -94,13 +110,13 @@ def sample_status_note(project_id=None, flowcell_id=None, user=None, password=No
             err_stat = "HIGH"
         if s_param["avg_quality_score"] < cutoffs["qv_cutoff"]:
             qv_stat = "LOW"
-        output_data["stdout"].write("{:>18}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format(s["barcode_name"], s_param["phix_error_rate"], err_stat, s_param["avg_quality_score"], qv_stat))
+        output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format(s["barcode_name"], s["lane"], s_param["phix_error_rate"], err_stat, s_param["avg_quality_score"], qv_stat))
         s_param['rounded_read_count'] = round(float(s_param['rounded_read_count'])/1e6,1) if s_param['rounded_read_count'] else None
         s_param['ordered_amount'] = s_param.get('ordered_amount', p_con.get_ordered_amount(project_id))
         s_param['customer_reference'] = s_param.get('customer_reference', project.get('customer_reference'))
         s_param['uppnex_project_id'] = s_param.get('uppnex_project_id', project.get('uppnex_id'))
         if ordered_million_reads:
-            s_param["ordered_amount"] = ordered_million_reads
+            s_param["ordered_amount"] = _get_ordered_million_reads(s["barcode_name"], ordered_million_reads)
         if uppnex_id:
             s_param["uppnex_project_id"] = uppnex_id
         if customer_reference:
@@ -209,13 +225,15 @@ def project_status_note(project_id=None, user=None, password=None, url=None,
     param['customer_reference'] = param.get('customer_reference', project.get('customer_reference'))
     param['uppnex_project_id'] = param.get('uppnex_project_id', project.get('uppnex_id'))
     if ordered_million_reads:
-        param["ordered_amount"] = ordered_million_reads
+        if os.path.exists(ordered_million_reads):
+            with open(ordered_million_reads) as fh:
+                ordered_million_reads = json.load(fh)
+        else:
+            ordered_million_reads = ast.literal_eval(ordered_million_reads)
     if uppnex_id:
         param["uppnex_project_id"] = uppnex_id
     if customer_reference:
         param["customer_reference"] = customer_reference
-    if not param["ordered_amount"]:
-        param["ordered_amount"] = ordered_million_reads
     if exclude_sample_ids:
         if os.path.exists(exclude_sample_ids):
             with open(exclude_sample_ids) as fh:
@@ -245,6 +263,8 @@ def project_status_note(project_id=None, user=None, password=None, url=None,
         vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
         ## Set status
         vals['Status'] = project_sample.get("status", "N/A")
+        if ordered_million_reads:
+            param["ordered_amount"] = _get_ordered_million_reads(v['sample'], ordered_million_reads)
         vals['MOrdered'] = param["ordered_amount"]
         vals['BarcodeSeq'] = barcode_seq
         vals.update({k:"N/A" for k in vals.keys() if vals[k] is None or vals[k] == ""})
