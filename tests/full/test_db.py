@@ -11,7 +11,7 @@ import socket
 from classes import PmFullTest
 from scilifelab.pm.ext.ext_qc import update_fn
 from scilifelab.db.statusdb import SampleRunMetricsConnection, VIEWS, flowcell_run_metrics, sample_run_metrics, project_summary
-from scilifelab.bcbio.qc import FlowcellRunMetrics, SampleRunMetrics
+from scilifelab.bcbio.qc import FlowcellRunMetricsParser, SampleRunMetricsParser
 from scilifelab.pm.bcbio.utils import fc_id, fc_parts, fc_fullname
 
 filedir = os.path.dirname(os.path.abspath(__file__))
@@ -88,12 +88,15 @@ def _save_samples(flowcell):
         if not runinfo_yaml['details'][0].get("multiplex", None):
             LOG.warn("No multiplex information for sample {}".format(d['SampleID']))
             continue
-        sample_kw = dict(path=sample_fcdir, flowcell=fc_name, date=fc_date, lane=d['Lane'], barcode_name=d['SampleID'], sample_prj=d['SampleProject'].replace("__", "."), barcode_id=runinfo_yaml['details'][0]['multiplex'][0]['barcode_id'], sequence=runinfo_yaml['details'][0]['multiplex'][0]['sequence'])
-        obj = SampleRunMetrics(**sample_kw)
-        obj.read_picard_metrics()
-        obj.parse_fastq_screen()
-        obj.parse_bc_metrics()
-        obj.read_fastqc_metrics()
+        sample_kw = dict(flowcell=fc_name, date=fc_date, lane=d['Lane'], barcode_name=d['SampleID'], sample_prj=d['SampleProject'].replace("__", "."), barcode_id=runinfo_yaml['details'][0]['multiplex'][0]['barcode_id'], sequence=runinfo_yaml['details'][0]['multiplex'][0]['sequence'])
+        parser = SampleRunMetricsParser(sample_fcdir)
+        obj = sample_run_metrics(**sample_kw)
+        obj["picard_metrics"] = parser.read_picard_metrics(**sample_kw)
+        obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
+        obj["bc_metrics"] = parser.parse_bc_metrics(**sample_kw)
+        obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
+        obj["project_sample_name"] = "test"
+        obj["Myekey"] = "oei"
         _save(db, obj, update_fn)
         
 def _save_flowcell(flowcell):
@@ -101,12 +104,15 @@ def _save_flowcell(flowcell):
     db = server["flowcells-test"]
     fcdir = flowcell
     (fc_date, fc_name) = fc_parts(flowcell)
-    fc_kw = dict(path=fcdir, fc_date = fc_date, fc_name=fc_name)
-    fcobj = FlowcellRunMetrics(**fc_kw)
-    fcobj.parse_illumina_metrics(fullRTA=False)
-    fcobj.parse_bc_metrics()
-    fcobj.parse_demultiplex_stats_htm()
-    fcobj.parse_samplesheet_csv()
+    fc_kw = dict(fc_date = fc_date, fc_name=fc_name)
+    parser = FlowcellRunMetricsParser(fcdir)
+    fcobj = flowcell_run_metrics(**fc_kw)
+    fcobj["RunInfo"] = parser.parseRunInfo(**fc_kw)
+    fcobj["illumina"] = parser.parse_illumina_metrics(fullRTA=False, **fc_kw)
+    fcobj["bc_metrics"] = parser.parse_bc_metrics(**fc_kw)
+    fcobj["illumina"].update({"Demultiplex_Stats" : parser.parse_demultiplex_stats_htm(**fc_kw)})
+    fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(**fc_kw)
+    print fcobj["name"]
     _save(db, fcobj, update_fn)
     
 DATABASES = ["samples-test", "projects-test", "flowcells-test"]
@@ -137,7 +143,8 @@ class TestCouchDB(unittest.TestCase):
             prj_sum = yaml.load(fh)
         db = server["samples-test"]
         for p in prj_sum:
-            print p
+            pass
+            #print p
             # prj = project_summary(p)
             # prj.entity_type = prj.doc_type
             # prj.creation_time = utc_time()

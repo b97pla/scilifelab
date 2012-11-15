@@ -11,8 +11,9 @@ from scilifelab.utils.timestamp import utc_time
 from cement.core import backend, controller, handler, hook
 from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.utils.timestamp import modified_within_days
-from scilifelab.bcbio.qc import FlowcellRunMetrics, SampleRunMetrics
+from scilifelab.bcbio.qc import FlowcellRunMetricsParser, SampleRunMetricsParser
 from scilifelab.pm.bcbio.utils import validate_fc_directory_format, fc_id, fc_parts, fc_fullname
+from scilifelab.db.statusdb import sample_run_metrics, flowcell_run_metrics
 
 class RunMetricsController(AbstractBaseController):
     """
@@ -55,13 +56,14 @@ class RunMetricsController(AbstractBaseController):
         (fc_date, fc_name) = fc_parts(self.pargs.flowcell)
         ## Check modification time
         if modified_within_days(fcdir, self.pargs.mtime):
-            fc_kw = dict(path=fcdir, fc_date = fc_date, fc_name=fc_name)
-            fcobj = FlowcellRunMetrics(**fc_kw)
-            fcobj.parse_illumina_metrics(fullRTA=False)
-            fcobj.parse_bc_metrics()
-            fcobj.parse_filter_metrics()
-            if not fcobj.parse_samplesheet_csv():
-                fcobj.parse_run_info_yaml()
+            fc_kw = dict(fc_date = fc_date, fc_name=fc_name)
+            parser = FlowcellRunMetricsParser(fcdir)
+            fcobj = flowcell_run_metrics(**fc_kw)
+            fcobj["illumina"] = parser.parse_illumina_metrics(fullRTA=False, **fc_kw)
+            fcobj["bc_metrics"] = parser.parse_bc_metrics(**fc_kw)
+            fcobj["filter_metrics"] = parser.parse_filter_metrics(**fc_kw)
+            fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(**fc_kw)
+            fcobj["run_info_yaml"] = parser.parse_run_info_yaml(**fc_kw)
             qc_objects.append(fcobj)
         else:
             return qc_objects
@@ -99,12 +101,13 @@ class RunMetricsController(AbstractBaseController):
         (fc_date, fc_name) = fc_parts(self.pargs.flowcell)
         ## Check modification time
         if modified_within_days(fcdir, self.pargs.mtime):
-            fc_kw = dict(path=fcdir, fc_date = fc_date, fc_name=fc_name)
-            fcobj = FlowcellRunMetrics(**fc_kw)
-            fcobj.parse_illumina_metrics(fullRTA=False)
-            fcobj.parse_bc_metrics()
-            fcobj.parse_demultiplex_stats_htm()
-            fcobj.parse_samplesheet_csv()
+            fc_kw = dict(fc_date = fc_date, fc_name=fc_name)
+            parser = FlowcellRunMetricsParser(fcdir)
+            fcobj = flowcell_run_metrics()
+            fcobj["illumina"] = parser.parse_illumina_metrics(fullRTA=False)
+            fcobj["bc_metrics"] = parser.parse_bc_metrics()
+            fcobj["illumina"].update({"Demultiplex_Stats" : parser.parse_demultiplex_stats_htm(**fc_kw)})
+            fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(**fc_kw)
             qc_objects.append(fcobj)
 
         for sample in runinfo[1:]:
@@ -133,12 +136,13 @@ class RunMetricsController(AbstractBaseController):
             if not runinfo_yaml['details'][0].get("multiplex", None):
                 self.app.log.warn("No multiplex information for sample {}".format(d['SampleID']))
                 continue
-            sample_kw = dict(path=sample_fcdir, flowcell=fc_name, date=fc_date, lane=d['Lane'], barcode_name=d['SampleID'], sample_prj=d['SampleProject'].replace("__", "."), barcode_id=runinfo_yaml['details'][0]['multiplex'][0]['barcode_id'], sequence=runinfo_yaml['details'][0]['multiplex'][0]['sequence'])
-            obj = SampleRunMetrics(**sample_kw)
-            obj.read_picard_metrics()
-            obj.parse_fastq_screen()
-            obj.parse_bc_metrics()
-            obj.read_fastqc_metrics()
+            sample_kw = dict(flowcell=fc_name, date=fc_date, lane=d['Lane'], barcode_name=d['SampleID'], sample_prj=d['SampleProject'].replace("__", "."), barcode_id=runinfo_yaml['details'][0]['multiplex'][0]['barcode_id'], sequence=runinfo_yaml['details'][0]['multiplex'][0]['sequence'])
+            parser = SampleRunMetricsParser(sample_fcdir)
+            obj = sample_run_metrics(**sample_kw)
+            obj["picard_metrics"] = parser.read_picard_metrics(**sample_kw)
+            obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
+            obj["bc_metrics"] = parser.parse_bc_metrics(**sample_kw)
+            obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
             qc_objects.append(obj)
         return qc_objects
 
@@ -177,9 +181,9 @@ class RunMetricsController(AbstractBaseController):
             if self.app.pargs.debug:
                 self.log.debug("{}: {}".format(str(obj), obj["_id"]))
                 continue
-            if isinstance(obj, FlowcellRunMetrics):
+            if isinstance(obj, flowcell_run_metrics):
                 self.app.cmd.save("flowcells", obj, update_fn)
-            if isinstance(obj, SampleRunMetrics):
+            if isinstance(obj, sample_run_metrics):
                 self.app.cmd.save("samples", obj, update_fn)
 
 def update_fn(db, obj):
@@ -197,9 +201,9 @@ def update_fn(db, obj):
         keys = list(set(a_keys + b_keys))
         return {k:a.get(k, None) for k in keys} == {k:b.get(k, None) for k in keys}
 
-    if isinstance(obj, FlowcellRunMetrics):
+    if isinstance(obj, flowcell_run_metrics):
         view = db.view("names/id_to_name")
-    if isinstance(obj, SampleRunMetrics):
+    if isinstance(obj, sample_run_metrics):
         view = db.view("names/id_to_name")
 
     d_view = {k.value:k for k in view}

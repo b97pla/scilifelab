@@ -401,28 +401,32 @@ class status_document(dict):
     def __repr__(self):
         return "<{} {}>".format(self["entity_type"], self["name"])
 
-class project_summary(StatusDocument):
+class project_summary(status_document):
     """project summary document"""
     _entity_type = "project_summary"
     _fields = ["application", "customer_reference", "min_m_reads_per_sample_ordered",
                "no_of_samples", "project_id"]
     _dict_fields = ["samples"]
     def __init__(self, **kw):
-        StatusDocument.__init__(self, **kw)
+        status_document.__init__(self, **kw)
 
-class flowcell_run_metrics(StatusDocument):
+class flowcell_run_metrics(status_document):
     """Flowcell level class for holding qc data."""
     _entity_type = "flowcell_run_metrics"
     _fields = ["name"]
-    _dict_fields = ["run_info_yaml", "illumina", "sample_sheet_csv"]
-    def __init__(self, fc_name, fc_date, runinfo="RunInfo.xml", **kw):#, parse=True, fullRTA=False):
-        StatusDocument.__init__(self, **kw)
-        self["RunInfo"] = {"Id" : self["name"], "Flowcell":fc_name, "Date": fc_date, "Instrument": "NA"}
+    _dict_fields = ["run_info_yaml", "illumina", "samplesheet_csv"]
+    def __init__(self, fc_date=None, fc_name=None, **kw):
+        self.fc_date = fc_date
+        self.fc_name = fc_name
+        status_document.__init__(self, **kw)
         self._lanes = [1,2,3,4,5,6,7,8]
         self["lanes"] = {str(k):{"lane":str(k), "filter_metrics":{}, "bc_metrics":{}} for k in self._lanes}
+        self["name"] = self.name()
 
+    def name(self):
+        return "{}_{}".format(self.fc_date, self.fc_name)
 
-class sample_run_metrics(StatusDocument):
+class sample_run_metrics(status_document):
     """Sample-level class for holding run metrics data"""
     _entity_type = "sample_run_metrics"
     _fields =["barcode_id", "barcode_name", "barcode_type", "bc_count", "date",
@@ -430,6 +434,6 @@ class sample_run_metrics(StatusDocument):
               "genomes_filter_out", "project_sample_name", "project_id"] 
     _dict_fields = ["fastqc", "fastq_scr", "picard_metrics"]
     def __init__(self, **kw):
-        StatusDocument.__init__(self, **kw)
+        status_document.__init__(self, **kw)
         self["name"] = "{}_{}_{}_{}".format(self["lane"], self["date"], self["flowcell"], self["sequence"])
         
