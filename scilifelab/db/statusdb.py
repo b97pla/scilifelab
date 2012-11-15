@@ -24,16 +24,16 @@ def calc_avg_qv(srm):
 def _match_project_name_to_barcode_name(project_sample_name, sample_run_name):
     """Name mapping from project summary sample id to run info sample id"""
     if not project_sample_name.startswith("P"):
-        sid = re.search("(\d+)_?([A-Z])?_",sample_run_name)
-        if str(sid.group(1)) == str(project_sample_name):
+        sample_id = re.search("(\d+)_?([A-Z])?_",sample_run_name)
+        if str(sample_id.group(1)) == str(project_sample_name):
             return True
         m = re.search("(_index[0-9]+)", sample_run_name)
         if not m:
             index = ""
         else:
             index = m.group(1)
-        sid = re.search("([A-Za-z0-9\_]+)(\_index[0-9]+)?", sample_run_name.replace(index, ""))
-        if str(sid.group(1)) == str(project_sample_name):
+        sample_id = re.search("([A-Za-z0-9\_]+)(\_index[0-9]+)?", sample_run_name.replace(index, ""))
+        if str(sample_id.group(1)) == str(project_sample_name):
             return True
         else:
             return False
@@ -43,7 +43,7 @@ def _match_project_name_to_barcode_name(project_sample_name, sample_run_name):
         return True
     elif str(sample_run_name).startswith(str(project_sample_name).rstrip("B")):
         return True
-    ## Add cases here
+    # Add cases here
     return False
 
 def sample_map_fn_id(sample_run_name, prj_sample):
@@ -65,7 +65,7 @@ def _prune_ps_map(ps_map):
     return ret
 
 class SampleRunMetricsConnection(Couch):
-    ## FIXME: set time limits on which entries to include?
+    # FIXME: set time limits on which entries to include?
     def __init__(self, **kwargs):
         super(SampleRunMetricsConnection, self).__init__(**kwargs)
         self.db = self.con["samples"]
@@ -107,7 +107,7 @@ class SampleRunMetricsConnection(Couch):
         self.log.debug("retrieving sample ids subset by flowcell '{}' and sample_prj '{}'".format(fc_id, sample_prj))
         fc_sample_ids = [self.name_fc_view[k].id for k in self.name_fc_view.keys() if self.name_fc_view[k].value == fc_id] if fc_id else []
         prj_sample_ids = [self.name_proj_view[k].id for k in self.name_proj_view.keys() if self.name_proj_view[k].value == sample_prj] if sample_prj else []
-        ## | -> union, & -> intersection
+        # | -> union, & -> intersection
         if len(fc_sample_ids) > 0 and len(prj_sample_ids) > 0:
             sample_ids = list(set(fc_sample_ids) & set(prj_sample_ids))
         else:
@@ -217,22 +217,22 @@ class ProjectSummaryConnection(Couch):
             return project_samples[sample_run_name]
         for project_sample_name in project_samples.keys():
             if not re.search("^P([0-9][0-9][0-9])", sample_run_name):
-                sid = re.search("(\d+)_?([A-Z])?_",sample_run_name)
-                if str(sid.group(1)) == str(project_sample_name):
+                sample_id = re.search("(\d+)_?([A-Z])?_",sample_run_name)
+                if str(sample_id.group(1)) == str(project_sample_name):
                     return project_samples[project_sample_name]
                 m = re.search("(_index[0-9]+)", sample_run_name)
                 if not m:
                     index = ""
                 else:
                     index = m.group(1)
-                    sid = re.search("([A-Za-z0-9\_]+)(\_index[0-9]+)?", sample_run_name.replace(index, ""))
-                    if str(sid.group(1)) == str(project_sample_name):
+                    sample_id = re.search("([A-Za-z0-9\_]+)(\_index[0-9]+)?", sample_run_name.replace(index, ""))
+                    if str(sample_id.group(1)) == str(project_sample_name):
                         return project_samples[project_sample_name]
-                    if str(sid.group(1)) == str(project_samples[project_sample_name].get("customer_name", None)):
+                    if str(sample_id.group(1)) == str(project_samples[project_sample_name].get("customer_name", None)):
                         return project_samples[project_sample_name]
-                    ## customer well names contain a 0, as in 11A07; run names don't always
-                    ## FIXME: a function should convert customer name to standard forms in cases like these
-                    if str(sid.group(1)) == str(project_samples[project_sample_name].get("customer_name", None).replace("0", "")):
+                    # customer well names contain a 0, as in 11A07; run names don't always
+                    # FIXME: a function should convert customer name to standard forms in cases like these
+                    if str(sample_id.group(1)) == str(project_samples[project_sample_name].get("customer_name", None).replace("0", "")):
                         return project_samples[project_sample_name]
             else:
                 if str(sample_run_name).startswith(str(project_sample_name)):
