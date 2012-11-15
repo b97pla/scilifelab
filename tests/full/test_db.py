@@ -96,7 +96,6 @@ def _save_samples(flowcell):
         obj["bc_metrics"] = parser.parse_bc_metrics(**sample_kw)
         obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
         obj["project_sample_name"] = "test"
-        obj["Myekey"] = "oei"
         _save(db, obj, update_fn)
         
 def _save_flowcell(flowcell):
