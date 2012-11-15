@@ -73,13 +73,15 @@ class RunMetricsController(AbstractBaseController):
                                  barcode_id=sample.get('barcode_id', None), sequence=sample.get('sequence', "NoIndex"))
             for sample in info["multiplex"]:
                 sample.update({k: info.get(k, None) for k in ('analysis', 'description', 'flowcell_id', 'lane')})
-                sample_kw = dict(path=fcdir, flowcell=fc_name, date=fc_date, lane=sample['lane'], barcode_name=sample['name'], sample_prj=sample.get('sample_prj', None),
+                sample_kw = dict(flowcell=fc_name, date=fc_date, lane=sample['lane'], barcode_name=sample['name'], sample_prj=sample.get('sample_prj', None),
                                  barcode_id=sample['barcode_id'], sequence=sample.get('sequence', "NoIndex"))
-                obj = SampleRunMetrics(**sample_kw)
-                obj.read_picard_metrics()
-                obj.parse_fastq_screen()
-                obj.parse_bc_metrics()
-                obj.read_fastqc_metrics()
+                
+                parser = SampleRunMetricsParser(fcid)
+                obj = sample_run_metrics(**sample_kw)
+                obj["picard_metrics"] = parser.read_picard_metrics()
+                obj["fastq_scr"] = parser.parse_fastq_screen()
+                obj["bc_metrics"] = parser.parse_bc_metrics()
+                obj["fastqc"] = parser.read_fastqc_metrics()
                 qc_objects.append(obj)
         return qc_objects
 
