@@ -91,7 +91,7 @@ class TestSampleDeliveryNote(unittest.TestCase):
             s_param.update({key:s[srm_to_parameter[key]] for key in srm_to_parameter.keys()})
             fc = "{}_{}".format(s["date"], s["flowcell"])
             s_param["phix_error_rate"] = fc_con.get_phix_error_rate(str(fc), s["lane"])
-            s_param['avg_quality_score'] = calc_avg_qv(s["name"])
+            s_param['avg_quality_score'] = calc_avg_qv(s)
             s_param['rounded_read_count'] = round(float(s_param['rounded_read_count'])/1e6,1) if s_param['rounded_read_count'] else None
             s_param['customer_name'] = project['samples'][v["sample"]].get('customer_name', None)
             s_param['success'] = sequencing_success(s_param, cutoffs)

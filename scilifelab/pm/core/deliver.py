@@ -3,7 +3,6 @@ import os
 import re
 import shutil
 import itertools
-
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.report import sequencing_success
@@ -56,6 +55,9 @@ class DeliveryReportController(AbstractBaseController):
         group.add_argument('--use_ps_map', help="Use project summary mapping in cases where no sample_run_metrics is available", default=True, action="store_false")
         group.add_argument('--use_bc_map', help="Use sample run metrics barcode mapping in cases where no sample_run_metrics is available", default=False, action="store_true")
         group.add_argument('--application', help="Set application for qc evaluation. One of '{}'".format(",".join(QC_CUTOFF.keys())), action="store", type=str, default=None)
+        group.add_argument('--exclude_sample_ids', help="Exclude project sample ids from report generation. Input is either a string or a JSON file with a key:value mapping, as in '--exclude_sample_ids \"{'PS1':[], 'PS2':['AACCGG']}\"'. The values consist of a list of barcodes; if the list is empty, exclude the entire sample.", action="store", default={})
+        group.add_argument('--sample_aliases', help="Provide sample aliases for cases where project summary has multiple names for a sample. Input is either a string or a JSON file with a key:value mapping, for example '--sample_aliases \"{'sample1':['alias1_1', 'alias1_2'], 'sample2':['alias2_1']}\", where the value is a list of aliases. The key will be used as 'base' information, possibly updated by information from the alias entry.", action="store", default={})
+        group.add_argument('--project_alias', help="Provide project aliases for cases where project summary has multiple names for a project. Input is a comma-separated list of names enclosed by brackets, for example '--project_alias alias1'", action="store", default=None)
         super(DeliveryReportController, self)._setup(app)
 
     def _process_args(self):
