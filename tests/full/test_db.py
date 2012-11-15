@@ -10,7 +10,7 @@ import socket
 
 from classes import PmFullTest
 from scilifelab.pm.ext.ext_qc import update_fn
-from scilifelab.db.statusdb import SampleRunMetricsConnection, VIEWS
+from scilifelab.db.statusdb import SampleRunMetricsConnection, VIEWS, flowcell_run_metrics, sample_run_metrics, project_summary
 from scilifelab.bcbio.qc import FlowcellRunMetrics, SampleRunMetrics
 from scilifelab.pm.bcbio.utils import fc_id, fc_parts, fc_fullname
 

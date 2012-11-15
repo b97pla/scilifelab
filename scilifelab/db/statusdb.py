@@ -5,6 +5,19 @@ from scilifelab.db import Couch
 from scilifelab.utils.timestamp import utc_time
 from uuid import uuid4
 
+# Statusdb views essential for pm qc functionality
+# FIXME: import ViewDefinition from couchdb.design and create views if not present
+VIEWS = {'samples' : {'names': {'name' : '''function(doc) {if (!doc["name"].match(/_[0-9]+$/)) {emit(doc["name"], null);}}''',
+                                'name_fc' : '''function(doc) {if (!doc["name"].match(/_[0-9]+$/)) {emit(doc["name"], doc["flowcell"]);}}''',
+                                'name_fc_proj' : '''var list; function(doc) {if (!doc["name"].match(/_[0-9]+$/)) {list = [doc["flowcell"], doc["sample_prj"]];emit(doc["name"], list);}}''',
+                                'name_proj' : '''function(doc) {if (!doc["name"].match(/_[0-9]+$/)) {emit(doc["name"], doc["sample_prj"]);}}''',
+                                'id_to_name' : '''function(doc) {emit(doc["_id"], doc["name"]);}''',
+                                }},
+         'flowcells' : {'names' : {'name' : '''function(doc) {emit(doc["name"], null);}''',
+                                   'id_to_name' : '''function(doc) {emit(doc["_id"], doc["name"]);}'''}},
+         'projects' : {'project' : {'project_id' : '''function(doc) {emit(doc.project_id, doc._id)}'''}}
+         }
+
 def calc_avg_qv(srm):
     """Calculate average quality score for a sample based on
     FastQC results.
@@ -365,56 +378,58 @@ class ProjectSummaryConnection(Couch):
 ##############################
 # Documents
 ##############################
-class StatusDocument(dict):
-    """Generic StatusDocument class"""
+class status_document(dict):
+    """Generic status document class"""
     _entity_type = "status_document"
+    _fields = []
+    _dict_fields = []
+    _list_fields = []
     def __init__(self, **kw):
         self["_id"] = kw.get("_id", uuid4().hex)
         self["entity_type"] = self._entity_type
         self["name"] = kw.get("name", None)
         self["creation_time"] = kw.get("creation_time", utc_time())
-        self["modification_time"] = None
+        self["modification_time"] = kw.get("modification_time", None)
+        for f in self._fields:
+            self[f] = kw.get(f, None)
+        for f in self._dict_fields:
+            self[f] = kw.get(f, {})
+        for f in self._list_fields:
+            self[f] = kw.get(f, {})
+        self.update(**kw)
 
     def __repr__(self):
         return "<{} {}>".format(self["entity_type"], self["name"])
 
-    
-class FlowcellRunMetrics(StatusDocument):
+class project_summary(StatusDocument):
+    """project summary document"""
+    _entity_type = "project_summary"
+    _fields = ["application", "customer_reference", "min_m_reads_per_sample_ordered",
+               "no_of_samples", "project_id"]
+    _dict_fields = ["samples"]
+    def __init__(self, **kw):
+        StatusDocument.__init__(self, **kw)
+
+class flowcell_run_metrics(StatusDocument):
     """Flowcell level class for holding qc data."""
     _entity_type = "flowcell_run_metrics"
+    _fields = ["name"]
+    _dict_fields = ["run_info_yaml", "illumina", "sample_sheet_csv"]
     def __init__(self, fc_name, fc_date, runinfo="RunInfo.xml", **kw):#, parse=True, fullRTA=False):
         StatusDocument.__init__(self, **kw)
-        self["name"] = kw.get("name", "{}_{}".format(fc_name, fc_date))
         self["RunInfo"] = {"Id" : self["name"], "Flowcell":fc_name, "Date": fc_date, "Instrument": "NA"}
-        self["run_info_yaml"] = kw.get("run_info_yaml", {})
-        self["samplesheet_csv"] = kw.get("samplesheet_csv", [])
         self._lanes = [1,2,3,4,5,6,7,8]
-        self["lanes"] = kw.get("lanes", {str(k):{"lane":str(k), "filter_metrics":{}, "bc_metrics":{}} for k in self._lanes})
-        self["illumina"] = kw.get("illumina", {})
+        self["lanes"] = {str(k):{"lane":str(k), "filter_metrics":{}, "bc_metrics":{}} for k in self._lanes}
 
-class SampleRunMetrics(StatusDocument):
+
+class sample_run_metrics(StatusDocument):
     """Sample-level class for holding run metrics data"""
     _entity_type = "sample_run_metrics"
+    _fields =["barcode_id", "barcode_name", "barcode_type", "bc_count", "date",
+              "flowcell", "lane", "sample_prj", "sequence", "barcode_type",
+              "genomes_filter_out", "project_sample_name", "project_id"] 
+    _dict_fields = ["fastqc", "fastq_scr", "picard_metrics"]
     def __init__(self, **kw):
-        StatusDocument.__init__(self)
-        self["entity_type"] = self._entity_type
-        self["barcode_id"] = kw.get("barcode_id", None)
-        self["barcode_name"] = kw.get("barcode_name", None)
-        self["barcode_type"] = kw.get("barcode_type", None)
-        self["bc_count"] = kw.get("bc_count", None)
-        self["date"] = kw.get("date", None)
-        self["flowcell"] = kw.get("flowcell", None)
-        self["lane"] = kw.get("lane", None)
-        self["sample_prj"] = kw.get("sample_prj", None)
-        self["sequence"] = kw.get("sequence", None)
-        self["barcode_type"] = kw.get("barcode_type", None)
-        self["genomes_filter_out"] = kw.get("genomes_filter_out", None)
+        StatusDocument.__init__(self, **kw)
         self["name"] = "{}_{}_{}_{}".format(self["lane"], self["date"], self["flowcell"], self["sequence"])
-        self["project_sample_name"] = kw.get("project_sample_name", None)
-        self["project_id"] = kw.get("project_id", None)
         
-        ## Metrics
-        self["fastqc"] = kw.get("fastqc", {})
-        self["fastq_scr"] = kw.get("fastq_scr", {})
-        self["picard_metrics"] = kw.get("picard_metrics", {})
-
