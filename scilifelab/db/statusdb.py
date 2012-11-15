@@ -2,6 +2,8 @@
 import re
 from itertools import izip
 from scilifelab.db import Couch
+from scilifelab.utils.timestamp import utc_time
+from uuid import uuid4
 
 def calc_avg_qv(srm):
     """Calculate average quality score for a sample based on
@@ -359,3 +361,60 @@ class ProjectSummaryConnection(Couch):
             if qcdata[s["name"]]["FOLD_ENRICHMENT"] and qcdata[s["name"]]["GENOME_SIZE"] and target_territory:
                 qcdata[s["name"]]["PERCENT_ON_TARGET"] = float(qcdata[s["name"]]["FOLD_ENRICHMENT"]/ (float(qcdata[s["name"]]["GENOME_SIZE"]) / float(target_territory))) * 100
         return qcdata
+
+##############################
+# Documents
+##############################
+class StatusDocument(dict):
+    """Generic StatusDocument class"""
+    _entity_type = "status_document"
+    def __init__(self, **kw):
+        self["_id"] = kw.get("_id", uuid4().hex)
+        self["entity_type"] = self._entity_type
+        self["name"] = kw.get("name", None)
+        self["creation_time"] = kw.get("creation_time", utc_time())
+        self["modification_time"] = None
+
+    def __repr__(self):
+        return "<{} {}>".format(self["entity_type"], self["name"])
+
+    
+class FlowcellRunMetrics(StatusDocument):
+    """Flowcell level class for holding qc data."""
+    _entity_type = "flowcell_run_metrics"
+    def __init__(self, fc_name, fc_date, runinfo="RunInfo.xml", **kw):#, parse=True, fullRTA=False):
+        StatusDocument.__init__(self, **kw)
+        self["name"] = kw.get("name", "{}_{}".format(fc_name, fc_date))
+        self["RunInfo"] = {"Id" : self["name"], "Flowcell":fc_name, "Date": fc_date, "Instrument": "NA"}
+        self["run_info_yaml"] = kw.get("run_info_yaml", {})
+        self["samplesheet_csv"] = kw.get("samplesheet_csv", [])
+        self._lanes = [1,2,3,4,5,6,7,8]
+        self["lanes"] = kw.get("lanes", {str(k):{"lane":str(k), "filter_metrics":{}, "bc_metrics":{}} for k in self._lanes})
+        self["illumina"] = kw.get("illumina", {})
+
+class SampleRunMetrics(StatusDocument):
+    """Sample-level class for holding run metrics data"""
+    _entity_type = "sample_run_metrics"
+    def __init__(self, **kw):
+        StatusDocument.__init__(self)
+        self["entity_type"] = self._entity_type
+        self["barcode_id"] = kw.get("barcode_id", None)
+        self["barcode_name"] = kw.get("barcode_name", None)
+        self["barcode_type"] = kw.get("barcode_type", None)
+        self["bc_count"] = kw.get("bc_count", None)
+        self["date"] = kw.get("date", None)
+        self["flowcell"] = kw.get("flowcell", None)
+        self["lane"] = kw.get("lane", None)
+        self["sample_prj"] = kw.get("sample_prj", None)
+        self["sequence"] = kw.get("sequence", None)
+        self["barcode_type"] = kw.get("barcode_type", None)
+        self["genomes_filter_out"] = kw.get("genomes_filter_out", None)
+        self["name"] = "{}_{}_{}_{}".format(self["lane"], self["date"], self["flowcell"], self["sequence"])
+        self["project_sample_name"] = kw.get("project_sample_name", None)
+        self["project_id"] = kw.get("project_id", None)
+        
+        ## Metrics
+        self["fastqc"] = kw.get("fastqc", {})
+        self["fastq_scr"] = kw.get("fastq_scr", {})
+        self["picard_metrics"] = kw.get("picard_metrics", {})
+
