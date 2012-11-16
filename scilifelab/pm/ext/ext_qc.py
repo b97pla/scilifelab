@@ -11,7 +11,7 @@ from scilifelab.utils.timestamp import utc_time
 from cement.core import backend, controller, handler, hook
 from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.utils.timestamp import modified_within_days
-from scilifelab.bcbio.qc import FlowcellRunMetrics, SampleRunMetrics
+from scilifelab.bcbio.qc import FlowcellRunMetrics, SampleRunMetrics, QCLEVELS
 from scilifelab.pm.bcbio.utils import validate_fc_directory_format, fc_id, fc_parts, fc_fullname
 
 class RunMetricsController(AbstractBaseController):
@@ -136,6 +136,10 @@ class RunMetricsController(AbstractBaseController):
             obj.parse_fastq_screen()
             obj.parse_bc_metrics()
             obj.read_fastqc_metrics()
+            if d['Operator'].endswith("failed"):
+                obj["qcstatus"]["instrument_run_qc"] = QCLEVELS["FAIL"]
+            else:
+                obj["qcstatus"]["instrument_run_qc"] = QCLEVELS["PASS"]
             qc_objects.append(obj)
         return qc_objects
 
