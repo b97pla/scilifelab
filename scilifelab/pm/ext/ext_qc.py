@@ -42,9 +42,6 @@ class RunMetricsController(AbstractBaseController):
     def default(self):
         print self._help_text
 
-    ##############################
-    ## New structures
-    ##############################
     def _collect_pre_casava_qc(self):
         qc_objects = []
         runinfo_yaml = os.path.join(os.path.abspath(self.pargs.flowcell), "run_info.yaml")
@@ -176,8 +173,8 @@ class RunMetricsController(AbstractBaseController):
         else:
             self.log.info("Retrieved {} updated qc objects".format(len(qc_objects)))
 
-        s_con = SampleRunMetricsConnection(dbname="samples-test", **vars(self.app.pargs))
-        fc_con = FlowcellRunMetricsConnection(dbname="flowcells-test", **vars(self.app.pargs))
+        s_con = SampleRunMetricsConnection(dbname="samples-test", log=self.app.log, **vars(self.app.pargs))
+        fc_con = FlowcellRunMetricsConnection(dbname="flowcells-test", log=self.app.log,  **vars(self.app.pargs))
         for obj in qc_objects:
             if self.app.pargs.debug:
                 self.log.debug("{}: {}".format(str(obj), obj["_id"]))

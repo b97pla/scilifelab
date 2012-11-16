@@ -54,6 +54,9 @@ class project_summary(status_document):
     def __init__(self, **kw):
         status_document.__init__(self, **kw)
 
+    def __repr__(self):
+        return "<{} {}>".format(self["entity_type"], self["project_id"])
+
 class flowcell_run_metrics(status_document):
     """Flowcell level class for holding qc data."""
     _entity_type = "flowcell_run_metrics"
@@ -259,8 +262,6 @@ class ProjectSummaryConnection(Couch):
     _update_fn = update_fn
     def __init__(self, dbname="projects", **kwargs):
         super(ProjectSummaryConnection, self).__init__(**kwargs)
-        if not self.con:
-            return
         self.db = self.con[dbname]
         self.name_view = {k.key:k.id for k in self.db.view("project/project_id", reduce=False)}
 

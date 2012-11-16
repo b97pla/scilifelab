@@ -96,7 +96,7 @@ class Couch(Database):
         else:
             return doc
 
-    def save(self, obj):
+    def save(self, obj, **kwargs):
         """Save/update database object <obj>. If <obj> already exists
         and <update_fn> is defined, update will only take place if
         object has been modified
@@ -107,7 +107,7 @@ class Couch(Database):
             self.db.save(obj)
             self.log.info("Saving object {} with id {}".format(repr(obj), obj["_id"]))
         else:
-            (new_obj, dbid) = self._update_fn(self.db, obj)
+            (new_obj, dbid) = self._update_fn(self.db, obj, **kwargs)
             if not new_obj is None:
                 self.log.info("Saving object {} with id {}".format(repr(new_obj), new_obj["_id"]))
                 self.db.save(new_obj)
