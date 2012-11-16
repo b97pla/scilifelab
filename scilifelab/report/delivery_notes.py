@@ -1,6 +1,9 @@
 """Module delivery_notes - code for generating delivery reports and notes"""
+import os
 import re
 import itertools
+import ast
+import json
 from cStringIO import StringIO
 from collections import Counter
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, calc_avg_qv
@@ -105,7 +108,10 @@ def sample_status_note(project_id=None, flowcell_id=None, user=None, password=No
         ## FIX ME: This is where we need a key in SampleRunMetrics that provides a mapping to a project sample name
         project_sample = p_con.get_project_sample(project_id, s["barcode_name"])
         if project_sample:
-            project_sample_d = {x:y for d in [v["sample_run_metrics"] for k,v in project_sample["library_prep"].iteritems()] for x,y in d.iteritems()}
+            if "library_prep" in project_sample.keys():
+                project_sample_d = {x:y for d in [v["sample_run_metrics"] for k,v in project_sample["library_prep"].iteritems()] for x,y in d.iteritems()}
+            else:
+                project_sample_d = {x:y for x,y in project_sample["sample_run_metrics"].iteritems()}
             if s["name"] not in project_sample_d.keys():
                 LOG.warn("'{}' not found in project sample run metrics for project".format(s["name"]) )
             else:
@@ -128,9 +134,9 @@ def sample_status_note(project_id=None, flowcell_id=None, user=None, password=No
     return output_data
 
 def project_status_note(project_id=None, user=None, password=None, url=None,
-                        use_ps_map=True, use_bc_map=False, check_consistency=False, 
+                        use_ps_map=True, use_bc_map=False, check_consistency=False,
                         ordered_million_reads=None, uppnex_id=None, customer_reference=None,
-                        exclude_sample_ids=[], **kw):
+                        exclude_sample_ids={}, project_alias=None, sample_aliases={}, **kw):
     """Make a project status note. Used keywords:
 
     :param project_id: project id
@@ -144,6 +150,8 @@ def project_status_note(project_id=None, user=None, password=None, url=None,
     :param uppnex_id: the uppnex id
     :param customer_reference: customer project name
     :param exclude_sample_ids: exclude some sample ids from project note
+    :param project_alias: project alias name
+    :param sample_aliases: sample alias names
     """
     ## parameters
     parameters = {
@@ -163,12 +171,38 @@ def project_status_note(project_id=None, user=None, password=None, url=None,
     paragraphs = project_note_paragraphs()
     headers = project_note_headers()
     param = parameters
-    project = p_con.get_entry(project_id)
+    if not project_alias:
+        project = p_con.get_entry(project_id)
+    else:
+        project = p_con.get_entry(project_alias)
+
+    if sample_aliases:
+        if os.path.exists(sample_aliases):
+            with open(sample_aliases) as fh:
+                sample_aliases = json.load(fh)
+        else:
+            sample_aliases = ast.literal_eval(sample_aliases)
     if not project:
         LOG.warn("No such project '{}'".format(project_id))
         return
     LOG.debug("Working on project '{}'.".format(project_id))
-    samples = p_con.map_srm_to_name(project_id, use_ps_map=use_ps_map, use_bc_map=use_bc_map, check_consistency=check_consistency)
+    slist = s_con.get_samples(sample_prj=project_id)
+    samples = {}
+    for s in slist:
+        prj_sample = p_con.get_project_sample(project_id, s["barcode_name"])
+        if prj_sample:
+            s_d = {s["name"] : {'sample':prj_sample["scilife_name"], 'id':s["_id"]}}
+            samples.update(s_d)
+        else:
+            if s["barcode_name"] in sample_aliases:
+                s_d = {sample_aliases[s["barcode_name"]] : {'sample':sample_aliases[s["barcode_name"]], 'id':s["_id"]}}
+                samples.update(s_d)
+            else:
+                s_d = {s["name"]:{'sample':s["name"], 'id':s["_id"], 'barcode_name':s["barcode_name"]}}
+                LOG.warn("No mapping found for sample run:\n  '{}'".format(s_d))
+    ## Convert to mapping from desired sample name to list of aliases
+    ## Less important for the moment; one solution is to update the
+    ## Google docs summary table to use the P names
     sample_list = project['samples']
     param.update({key:project.get(ps_to_parameter[key], None) for key in ps_to_parameter.keys()})
     param["ordered_amount"] = param.get("ordered_amount", p_con.get_ordered_amount(project_id))
@@ -182,6 +216,12 @@ def project_status_note(project_id=None, user=None, password=None, url=None,
         param["customer_reference"] = customer_reference
     if not param["ordered_amount"]:
         param["ordered_amount"] = ordered_million_reads
+    if exclude_sample_ids:
+        if os.path.exists(exclude_sample_ids):
+            with open(exclude_sample_ids) as fh:
+                exclude_sample_ids = json.load(fh)
+        else:
+            exclude_sample_ids = ast.literal_eval(exclude_sample_ids)
     ## Start collecting the data
     sample_table = []
     all_passed = True
@@ -190,15 +230,23 @@ def project_status_note(project_id=None, user=None, password=None, url=None,
         LOG.debug("project sample '{}' maps to '{}'".format(k, v))
         if re.search("Unexpected", k):
             continue
-        if exclude_sample_ids and v['sample'] in exclude_sample_ids[0].split():
-            LOG.info("excluding sample '{}' from project report".format(v['sample']))
-            continue
+        barcode_seq = s_con.get_entry(k, "sequence")
+        if exclude_sample_ids and v['sample'] in exclude_sample_ids.keys():
+            if exclude_sample_ids[v['sample']]:
+                if barcode_seq in exclude_sample_ids[v['sample']]:
+                    LOG.info("excluding sample '{}' with barcode '{}' from project report".format(v['sample'], barcode_seq))
+                    continue
+                else:
+                    LOG.info("keeping sample '{}' with barcode '{}' in sequence report".format(v['sample'], barcode_seq))
+            else:
+                LOG.info("excluding sample '{}' from project report".format(v['sample']))
+                continue
         project_sample = sample_list[v['sample']]
         vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
         ## Set status
         vals['Status'] = project_sample.get("status", "N/A")
         vals['MOrdered'] = param["ordered_amount"]
-        vals['BarcodeSeq'] = s_con.get_entry(k, "sequence")
+        vals['BarcodeSeq'] = barcode_seq
         vals.update({k:"N/A" for k in vals.keys() if vals[k] is None or vals[k] == ""})
         if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
         sample_table.append([vals[k] for k in table_keys])
