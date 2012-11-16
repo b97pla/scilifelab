@@ -13,7 +13,7 @@ from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.utils.timestamp import modified_within_days
 from scilifelab.bcbio.qc import FlowcellRunMetricsParser, SampleRunMetricsParser
 from scilifelab.pm.bcbio.utils import validate_fc_directory_format, fc_id, fc_parts, fc_fullname
-from scilifelab.db.statusdb import sample_run_metrics, flowcell_run_metrics
+from scilifelab.db.statusdb import sample_run_metrics, flowcell_run_metrics, update_fn
 
 class RunMetricsController(AbstractBaseController):
     """
@@ -80,10 +80,10 @@ class RunMetricsController(AbstractBaseController):
                 
                 parser = SampleRunMetricsParser(fcid)
                 obj = sample_run_metrics(**sample_kw)
-                obj["picard_metrics"] = parser.read_picard_metrics()
-                obj["fastq_scr"] = parser.parse_fastq_screen()
-                obj["bc_metrics"] = parser.parse_bc_metrics()
-                obj["fastqc"] = parser.read_fastqc_metrics()
+                obj["picard_metrics"] = parser.read_picard_metrics(**sample_kw)
+                obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
+                obj["bc_metrics"] = parser.parse_bc_metrics(**sample_kw)
+                obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
                 qc_objects.append(obj)
         return qc_objects
 
@@ -104,8 +104,8 @@ class RunMetricsController(AbstractBaseController):
             fc_kw = dict(fc_date = fc_date, fc_name=fc_name)
             parser = FlowcellRunMetricsParser(fcdir)
             fcobj = flowcell_run_metrics()
-            fcobj["illumina"] = parser.parse_illumina_metrics(fullRTA=False)
-            fcobj["bc_metrics"] = parser.parse_bc_metrics()
+            fcobj["illumina"] = parser.parse_illumina_metrics(fullRTA=False, **fc_kw)
+            fcobj["bc_metrics"] = parser.parse_bc_metrics(**fc_kw)
             fcobj["illumina"].update({"Demultiplex_Stats" : parser.parse_demultiplex_stats_htm(**fc_kw)})
             fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(**fc_kw)
             qc_objects.append(fcobj)
@@ -185,44 +185,6 @@ class RunMetricsController(AbstractBaseController):
                 self.app.cmd.save("flowcells", obj, update_fn)
             if isinstance(obj, sample_run_metrics):
                 self.app.cmd.save("samples", obj, update_fn)
-
-def update_fn(db, obj):
-    """Compare object with object in db if present.
-
-    :param db: couch database
-    :param obj: database object to save
-
-    :returns: database object to save and database id if present
-    """
-    t_utc = utc_time()
-    def equal(a, b):
-        a_keys = [str(x) for x in a.keys() if x not in ["_id", "_rev", "creation_time", "modification_time"]]
-        b_keys = [str(x) for x in b.keys() if x not in ["_id", "_rev", "creation_time", "modification_time"]]
-        keys = list(set(a_keys + b_keys))
-        return {k:a.get(k, None) for k in keys} == {k:b.get(k, None) for k in keys}
-
-    if isinstance(obj, flowcell_run_metrics):
-        view = db.view("names/id_to_name")
-    if isinstance(obj, sample_run_metrics):
-        view = db.view("names/id_to_name")
-
-    d_view = {k.value:k for k in view}
-    dbid =  d_view.get(obj["name"], None)
-    dbobj = None
-    if dbid:
-        dbobj = db.get(dbid.id, None)
-    if dbobj is None:
-        obj["creation_time"] = t_utc
-        return (obj, dbid)
-    if equal(obj, dbobj):
-        return (None, dbid)
-    else:
-        obj["creation_time"] = dbobj.get("creation_time")
-        obj["modification_time"] = t_utc
-        obj["_rev"] = dbobj.get("_rev")
-        obj["_id"] = dbobj.get("_id")
-        return (obj, dbid)
-
 
 def load():
     """Called by the framework when the extension is 'loaded'."""

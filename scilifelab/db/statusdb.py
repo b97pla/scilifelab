@@ -80,9 +80,9 @@ def _prune_ps_map(ps_map):
 
 class SampleRunMetricsConnection(Couch):
     # FIXME: set time limits on which entries to include?
-    def __init__(self, **kwargs):
+    def __init__(self, dbname="samples", **kwargs):
         super(SampleRunMetricsConnection, self).__init__(**kwargs)
-        self.db = self.con["samples"]
+        self.db = self.con[dbname]
         self.name_view = {k.key:k.id for k in self.db.view("names/name", reduce=False)}
         self.name_fc_view = {k.key:k for k in self.db.view("names/name_fc", reduce=False)}
         self.name_proj_view = {k.key:k for k in self.db.view("names/name_proj", reduce=False)}
@@ -147,11 +147,11 @@ class SampleRunMetricsConnection(Couch):
 
 
 class FlowcellRunMetricsConnection(Couch):
-    def __init__(self, **kwargs):
+    def __init__(self, dbname="flowcells", **kwargs):
         super(FlowcellRunMetricsConnection, self).__init__(**kwargs)
         if not self.con:
             return
-        self.db = self.con["flowcells"]
+        self.db = self.con[dbname]
         self.name_view = {k.key:k.id for k in self.db.view("names/name", reduce=False)}
 
     def set_db(self):
@@ -182,11 +182,11 @@ class FlowcellRunMetricsConnection(Couch):
             return (phix_r1, phix_r2)/2
 
 class ProjectSummaryConnection(Couch):
-    def __init__(self, **kwargs):
+    def __init__(self, dbname="projects", **kwargs):
         super(ProjectSummaryConnection, self).__init__(**kwargs)
         if not self.con:
             return
-        self.db = self.con["projects"]
+        self.db = self.con[dbname]
         self.name_view = {k.key:k.id for k in self.db.view("project/project_id", reduce=False)}
 
     def get_entry(self, name, field=None):
@@ -437,3 +437,35 @@ class sample_run_metrics(status_document):
         status_document.__init__(self, **kw)
         self["name"] = "{}_{}_{}_{}".format(self["lane"], self["date"], self["flowcell"], self["sequence"])
         
+def update_fn(db, obj, viewname = "names/id_to_name"):
+    """Compare object with object in db if present.
+
+    :param db: couch database
+    :param obj: database object to save
+
+    :returns: database object to save and database id if present
+    """
+    t_utc = utc_time()
+    def equal(a, b):
+        a_keys = [str(x) for x in a.keys() if x not in ["_id", "_rev", "creation_time", "modification_time"]]
+        b_keys = [str(x) for x in b.keys() if x not in ["_id", "_rev", "creation_time", "modification_time"]]
+        keys = list(set(a_keys + b_keys))
+        return {k:a.get(k, None) for k in keys} == {k:b.get(k, None) for k in keys}
+
+    view = db.view(view_name)
+    d_view = {k.value:k for k in view}
+    dbid =  d_view.get(obj["name"], None)
+    dbobj = None
+    if dbid:
+        dbobj = db.get(dbid.id, None)
+    if dbobj is None:
+        obj["creation_time"] = t_utc
+        return (obj, dbid)
+    if equal(obj, dbobj):
+        return (None, dbid)
+    else:
+        obj["creation_time"] = dbobj.get("creation_time")
+        obj["modification_time"] = t_utc
+        obj["_rev"] = dbobj.get("_rev")
+        obj["_id"] = dbobj.get("_id")
+        return (obj, dbid)
