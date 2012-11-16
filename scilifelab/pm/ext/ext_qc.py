@@ -14,6 +14,7 @@ from scilifelab.utils.timestamp import modified_within_days
 from scilifelab.bcbio.qc import FlowcellRunMetricsParser, SampleRunMetricsParser
 from scilifelab.pm.bcbio.utils import validate_fc_directory_format, fc_id, fc_parts, fc_fullname
 from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, sample_run_metrics, flowcell_run_metrics, update_fn
+from scilifelab.utils.dry import dry
 
 class RunMetricsController(AbstractBaseController):
     """
@@ -35,6 +36,7 @@ class RunMetricsController(AbstractBaseController):
 
     def _process_args(self):
         self._meta.root_path = self.app.pargs.runqc if self.app.pargs.runqc else self.app.config.get("runqc", "root")
+        self._meta.production_root_path = self.app.config.get("runqc", "production") if self.app.config.has_option("runqc", "production") else self.app.config.get("runqc", "root")
 
     @controller.expose(hide=True)
     def default(self):
@@ -89,7 +91,7 @@ class RunMetricsController(AbstractBaseController):
 
     def _collect_casava_qc(self):
         qc_objects = []
-        runinfo_csv = os.path.join(os.path.abspath(self.pargs.flowcell), "{}.csv".format(fc_id(self.pargs.flowcell)))
+        runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "{}.csv".format(fc_id(self.pargs.flowcell)))
         try:
             with open(runinfo_csv) as fh:
                 runinfo_reader = csv.reader(fh)
@@ -103,7 +105,7 @@ class RunMetricsController(AbstractBaseController):
         if modified_within_days(fcdir, self.pargs.mtime):
             fc_kw = dict(fc_date = fc_date, fc_name=fc_name)
             parser = FlowcellRunMetricsParser(fcdir)
-            fcobj = flowcell_run_metrics()
+            fcobj = flowcell_run_metrics(fc_date, fc_name)
             fcobj["illumina"] = parser.parse_illumina_metrics(fullRTA=False, **fc_kw)
             fcobj["bc_metrics"] = parser.parse_bc_metrics(**fc_kw)
             fcobj["illumina"].update({"Demultiplex_Stats" : parser.parse_demultiplex_stats_htm(**fc_kw)})
@@ -117,7 +119,7 @@ class RunMetricsController(AbstractBaseController):
             if self.app.pargs.sample and self.app.pargs.sample != d['SampleID']:
                 continue
                 
-            sampledir = os.path.join(os.path.abspath(self._meta.root_path), d['SampleProject'].replace("__", "."), d['SampleID'])
+            sampledir = os.path.join(os.path.abspath(self._meta.production_root_path), d['SampleProject'].replace("__", "."), d['SampleID'])
             if not os.path.exists(sampledir):
                 self.app.log.warn("No such sample directory: {}".format(sampledir))
                 continue
@@ -174,18 +176,40 @@ class RunMetricsController(AbstractBaseController):
         else:
             self.log.info("Retrieved {} updated qc objects".format(len(qc_objects)))
 
-        self.app._meta.cmd_handler = 'couchdb'
-        self.app._setup_cmd_handler()
-        self.app.cmd.connect(url, self.pargs.port)
+        s_con = SampleRunMetricsConnection(dbname="samples-test", **vars(self.app.pargs))
+        fc_con = FlowcellRunMetricsConnection(dbname="flowcells-test", **vars(self.app.pargs))
         for obj in qc_objects:
             if self.app.pargs.debug:
                 self.log.debug("{}: {}".format(str(obj), obj["_id"]))
-                continue
             if isinstance(obj, flowcell_run_metrics):
-                self.app.cmd.save("flowcells", obj, update_fn)
+                dry("Saving object {}".format(repr(obj)), fc_con.save(obj))
             if isinstance(obj, sample_run_metrics):
-                self.app.cmd.save("samples", obj, update_fn)
+                dry("Saving object {}".format(repr(obj)), s_con.save(obj))
+
+
+def add_shared_couchdb_options(app):
+    """
+    Adds shared couchdb arguments to the argument object.
+    
+    :param app: The application object.
+    
+    """
+    user = None
+    url = None
+    password = None
+    if app.config.has_option("db", "user"):
+        user = app.config.get("db", "user") 
+    if app.config.has_option("db", "password"):
+        password = app.config.get("db", "password") 
+    if app.config.has_option("db", "url"):
+        url = app.config.get("db", "url") 
+    group = app.args.add_argument_group('couchdb', 'Options for couchdb connections')
+    group.add_argument('--url', help="Database url (excluding http://). Default '{}'".format(url), default=url, nargs="?", type=str)
+    group.add_argument('--port', help="Database port. Default 5984", nargs="?", default="5984", type=str)
+    group.add_argument('--username', help="Database user. Default '{}'".format(user), nargs="?", default=user, type=str)
+    group.add_argument('--password', help="Database password.", default=password, type=str)
 
 def load():
     """Called by the framework when the extension is 'loaded'."""
+    hook.register('post_setup', add_shared_couchdb_options)
     handler.register(RunMetricsController)

@@ -111,69 +111,66 @@ def _save_flowcell(flowcell):
     fcobj["bc_metrics"] = parser.parse_bc_metrics(**fc_kw)
     fcobj["illumina"].update({"Demultiplex_Stats" : parser.parse_demultiplex_stats_htm(**fc_kw)})
     fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(**fc_kw)
-    print fcobj["name"]
     _save(db, fcobj, update_fn)
-    
-DATABASES = ["samples-test", "projects-test", "flowcells-test"]
-@unittest.skipIf(not has_couchdb, "No couchdb server running in http://localhost:5984")
-class TestCouchDB(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        """Create test databases in local server"""
-        if not has_couchdb:
-            return
-        server = couchdb.Server()
-        ## Create databases
-        for x in DATABASES:
-            if not server.__contains__(x):
-                LOG.info("Creating database {}".format(x))
-                server.create(x)
-        ## Create views for flowcells and samples
-        for dbname in DATABASES:
-            dblab = dbname.replace("-test", "")
-            db = server[dbname]
-            for k,v in VIEWS[dblab].items():
-                for title, view in v.items():
-                    viewdef = ViewDefinition(k, title, view)
-                    viewdef.sync(db)
-        
-        ## Create project summary
-        with open(os.path.join(filedir, "data", "config", "project_summary.yaml")) as fh:
-            prj_sum = yaml.load(fh)
-        db = server["samples-test"]
-        for p in prj_sum:
-            pass
-            #print p
-            # prj = project_summary(p)
-            # prj.entity_type = prj.doc_type
-            # prj.creation_time = utc_time()
-            # if p.get("project_id") in project_summary.names().keys():
-            #     db_prj = project_summary.get(project_summary.names()[p.get("project_id")])
-            #     prj._id = db_prj._id
-            #     prj.creation_time = db_prj.creation_time
-            #     if equal(db_prj, prj):
-            #         pass
-            #     else:
-            #         prj.modification_time = utc_time()
-            #         prj.save(force_update=True)
-            # else:
-            #     prj.save()
 
-    # @classmethod
-    # def tearDownClass(cls):
+
+def setUpModule():
+    """Create test databases in local server"""
+    if not has_couchdb:
+        return
+    server = couchdb.Server()
+    ## Create databases
+    for x in DATABASES:
+        if not server.__contains__(x):
+            LOG.info("Creating database {}".format(x))
+            server.create(x)
+    ## Create views for flowcells and samples
+    for dbname in DATABASES:
+        dblab = dbname.replace("-test", "")
+        db = server[dbname]
+        for k,v in VIEWS[dblab].items():
+            for title, view in v.items():
+                viewdef = ViewDefinition(k, title, view)
+                viewdef.sync(db)
+    
+    ## Create project summary
+    with open(os.path.join(filedir, "data", "config", "project_summary.yaml")) as fh:
+        prj_sum = yaml.load(fh)
+    db = server["samples-test"]
+    for p in prj_sum:
+        pass
+        #print p
+        # prj = project_summary(p)
+        # prj.entity_type = prj.doc_type
+        # prj.creation_time = utc_time()
+        # if p.get("project_id") in project_summary.names().keys():
+        #     db_prj = project_summary.get(project_summary.names()[p.get("project_id")])
+        #     prj._id = db_prj._id
+        #     prj.creation_time = db_prj.creation_time
+        #     if equal(db_prj, prj):
+        #         pass
+        #     else:
+        #         prj.modification_time = utc_time()
+        #         prj.save(force_update=True)
+        # else:
+        #     prj.save()
+
+    #
+    # def tearDownModule():
     #     db = couchdb.Server()
     #     for x in DATABASES:
     #         LOG.info("Deleting database {}".format(x))
     #         del db[x]
+    
+DATABASES = ["samples-test", "projects-test", "flowcells-test"]
+@unittest.skipIf(not has_couchdb, "No couchdb server running in http://localhost:5984")
+class TestCouchDB(unittest.TestCase):
 
     def test_dbcon(self):
         s_con = SampleRunMetricsConnection(dbname="samples-test", username="u", password="p")
-        print s_con.name_view
-        print s_con.name_view.items()[0][1]
-        s = s_con.get_entry(s_con.name_view.items()[0][0])
-        print dict(s)
-        s = s_con.get_entry(s_con.name_view.items()[0][0], "name")
-        print s
+        samples = [s_con.get_entry(x["name"]) for x in s_con.name_view.items()]
+        for s in samples:
+            print s
 
     def test_srm_upload(self):
         """Test upload of Sample Run Metrics"""
@@ -189,6 +186,6 @@ class TestCouchDB(unittest.TestCase):
 @unittest.skipIf(not has_couchdb, "No couchdb server running in http://localhost:5984")
 class TestQCUpload(PmFullTest):
     def test_qc_upload(self):
-        self.app = self.make_app(argv = ['qc', 'upload-qc', os.path.join(filedir, "data", "archive", flowcells[0]), '--debug'], extensions=['scilifelab.pm.ext.ext_qc', 'scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['qc', 'upload-qc', flowcells[0], '--mtime',  '100'], extensions=['scilifelab.pm.ext.ext_qc'])
         self._run_app()
 

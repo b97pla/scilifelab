@@ -55,7 +55,7 @@ class Couch(Database):
         if not self.con:
             raise ConnectionError("Connection failed for url {}".format(self.url_string))
 
-    def connect(self, username=None, password=None, url="localhost", port=5984):
+    def connect(self, username=None, password=None, url="localhost", port=5984, **kw):
         if not username or not password or not url:
             self.log.warn("please supply username, password, and url")
             return None
@@ -104,13 +104,13 @@ class Couch(Database):
         :param obj: database object to save
         """
         if not self._update_fn:
-            db.save(obj)
+            self.db.save(obj)
             self.log.info("Saving object {} with id {}".format(repr(obj), obj["_id"]))
         else:
-            (new_obj, dbid) = self._update_fn(db, obj)
+            (new_obj, dbid) = self._update_fn(self.db, obj)
             if not new_obj is None:
                 self.log.info("Saving object {} with id {}".format(repr(new_obj), new_obj["_id"]))
-                db.save(new_obj)
+                self.db.save(new_obj)
             else:
                 self.log.info("Object {} with id {} present and not in need of updating".format(repr(obj), dbid.id))
 

@@ -81,9 +81,10 @@ class sample_run_metrics(status_document):
         status_document.__init__(self, **kw)
         self["name"] = "{}_{}_{}_{}".format(self["lane"], self["date"], self["flowcell"], self["sequence"])
         
-def update_fn(db, obj, viewname = "names/id_to_name"):
+def update_fn(cls, db, obj, viewname = "names/id_to_name"):
     """Compare object with object in db if present.
 
+    :param cls: calling class
     :param db: couch database
     :param obj: database object to save
 
@@ -96,7 +97,7 @@ def update_fn(db, obj, viewname = "names/id_to_name"):
         keys = list(set(a_keys + b_keys))
         return {k:a.get(k, None) for k in keys} == {k:b.get(k, None) for k in keys}
 
-    view = db.view(view_name)
+    view = db.view(viewname)
     d_view = {k.value:k for k in view}
     dbid =  d_view.get(obj["name"], None)
     dbobj = None
@@ -236,8 +237,6 @@ class FlowcellRunMetricsConnection(Couch):
     _update_fn = update_fn
     def __init__(self, dbname="flowcells", **kwargs):
         super(FlowcellRunMetricsConnection, self).__init__(**kwargs)
-        if not self.con:
-            return
         self.db = self.con[dbname]
         self.name_view = {k.key:k.id for k in self.db.view("names/name", reduce=False)}
 

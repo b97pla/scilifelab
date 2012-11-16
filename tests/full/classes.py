@@ -11,12 +11,15 @@ config_defaults['production']['root']  = os.path.join(filedir, "data", "producti
 config_defaults['archive']['root']  = os.path.join(filedir, "data", "archive")
 config_defaults['project']['root']  = os.path.join(filedir, "data", "projects")
 config_defaults['project']['repos']  = os.path.join(filedir, "data", "repos")
-config_defaults['runqc']['root']  = os.path.join(filedir, "data", "production")
+config_defaults['runqc']['root']  = os.path.join(filedir, "data", "archive")
+config_defaults['runqc']['production']  = os.path.join(filedir, "data", "production")
 config_defaults['runqc']['rsync_sample_opts'] = "-amnv  --include=*/ --include='[0-9][0-9]_\*.txt' --include='bcbb_software_versions.txt' --include='*.yaml*' --include='*screen.txt' --include='*summary.txt' --include='*fastqc_data.txt' --include='*metrics' --exclude='tmp' --exclude='*'"
 config_defaults['config']['ignore'] = ["slurm*", "tmp*"]
 config_defaults['log']['level']  = "INFO"
 config_defaults['log']['file']  = os.path.join(filedir, "data", "log", "pm.log")
 config_defaults['db']['url'] = "localhost"
+config_defaults['db']['user'] = "u"
+config_defaults['db']['password'] = "p"
 
 ## Output handler for tests
 class PmTestOutputHandler(output.CementOutputHandler):
