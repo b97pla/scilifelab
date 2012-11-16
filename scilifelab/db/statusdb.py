@@ -18,6 +18,105 @@ VIEWS = {'samples' : {'names': {'name' : '''function(doc) {if (!doc["name"].matc
          'projects' : {'project' : {'project_id' : '''function(doc) {emit(doc.project_id, doc._id)}'''}}
          }
 
+
+##############################
+# Documents
+##############################
+class status_document(dict):
+    """Generic status document class"""
+    _entity_type = "status_document"
+    _fields = []
+    _dict_fields = []
+    _list_fields = []
+    def __init__(self, **kw):
+        self["_id"] = kw.get("_id", uuid4().hex)
+        self["entity_type"] = self._entity_type
+        self["name"] = kw.get("name", None)
+        self["creation_time"] = kw.get("creation_time", utc_time())
+        self["modification_time"] = kw.get("modification_time", None)
+        for f in self._fields:
+            self[f] = kw.get(f, None)
+        for f in self._dict_fields:
+            self[f] = kw.get(f, {})
+        for f in self._list_fields:
+            self[f] = kw.get(f, {})
+        self.update(**kw)
+
+    def __repr__(self):
+        return "<{} {}>".format(self["entity_type"], self["name"])
+
+class project_summary(status_document):
+    """project summary document"""
+    _entity_type = "project_summary"
+    _fields = ["application", "customer_reference", "min_m_reads_per_sample_ordered",
+               "no_of_samples", "project_id"]
+    _dict_fields = ["samples"]
+    def __init__(self, **kw):
+        status_document.__init__(self, **kw)
+
+class flowcell_run_metrics(status_document):
+    """Flowcell level class for holding qc data."""
+    _entity_type = "flowcell_run_metrics"
+    _fields = ["name"]
+    _dict_fields = ["run_info_yaml", "illumina", "samplesheet_csv"]
+    def __init__(self, fc_date=None, fc_name=None, **kw):
+        self.fc_date = fc_date
+        self.fc_name = fc_name
+        status_document.__init__(self, **kw)
+        self._lanes = [1,2,3,4,5,6,7,8]
+        self["lanes"] = {str(k):{"lane":str(k), "filter_metrics":{}, "bc_metrics":{}} for k in self._lanes}
+        self["name"] = self.name()
+
+    def name(self):
+        return "{}_{}".format(self.fc_date, self.fc_name)
+
+class sample_run_metrics(status_document):
+    """Sample-level class for holding run metrics data"""
+    _entity_type = "sample_run_metrics"
+    _fields =["barcode_id", "barcode_name", "barcode_type", "bc_count", "date",
+              "flowcell", "lane", "sample_prj", "sequence", "barcode_type",
+              "genomes_filter_out", "project_sample_name", "project_id"] 
+    _dict_fields = ["fastqc", "fastq_scr", "picard_metrics"]
+    def __init__(self, **kw):
+        status_document.__init__(self, **kw)
+        self["name"] = "{}_{}_{}_{}".format(self["lane"], self["date"], self["flowcell"], self["sequence"])
+        
+def update_fn(db, obj, viewname = "names/id_to_name"):
+    """Compare object with object in db if present.
+
+    :param db: couch database
+    :param obj: database object to save
+
+    :returns: database object to save and database id if present
+    """
+    t_utc = utc_time()
+    def equal(a, b):
+        a_keys = [str(x) for x in a.keys() if x not in ["_id", "_rev", "creation_time", "modification_time"]]
+        b_keys = [str(x) for x in b.keys() if x not in ["_id", "_rev", "creation_time", "modification_time"]]
+        keys = list(set(a_keys + b_keys))
+        return {k:a.get(k, None) for k in keys} == {k:b.get(k, None) for k in keys}
+
+    view = db.view(view_name)
+    d_view = {k.value:k for k in view}
+    dbid =  d_view.get(obj["name"], None)
+    dbobj = None
+    if dbid:
+        dbobj = db.get(dbid.id, None)
+    if dbobj is None:
+        obj["creation_time"] = t_utc
+        return (obj, dbid)
+    if equal(obj, dbobj):
+        return (None, dbid)
+    else:
+        obj["creation_time"] = dbobj.get("creation_time")
+        obj["modification_time"] = t_utc
+        obj["_rev"] = dbobj.get("_rev")
+        obj["_id"] = dbobj.get("_id")
+        return (obj, dbid)
+
+##############################
+# functions that operate on status_document objects
+##############################
 def calc_avg_qv(srm):
     """Calculate average quality score for a sample based on
     FastQC results.
@@ -36,6 +135,10 @@ def calc_avg_qv(srm):
     except:
         return None
 
+
+##############################
+# Misc functions
+##############################
 def _match_project_name_to_barcode_name(project_sample_name, sample_run_name):
     """Name mapping from project summary sample id to run info sample id"""
     if not project_sample_name.startswith("P"):
@@ -78,7 +181,12 @@ def _prune_ps_map(ps_map):
             ret[k] = v
     return ret
 
+##############################
+# Connections
+##############################
 class SampleRunMetricsConnection(Couch):
+    _doc_type = sample_run_metrics
+    _update_fn = update_fn
     # FIXME: set time limits on which entries to include?
     def __init__(self, dbname="samples", **kwargs):
         super(SampleRunMetricsConnection, self).__init__(**kwargs)
@@ -88,27 +196,9 @@ class SampleRunMetricsConnection(Couch):
         self.name_proj_view = {k.key:k for k in self.db.view("names/name_proj", reduce=False)}
         self.name_fc_proj_view = {k.key:k for k in self.db.view("names/name_fc_proj", reduce=False)}
     
-    def _setup_views(self):
-        """ """
+    def set_db(self, dbname):
+        """Make sure we don't change db from samples"""
         pass
-
-    def get_entry(self, name, field=None):
-        """Retrieve entry from db for a given name, subset to field if
-        that value is passed.
-
-        :param name: unique name
-        :param field: database field
-
-        :returns: value if entry exists, None otherwise
-        """
-        self.log.debug("retrieving entry in field '{}' for name '{}'".format(field, name))
-        if self.name_view.get(name, None) is None:
-            self.log.warn("no field '{}' for name '{}'".format(field, name))
-            return None
-        if field:
-            return self.db.get(self.name_view.get(name))[field]
-        else:
-            return self.db.get(self.name_view.get(name))
 
     def get_sample_ids(self, fc_id=None, sample_prj=None):
         """Retrieve sample ids subset by fc_id and/or sample_prj
@@ -140,13 +230,10 @@ class SampleRunMetricsConnection(Couch):
         self.log.debug("retrieving samples subset by flowcell '{}' and sample_prj '{}'".format(fc_id, sample_prj))
         sample_ids = self.get_sample_ids(fc_id, sample_prj)
         return [self.db.get(x) for x in sample_ids]
-        
-    def set_db(self):
-        """Make sure we don't change db from samples"""
-        pass
-
 
 class FlowcellRunMetricsConnection(Couch):
+    _doc_type = flowcell_run_metrics
+    _update_fn = update_fn
     def __init__(self, dbname="flowcells", **kwargs):
         super(FlowcellRunMetricsConnection, self).__init__(**kwargs)
         if not self.con:
@@ -157,19 +244,6 @@ class FlowcellRunMetricsConnection(Couch):
     def set_db(self):
         """Make sure we don't change db from flowcells"""
         pass
-
-    def get_entry(self, name, field=None):
-        """Retrieve entry from db for a given name, subset to field if
-        that value is passed.
-        """
-        self.log.debug("retrieving field entry in field '{}' for name '{}'".format(field, name))
-        if self.name_view.get(name, None) is None:
-            self.log.warn("no field '{}' for name '{}'".format(field, name))
-            return None
-        if field:
-            return self.db.get(self.name_view.get(name))[field]
-        else:
-            return self.db.get(self.name_view.get(name))
 
     def get_phix_error_rate(self, name, lane, avg=True):
         """Get phix error rate"""
@@ -182,6 +256,8 @@ class FlowcellRunMetricsConnection(Couch):
             return (phix_r1, phix_r2)/2
 
 class ProjectSummaryConnection(Couch):
+    _doc_type = project_summary
+    _update_fn = update_fn
     def __init__(self, dbname="projects", **kwargs):
         super(ProjectSummaryConnection, self).__init__(**kwargs)
         if not self.con:
@@ -189,25 +265,7 @@ class ProjectSummaryConnection(Couch):
         self.db = self.con[dbname]
         self.name_view = {k.key:k.id for k in self.db.view("project/project_id", reduce=False)}
 
-    def get_entry(self, name, field=None):
-        """Retrieve entry from db for a given name, subset to field if
-        that value is passed.
-
-        :param name: unique name
-        :param field: database field
-
-        :returns: value if entry exists, None otherwise
-        """
-        self.log.debug("retrieving field entry in field '{}' for name '{}'".format(field, name))
-        if self.name_view.get(name, None) is None:
-            self.log.warn("no field '{}' for name '{}'".format(field, name))
-            return None
-        if field:
-            return self.db.get(self.name_view.get(name))[field]
-        else:
-            return self.db.get(self.name_view.get(name))
-
-    def set_db(self):
+    def set_db(self, dbname):
         """Make sure we don't change db from projects"""
         pass
 
@@ -375,97 +433,3 @@ class ProjectSummaryConnection(Couch):
                 qcdata[s["name"]]["PERCENT_ON_TARGET"] = float(qcdata[s["name"]]["FOLD_ENRICHMENT"]/ (float(qcdata[s["name"]]["GENOME_SIZE"]) / float(target_territory))) * 100
         return qcdata
 
-##############################
-# Documents
-##############################
-class status_document(dict):
-    """Generic status document class"""
-    _entity_type = "status_document"
-    _fields = []
-    _dict_fields = []
-    _list_fields = []
-    def __init__(self, **kw):
-        self["_id"] = kw.get("_id", uuid4().hex)
-        self["entity_type"] = self._entity_type
-        self["name"] = kw.get("name", None)
-        self["creation_time"] = kw.get("creation_time", utc_time())
-        self["modification_time"] = kw.get("modification_time", None)
-        for f in self._fields:
-            self[f] = kw.get(f, None)
-        for f in self._dict_fields:
-            self[f] = kw.get(f, {})
-        for f in self._list_fields:
-            self[f] = kw.get(f, {})
-        self.update(**kw)
-
-    def __repr__(self):
-        return "<{} {}>".format(self["entity_type"], self["name"])
-
-class project_summary(status_document):
-    """project summary document"""
-    _entity_type = "project_summary"
-    _fields = ["application", "customer_reference", "min_m_reads_per_sample_ordered",
-               "no_of_samples", "project_id"]
-    _dict_fields = ["samples"]
-    def __init__(self, **kw):
-        status_document.__init__(self, **kw)
-
-class flowcell_run_metrics(status_document):
-    """Flowcell level class for holding qc data."""
-    _entity_type = "flowcell_run_metrics"
-    _fields = ["name"]
-    _dict_fields = ["run_info_yaml", "illumina", "samplesheet_csv"]
-    def __init__(self, fc_date=None, fc_name=None, **kw):
-        self.fc_date = fc_date
-        self.fc_name = fc_name
-        status_document.__init__(self, **kw)
-        self._lanes = [1,2,3,4,5,6,7,8]
-        self["lanes"] = {str(k):{"lane":str(k), "filter_metrics":{}, "bc_metrics":{}} for k in self._lanes}
-        self["name"] = self.name()
-
-    def name(self):
-        return "{}_{}".format(self.fc_date, self.fc_name)
-
-class sample_run_metrics(status_document):
-    """Sample-level class for holding run metrics data"""
-    _entity_type = "sample_run_metrics"
-    _fields =["barcode_id", "barcode_name", "barcode_type", "bc_count", "date",
-              "flowcell", "lane", "sample_prj", "sequence", "barcode_type",
-              "genomes_filter_out", "project_sample_name", "project_id"] 
-    _dict_fields = ["fastqc", "fastq_scr", "picard_metrics"]
-    def __init__(self, **kw):
-        status_document.__init__(self, **kw)
-        self["name"] = "{}_{}_{}_{}".format(self["lane"], self["date"], self["flowcell"], self["sequence"])
-        
-def update_fn(db, obj, viewname = "names/id_to_name"):
-    """Compare object with object in db if present.
-
-    :param db: couch database
-    :param obj: database object to save
-
-    :returns: database object to save and database id if present
-    """
-    t_utc = utc_time()
-    def equal(a, b):
-        a_keys = [str(x) for x in a.keys() if x not in ["_id", "_rev", "creation_time", "modification_time"]]
-        b_keys = [str(x) for x in b.keys() if x not in ["_id", "_rev", "creation_time", "modification_time"]]
-        keys = list(set(a_keys + b_keys))
-        return {k:a.get(k, None) for k in keys} == {k:b.get(k, None) for k in keys}
-
-    view = db.view(view_name)
-    d_view = {k.value:k for k in view}
-    dbid =  d_view.get(obj["name"], None)
-    dbobj = None
-    if dbid:
-        dbobj = db.get(dbid.id, None)
-    if dbobj is None:
-        obj["creation_time"] = t_utc
-        return (obj, dbid)
-    if equal(obj, dbobj):
-        return (None, dbid)
-    else:
-        obj["creation_time"] = dbobj.get("creation_time")
-        obj["modification_time"] = t_utc
-        obj["_rev"] = dbobj.get("_rev")
-        obj["_id"] = dbobj.get("_id")
-        return (obj, dbid)

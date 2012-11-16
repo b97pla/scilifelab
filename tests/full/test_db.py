@@ -166,8 +166,14 @@ class TestCouchDB(unittest.TestCase):
     #         LOG.info("Deleting database {}".format(x))
     #         del db[x]
 
-    def test_helo(self):
-        print "helo"
+    def test_dbcon(self):
+        s_con = SampleRunMetricsConnection(dbname="samples-test", username="u", password="p")
+        print s_con.name_view
+        print s_con.name_view.items()[0][1]
+        s = s_con.get_entry(s_con.name_view.items()[0][0])
+        print dict(s)
+        s = s_con.get_entry(s_con.name_view.items()[0][0], "name")
+        print s
 
     def test_srm_upload(self):
         """Test upload of Sample Run Metrics"""
@@ -178,3 +184,11 @@ class TestCouchDB(unittest.TestCase):
     def test_fc_upload(self):
         for fc in flowcells:
             _save_flowcell(os.path.join(flowcell_dir, fc))
+
+
+@unittest.skipIf(not has_couchdb, "No couchdb server running in http://localhost:5984")
+class TestQCUpload(PmFullTest):
+    def test_qc_upload(self):
+        self.app = self.make_app(argv = ['qc', 'upload-qc', os.path.join(filedir, "data", "archive", flowcells[0]), '--debug'], extensions=['scilifelab.pm.ext.ext_qc', 'scilifelab.pm.ext.ext_couchdb'])
+        self._run_app()
+

@@ -6,7 +6,7 @@ from scilifelab.pm import PmApp
 
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 
-config_defaults = backend.defaults('production', 'archive', 'config', 'project','log', 'runqc')
+config_defaults = backend.defaults('production', 'archive', 'config', 'project','log', 'runqc', 'db')
 config_defaults['production']['root']  = os.path.join(filedir, "data", "production")
 config_defaults['archive']['root']  = os.path.join(filedir, "data", "archive")
 config_defaults['project']['root']  = os.path.join(filedir, "data", "projects")
@@ -16,6 +16,7 @@ config_defaults['runqc']['rsync_sample_opts'] = "-amnv  --include=*/ --include='
 config_defaults['config']['ignore'] = ["slurm*", "tmp*"]
 config_defaults['log']['level']  = "INFO"
 config_defaults['log']['file']  = os.path.join(filedir, "data", "log", "pm.log")
+config_defaults['db']['url'] = "localhost"
 
 ## Output handler for tests
 class PmTestOutputHandler(output.CementOutputHandler):
