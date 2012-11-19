@@ -10,7 +10,7 @@
           sample_run_metrics: 
             - 1_120924_AC003CCCXX_TGACCA
             - 1_121015_BB002BBBXX_TGACCA
-    P001_102_index6:
+    P001_102:
       library_prep:
         A:
           sample_run_metrics: 
@@ -27,7 +27,7 @@
           sample_run_metrics: 
             - 3_120924_AC003CCCXX_TGACCA
             - 2_121015_BB002BBBXX_TGACCA
-    P002_102_index6:
+    P002_102:
       library_prep:
         A:
           sample_run_metrics: 
@@ -38,7 +38,7 @@
   no_of_samples: 1
   project_id: J.Doe_00_03
   samples:
-    P003_101_index6:
+    3_index6:
       library_prep:
         A:
           sample_run_metrics: 

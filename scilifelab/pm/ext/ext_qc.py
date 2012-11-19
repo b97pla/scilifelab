@@ -189,8 +189,11 @@ class RunMetricsController(AbstractBaseController):
             if isinstance(obj, flowcell_run_metrics):
                 dry("Saving object {}".format(repr(obj)), fc_con.save(obj))
             if isinstance(obj, sample_run_metrics):
+                project_sample = p_con.get_project_sample(obj.get("sample_prj", None), obj.get("barcode_name", None))
+                if project_sample:
+                    obj["project_sample_name"] = project_sample.keys()[0]
+                print obj["sample_prj"], obj["project_id"]
                 dry("Saving object {}".format(repr(obj)), s_con.save(obj))
-
 
 def add_shared_couchdb_options(app):
     """

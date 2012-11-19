@@ -5,6 +5,9 @@ from itertools import izip
 from scilifelab.db import Couch
 from scilifelab.utils.timestamp import utc_time
 from uuid import uuid4
+from scilifelab.log import minimal_logger
+
+LOG = minimal_logger(__name__)
 
 # Statusdb views essential for pm qc functionality
 # FIXME: import ViewDefinition from couchdb.design and create views if not present
@@ -16,9 +19,14 @@ VIEWS = {'samples' : {'names': {'name' : '''function(doc) {if (!doc["name"].matc
                                 }},
          'flowcells' : {'names' : {'name' : '''function(doc) {emit(doc["name"], null);}''',
                                    'id_to_name' : '''function(doc) {emit(doc["_id"], doc["name"]);}'''}},
-         'projects' : {'project' : {'project_id' : '''function(doc) {emit(doc.project_id, doc._id)}'''}}
+         'projects' : {'project' : {'project_id' : '''function(doc) {emit(doc.project_id, doc._id)}'''},
+                       'names' : {'id_to_name' : '''function(doc) {emit(doc["_id"], doc["project_id"]);}''',
+                                  'name' : '''function(doc) {emit(doc["project_id"], null);}'''}},
          }
 
+# Regular expressions for general use
+re_project_id = "^(P[0-9][0-9][0-9])"
+re_project_id_nr = "^P([0-9][0-9][0-9])"
 
 # http://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
 # FIX ME: make override work
@@ -46,7 +54,7 @@ class status_document(dict):
         self["entity_type"] = self._entity_type
         self["name"] = kw.get("name", None)
         self["creation_time"] = kw.get("creation_time", utc_time())
-        self["modification_time"] = kw.get("modification_time", None)
+        self["modification_time"] = kw.get("modification_time", utc_time())
         for f in self._fields:
             self[f] = kw.get(f, None)
         for f in self._dict_fields:
@@ -68,6 +76,9 @@ class project_summary(status_document):
     _dict_fields = ["samples"]
     def __init__(self, **kw):
         status_document.__init__(self, **kw)
+
+    def __repr__(self):
+        return "<{} {}>".format(self["entity_type"], self["project_id"])
 
 class flowcell_run_metrics(status_document):
     """Flowcell level class for holding qc data."""
@@ -95,8 +106,24 @@ class sample_run_metrics(status_document):
     def __init__(self, **kw):
         status_document.__init__(self, **kw)
         self["name"] = "{}_{}_{}_{}".format(self["lane"], self["date"], self["flowcell"], self["sequence"])
+        self.set_project_id()
         
-def update_fn(cls, db, obj, viewname = "names/id_to_name"):
+    def set_project_id(self, value=None):
+        """Get corresponding project id for a project name.
+
+        :param value: if not provided will try to identify project based on barcode name
+        """
+        if value:
+            self["project_id"] = value
+            return
+        m = re.search(re_project_id, self["barcode_name"])
+        if m:
+            self["project_id"] = m.group(1)
+        return 
+
+
+# Updating function for object comparison        
+def update_fn(cls, db, obj, viewname = "names/name", key="name"):
     """Compare object with object in db if present.
 
     :param cls: calling class
@@ -113,9 +140,10 @@ def update_fn(cls, db, obj, viewname = "names/id_to_name"):
         return {k:a.get(k, None) for k in keys} == {k:b.get(k, None) for k in keys}
 
     view = db.view(viewname)
-    d_view = {k.value:k for k in view}
-    dbid =  d_view.get(obj["name"], None)
+    d_view = {k["key"]:k for k in view}
+    dbid =  d_view.get(obj[key], None)
     dbobj = None
+
     if dbid:
         dbobj = db.get(dbid.id, None)
     if dbobj is None:
@@ -152,50 +180,44 @@ def calc_avg_qv(srm):
         return None
 
 
-##############################
-# Misc functions
-##############################
-def _match_project_name_to_barcode_name(project_sample_name, sample_run_name):
-    """Name mapping from project summary sample id to run info sample id"""
-    if not project_sample_name.startswith("P"):
-        sample_id = re.search("(\d+)_?([A-Z])?_",sample_run_name)
-        if str(sample_id.group(1)) == str(project_sample_name):
-            return True
-        m = re.search("(_index[0-9]+)", sample_run_name)
-        if not m:
-            index = ""
-        else:
-            index = m.group(1)
-        sample_id = re.search("([A-Za-z0-9\_]+)(\_index[0-9]+)?", sample_run_name.replace(index, ""))
-        if str(sample_id.group(1)) == str(project_sample_name):
-            return True
-        else:
-            return False
-    if str(sample_run_name).startswith(str(project_sample_name)):
-        return True
-    elif str(sample_run_name).startswith(str(project_sample_name).rstrip("F")):
-        return True
-    elif str(sample_run_name).startswith(str(project_sample_name).rstrip("B")):
-        return True
-    # Add cases here
-    return False
+def get_qc_data(sample_prj, p_con, s_con, fc_id=None):
+    """Get qc data for a project, possibly subset by flowcell.
+    
+    :param sample_prj: project identifier
+    :param p_con: object of type <ProjectSummaryConnection>
+    :param s_con: object of type <SampleRunMetricsConnection>
 
-def sample_map_fn_id(sample_run_name, prj_sample):
-    if 'sample_run_metrics' in prj_sample.keys():
-        return prj_sample.get('sample_run_metrics').get(sample_run_name, None)
-    else:
-        return None
-
-def _prune_ps_map(ps_map):
-    """Only use srm_ids that end with [ACGT]+ or NoIndex
+    :returns: dictionary of qc results
     """
-    if not ps_map:
-        return None
-    ret = {}
-    for k, v in ps_map.items():
-        if re.search("_[ACGT]+$|_NoIndex$", k):
-            ret[k] = v
-    return ret
+    project = p_con.get_entry(sample_prj)
+    application = project.get("application", None) if project else None
+    samples = s_con.get_samples(fc_id=fc_id, sample_prj=sample_prj)
+    qcdata = {}
+    for s in samples:
+        qcdata[s["name"]]={"sample":s.get("barcode_name", None),
+                           "project":s.get("sample_prj", None),
+                           "lane":s.get("lane", None),
+                           "flowcell":s.get("flowcell", None),
+                           "date":s.get("date", None),
+                           "application":application,
+                           "TOTAL_READS":int(s.get("picard_metrics", {}).get("AL_PAIR", {}).get("TOTAL_READS", -1)),
+                           "PERCENT_DUPLICATION":s.get("picard_metrics", {}).get("DUP_metrics", {}).get("PERCENT_DUPLICATION", "-1.0"),
+                           "MEAN_INSERT_SIZE":float(s.get("picard_metrics", {}).get("INS_metrics", {}).get("MEAN_INSERT_SIZE", "-1.0").replace(",", ".")),
+                           "GENOME_SIZE":int(s.get("picard_metrics", {}).get("HS_metrics", {}).get("GENOME_SIZE", -1)),
+                           "FOLD_ENRICHMENT":float(s.get("picard_metrics", {}).get("HS_metrics", {}).get("FOLD_ENRICHMENT", "-1.0").replace(",", ".")),
+                           "PCT_USABLE_BASES_ON_TARGET":s.get("picard_metrics", {}).get("HS_metrics", {}).get("PCT_USABLE_BASES_ON_TARGET", "-1.0"),
+                           "PCT_TARGET_BASES_10X":s.get("picard_metrics", {}).get("HS_metrics", {}).get("PCT_TARGET_BASES_10X", "-1.0"),
+                           "PCT_PF_READS_ALIGNED":s.get("picard_metrics", {}).get("AL_PAIR", {}).get("PCT_PF_READS_ALIGNED", "-1.0"),
+                           }
+        target_territory = float(s.get("picard_metrics", {}).get("HS_metrics", {}).get("TARGET_TERRITORY", -1))
+        pct_labels = ["PERCENT_DUPLICATION", "PCT_USABLE_BASES_ON_TARGET", "PCT_TARGET_BASES_10X",
+                      "PCT_PF_READS_ALIGNED"]
+        for l in pct_labels:
+            if qcdata[s["name"]][l]:
+                qcdata[s["name"]][l] = float(qcdata[s["name"]][l].replace(",", ".")) * 100
+        if qcdata[s["name"]]["FOLD_ENRICHMENT"] and qcdata[s["name"]]["GENOME_SIZE"] and target_territory:
+            qcdata[s["name"]]["PERCENT_ON_TARGET"] = float(qcdata[s["name"]]["FOLD_ENRICHMENT"]/ (float(qcdata[s["name"]]["GENOME_SIZE"]) / float(target_territory))) * 100
+    return qcdata
 
 ##############################
 # Connections
@@ -203,7 +225,6 @@ def _prune_ps_map(ps_map):
 class SampleRunMetricsConnection(Couch):
     _doc_type = sample_run_metrics
     _update_fn = update_fn
-    # FIXME: set time limits on which entries to include?
     def __init__(self, dbname="samples", **kwargs):
         super(SampleRunMetricsConnection, self).__init__(**kwargs)
         self.db = self.con[dbname]
@@ -274,8 +295,6 @@ class ProjectSummaryConnection(Couch):
     _update_fn = update_fn
     def __init__(self, dbname="projects", **kwargs):
         super(ProjectSummaryConnection, self).__init__(**kwargs)
-        if not self.con:
-            return
         self.db = self.con[dbname]
         self.name_view = {k.key:k.id for k in self.db.view("project/project_id", reduce=False)}
 
@@ -283,7 +302,7 @@ class ProjectSummaryConnection(Couch):
         """Make sure we don't change db from projects"""
         pass
 
-    def get_project_sample(self, project_id, sample_run_name, use_ps_map=True, use_bc_map=False,  check_consistency=False):
+    def get_project_sample(self, project_id, barcode_name, use_ps_map=True, use_bc_map=False,  check_consistency=False):
         """Get project sample name for a SampleRunMetrics barcode_name.
         
         :param project_id: the project id
@@ -299,40 +318,40 @@ class ProjectSummaryConnection(Couch):
         if not project:
             return None
         project_samples = project.get('samples', None)
-        if sample_run_name in project_samples.keys():
-            return project_samples[sample_run_name]
+        if barcode_name in project_samples.keys():
+            return {barcode_name: project_samples[barcode_name]}
         for project_sample_name in project_samples.keys():
-            if not re.search("^P([0-9][0-9][0-9])", sample_run_name):
-                sample_id = re.search("(\d+)_?([A-Z])?_",sample_run_name)
+            if not re.search(re_project_id_nr, barcode_name):
+                sample_id = re.search("(\d+)_?([A-Z])?_",barcode_name)
                 if str(sample_id.group(1)) == str(project_sample_name):
-                    return project_samples[project_sample_name]
-                m = re.search("(_index[0-9]+)", sample_run_name)
+                    return {project_sample_name: project_samples[project_sample_name]}
+                m = re.search("(_index[0-9]+)", barcode_name)
                 if not m:
                     index = ""
                 else:
                     index = m.group(1)
-                    sample_id = re.search("([A-Za-z0-9\_]+)(\_index[0-9]+)?", sample_run_name.replace(index, ""))
+                    sample_id = re.search("([A-Za-z0-9\_]+)(\_index[0-9]+)?", barcode_name.replace(index, ""))
                     if str(sample_id.group(1)) == str(project_sample_name):
-                        return project_samples[project_sample_name]
+                        return {project_sample_name: project_samples[project_sample_name]}
                     if str(sample_id.group(1)) == str(project_samples[project_sample_name].get("customer_name", None)):
-                        return project_samples[project_sample_name]
+                        return {project_sample_name: project_samples[project_sample_name]}
                     # customer well names contain a 0, as in 11A07; run names don't always
                     # FIXME: a function should convert customer name to standard forms in cases like these
                     if str(sample_id.group(1)) == str(project_samples[project_sample_name].get("customer_name", None).replace("0", "")):
-                        return project_samples[project_sample_name]
+                        return {project_sample_name: project_samples[project_sample_name]}
             else:
-                if str(sample_run_name).startswith(str(project_sample_name)):
-                    return project_samples[project_sample_name]
-                elif str(sample_run_name).startswith(str(project_sample_name).rstrip("F")):
-                    return project_samples[project_sample_name]
-                elif str(sample_run_name).startswith(str(project_sample_name).rstrip("B")):
-                    return project_samples[project_sample_name]
-                elif str(sample_run_name).startswith(str(project_sample_name).rstrip("C")):
-                    return project_samples[project_sample_name]
-                elif str(sample_run_name).startswith(str(project_sample_name).rstrip("D")):
-                    return project_samples[project_sample_name]
-                elif str(sample_run_name).startswith(str(project_sample_name).rstrip("E")):
-                    return project_samples[project_sample_name]
+                if str(barcode_name).startswith(str(project_sample_name)):
+                    return {project_sample_name: project_samples[project_sample_name]}
+                elif str(barcode_name).startswith(str(project_sample_name).rstrip("F")):
+                    return {project_sample_name: project_samples[project_sample_name]}
+                elif str(barcode_name).startswith(str(project_sample_name).rstrip("B")):
+                    return {project_sample_name: project_samples[project_sample_name]}
+                elif str(barcode_name).startswith(str(project_sample_name).rstrip("C")):
+                    return {project_sample_name: project_samples[project_sample_name]}
+                elif str(barcode_name).startswith(str(project_sample_name).rstrip("D")):
+                    return {project_sample_name: project_samples[project_sample_name]}
+                elif str(barcode_name).startswith(str(project_sample_name).rstrip("E")):
+                    return {project_sample_name: project_samples[project_sample_name]}
         return None
 
     def map_srm_to_name(self, project_id, include_all=True, **args):
@@ -352,44 +371,6 @@ class ProjectSummaryConnection(Couch):
             else:
                 srm_to_name.update({x:{"sample":k,"id":y} for x,y in v.items()})
         return srm_to_name
-
-    def map_name_to_srm(self, project_id, fc_id=None, use_ps_map=True, use_bc_map=False,  check_consistency=False):
-        """Map project sample names to sample run metrics names for a
-        project, possibly subset by flowcell id.
-
-        :param project_id: project id
-        :param fc_id: flowcell id
-        :param use_ps_map: use and give precedence to the project summary mapping to sample run metrics (default True)
-        :param use_bc_map: use and give precedence to the barcode match mapping to sample run metrics (default False)
-        :param check_consistency: use both mappings and check consistency (default False)
-        """
-        project = self.get_entry(project_id)
-        if not project:
-            return None
-        project_samples = project.get('samples', None)
-        if project_samples is None:
-            return None
-        sample_map = {}
-        s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
-        srm_samples = s_con.get_samples(fc_id=fc_id, sample_prj=project_id)
-        for k, v in project_samples.items():
-            sample_map[k] = None
-            if check_consistency:
-                use_ps_map = True
-                use_bc_map = True
-            if use_ps_map:
-                ps_map = self._get_sample_run_metrics(v)
-                sample_map[k] = _prune_ps_map(ps_map)
-            if use_bc_map or not sample_map[k]:
-                if not sample_map[k]: self.log.info("Using barcode map since no information in project summary for sample '{}'".format(k))
-                bc_map = {s["name"]:s["_id"] for s in srm_samples if _match_project_name_to_barcode_name(k, s.get("barcode_name", None))}
-                sample_map[k] = bc_map
-            if check_consistency:
-                if ps_map == bc_map:
-                    self.log.debug("Sample {} has consistent mappings!".format(k))
-                else:
-                    self.log.warn("Sample {} has inconsistent mappings: ps_map {} vs barcode_match {}".format(k, ps_map, bc_map))
-        return sample_map
 
     def _get_sample_run_metrics(self, v):
         if v.get('library_prep', None):
@@ -413,37 +394,4 @@ class ProjectSummaryConnection(Couch):
             return None
         else:
             return round(amount, dec)
-
-    def get_qc_data(self, sample_prj, fc_id=None):
-        """Get qc data for a project, possibly subset by flowcell"""
-        project = self.get_entry(sample_prj)
-        application = project.get("application", None) if project else None
-        s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
-        samples = s_con.get_samples(fc_id=fc_id, sample_prj=sample_prj)
-        qcdata = {}
-        for s in samples:
-            qcdata[s["name"]]={"sample":s.get("barcode_name", None),
-                               "project":s.get("sample_prj", None),
-                               "lane":s.get("lane", None),
-                               "flowcell":s.get("flowcell", None),
-                               "date":s.get("date", None),
-                               "application":application,
-                               "TOTAL_READS":int(s.get("picard_metrics", {}).get("AL_PAIR", {}).get("TOTAL_READS", -1)),
-                               "PERCENT_DUPLICATION":s.get("picard_metrics", {}).get("DUP_metrics", {}).get("PERCENT_DUPLICATION", "-1.0"),
-                               "MEAN_INSERT_SIZE":float(s.get("picard_metrics", {}).get("INS_metrics", {}).get("MEAN_INSERT_SIZE", "-1.0").replace(",", ".")),
-                               "GENOME_SIZE":int(s.get("picard_metrics", {}).get("HS_metrics", {}).get("GENOME_SIZE", -1)),
-                               "FOLD_ENRICHMENT":float(s.get("picard_metrics", {}).get("HS_metrics", {}).get("FOLD_ENRICHMENT", "-1.0").replace(",", ".")),
-                               "PCT_USABLE_BASES_ON_TARGET":s.get("picard_metrics", {}).get("HS_metrics", {}).get("PCT_USABLE_BASES_ON_TARGET", "-1.0"),
-                               "PCT_TARGET_BASES_10X":s.get("picard_metrics", {}).get("HS_metrics", {}).get("PCT_TARGET_BASES_10X", "-1.0"),
-                               "PCT_PF_READS_ALIGNED":s.get("picard_metrics", {}).get("AL_PAIR", {}).get("PCT_PF_READS_ALIGNED", "-1.0"),
-                               }
-            target_territory = float(s.get("picard_metrics", {}).get("HS_metrics", {}).get("TARGET_TERRITORY", -1))
-            pct_labels = ["PERCENT_DUPLICATION", "PCT_USABLE_BASES_ON_TARGET", "PCT_TARGET_BASES_10X",
-                          "PCT_PF_READS_ALIGNED"]
-            for l in pct_labels:
-                if qcdata[s["name"]][l]:
-                    qcdata[s["name"]][l] = float(qcdata[s["name"]][l].replace(",", ".")) * 100
-            if qcdata[s["name"]]["FOLD_ENRICHMENT"] and qcdata[s["name"]]["GENOME_SIZE"] and target_territory:
-                qcdata[s["name"]]["PERCENT_ON_TARGET"] = float(qcdata[s["name"]]["FOLD_ENRICHMENT"]/ (float(qcdata[s["name"]]["GENOME_SIZE"]) / float(target_territory))) * 100
-        return qcdata
 
