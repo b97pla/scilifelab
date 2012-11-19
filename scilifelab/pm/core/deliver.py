@@ -47,13 +47,9 @@ class DeliveryReportController(AbstractBaseController):
 
     def _setup(self, app):
         group = app.args.add_argument_group('Reporting options', 'Options that affect report output')
-        group.add_argument('--exclude_sample_ids', help="Exclude project sample ids from report generation. Provide project sample ids separated by spaces, as in '--exclude_sample_ids PS1 PS2' ", action="store", default=[], nargs="+")
         group.add_argument('-u', '--uppnex_id', help="Manually insert Uppnex project ID into the report.", default=None, action="store", type=str)
         group.add_argument('-o', '--ordered_million_reads', help="Manually insert the ordered number of read pairs (in millions)", default=None, action="store", type=str)
         group.add_argument('-r', '--customer_reference', help="Manually insert customer reference (the customer's name for the project) into reports", default=None, action="store", type=str)
-        group.add_argument('--check_consistency', help="Check consistency of project sample name mapping to sample run metrics names", default=False, action="store_true")
-        group.add_argument('--use_ps_map', help="Use project summary mapping in cases where no sample_run_metrics is available", default=True, action="store_false")
-        group.add_argument('--use_bc_map', help="Use sample run metrics barcode mapping in cases where no sample_run_metrics is available", default=False, action="store_true")
         group.add_argument('--application', help="Set application for qc evaluation. One of '{}'".format(",".join(QC_CUTOFF.keys())), action="store", type=str, default=None)
         group.add_argument('--exclude_sample_ids', help="Exclude project sample ids from report generation. Input is either a string or a JSON file with a key:value mapping, as in '--exclude_sample_ids \"{'PS1':[], 'PS2':['AACCGG']}\"'. The values consist of a list of barcodes; if the list is empty, exclude the entire sample.", action="store", default={})
         group.add_argument('--sample_aliases', help="Provide sample aliases for cases where project summary has multiple names for a sample. Input is either a string or a JSON file with a key:value mapping, for example '--sample_aliases \"{'sample1':['alias1_1', 'alias1_2'], 'sample2':['alias2_1']}\", where the value is a list of aliases. The key will be used as 'base' information, possibly updated by information from the alias entry.", action="store", default={})
