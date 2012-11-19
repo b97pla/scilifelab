@@ -2,8 +2,13 @@ import os
 import sys
 import subprocess
 import unittest
+import couchdb
+import socket
 import collections
+import logbook
+import time
 
+LOG = logbook.Logger(__name__)
 from Bio import SeqIO
 
 from scilifelab.utils.misc import safe_makedir
@@ -24,3 +29,16 @@ class SciLifeFullTest(unittest.TestCase):
     def setUp(self):
         pass
 
+
+def has_couchdb_installation():
+    # Try connecting to server
+    has_couchdb = True
+    try:
+        server = couchdb.Server()
+        dbstats = server.stats()
+    except socket.error as e:
+        has_couchdb = False
+        LOG.info("To run db tests setup a local couchdb server at http://localhost:5984")
+        time.sleep(1)
+        pass
+    return has_couchdb

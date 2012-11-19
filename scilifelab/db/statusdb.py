@@ -1,5 +1,6 @@
 """Database backend for connecting to statusdb"""
 import re
+import collections
 from itertools import izip
 from scilifelab.db import Couch
 from scilifelab.utils.timestamp import utc_time
@@ -18,6 +19,18 @@ VIEWS = {'samples' : {'names': {'name' : '''function(doc) {if (!doc["name"].matc
          'projects' : {'project' : {'project_id' : '''function(doc) {emit(doc.project_id, doc._id)}'''}}
          }
 
+
+# http://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
+# FIX ME: make override work
+def _update(d, u, override=True):
+    """Update values of a nested dictionary of varying depth"""
+    for k, v in u.iteritems():
+        if isinstance(v, collections.Mapping):
+            r = _update(d.get(k, {}), v)
+            d[k] = r
+        else:
+            d[k] = u[k]
+    return d
 
 ##############################
 # Documents
@@ -40,7 +53,9 @@ class status_document(dict):
             self[f] = kw.get(f, {})
         for f in self._list_fields:
             self[f] = kw.get(f, {})
-        self.update(**kw)
+        # Will this even work for deeply nested dicts
+        self = _update(self, kw)
+        #self.update(**kw)
 
     def __repr__(self):
         return "<{} {}>".format(self["entity_type"], self["name"])

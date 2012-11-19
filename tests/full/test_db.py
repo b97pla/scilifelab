@@ -9,8 +9,8 @@ import logbook
 import socket
 
 from classes import PmFullTest
-from scilifelab.pm.ext.ext_qc import update_fn
-from scilifelab.db.statusdb import SampleRunMetricsConnection, VIEWS, flowcell_run_metrics, sample_run_metrics, project_summary
+from ..classes import has_couchdb_installation
+from scilifelab.db.statusdb import SampleRunMetricsConnection, VIEWS, flowcell_run_metrics, sample_run_metrics, project_summary, update_fn
 from scilifelab.bcbio.qc import FlowcellRunMetricsParser, SampleRunMetricsParser
 from scilifelab.pm.bcbio.utils import fc_id, fc_parts, fc_fullname
 
@@ -23,18 +23,7 @@ flowcells = ["120924_SN0002_0003_AC003CCCXX", "121015_SN0001_0002_BB002BBBXX"]
 flowcell_dir = os.path.join(filedir, "data", "archive")
 projects = ["J.Doe_00_01", "J.Doe_00_02", "J.Doe_00_03"]
 project_dir = os.path.join(filedir, "data", "production")
-
-## Try connecting to server
-has_couchdb = True
-try:
-    server = couchdb.Server()
-    dbstats = server.stats()
-except socket.error as e:
-    has_couchdb = False
-    LOG.info("To run db tests setup a local couchdb server at http://localhost:5984")
-    time.sleep(3)
-    pass
-
+has_couchdb = has_couchdb_installation()
 
 def _save(db, obj, update_fn=None):
     """Save/update database object <obj> in database <dbname>. If
@@ -49,7 +38,7 @@ def _save(db, obj, update_fn=None):
         db.save(obj)
         LOG.info("Saving object {} with id {}".format(repr(obj), obj["_id"]))
     else:
-        (new_obj, dbid) = update_fn(db, obj)
+        (new_obj, dbid) = update_fn(None, db, obj)
         if not new_obj is None:
             LOG.info("Saving object {} with id {}".format(repr(new_obj), new_obj["_id"]))
             db.save(new_obj)
@@ -138,9 +127,8 @@ def setUpModule():
         prj_sum = yaml.load(fh)
     db = server["samples-test"]
     for p in prj_sum:
-        pass
-        #print p
-        # prj = project_summary(p)
+        prj = project_summary(**p)
+        print prj
         # prj.entity_type = prj.doc_type
         # prj.creation_time = utc_time()
         # if p.get("project_id") in project_summary.names().keys():
@@ -168,7 +156,7 @@ class TestCouchDB(unittest.TestCase):
 
     def test_dbcon(self):
         s_con = SampleRunMetricsConnection(dbname="samples-test", username="u", password="p")
-        samples = [s_con.get_entry(x["name"]) for x in s_con.name_view.items()]
+        samples = [s_con.get_entry(x) for x in s_con.name_view]
         for s in samples:
             print s
 

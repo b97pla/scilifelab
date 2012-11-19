@@ -20,6 +20,9 @@ config_defaults['log']['file']  = os.path.join(filedir, "data", "log", "pm.log")
 config_defaults['db']['url'] = "localhost"
 config_defaults['db']['user'] = "u"
 config_defaults['db']['password'] = "p"
+config_defaults['db']['samples'] = "samples-test"
+config_defaults['db']['flowcells'] = "flowcells-test"
+config_defaults['db']['projects'] = "projects-test"
 
 ## Output handler for tests
 class PmTestOutputHandler(output.CementOutputHandler):

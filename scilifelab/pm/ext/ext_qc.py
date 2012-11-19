@@ -13,7 +13,7 @@ from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.utils.timestamp import modified_within_days
 from scilifelab.bcbio.qc import FlowcellRunMetricsParser, SampleRunMetricsParser
 from scilifelab.pm.bcbio.utils import validate_fc_directory_format, fc_id, fc_parts, fc_fullname
-from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, sample_run_metrics, flowcell_run_metrics, update_fn
+from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectSummaryConnection, sample_run_metrics, flowcell_run_metrics
 from scilifelab.utils.dry import dry
 
 class RunMetricsController(AbstractBaseController):
@@ -41,6 +41,10 @@ class RunMetricsController(AbstractBaseController):
     @controller.expose(hide=True)
     def default(self):
         print self._help_text
+
+    @controller.expose(help="Add project ids and sample names to projects")
+    def add(self):
+        pass
 
     ##############################
     ## New structures
@@ -176,8 +180,9 @@ class RunMetricsController(AbstractBaseController):
         else:
             self.log.info("Retrieved {} updated qc objects".format(len(qc_objects)))
 
-        s_con = SampleRunMetricsConnection(dbname="samples-test", **vars(self.app.pargs))
-        fc_con = FlowcellRunMetricsConnection(dbname="flowcells-test", **vars(self.app.pargs))
+        s_con = SampleRunMetricsConnection(dbname=self.app.config.get("db", "samples"), **vars(self.app.pargs))
+        fc_con = FlowcellRunMetricsConnection(dbname=self.app.config.get("db", "flowcells"), **vars(self.app.pargs))
+        p_con = ProjectSummaryConnection(dbname=self.app.config.get("db", "projects"), **vars(self.app.pargs))
         for obj in qc_objects:
             if self.app.pargs.debug:
                 self.log.debug("{}: {}".format(str(obj), obj["_id"]))
