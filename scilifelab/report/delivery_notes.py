@@ -28,14 +28,14 @@ def _get_ordered_million_reads(sample_name, ordered_million_reads):
     else:
         return ordered_million_reads
 
-def sample_status_note(project_id=None, flowcell_id=None, user=None, password=None, url=None,
+def sample_status_note(project_id=None, flowcell_id=None, username=None, password=None, url=None,
                        ordered_million_reads=None, uppnex_id=None, customer_reference=None,
                        **kw):
     """Make a sample status note. Used keywords:
 
     :param project_id: project id
     :param flowcell_id: flowcell id
-    :param user: db user name
+    :param username: db username
     :param password: db password
     :param url: db url
     :param ordered_million_reads: number of ordered reads in millions
@@ -73,9 +73,9 @@ def sample_status_note(project_id=None, flowcell_id=None, user=None, password=No
     output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format("Scilifelab ID", "Lane", "PhiXError", "ErrorStatus", "AvgQV", "QVStatus"))
     output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format("=============", "====", "=========", "===========", "=====", "========"))
     ## Connect and run
-    s_con = SampleRunMetricsConnection(username=user, password=password, url=url)
-    fc_con = FlowcellRunMetricsConnection(username=user, password=password, url=url)
-    p_con = ProjectSummaryConnection(username=user, password=password, url=url)
+    s_con = SampleRunMetricsConnection(username=username, password=password, url=url)
+    fc_con = FlowcellRunMetricsConnection(username=username, password=password, url=url)
+    p_con = ProjectSummaryConnection(username=username, password=password, url=url)
     paragraphs = sample_note_paragraphs()
     headers = sample_note_headers()
     project = p_con.get_entry(project_id)
@@ -149,7 +149,7 @@ def sample_status_note(project_id=None, flowcell_id=None, user=None, password=No
     concatenate_notes(notes, "{}_{}_{}_sample_summary.pdf".format(project_id, s.get("date", None), s.get("flowcell", None)))
     return output_data
 
-def project_status_note(project_id=None, user=None, password=None, url=None,
+def project_status_note(project_id=None, username=None, password=None, url=None,
                         use_ps_map=True, use_bc_map=False, check_consistency=False,
                         ordered_million_reads=None, uppnex_id=None, customer_reference=None,
                         exclude_sample_ids={}, project_alias=None, sample_aliases={}, **kw):
@@ -181,9 +181,9 @@ def project_status_note(project_id=None, user=None, password=None, url=None,
     prjs_to_table = {'ScilifeID':'scilife_name', 'CustomerID':'customer_name', 'MSequenced':'m_reads_sequenced'}#, 'MOrdered':'min_m_reads_per_sample_ordered', 'Status':'status'}
         
     ## Connect and run
-    s_con = SampleRunMetricsConnection(username=user, password=password, url=url)
-    fc_con = FlowcellRunMetricsConnection(username=user, password=password, url=url)
-    p_con = ProjectSummaryConnection(username=user, password=password, url=url)
+    s_con = SampleRunMetricsConnection(username=username, password=password, url=url)
+    fc_con = FlowcellRunMetricsConnection(username=username, password=password, url=url)
+    p_con = ProjectSummaryConnection(username=username, password=password, url=url)
     paragraphs = project_note_paragraphs()
     headers = project_note_headers()
     param = parameters
@@ -207,7 +207,8 @@ def project_status_note(project_id=None, user=None, password=None, url=None,
     for s in slist:
         prj_sample = p_con.get_project_sample(project_id, s["barcode_name"])
         if prj_sample:
-            s_d = {s["name"] : {'sample':prj_sample["scilife_name"], 'id':s["_id"]}}
+            sample_name = prj_sample.popitem()[1].get("scilife_name", None)
+            s_d = {s["name"] : {'sample':sample_name, 'id':s["_id"]}}
             samples.update(s_d)
         else:
             if s["barcode_name"] in sample_aliases:
