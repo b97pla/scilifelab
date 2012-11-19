@@ -3,12 +3,14 @@ import os
 import re
 import csv
 import yaml
+import ast
 import couchdb
 from datetime import datetime
 import time
 from scilifelab.utils.timestamp import utc_time
 
 from cement.core import backend, controller, handler, hook
+from scilifelab.utils.misc import query_yes_no
 from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.utils.timestamp import modified_within_days
 from scilifelab.bcbio.qc import FlowcellRunMetricsParser, SampleRunMetricsParser
@@ -29,9 +31,12 @@ class RunMetricsController(AbstractBaseController):
         arguments = [
             (['flowcell'], dict(help="Flowcell directory", nargs="?", default=None)),
             (['--runqc'], dict(help="Root path to qc data folder", default=None, nargs="?")),
-            (['--project'], dict(help="Project id", default=None, action="store", type=str)),
+            (['--project_name'], dict(help="Project name or project description, as in 'J.Doe_00_01'.", default=None, action="store", type=str)),
             (['--sample'], dict(help="Sample id", default=None, action="store", type=str)),
             (['--mtime'], dict(help="Last modification time of directory (days): skip if older. Defaults to 1 day.", default=1, action="store", type=int)),
+            (['--sample_prj'], dict(help="Sample project name, as in 'J.Doe_00_01'", default=None, action="store", type=str)),
+            (['--project_id'], dict(help="Project identifier, as in 'P001'", default=None, action="store", type=str)),
+            (['--names'], dict(help="Sample name mapping from barcode name to project name as a JSON string, as in \"{'sample_run_name':'project_run_name'}\". Mapping can also be given in a file", default=None, action="store", type=str)),
             ]
 
     def _process_args(self):
@@ -42,9 +47,45 @@ class RunMetricsController(AbstractBaseController):
     def default(self):
         print self._help_text
 
-    @controller.expose(help="Add project ids and sample names to projects")
-    def add(self):
-        pass
+    @controller.expose(help="Update database objects with additional information. Currently supports updating project_id and project_sample_names in sample_run_metrics objects.")
+    def update(self):
+        if not self._check_pargs(["sample_prj"]):
+            return
+        url = self.pargs.url if self.pargs.url else self.app.config.get("db", "url")
+        if not url:
+            self.app.log.warn("Please provide a valid url: got {}".format(url))
+            return
+
+        s_con = SampleRunMetricsConnection(dbname=self.app.config.get("db", "samples"), **vars(self.app.pargs))
+        samples = s_con.get_samples(sample_prj=self.pargs.sample_prj)
+
+        if self.pargs.project_id:
+            self.app.log.debug("Going to update 'project_id' to {} for sample runs with 'sample_prj' == {}".format(self.pargs.project_id, self.pargs.sample_prj))
+            for s in samples:
+                if not s.get("project_id", None) is None:
+                    if not query_yes_no("'project_id':{} for sample {}; are you sure you want to overwrite?".format(s["project_id"], s["name"]), force=self.pargs.force):
+                        continue
+                s["project_id"] = self.pargs.project_id
+                s_con.save(s)
+        if self.pargs.names:
+            self.app.log.debug("Going to update 'project_sample_name' for sample runs with 'sample_prj' == {}".format(self.pargs.sample_prj))
+            if os.path.exists(self.pargs.names):
+                with open(self.pargs.names) as fh:
+                    names_d = json.load(fh)
+            else:
+                names_d= ast.literal_eval(self.pargs.names)
+            samples_d = {s["barcode_name"]:s for s in samples}
+            for sample_name in names_d:
+                s = samples_d.get(sample_name, None)
+                if not s:
+                    continue
+                if not s.get("project_sample_name", None) is None:
+                    if not query_yes_no("'project_sample_name':{} for sample {}; are you sure you want to overwrite?".format(s["project_sample_name"], s["name"]), force=self.pargs.force):
+                        continue
+                s["project_sample_name"] = names_d[sample_name]
+                s_con.save(s)
+
+                
 
     ##############################
     ## New structures
@@ -118,7 +159,7 @@ class RunMetricsController(AbstractBaseController):
 
         for sample in runinfo[1:]:
             d = dict(zip(runinfo[0], sample))
-            if self.app.pargs.project and self.app.pargs.project != d['SampleProject']:
+            if self.app.pargs.project_name and self.app.pargs.project_name != d['SampleProject']:
                 continue
             if self.app.pargs.sample and self.app.pargs.sample != d['SampleID']:
                 continue
@@ -192,7 +233,6 @@ class RunMetricsController(AbstractBaseController):
                 project_sample = p_con.get_project_sample(obj.get("sample_prj", None), obj.get("barcode_name", None))
                 if project_sample:
                     obj["project_sample_name"] = project_sample.keys()[0]
-                print obj["sample_prj"], obj["project_id"]
                 dry("Saving object {}".format(repr(obj)), s_con.save(obj))
 
 def add_shared_couchdb_options(app):

@@ -123,7 +123,7 @@ class sample_run_metrics(status_document):
 
 
 # Updating function for object comparison        
-def update_fn(cls, db, obj, viewname = "names/name", key="name"):
+def update_fn(cls, db, obj, viewname = "names/id_to_name", key="name"):
     """Compare object with object in db if present.
 
     :param cls: calling class
@@ -140,7 +140,7 @@ def update_fn(cls, db, obj, viewname = "names/name", key="name"):
         return {k:a.get(k, None) for k in keys} == {k:b.get(k, None) for k in keys}
 
     view = db.view(viewname)
-    d_view = {k["key"]:k for k in view}
+    d_view = {k.value:k for k in view}
     dbid =  d_view.get(obj[key], None)
     dbobj = None
 
@@ -232,7 +232,7 @@ class SampleRunMetricsConnection(Couch):
         self.name_fc_view = {k.key:k for k in self.db.view("names/name_fc", reduce=False)}
         self.name_proj_view = {k.key:k for k in self.db.view("names/name_proj", reduce=False)}
         self.name_fc_proj_view = {k.key:k for k in self.db.view("names/name_fc_proj", reduce=False)}
-    
+
     def set_db(self, dbname):
         """Make sure we don't change db from samples"""
         pass
@@ -262,11 +262,13 @@ class SampleRunMetricsConnection(Couch):
         :param fc_id: flowcell id
         :param sample_prj: sample project name
 
-        :returns samples: list of samples
+        :returns samples: list of sample_run_metrics documents
         """
         self.log.debug("retrieving samples subset by flowcell '{}' and sample_prj '{}'".format(fc_id, sample_prj))
         sample_ids = self.get_sample_ids(fc_id, sample_prj)
-        return [self.db.get(x) for x in sample_ids]
+        inv_view = {v:k for k,v in self.name_view.iteritems()}
+        sample_names = [inv_view[x] for x in sample_ids]
+        return [self.get_entry(x) for x in sample_names]
 
 class FlowcellRunMetricsConnection(Couch):
     _doc_type = flowcell_run_metrics

@@ -12,7 +12,7 @@ from classes import PmFullTest
 
 from ..classes import has_couchdb_installation
 
-from scilifelab.db.statusdb import SampleRunMetricsConnection, VIEWS, flowcell_run_metrics, sample_run_metrics, project_summary, ProjectSummaryConnection, update_fn
+from scilifelab.db.statusdb import SampleRunMetricsConnection, VIEWS, flowcell_run_metrics, sample_run_metrics, project_summary, ProjectSummaryConnection, update_fn, FlowcellRunMetricsConnection
 from scilifelab.bcbio.qc import FlowcellRunMetricsParser, SampleRunMetricsParser
 from scilifelab.pm.bcbio.utils import fc_id, fc_parts, fc_fullname
 
@@ -85,8 +85,47 @@ class TestCouchDB(unittest.TestCase):
 
 @unittest.skipIf(not has_couchdb, "No couchdb server running in http://localhost:5984")
 class TestQCUpload(PmFullTest):
-    def test_qc_upload(self):
-        """Test running qc upload to server"""
+    def setUp(self):
         self.app = self.make_app(argv = ['qc', 'upload-qc', flowcells[0], '--mtime',  '100'], extensions=['scilifelab.pm.ext.ext_qc'])
         self._run_app()
+        self.s_con = SampleRunMetricsConnection(dbname="samples-test", username="u", password="p")
+        self.p_con = ProjectSummaryConnection(dbname="projects-test", username="u", password="p")
+        self.fc_con = FlowcellRunMetricsConnection(dbname="flowcells-test", username="u", password="p")
 
+        
+    def test_qc_upload(self):
+        """Test running qc upload to server"""
+        self.app = self.make_app(argv = ['qc', 'upload-qc', flowcells[1], '--mtime',  '100'], extensions=['scilifelab.pm.ext.ext_qc'])
+        self._run_app()
+        s = self.s_con.get_entry("4_120924_AC003CCCXX_CGTTAA")
+        self.assertIsNone(s["project_sample_name"])
+        self.assertEqual(s["project_id"], "P003")
+        
+    def test_qc_update(self):
+        """Test running qc update of a project id"""
+        s = self.s_con.get_entry("4_120924_AC003CCCXX_CGTTAA")
+        s["project_id"]= None
+        self.assertIsNone(s["project_id"])
+        self.s_con.save(s)
+        self.app = self.make_app(argv = ['qc', 'update', '--sample_prj', projects[2], '--project_id', 'P003', '--debug', '--force'], extensions=['scilifelab.pm.ext.ext_qc'])
+        self._run_app()
+        s = self.s_con.get_entry("4_120924_AC003CCCXX_CGTTAA")
+        self.assertEqual(s["project_id"], "P003")
+
+    def test_qc_update_sample_names(self):
+        """Test running qc update of project sample names"""
+        s1 = self.s_con.get_entry("1_120924_AC003CCCXX_TGACCA")
+        s2 = self.s_con.get_entry("2_120924_AC003CCCXX_ACAGTG")
+        s1["project_sample_name"] = None
+        s2["project_sample_name"] = None
+        self.assertIsNone(s1["project_sample_name"])
+        self.assertIsNone(s2["project_sample_name"])
+        self.s_con.save(s1)
+        self.s_con.save(s2)
+        sample_map = {'P001_101_index3': 'P001_101_index3', 'P001_102_index6':'P001_102'}
+        self.app = self.make_app(argv = ['qc', 'update', '--sample_prj', projects[0], '--names', "{}".format(sample_map), '--debug', '--force'], extensions=['scilifelab.pm.ext.ext_qc'])
+        self._run_app()
+        s1 = self.s_con.get_entry("1_120924_AC003CCCXX_TGACCA")
+        s2 = self.s_con.get_entry("2_120924_AC003CCCXX_ACAGTG")
+        self.assertEqual(s1["project_sample_name"], "P001_101_index3")
+        self.assertEqual(s2["project_sample_name"], "P001_102")
