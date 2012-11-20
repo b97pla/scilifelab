@@ -1,13 +1,9 @@
 """QC extension"""
 import os
-import re
 import csv
 import yaml
 import ast
-import couchdb
-from datetime import datetime
-import time
-from scilifelab.utils.timestamp import utc_time
+import itertools
 
 from cement.core import backend, controller, handler, hook
 from scilifelab.utils.misc import query_yes_no
@@ -74,16 +70,20 @@ class RunMetricsController(AbstractBaseController):
                     names_d = json.load(fh)
             else:
                 names_d= ast.literal_eval(self.pargs.names)
-            samples_d = {s["barcode_name"]:s for s in samples}
-            for sample_name in names_d:
-                s = samples_d.get(sample_name, None)
-                if not s:
+            samples_sort = sorted(samples, key=lambda s:s["barcode_name"])
+            groups = {}
+            for k, g in itertools.groupby(samples_sort, key=lambda x:x["barcode_name"]):
+                groups[k] = list(g)
+            for barcode_name in names_d:
+                sample_list = groups.get(barcode_name, None)
+                if not sample_list:
                     continue
-                if not s.get("project_sample_name", None) is None:
-                    if not query_yes_no("'project_sample_name':{} for sample {}; are you sure you want to overwrite?".format(s["project_sample_name"], s["name"]), force=self.pargs.force):
-                        continue
-                s["project_sample_name"] = names_d[sample_name]
-                s_con.save(s)
+                for s in sample_list:
+                    if not s.get("project_sample_name", None) is None:
+                        if not query_yes_no("'project_sample_name':{} for sample {}; are you sure you want to overwrite?".format(s["project_sample_name"], s["name"]), force=self.pargs.force):
+                            continue
+                    s["project_sample_name"] = names_d[barcode_name]
+                    s_con.save(s)
 
                 
 
