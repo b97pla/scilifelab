@@ -1,17 +1,13 @@
 import os
-import sys
-import subprocess
 import unittest
 import couchdb
 import socket
-import collections
 import logbook
 import time
 
-LOG = logbook.Logger(__name__)
-from Bio import SeqIO
+filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 
-from scilifelab.utils.misc import safe_makedir
+LOG = logbook.Logger(__name__)
 
 class SciLifeTest(unittest.TestCase):
     """Test class for small unit tests that only test functions and do
