@@ -86,15 +86,11 @@ class flowcell_run_metrics(status_document):
     _fields = ["name"]
     _dict_fields = ["run_info_yaml", "illumina", "samplesheet_csv"]
     def __init__(self, fc_date=None, fc_name=None, **kw):
-        self.fc_date = fc_date
-        self.fc_name = fc_name
         status_document.__init__(self, **kw)
         self._lanes = [1,2,3,4,5,6,7,8]
         self["lanes"] = {str(k):{"lane":str(k), "filter_metrics":{}, "bc_metrics":{}} for k in self._lanes}
-        self["name"] = self.name()
-
-    def name(self):
-        return "{}_{}".format(self.fc_date, self.fc_name)
+        if fc_date and fc_name:
+            self["name"] = "{}_{}".format(fc_date, fc_name)
 
 class sample_run_metrics(status_document):
     """Sample-level class for holding run metrics data"""
@@ -106,7 +102,8 @@ class sample_run_metrics(status_document):
     def __init__(self, **kw):
         status_document.__init__(self, **kw)
         self["name"] = "{}_{}_{}_{}".format(self["lane"], self["date"], self["flowcell"], self["sequence"])
-        self.set_project_id()
+        if self["barcode_name"]:
+            self.set_project_id()
         
     def set_project_id(self, value=None):
         """Get corresponding project id for a project name.
