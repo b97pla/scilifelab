@@ -30,7 +30,7 @@ def _get_ordered_million_reads(sample_name, ordered_million_reads):
 
 def sample_status_note(project_id=None, flowcell_id=None, username=None, password=None, url=None,
                        ordered_million_reads=None, uppnex_id=None, customer_reference=None,
-                       **kw):
+                       projectdb="projects", samplesdb="samples", flowcelldb="flowcells", **kw):
     """Make a sample status note. Used keywords:
 
     :param project_id: project id
@@ -73,9 +73,9 @@ def sample_status_note(project_id=None, flowcell_id=None, username=None, passwor
     output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format("Scilifelab ID", "Lane", "PhiXError", "ErrorStatus", "AvgQV", "QVStatus"))
     output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format("=============", "====", "=========", "===========", "=====", "========"))
     ## Connect and run
-    s_con = SampleRunMetricsConnection(username=username, password=password, url=url)
-    fc_con = FlowcellRunMetricsConnection(username=username, password=password, url=url)
-    p_con = ProjectSummaryConnection(username=username, password=password, url=url)
+    s_con = SampleRunMetricsConnection(dbname=samplesdb, username=username, password=password, url=url)
+    fc_con = FlowcellRunMetricsConnection(dbname=flowcelldb, username=username, password=password, url=url)
+    p_con = ProjectSummaryConnection(dbname=projectdb, username=username, password=password, url=url)
     paragraphs = sample_note_paragraphs()
     headers = sample_note_headers()
     project = p_con.get_entry(project_id)
@@ -124,10 +124,11 @@ def sample_status_note(project_id=None, flowcell_id=None, username=None, passwor
         ## FIX ME: This is where we need a key in SampleRunMetrics that provides a mapping to a project sample name
         project_sample = p_con.get_project_sample(project_id, s["barcode_name"])
         if project_sample:
-            if "library_prep" in project_sample.keys():
-                project_sample_d = {x:y for d in [v["sample_run_metrics"] for k,v in project_sample["library_prep"].iteritems()] for x,y in d.iteritems()}
+            p_sample = project_sample.popitem()[1]
+            if "library_prep" in p_sample.keys():
+                project_sample_d = {x:y for d in [v["sample_run_metrics"] for k,v in p_sample["library_prep"].iteritems()] for x,y in d.iteritems()}
             else:
-                project_sample_d = {x:y for x,y in project_sample["sample_run_metrics"].iteritems()}
+                project_sample_d = {x:y for x,y in p_sample["sample_run_metrics"].iteritems()}
             if s["name"] not in project_sample_d.keys():
                 LOG.warn("'{}' not found in project sample run metrics for project".format(s["name"]) )
             else:
@@ -152,7 +153,8 @@ def sample_status_note(project_id=None, flowcell_id=None, username=None, passwor
 def project_status_note(project_id=None, username=None, password=None, url=None,
                         use_ps_map=True, use_bc_map=False, check_consistency=False,
                         ordered_million_reads=None, uppnex_id=None, customer_reference=None,
-                        exclude_sample_ids={}, project_alias=None, sample_aliases={}, **kw):
+                        exclude_sample_ids={}, project_alias=None, sample_aliases={},
+                       projectdb="projects", samplesdb="samples", flowcelldb="flowcells", **kw):
     """Make a project status note. Used keywords:
 
     :param project_id: project id
@@ -181,9 +183,9 @@ def project_status_note(project_id=None, username=None, password=None, url=None,
     prjs_to_table = {'ScilifeID':'scilife_name', 'CustomerID':'customer_name', 'MSequenced':'m_reads_sequenced'}#, 'MOrdered':'min_m_reads_per_sample_ordered', 'Status':'status'}
         
     ## Connect and run
-    s_con = SampleRunMetricsConnection(username=username, password=password, url=url)
-    fc_con = FlowcellRunMetricsConnection(username=username, password=password, url=url)
-    p_con = ProjectSummaryConnection(username=username, password=password, url=url)
+    s_con = SampleRunMetricsConnection(dbname=samplesdb, username=username, password=password, url=url)
+    fc_con = FlowcellRunMetricsConnection(dbname=flowcelldb, username=username, password=password, url=url)
+    p_con = ProjectSummaryConnection(dbname=projectdb, username=username, password=password, url=url)
     paragraphs = project_note_paragraphs()
     headers = project_note_headers()
     param = parameters

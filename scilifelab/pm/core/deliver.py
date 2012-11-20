@@ -84,7 +84,9 @@ class DeliveryReportController(AbstractBaseController):
     def sample_status(self):
         if not self._check_pargs(["project_id", "flowcell_id"]):
             return
-        out_data = sample_status_note(**vars(self.pargs))
+        kw = vars(self.pargs)
+        kw.update({"samplesdb":self.app.config.get("db", "samples"), "flowcelldb":self.app.config.get("db", "flowcells"), "projectdb":self.app.config.get("db", "projects")})
+        out_data = sample_status_note(**kw)
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
 
@@ -92,4 +94,6 @@ class DeliveryReportController(AbstractBaseController):
     def project_status(self):
         if not self._check_pargs(["project_id"]):
             return
-        project_status_note(**vars(self.pargs))
+        kw = vars(self.pargs)
+        kw.update({"samplesdb":self.app.config.get("db", "samples"), "flowcelldb":self.app.config.get("db", "flowcells"), "projectdb":self.app.config.get("db", "projects")})
+        project_status_note(**kw)

@@ -238,5 +238,4 @@ class RunMetricsController(AbstractBaseController):
 
 def load():
     """Called by the framework when the extension is 'loaded'."""
-    hook.register('post_setup', add_shared_couchdb_options)
     handler.register(RunMetricsController)

@@ -118,7 +118,6 @@ class sample_run_metrics(status_document):
             self["project_id"] = m.group(1)
         return 
 
-
 # Updating function for object comparison        
 def update_fn(cls, db, obj, viewname = "names/id_to_name", key="name"):
     """Compare object with object in db if present.
@@ -282,8 +281,8 @@ class FlowcellRunMetricsConnection(Couch):
     def get_phix_error_rate(self, name, lane, avg=True):
         """Get phix error rate"""
         fc = self.get_entry(name)
-        phix_r1 = float(fc['illumina']['Summary']['read1'][lane]['ErrRatePhiX']) 
-        phix_r2 = float(fc['illumina']['Summary']['read3'][lane]['ErrRatePhiX'])
+        phix_r1 = float(fc.get('illumina', {}).get('Summary', {}).get('read1',{}).get(lane, {}).get('ErrRatePhiX', -1))
+        phix_r2 = float(fc.get('illumina', {}).get('Summary', {}).get('read3',{}).get(lane, {}).get('ErrRatePhiX', -1))
         if avg:
             return (phix_r1 + phix_r2)/2
         else:

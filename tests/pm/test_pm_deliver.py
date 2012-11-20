@@ -27,42 +27,26 @@ class PmProductionTest(PmTest):
         self.examples = {"sample": "1_120924_AC003CCCXX_TGACCA",
                          "flowcell": "AC003CCCXX",
                          "project":"J.Doe_00_01", 
-                         "exclude_samples": "P001_102_index6"}
+                         "exclude_samples": "{'P001_102_index6':[]}"}
 
+    # Will currently fail since no PhiX in document
     def test_sample_status(self):
-        self.app = self.make_app(argv = ['report', 'sample_status', '--user', self.user, '--password', self.pw, '--url', self.url, self.examples["project"], self.examples["flowcell"], '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['report', 'sample-status', self.examples["project"], self.examples["flowcell"], '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
 
     def test_project_status(self):
-        self.app = self.make_app(argv = ['report', 'project_status', '--user', self.user, '--password', self.pw, '--url', self.url, self.examples["project"], '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['report', 'project_status', self.examples["project"]],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
 
     def test_sample_status_custom(self):
         """Test sample status note generation with command line customizations"""
-        self.app = self.make_app(argv = ['report', 'sample_status', '--user', self.user, '--password', self.pw, '--url', self.url, self.examples["project"], self.examples["flowcell"], '--debug', '--customer_reference', 'MyCustomerReference', '--uppnex_id', 'MyUppnexID', '--ordered_million_reads', '10'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['report', 'sample_status', self.examples["project"], self.examples["flowcell"], '--debug', '--customer_reference', 'MyCustomerReference', '--uppnex_id', 'MyUppnexID', '--ordered_million_reads', '10'],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
 
-    def test_project_status_custom(self):
-        """Test project status note generation with command line customizations"""
-        self.app = self.make_app(argv = ['report', 'project_status', '--user', self.user, '--password', self.pw, '--url', self.url, self.examples["project"], '--debug', '--customer_reference', 'MyCustomerReference', '--uppnex_id', 'MyUppnexID', '--ordered_million_reads', '1'],extensions=['scilifelab.pm.ext.ext_couchdb'])
-        handler.register(DeliveryReportController)
-        self._run_app()
-
-    def test_sample_status_ps_map(self):
-        self.app = self.make_app(argv = ['report', 'sample_status', '--user', self.user, '--password', self.pw, '--url', self.url, self.examples["project"], self.examples["flowcell"], '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
-        handler.register(DeliveryReportController)
-        self._run_app()
-
-    def test_project_status_ps_map(self):
-        self.app = self.make_app(argv = ['report', 'project_status', '--user', self.user, '--password', self.pw, '--url', self.url, self.examples["project"], '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
-        handler.register(DeliveryReportController)
-        self._run_app()
-
-
-    def test_4_project_status_exclude_samples(self):
-        self.app = self.make_app(argv = ['report', 'project_status', '--user', self.user, '--password', self.pw, '--url', self.url, self.examples["project"], '--debug',  '--exclude_sample_ids', self.examples["exclude_samples"]],extensions=['scilifelab.pm.ext.ext_couchdb'])
+    def test_project_status_exclude_samples(self):
+        self.app = self.make_app(argv = ['report', 'project_status', self.examples["project"], '--debug',  '--exclude_sample_ids', "{}".format(self.examples["exclude_samples"])],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()

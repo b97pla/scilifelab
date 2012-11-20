@@ -106,7 +106,7 @@ class TestCouchDB(unittest.TestCase):
 @unittest.skipIf(not has_couchdb, "No couchdb server running in http://localhost:5984")
 class TestQCUpload(PmFullTest):
     def setUp(self):
-        self.app = self.make_app(argv = ['qc', 'upload-qc', flowcells[0], '--mtime',  '100'], extensions=['scilifelab.pm.ext.ext_qc'])
+        self.app = self.make_app(argv = ['qc', 'upload-qc', flowcells[0], '--mtime',  '100'], extensions=['scilifelab.pm.ext.ext_qc', 'scilifelab.pm.ext.ext_couchdb'])
         self._run_app()
         self.s_con = SampleRunMetricsConnection(dbname="samples-test", username="u", password="p")
         self.p_con = ProjectSummaryConnection(dbname="projects-test", username="u", password="p")
@@ -115,7 +115,7 @@ class TestQCUpload(PmFullTest):
         
     def test_qc_upload(self):
         """Test running qc upload to server"""
-        self.app = self.make_app(argv = ['qc', 'upload-qc', flowcells[1], '--mtime',  '100'], extensions=['scilifelab.pm.ext.ext_qc'])
+        self.app = self.make_app(argv = ['qc', 'upload-qc', flowcells[1], '--mtime',  '100'], extensions=['scilifelab.pm.ext.ext_qc',  'scilifelab.pm.ext.ext_couchdb'])
         self._run_app()
         s = self.s_con.get_entry("4_120924_AC003CCCXX_CGTTAA")
         self.assertIsNone(s["project_sample_name"])
@@ -127,7 +127,7 @@ class TestQCUpload(PmFullTest):
         s["project_id"]= None
         self.assertIsNone(s["project_id"])
         self.s_con.save(s)
-        self.app = self.make_app(argv = ['qc', 'update', '--sample_prj', projects[2], '--project_id', 'P003', '--debug', '--force'], extensions=['scilifelab.pm.ext.ext_qc'])
+        self.app = self.make_app(argv = ['qc', 'update', '--sample_prj', projects[2], '--project_id', 'P003', '--debug', '--force'], extensions=['scilifelab.pm.ext.ext_qc', 'scilifelab.pm.ext.ext_couchdb'])
         self._run_app()
         s = self.s_con.get_entry("4_120924_AC003CCCXX_CGTTAA")
         self.assertEqual(s["project_id"], "P003")
@@ -143,7 +143,7 @@ class TestQCUpload(PmFullTest):
         self.s_con.save(s1)
         self.s_con.save(s2)
         sample_map = {'P001_101_index3': 'P001_101_index3', 'P001_102_index6':'P001_102'}
-        self.app = self.make_app(argv = ['qc', 'update', '--sample_prj', projects[0], '--names', "{}".format(sample_map), '--debug', '--force'], extensions=['scilifelab.pm.ext.ext_qc'])
+        self.app = self.make_app(argv = ['qc', 'update', '--sample_prj', projects[0], '--names', "{}".format(sample_map), '--debug', '--force'], extensions=['scilifelab.pm.ext.ext_qc',  'scilifelab.pm.ext.ext_couchdb'])
         self._run_app()
         s1 = self.s_con.get_entry("1_120924_AC003CCCXX_TGACCA")
         s2 = self.s_con.get_entry("2_120924_AC003CCCXX_ACAGTG")

@@ -5,16 +5,18 @@
   project_id: J.Doe_00_01
   samples:
     P001_101_index3:
+      scilife_name: P001_101_index3
       library_prep:
         A:
           sample_run_metrics: 
-            - 1_120924_AC003CCCXX_TGACCA
-            - 1_121015_BB002BBBXX_TGACCA
+            1_120924_AC003CCCXX_TGACCA: null
+            1_121015_BB002BBBXX_TGACCA: null
     P001_102:
+      scilife_name: P001_102
       library_prep:
         A:
           sample_run_metrics: 
-            - 2_120924_AC003CCCXX_ACAGTG
+            2_120924_AC003CCCXX_ACAGTG: null
 - application: RNA-Seq
   customer_reference: "GeneExp"
   min_m_reads_per_sample_ordered: .2
@@ -22,16 +24,18 @@
   project_id: J.Doe_00_02
   samples:
     P002_101_index3:
+      scilife_name: P002_101_index3
       library_prep:
         A:
           sample_run_metrics: 
-            - 3_120924_AC003CCCXX_TGACCA
-            - 2_121015_BB002BBBXX_TGACCA
+            3_120924_AC003CCCXX_TGACCA: null
+            2_121015_BB002BBBXX_TGACCA: null
     P002_102:
+      scilife_name: P002_102
       library_prep:
         A:
           sample_run_metrics: 
-            - 3_120924_AC003CCCXX_ACAGTG
+            3_120924_AC003CCCXX_ACAGTG: null
 - application: sequence_capture
   customer_reference: "SeqCap"
   min_m_reads_per_sample_ordered: .5
@@ -39,9 +43,10 @@
   project_id: J.Doe_00_03
   samples:
     3_index6:
+      scilife_name: 3_index6
       library_prep:
         A:
           sample_run_metrics: 
-            - 4_120924_AC003CCCXX_CGTTAA
+            4_120924_AC003CCCXX_CGTTAA: null
       
   
