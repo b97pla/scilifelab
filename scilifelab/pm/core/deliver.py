@@ -40,17 +40,20 @@ class DeliveryReportController(AbstractBaseController):
     class Meta:
         label = 'report'
         description = 'Make delivery reports and assess qc'
-        arguments = [
-            (['project_id'], dict(help="Project id. Standard format is 'J.Doe_00_00'", default=None, nargs="?")),
-            (['flowcell_id'], dict(help="Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?")),
-            (['-u', '--uppnex_id'], dict(help="Manually insert Uppnex project ID into the report.", default=None, action="store", type=str)),
-            (['-o', '--ordered_million_reads'], dict(help="Manually insert the ordered number of read pairs (in millions). Input is either a string or a JSON file. The string may represent either a number or a JSON structure, for instance '-o 10' or '-o \"{'default':5, 'sample1':10}\"'. The 'default' key corresponds to all samples except 'sample1'.", default=None, action="store", type=str)),
-            (['-r', '--customer_reference'], dict(help="Manually insert customer reference (the customer's name for the project) into reports", default=None, action="store", type=str)),
-            (['--application'], dict(help="Set application for qc evaluation. One of '{}'".format(",".join(qc_cutoff.keys())), action="store", type=str, default=None)),
-            (['--exclude_sample_ids'], dict(help="Exclude project sample ids from report generation. Input is either a string or a JSON file with a key:value mapping, as in '--exclude_sample_ids \"{'PS1':[], 'PS2':['AACCGG']}\"'. The values consist of a list of barcodes; if the list is empty, exclude the entire sample.", action="store", default={})),
-            (['--sample_aliases'], dict(help="Provide sample aliases for cases where project summary has multiple names for a sample. Input is either a string or a JSON file with a key:value mapping, for example '--sample_aliases \"{'sample1':['alias1_1', 'alias1_2'], 'sample2':['alias2_1']}\", where the value is a list of aliases. The key will be used as 'base' information, possibly updated by information from the alias entry.", action="store", default={})),
-            (['--project_alias'], dict(help="Provide project aliases for cases where project summary has multiple names for a project. Input is a comma-separated list of names enclosed by brackets, for example '--project_alias alias1'", action="store", default=None)),
-            ]
+
+    def _setup(self, app):
+        group = app.args.add_argument_group('Reporting options', 'Options that affect report output')
+        group.add_argument('project_id', help="Project id. Standard format is 'J.Doe_00_00'", default=None, nargs="?")
+        group.add_argument('flowcell_id', help="Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?")
+        group.add_argument('-u', '--uppnex_id', help="Manually insert Uppnex project ID into the report.", default=None, action="store", type=str)
+        group.add_argument('-o', '--ordered_million_reads', help="Manually insert the ordered number of read pairs (in millions)", default=None, action="store", type=str)
+        group.add_argument('-r', '--customer_reference', help="Manually insert customer reference (the customer's name for the project) into reports", default=None, action="store", type=str)
+        group.add_argument('--application', help="Set application for qc evaluation. One of '{}'".format(",".join(qc_cutoff.keys())), action="store", type=str, default=None)
+        group.add_argument('--exclude_sample_ids', help="Exclude project sample ids from report generation. Input is either a string or a JSON file with a key:value mapping, as in '--exclude_sample_ids \"{'PS1':[], 'PS2':['AACCGG']}\"'. The values consist of a list of barcodes; if the list is empty, exclude the entire sample.", action="store", default={})
+        group.add_argument('--sample_aliases', help="Provide sample aliases for cases where project summary has multiple names for a sample. Input is either a string or a JSON file with a key:value mapping, for example '--sample_aliases \"{'sample1':['alias1_1', 'alias1_2'], 'sample2':['alias2_1']}\", where the value is a list of aliases. The key will be used as 'base' information, possibly updated by information from the alias entry.", action="store", default={})
+        group.add_argument('--project_alias', help="Provide project aliases for cases where project summary has multiple names for a project. Input is a comma-separated list of names enclosed by brackets, for example '--project_alias alias1'", action="store", default=None)
+
+        super(DeliveryReportController, self)._setup(app)
 
     def _process_args(self):
         pass
