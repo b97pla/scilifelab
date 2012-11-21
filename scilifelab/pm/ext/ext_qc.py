@@ -27,11 +27,10 @@ class RunMetricsController(AbstractBaseController):
         arguments = [
             (['flowcell'], dict(help="Flowcell directory", nargs="?", default=None)),
             (['--runqc'], dict(help="Root path to qc data folder", default=None, nargs="?")),
-            (['--project_name'], dict(help="Project name or project description, as in 'J.Doe_00_01'.", default=None, action="store", type=str)),
             (['--sample'], dict(help="Sample id", default=None, action="store", type=str)),
             (['--mtime'], dict(help="Last modification time of directory (days): skip if older. Defaults to 1 day.", default=1, action="store", type=int)),
             (['--sample_prj'], dict(help="Sample project name, as in 'J.Doe_00_01'", default=None, action="store", type=str)),
-            (['--project_id'], dict(help="Project identifier, as in 'P001'", default=None, action="store", type=str)),
+            (['--project_id'], dict(help="Project identifier, as in 'J.Doe_00_01'", default=None, action="store", type=str)),
             (['--names'], dict(help="Sample name mapping from barcode name to project name as a JSON string, as in \"{'sample_run_name':'project_run_name'}\". Mapping can also be given in a file", default=None, action="store", type=str)),
             ]
 
@@ -159,7 +158,7 @@ class RunMetricsController(AbstractBaseController):
 
         for sample in runinfo[1:]:
             d = dict(zip(runinfo[0], sample))
-            if self.app.pargs.project_name and self.app.pargs.project_name != d['SampleProject']:
+            if self.app.pargs.project_id and self.app.pargs.project_id != d['SampleProject']:
                 continue
             if self.app.pargs.sample and self.app.pargs.sample != d['SampleID']:
                 continue
