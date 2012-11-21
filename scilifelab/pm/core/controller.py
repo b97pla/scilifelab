@@ -17,12 +17,6 @@ class AbstractBaseController(controller.CementBaseController):
     """
     class Meta:
         pattern = ""
-        # arguments = [
-        #     (['-n', '--dry_run'], dict(help="dry_run - don't actually do anything", action="store_true", default=False)),
-        #     (['--force'], dict(help="force execution", action="store_true", default=False)),
-        #     (['--verbose'], dict(help="verbose mode", action="store_true", default=False)),
-        #     (['--java_opts'], dict(help="java options", action="store", default="Xmx3g")),
-        #     ]
 
     def _setup(self, base_app):
         self._meta.arguments.append( (['-n', '--dry_run'], dict(help="dry_run - don't actually do anything", action="store_true", default=False)))
