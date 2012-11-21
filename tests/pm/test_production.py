@@ -25,13 +25,13 @@ class PmProductionTest(PmTest):
                 os.unlink(x)
             shutil.rmtree(delivery_dir)
         
-    def test_1_ls(self):
+    def test_ls(self):
         self.app = self.make_app(argv = ['production', 'ls'])
         handler.register(ProductionController)
         self._run_app()
         self.eq(self.app._output_data['stdout'].getvalue(), '120829_SN0001_0001_AA001AAAXX\n120829_SN0001_0002_BB001BBBXX\n120924_SN0002_0003_CC003CCCXX\nJ.Doe_00_04\nJ.Doe_00_05\nJ.Doe_00_06')
 
-    def test_3_from_pre_to_casava_transfer(self):
+    def test_from_pre_to_casava_transfer(self):
         """Test from pre-casava to casava transfer to project directory"""
         self.app = self.make_app(argv = ['production', 'transfer', 'J.Doe_00_01', '-f', '120829_SN0001_0001_AA001AAAXX', '--from_pre_casava'])
         handler.register(ProductionController)
@@ -39,7 +39,7 @@ class PmProductionTest(PmTest):
         res = shell.exec_cmd(["ls", "-1", os.path.join(delivery_dir, "P1_101F_index1", "120829_AA001AAAXX")])
         self.eq(set(['1_120829_AA001AAAXX_barcode', '1_120829_AA001AAAXX_nophix_1-sort-dup.align_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.bam', '1_120829_AA001AAAXX_nophix_1-sort-dup.dup_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.hs_metrics', '1_120829_AA001AAAXX_nophix_1-sort-dup.insert_metrics', '1_120829_AA001AAAXX_nophix_1-sort.bam', 'P1_101F_index1-bcbb-pm-config.yaml', 'alignments']),set(list(sorted(res[0].split()))))
     
-    def test_4_from_pre_to_pre_casava_transfer(self):
+    def test_from_pre_to_pre_casava_transfer(self):
         """Test pre_casava transfer to project directory"""
         self.app = self.make_app(argv = ['production', 'transfer', 'J.Doe_00_01', '-f', '120829_SN0001_0001_AA001AAAXX', '--from_pre_casava', '--to_pre_casava', '--quiet'])
         handler.register(ProductionController)
@@ -66,13 +66,13 @@ class PmProductionTest(PmTest):
         self.eq(runinfo_yaml['details'][0]['multiplex'][0]['description'], 'J.Doe_00_01_P1_101F_index1')
         self.eq(set(runinfo_yaml['details'][0]['multiplex'][0]['files']), set([os.path.join(delivery_dir,"120829_AA001AAAXX", "1_120829_AA001AAAXX_barcode", os.path.basename(x)) for x in ['1_120829_AA001AAAXX_nophix_1_1_fastq.txt','1_120829_AA001AAAXX_nophix_1_2_fastq.txt']]))
 
-    def test_5_quiet(self):
+    def test_quiet(self):
         """Test pre_casava delivery to project directory with quiet flag"""
         self.app = self.make_app(argv = ['production', 'transfer',  'J.Doe_00_01', '-f', '120829_SN0001_0001_AA001AAAXX', '--from_pre_casava', '--to_pre_casava', '--quiet'])
         handler.register(ProductionController)
         self._run_app()
 
-    def test_6_from_casava_to_casava_transfer(self):
+    def test_from_casava_to_casava_transfer(self):
         """Test from casava to casava transfer to project directory"""
         self.app = self.make_app(argv = ['production', 'transfer', 'J.Doe_00_04'])
         handler.register(ProductionController)

@@ -55,22 +55,14 @@ class ProjectTest(PmTest):
         flist = walk(j_doe_00_04['data'])
         for f in flist:
             os.unlink(f)
-
-    def test_1_project_transfer(self):
-        self.app = self.make_app(argv = ['project', 'transfer'])
-        handler.register(ProjectController)
-        self._run_app()
-        
-    def test_2_project_data_delivery(self):
-        pass
-
-    def test_3_compress(self):
+         
+    def test_compress(self):
         """Test compression of project data"""
         self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '--fastq', '--force'])
         handler.register(ProjectController)
         self._run_app()
 
-    def test_3_decompress(self):
+    def test_decompress(self):
         """Test decompression of project data"""
         self.app = self.make_app(argv = ['project', 'decompress', 'j_doe_00_01', '--fastq', '--force'])
         handler.register(ProjectController)
@@ -91,21 +83,21 @@ class ProjectTest(PmTest):
         self._run_app()
 
     @unittest.skipIf(not os.getenv("DRMAA_LIBRARY_PATH"), "not running production test: no $DRMAA_LIBRARY_PATH")
-    def test_5_compress_pbzip2_node(self):
+    def test_compress_pbzip2_node(self):
         """Test distributed compression of project data with pbzip2"""
         self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '--pbzip2', '-n', '--force'] , extensions=['scilifelab.pm.ext.ext_distributed'])
         handler.register(ProjectController)
         self._run_app()
 
     @unittest.skipIf(not os.getenv("DRMAA_LIBRARY_PATH"), "not running production test: no $DRMAA_LIBRARY_PATH")
-    def test_5_decompress_pbzip2_node(self):
+    def test_decompress_pbzip2_node(self):
         """Test distributed decompression of project data with pbzip2"""
         self.app = self.make_app(argv = ['project', 'decompress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '--pbzip2', '-n', '--force'] , extensions=['scilifelab.pm.ext.ext_distributed'])
         handler.register(ProjectController)
         self._run_app()
 
     @test.raises(Exception)
-    def test_6_rm_analysis_1(self):
+    def test_rm_analysis_1(self):
         """Test removal of non-existing intermediate analysis"""
         self.app = self.make_app(argv = ['project', 'rm', 'j_doe_00_04', 'analysisoe', '--force'])
         handler.register(ProjectController)
@@ -115,7 +107,7 @@ class ProjectTest(PmTest):
         except:
             raise Exception
 
-    def test_6_rm_analysis_1_dry(self):
+    def test_rm_analysis_1_dry(self):
         """Test dry removal of one intermediate analysis"""
         self.app = self.make_app(argv = ['project', 'rm', 'j_doe_00_04', 'analysis_1','-n', '--force'])
         handler.register(ProjectController)
@@ -123,7 +115,7 @@ class ProjectTest(PmTest):
         self._run_app()
 
     @test.raises(Exception)
-    def test_7_rm_analysis_1(self):
+    def test_rm_analysis_1_intermediate(self):
         """Test removal of one intermediate analysis"""
         self.app = self.make_app(argv = ['project', 'rm', 'j_doe_00_04', 'analysis_1', '--force'])
         handler.register(ProjectController)
