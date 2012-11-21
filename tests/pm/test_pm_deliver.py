@@ -52,14 +52,14 @@ class PmProductionTest(PmTest):
         new_s["name"] = "1_121015_BB002BBBXX_CGAACG"
         s_con.save(new_s)
 
-    # def tearDown(self):
-    #     s_con = SampleRunMetricsConnection(dbname="samples-test", username="u", password="p")
-    #     s = s_con.get_entry("1_121015_BB002BBBXX_AGTTGA")
-    #     doc = s_con.db.get(s["_id"])
-    #     s_con.db.delete(doc)
-    #     s = s_con.get_entry("1_121015_BB002BBBXX_CGAACG")
-    #     doc = s_con.db.get(s["_id"])
-    #     s_con.db.delete(doc)
+    def tearDown(self):
+        s_con = SampleRunMetricsConnection(dbname="samples-test", username="u", password="p")
+        s = s_con.get_entry("1_121015_BB002BBBXX_AGTTGA")
+        doc = s_con.db.get(s["_id"])
+        s_con.db.delete(doc)
+        s = s_con.get_entry("1_121015_BB002BBBXX_CGAACG")
+        doc = s_con.db.get(s["_id"])
+        s_con.db.delete(doc)
 
 
     # Will currently fail since no PhiX in document

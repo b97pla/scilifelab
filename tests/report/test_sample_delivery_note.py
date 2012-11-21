@@ -1,6 +1,7 @@
 import os
 import unittest
 import logbook
+from scilifelab.report.rl import make_example_sample_note
 
 from ..classes import has_couchdb_installation
 
