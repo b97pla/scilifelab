@@ -40,15 +40,11 @@ class DeliveryReportController(AbstractBaseController):
     class Meta:
         label = 'report'
         description = 'Make delivery reports and assess qc'
-        arguments = [
-            (['project_id'], dict(help="Project id. Standard format is 'J.Doe_00_00'", default=None, nargs="?")),
-            (['flowcell_id'], dict(help="Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?"))
-            ]
 
     def _setup(self, app):
         group = app.args.add_argument_group('Reporting options', 'Options that affect report output')
-        # group.add_argument('project_id', "Project id. Standard format is 'J.Doe_00_00'", default=None, nargs="?")
-        # group.add_argument('flowcell_id', "Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?")
+        group.add_argument('project_id', help="Project id. Standard format is 'J.Doe_00_00'", default=None, nargs="?")
+        group.add_argument('flowcell_id', help="Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?")
         group.add_argument('-u', '--uppnex_id', help="Manually insert Uppnex project ID into the report.", default=None, action="store", type=str)
         group.add_argument('-o', '--ordered_million_reads', help="Manually insert the ordered number of read pairs (in millions)", default=None, action="store", type=str)
         group.add_argument('-r', '--customer_reference', help="Manually insert customer reference (the customer's name for the project) into reports", default=None, action="store", type=str)
@@ -88,12 +84,20 @@ class DeliveryReportController(AbstractBaseController):
     def sample_status(self):
         if not self._check_pargs(["project_id", "flowcell_id"]):
             return
-        out_data = sample_status_note(**vars(self.pargs))
+        kw = vars(self.pargs)
+        kw.update({"samplesdb":self.app.config.get("db", "samples"), "flowcelldb":self.app.config.get("db", "flowcells"), "projectdb":self.app.config.get("db", "projects")})
+        out_data = sample_status_note(**kw)
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
+        self.app._output_data['debug'].write(out_data['debug'].getvalue())
 
     @controller.expose(help="Make project status note")
     def project_status(self):
         if not self._check_pargs(["project_id"]):
             return
-        project_status_note(**vars(self.pargs))
+        kw = vars(self.pargs)
+        kw.update({"samplesdb":self.app.config.get("db", "samples"), "flowcelldb":self.app.config.get("db", "flowcells"), "projectdb":self.app.config.get("db", "projects")})
+        out_data = project_status_note(**kw)
+        self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
+        self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
+        self.app._output_data['debug'].write(out_data['debug'].getvalue())

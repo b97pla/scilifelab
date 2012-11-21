@@ -38,7 +38,7 @@ SAMPLESHEETS = {}
 SAMPLESHEETS['C003CCCXX'] = """FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,SampleProject
 C003CCCXX,1,P001_101_index3,hg19,TGACCA,J__Doe_00_01,N,R1,NN,J__Doe_00_01
 C003CCCXX,2,P001_102_index6,hg19,ACAGTG,J__Doe_00_01,N,R1,NN,J__Doe_00_01
-C003CCCXX,3,P002_101_index3,hg19,TGACCA,J__Doe_00_02,N,R1,NN_failed,J__Doe_00_02
+C003CCCXX,3,P001_101_index3,hg19,TGACCA,J__Doe_00_02,N,R1,NN_failed,J__Doe_00_02
 C003CCCXX,3,P002_102_index6,hg19,ACAGTG,J__Doe_00_02,N,R1,NN,J__Doe_00_02
 C003CCCXX,4,P003_101_index6,hg19,CGTTAA,J__Doe_00_03,N,R1,NN_failed,J__Doe_00_03"""
 SAMPLESHEETS['B002BBBXX'] = """FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,SampleProject
