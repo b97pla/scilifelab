@@ -6,7 +6,7 @@ from collections import OrderedDict
 from cStringIO import StringIO
 
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection
-from scilifelab.bcbio.qc import SampleRunMetrics
+from scilifelab.bcbio.qc import SampleRunMetricsParser
 from scilifelab.log import minimal_logger
 from scilifelab.bcbio.run import find_samples
 
@@ -182,7 +182,7 @@ def application_qc(project=None, flowcell=None, application=None,
         qc_data = p_con.get_qc_data(project, flowcell)
         if project.get("application") not in application_map.keys():
             if not application:
-                LOG.warn("No such application {}. Please use the application option (available choices {})".format(application, ",".join(qc_cutoff.keys())))
+                LOG.warn("No such application {}. Please use the application option (available choices {})".format(application, ",".join(QC_CUTOFF.keys())))
                 return output_data
             application = application
         else:
@@ -190,7 +190,7 @@ def application_qc(project=None, flowcell=None, application=None,
     else:
         LOG.info("No such project {} in project summary. Trying to get qc data anyway.".format(project))
         if not application:
-            LOG.warn("No application provided. Please use the application option (available choices {})".format(",".join(qc_cutoff.keys())))
+            LOG.warn("No application provided. Please use the application option (available choices {})".format(",".join(QC_CUTOFF.keys())))
             return output_data
         s_con = SampleRunMetricsConnection(username=user, password=password, url=url)
         qc_data = _get_sample_qc_data(project, application, s_con, flowcell)

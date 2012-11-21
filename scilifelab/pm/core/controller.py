@@ -17,14 +17,18 @@ class AbstractBaseController(controller.CementBaseController):
     """
     class Meta:
         pattern = ""
-        arguments = [
-            (['-n', '--dry_run'], dict(help="dry_run - don't actually do anything", action="store_true", default=False)),
-            (['--force'], dict(help="force execution", action="store_true", default=False)),
-            (['--verbose'], dict(help="verbose mode", action="store_true", default=False)),
-            (['--java_opts'], dict(help="java options", action="store", default="Xmx3g")),
-            ]
+        # arguments = [
+        #     (['-n', '--dry_run'], dict(help="dry_run - don't actually do anything", action="store_true", default=False)),
+        #     (['--force'], dict(help="force execution", action="store_true", default=False)),
+        #     (['--verbose'], dict(help="verbose mode", action="store_true", default=False)),
+        #     (['--java_opts'], dict(help="java options", action="store", default="Xmx3g")),
+        #     ]
 
     def _setup(self, base_app):
+        self._meta.arguments.append( (['-n', '--dry_run'], dict(help="dry_run - don't actually do anything", action="store_true", default=False)))
+        self._meta.arguments.append((['--force'], dict(help="force execution", action="store_true", default=False)))
+        self._meta.arguments.append((['--verbose'], dict(help="verbose mode", action="store_true", default=False)))
+        self._meta.arguments.append((['--java_opts'], dict(help="java options", action="store", default="Xmx3g")))
         super(AbstractBaseController, self)._setup(base_app)
         self.ignore = self.config.get("config", "ignore")
         self.shared_config = dict()
@@ -197,7 +201,7 @@ class AbstractExtendedBaseController(AbstractBaseController):
         if not self._check_pargs(["project"]):
             return
         self._meta.pattern = "|".join(["{}(.gz|.bz2)?$".format(x) for x in self._meta.file_ext])
-        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), self._meta.filter_fn, include_dirs=self._meta.include_dirs)
+        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), self._filter_fn, include_dirs=self._meta.include_dirs)
         if len(flist) == 0:
             self.app.log.info("No files matching pattern '{}' found".format(self._meta.pattern))
             return

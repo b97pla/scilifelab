@@ -40,13 +40,11 @@ class DeliveryReportController(AbstractBaseController):
     class Meta:
         label = 'report'
         description = 'Make delivery reports and assess qc'
-        arguments = [
-            (['project'], dict(help="Project id. Standard format is 'J.Doe_00_00'", default=None, nargs="?")),
-            (['flowcell'], dict(help="Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?")),
-            ]
 
     def _setup(self, app):
         group = app.args.add_argument_group('Reporting options', 'Options that affect report output')
+        group.add_argument('project_id', help="Project id. Standard format is 'J.Doe_00_00'", default=None, nargs="?")
+        group.add_argument('flowcell', help="Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?")
         group.add_argument('-u', '--uppnex_id', help="Manually insert Uppnex project ID into the report.", default=None, action="store", type=str)
         group.add_argument('-o', '--ordered_million_reads', help="Manually insert the ordered number of read pairs (in millions)", default=None, action="store", type=str)
         group.add_argument('-r', '--customer_reference', help="Manually insert customer reference (the customer's name for the project) into reports", default=None, action="store", type=str)
@@ -54,6 +52,7 @@ class DeliveryReportController(AbstractBaseController):
         group.add_argument('--exclude_sample_ids', help="Exclude project sample ids from report generation. Input is either a string or a JSON file with a key:value mapping, as in '--exclude_sample_ids \"{'PS1':[], 'PS2':['AACCGG']}\"'. The values consist of a list of barcodes; if the list is empty, exclude the entire sample.", action="store", default={})
         group.add_argument('--sample_aliases', help="Provide sample aliases for cases where project summary has multiple names for a sample. Input is either a string or a JSON file with a key:value mapping, for example '--sample_aliases \"{'sample1':['alias1_1', 'alias1_2'], 'sample2':['alias2_1']}\", where the value is a list of aliases. The key will be used as 'base' information, possibly updated by information from the alias entry.", action="store", default={})
         group.add_argument('--project_alias', help="Provide project aliases for cases where project summary has multiple names for a project. Input is a comma-separated list of names enclosed by brackets, for example '--project_alias alias1'", action="store", default=None)
+
         super(DeliveryReportController, self)._setup(app)
 
     def _process_args(self):
@@ -65,7 +64,7 @@ class DeliveryReportController(AbstractBaseController):
 
     @controller.expose(help="Print FastQ screen output for a project/flowcell")
     def fqscreen(self):
-        if not self._check_pargs(["project"]):
+        if not self._check_pargs(["project_id"]):
             return
         out_data = fastq_screen(**vars(self.pargs))
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
@@ -74,7 +73,7 @@ class DeliveryReportController(AbstractBaseController):
 
     @controller.expose(help="Print summary QC data for a flowcell/project for application QC control")
     def application_qc(self):
-        if not self._check_pargs(["project"]):
+        if not self._check_pargs(["project_id"]):
             return
         out_data = application_qc(**vars(self.pargs))
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
@@ -83,14 +82,22 @@ class DeliveryReportController(AbstractBaseController):
 
     @controller.expose(help="Make sample status note")
     def sample_status(self):
-        if not self._check_pargs(["project", "flowcell"]):
+        if not self._check_pargs(["project_id", "flowcell"]):
             return
-        out_data = sample_status_note(**vars(self.pargs))
+        kw = vars(self.pargs)
+        kw.update({"samplesdb":self.app.config.get("db", "samples"), "flowcelldb":self.app.config.get("db", "flowcells"), "projectdb":self.app.config.get("db", "projects")})
+        out_data = sample_status_note(**kw)
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
+        self.app._output_data['debug'].write(out_data['debug'].getvalue())
 
     @controller.expose(help="Make project status note")
     def project_status(self):
-        if not self._check_pargs(["project"]):
+        if not self._check_pargs(["project_id"]):
             return
-        project_status_note(**vars(self.pargs))
+        kw = vars(self.pargs)
+        kw.update({"samplesdb":self.app.config.get("db", "samples"), "flowcelldb":self.app.config.get("db", "flowcells"), "projectdb":self.app.config.get("db", "projects")})
+        out_data = project_status_note(**kw)
+        self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
+        self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
+        self.app._output_data['debug'].write(out_data['debug'].getvalue())
