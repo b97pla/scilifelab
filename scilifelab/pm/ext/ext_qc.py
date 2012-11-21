@@ -235,7 +235,6 @@ class RunMetricsController(AbstractBaseController):
                     obj["project_sample_name"] = project_sample.keys()[0]
                 dry("Saving object {}".format(repr(obj)), s_con.save(obj))
 
-
 def load():
     """Called by the framework when the extension is 'loaded'."""
     handler.register(RunMetricsController)

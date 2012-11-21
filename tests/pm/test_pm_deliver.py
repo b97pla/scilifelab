@@ -33,7 +33,9 @@ class PmProductionTest(PmTest):
                          "flowcell": "AC003CCCXX",
                          "project":"J.Doe_00_01", 
                          "exclude_samples": "{'P001_102':[]}"}
-
+        
+    @classmethod
+    def setUpClass(cls):
         # Temporarily add new sample for use in exclusion tests
         s_con = SampleRunMetricsConnection(dbname="samples-test", username="u", password="p")
         s = s_con.get_entry("1_121015_BB002BBBXX_TGACCA")
@@ -52,7 +54,8 @@ class PmProductionTest(PmTest):
         new_s["name"] = "1_121015_BB002BBBXX_CGAACG"
         s_con.save(new_s)
 
-    def tearDown(self):
+    @classmethod
+    def tearDownClass(cls):
         s_con = SampleRunMetricsConnection(dbname="samples-test", username="u", password="p")
         s = s_con.get_entry("1_121015_BB002BBBXX_AGTTGA")
         doc = s_con.db.get(s["_id"])

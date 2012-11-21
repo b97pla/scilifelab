@@ -9,27 +9,27 @@ from scilifelab.pm.core.controller import AbstractExtendedBaseController, Abstra
 from scilifelab.utils.misc import query_yes_no, filtered_walk, walk
 from scilifelab.pm.lib.clean import purge_alignments
 from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command
-
+from scilifelab.pm.core.bcbio import BcbioRunController
 
 ## Main project controller
-class ProjectController(AbstractExtendedBaseController):
+class ProjectController(AbstractExtendedBaseController, BcbioRunController):
     """
     Functionality for project management.
     """
     class Meta:
         label = 'project'
         description = 'Manage projects'
-        arguments = [
-            (['project'], dict(help="Scilife project id (e.g. j_doe_00_00)", default=None, action="store", nargs="?")),
-            (['-g', '--git'], dict(help="Initialize git directory in repos and project gitdir", default=False, action="store_true")),
-            (['-S', '--sample'], dict(help="project sample id", action="store", default=None, type=str)),
-            (['-F', '--flowcell'], dict(help="project flowcell id", action="store", default=None, type=str)),
-            (['--finished'], dict(help="include finished project listing", action="store_true", default=False)),
-            (['--intermediate'], dict(help="Work on intermediate data", default=False, action="store_true")),
-            (['--data'], dict(help="Work on data folder", default=False, action="store_true")),
-            (['--minfilesize'], dict(help="Min file size to keep (in bytes). Default 2000.", default=2000, action="store", type=int)),
-            ]
         flowcelldir = None
+
+    def _setup(self, base_app):
+        super(ProjectController, self)._setup(base_app)
+        base_app.args.add_argument('-g', '--git', help="Initialize git directory in repos and project gitdir", default=False, action="store_true")
+        base_app.args.add_argument('--minfilesize', help="Min file size to keep (in bytes). Default 2000.", default=2000, action="store", type=int)
+        group = base_app.args.add_argument_group('Project path group.', 'Options to restrict operations to certain paths.')
+        group.add_argument('--finished', help="include finished project listing", action="store_true", default=False)
+        group.add_argument('--intermediate', help="Work on intermediate data", default=False, action="store_true")
+        group.add_argument('--data', help="Work on data folder", default=False, action="store_true")
+
 
     ## Remember: need to do argument processing here also for stacked controllers
     ## FIX ME: _process_args should be called in the stacked controller
@@ -94,11 +94,6 @@ class ProjectController(AbstractExtendedBaseController):
                 return []
             files = os.listdir(self._meta.flowcelldir)
         return files
-
-    ## add
-    @controller.expose(help="Add boilerplate code")
-    def add(self):
-        self._not_implemented()
         
     ## NOTE: this is a temporary workaround for cases where data has
     ## been removed from production directory
@@ -149,66 +144,3 @@ class ProjectRmController(AbstractBaseController):
             self.app.cmd.safe_unlink(f)
         self.app.log.info("removing {}".format(indir))
         self.app.cmd.safe_rmdir(indir)
-
-
-class BcbioRunController(AbstractBaseController):
-    class Meta:
-        label = 'runbcbio'
-        description = 'Wrapper for bcbio analyses'
-        arguments = [
-            ## Also relies on the project argument from above
-            (['--post_process'], dict(help="post process file. Setting this will override sample-specific post process files. Currently not implemented.", action="store", default=None, nargs="?", type=str)),
-            (['--genome_build'], dict(help="genome build ", action="store", default=None, type=str)),
-            (['--only_failed'], dict(help="only run on failed samples ", action="store_true", default=False)),
-            (['--amplicon'], dict(help="amplicon-based analyses (e.g. HaloPlex), which means mark_duplicates is set to false", action="store_true", default=False)),
-            (['--targets'], dict(help="sequence capture target file", action="store", default=None)),
-            (['--baits'], dict(help="sequence capture baits file", action="store", default=None)),
-            (['--distributed'], dict(help="run distributed, changing 'num_cores' in  post_process to 'messaging': calls automated_initial_analysis.py", action="store_true", default=False)),
-            (['--num_cores'], dict(help="num_cores value; default 8", action="store", default=8, type=int)),
-            (['--only_setup'], dict(help="only perform setup", action="store_true", default=False)),
-            (['--restart'], dict(help="restart analysis", action="store_true", default=False)),
-            (['--analysis'], dict(help="set analysis type in bcbb config file", action="store", default=None, type=str)),
-            (['--email'], dict(help="set user email address", action="store", default=None, type=str)),
-            (['--galaxy_config'], dict(help="set location of universe_wsgi.ini file", action="store", default=None, type=str)),
-            ]
-        stacked_on = 'project'
-
-    def _sample_status(self, x):
-        """Find the status of a sample.
-
-        Look for output files: currently only look for project-summary.csv"""
-        if os.path.exists(os.path.join(os.path.dirname(x), "project-summary.csv")):
-            return "PASS"
-        else:
-            return "FAIL"
-
-    @controller.expose(help="Run bcbb pipeline")
-    def run(self):
-        if not self._check_pargs(["project"]):
-            return
-        flist = find_samples(os.path.abspath(os.path.join(self.app.controller._meta.project_root, self.app.controller._meta.path_id)), **vars(self.pargs))
-        if len(flist) > 0 and not query_yes_no("Going to start {} jobs... Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
-            return
-        orig_dir = os.path.abspath(os.getcwd())
-        for run_info in flist:
-            os.chdir(os.path.abspath(os.path.dirname(run_info)))
-            setup_sample(run_info, **vars(self.pargs))
-            os.chdir(orig_dir)
-        if self.pargs.only_setup:
-            return
-        if self.pargs.only_failed:
-            status = {x:self._sample_status(x) for x in flist}
-            flist = [x for x in flist if self._sample_status(x)=="FAIL"]
-        ## Here process files again, removing if requested, and running the pipeline
-        for run_info in flist:
-            self.app.log.info("Running analysis defined by config file {}".format(run_info))
-            os.chdir(os.path.abspath(os.path.dirname(run_info)))
-            if self.app.cmd.monitor(work_dir=os.path.dirname(run_info)):
-                self.app.log.warn("Not running job")
-                continue
-            if self.pargs.restart:
-                self.app.log.info("Removing old analysis files in {}".format(os.path.dirname(run_info)))
-                remove_files(run_info, **vars(self.pargs))
-            (cl, platform_args) = run_bcbb_command(run_info, **vars(self.pargs))
-            self.app.cmd.command(cl, **{'platform_args':platform_args, 'saveJobId':True})
-            os.chdir(orig_dir)

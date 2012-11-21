@@ -9,7 +9,6 @@ import logbook
 import socket
 
 from classes import PmFullTest
-
 from ..classes import has_couchdb_installation
 
 from scilifelab.db.statusdb import SampleRunMetricsConnection, VIEWS, flowcell_run_metrics, sample_run_metrics, project_summary, ProjectSummaryConnection, update_fn, FlowcellRunMetricsConnection
@@ -149,3 +148,4 @@ class TestQCUpload(PmFullTest):
         s2 = self.s_con.get_entry("2_120924_AC003CCCXX_ACAGTG")
         self.assertEqual(s1["project_sample_name"], "P001_101_index3")
         self.assertEqual(s2["project_sample_name"], "P001_102")
+

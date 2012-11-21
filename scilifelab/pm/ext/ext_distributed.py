@@ -256,6 +256,7 @@ def add_shared_distributed_options(app):
                           action='store', help='extra arguments to pass to drmaa native specification. NOTE: must be supplied last since it uses remaining part of argument list', default=None)
     group.add_argument('--max_node_jobs', type=int, default=10,
                           action='store', help='maximum number of node jobs (default 10)')
+    group.add_argument('--email', help="set user email address", action="store", default=None, type=str)
 
 def set_distributed_handler(app):
     """
@@ -272,7 +273,7 @@ def set_distributed_handler(app):
 def load():
     """Called by the framework when the extension is 'loaded'."""
     if not os.getenv("DRMAA_LIBRARY_PATH"):
-        LOG.warn("No environment variable $DRMAA_LIBRARY_PATH: loading {} failed".format(__name__))
+        LOG.debug("No environment variable $DRMAA_LIBRARY_PATH: loading {} failed".format(__name__))
         return
     hook.register('post_setup', add_drmaa_option)
     hook.register('post_setup', add_shared_distributed_options)
