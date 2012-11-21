@@ -63,7 +63,7 @@ class Couch(Database):
             self.log.warn("No such url {}".format(self.url_string))
             return None
         self.con = couchdb.Server(url=self.url_string)
-        self.log.info("Connected to server @{}".format(self.url_string))
+        self.log.debug("Connected to server @{}".format(self.url_string))
         self.user = username
         self.pw = password
 

@@ -64,7 +64,7 @@ def sample_status_note(project_id=None, flowcell_id=None, username=None, passwor
                         "scilifelab_name":"barcode_name", "start_date":"date", "rounded_read_count":"bc_count"}
     
     LOG.debug("got parameters {}".format(parameters))
-    output_data = {'stdout':StringIO(), 'stderr':StringIO()}
+    output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
     output_data["stdout"].write("\nQuality stats\n")
     output_data["stdout"].write("************************\n")
     output_data["stdout"].write("PhiX error cutoff: > {:3}\n".format(cutoffs['phix_err_cutoff']))
@@ -72,7 +72,7 @@ def sample_status_note(project_id=None, flowcell_id=None, username=None, passwor
     output_data["stdout"].write("************************\n\n")
     output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format("Scilifelab ID", "Lane", "PhiXError", "ErrorStatus", "AvgQV", "QVStatus"))
     output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format("=============", "====", "=========", "===========", "=====", "========"))
-    ## Connect and run
+    # Connect and run
     s_con = SampleRunMetricsConnection(dbname=samplesdb, username=username, password=password, url=url)
     fc_con = FlowcellRunMetricsConnection(dbname=flowcelldb, username=username, password=password, url=url)
     p_con = ProjectSummaryConnection(dbname=projectdb, username=username, password=password, url=url)
@@ -80,6 +80,7 @@ def sample_status_note(project_id=None, flowcell_id=None, username=None, passwor
     headers = sample_note_headers()
     project = p_con.get_entry(project_id)
     notes = []
+    s_param_out = {}
     if not project:
         LOG.warn("No such project '{}'".format(project_id))
         return output_data
@@ -147,6 +148,8 @@ def sample_status_note(project_id=None, flowcell_id=None, username=None, passwor
         else:
             outfile = "{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"])
         notes.append(make_note(outfile, headers, paragraphs, **s_param))
+        s_param_out[s_param["scilifelab_name"]] = s_param
+    output_data["debug"].write(json.dumps(s_param_out))
     concatenate_notes(notes, "{}_{}_{}_sample_summary.pdf".format(project_id, s.get("date", None), s.get("flowcell", None)))
     return output_data
 
@@ -181,7 +184,8 @@ def project_status_note(project_id=None, username=None, password=None, url=None,
     ## mapping project sample to table
     table_keys = ['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status']
     prjs_to_table = {'ScilifeID':'scilife_name', 'CustomerID':'customer_name', 'MSequenced':'m_reads_sequenced'}#, 'MOrdered':'min_m_reads_per_sample_ordered', 'Status':'status'}
-        
+
+    output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
     ## Connect and run
     s_con = SampleRunMetricsConnection(dbname=samplesdb, username=username, password=password, url=url)
     fc_con = FlowcellRunMetricsConnection(dbname=flowcelldb, username=username, password=password, url=url)
@@ -189,24 +193,27 @@ def project_status_note(project_id=None, username=None, password=None, url=None,
     paragraphs = project_note_paragraphs()
     headers = project_note_headers()
     param = parameters
-    if not project_alias:
-        project = p_con.get_entry(project_id)
-    else:
-        project = p_con.get_entry(project_alias)
-
+    prj_summary = p_con.get_entry(project_id)
     if sample_aliases:
         if os.path.exists(sample_aliases):
             with open(sample_aliases) as fh:
                 sample_aliases = json.load(fh)
         else:
             sample_aliases = ast.literal_eval(sample_aliases)
-    if not project:
+    if not prj_summary:
         LOG.warn("No such project '{}'".format(project_id))
         return
     LOG.debug("Working on project '{}'.".format(project_id))
-    slist = s_con.get_samples(sample_prj=project_id)
+    sample_run_list = s_con.get_samples(sample_prj=project_id)
+    # If project aliases, extend sample_run_list with results
+    if project_alias:
+        project_alias = ast.literal_eval(project_alias)
+        for p_alias in project_alias:
+            sample_run_list_tmp = s_con.get_samples(sample_prj=p_alias)
+            if sample_run_list_tmp:
+                sample_run_list.extend(sample_run_list_tmp)
     samples = {}
-    for s in slist:
+    for s in sample_run_list:
         prj_sample = p_con.get_project_sample(project_id, s["barcode_name"])
         if prj_sample:
             sample_name = prj_sample.popitem()[1].get("scilife_name", None)
@@ -222,11 +229,11 @@ def project_status_note(project_id=None, username=None, password=None, url=None,
     ## Convert to mapping from desired sample name to list of aliases
     ## Less important for the moment; one solution is to update the
     ## Google docs summary table to use the P names
-    sample_list = project['samples']
-    param.update({key:project.get(ps_to_parameter[key], None) for key in ps_to_parameter.keys()})
+    sample_list = prj_summary['samples']
+    param.update({key:prj_summary.get(ps_to_parameter[key], None) for key in ps_to_parameter.keys()})
     param["ordered_amount"] = param.get("ordered_amount", p_con.get_ordered_amount(project_id))
-    param['customer_reference'] = param.get('customer_reference', project.get('customer_reference'))
-    param['uppnex_project_id'] = param.get('uppnex_project_id', project.get('uppnex_id'))
+    param['customer_reference'] = param.get('customer_reference', prj_summary.get('customer_reference'))
+    param['uppnex_project_id'] = param.get('uppnex_project_id', prj_summary.get('uppnex_id'))
     if ordered_million_reads:
         if os.path.exists(ordered_million_reads):
             with open(ordered_million_reads) as fh:
@@ -279,4 +286,7 @@ def project_status_note(project_id=None, username=None, password=None, url=None,
     sample_table.insert(0, ['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status'])
     paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
     make_note("{}_project_summary.pdf".format(project_id), headers, paragraphs, **param)
+    param.update({k:"N/A" for k in param.keys() if param[k] is None or param[k] ==  ""})
+    output_data["debug"].write(json.dumps({'param':param, 'table':sample_table}))
+    return output_data
 
