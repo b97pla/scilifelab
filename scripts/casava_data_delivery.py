@@ -27,7 +27,7 @@ def fixProjName(pname):
             newname += pname[i]
             postperiod = False
     return newname
-
+            
 def is_fastq(fname):
     fastq_ext = [".fastq.gz",
                  ".fastq",
@@ -37,8 +37,36 @@ def is_fastq(fname):
         if fname.endswith(ext):
             return True
     return False
-        
-def get_file_copy_list(proj_base_dir, dest_proj_path, fcid, deliver_all_fcs, deliver_nophix, skip_list, logfile, dry):
+
+  
+def create_final_name(fname, date, fc_id, sample_name):
+    """Create the final name of the delivered file
+    """
+    
+     # Split the file name according to CASAVA convention
+    m = re.match(r'(\S+?)_[ACGTN\-]+_L0*(\d+)_R(\d)_\d+\.fastq(.*)', fname)
+    if m is not None:
+        lane = m.group(2)
+        read = m.group(3)
+        ext = m.group(4)
+    else:
+        # Split the file name according to bcbb convention
+        m = re.match(r'(\d+)_(\d+)_([^_]+)_(\d+)_(?:nophix_)?(\d+)_fastq.txt(.*)', fname)
+        if m is None:
+            raise ValueError("Could not parse file name {:s} correctly!".format(fname))
+        lane = m.group(1)
+        read = m.group(5)
+        ext = m.group(6)
+            
+    dest_file_name = "{:s}.fastq{:s}".format("_".join([lane,
+                                                       date,
+                                                       fc_id,
+                                                       sample_name,
+                                                       read]),
+                                             ext)
+    return dest_file_name
+      
+def get_file_copy_list(proj_base_dir, dest_proj_path, fcid, deliver_all_fcs, deliver_nophix, skip_list):
     to_copy = []
     for fqfile in filtered_walk(proj_base_dir, 
                                 is_fastq, 
@@ -67,28 +95,9 @@ def get_file_copy_list(proj_base_dir, dest_proj_path, fcid, deliver_all_fcs, del
         
         fname = os.path.basename(fqfile)
         print(fname)
-        # Split the file name according to CASAVA convention
-        m = re.match(r'(\S+?)_[ACGTN\-]+_L0*(\d+)_R(\d)_\d+\.fastq(.*)', fname)
-        if m is not None:
-            lane = m.group(2)
-            read = m.group(3)
-            ext = m.group(4)
-        else:
-            # Split the file name according to bcbb convention
-            m = re.match(r'(\d+)_(\d+)_([^_]+)_(\d+)_(?:nophix_)?(\d+)_fastq.txt(.*)', fname)
-            if m is None:
-                raise ValueError("Could not parse file name {:s} correctly! Exiting!".format(fname))
-            lane = m.group(1)
-            read = m.group(5)
-            ext = m.group(6)
-            
+      
         dest_run_path = os.path.join(dest_proj_path, sample_name, run_name)
-        dest_file_name = "{:s}.fastq{:s}".format("_".join([lane,
-                                                           date,
-                                                           fc_id,
-                                                           sample_name,
-                                                           read]),
-                                                 ext)
+        dest_file_name = create_final_name(fname,date,fc_id,sample_name)
         to_copy.append([fqfile,
                         dest_run_path,
                         dest_file_name])
@@ -114,7 +123,7 @@ def rsync_files(to_copy, logfile, dry):
                     os.makedirs(dst_dir, 0770)
                 except:
                     print("Could not create run-level delivery directory!")
-                    sys.exit(1)
+                    clean_exit(1,logfile,dry)
             
             # Rsync the file across 
             command_to_execute = ['rsync',
@@ -164,7 +173,7 @@ def main():
         print("Could not find project. Check directory listing:")
         for f in os.listdir(args.caspath): 
             print(f)
-        sys.exit(0)
+        clean_exit(0,None,args.dry)
 
     fcid = args.flowcell_id
     fcid_comp = fcid.split('_')
@@ -206,18 +215,179 @@ def main():
                                  fcid,
                                  args.deliver_all_fcs,
                                  args.deliver_nophix,
-                                 skip_list,
-                                 logfile,
-                                 args.dry)
+                                 skip_list)
+    
+    # Prompt user if any of the files are non-compressed
+    for fqfile, _, _ in to_copy:
+        if os.path.splitext(fqfile)[1] == ".gz":
+            continue
+        print("WARNING: The file {:s}, which you are about to deliver, does not seem to be compressed. " \
+              "It is recommended that you compress files prior to delivery.".format(fqfile))
+        if query_yes_no("Do you wish to continue delivering " \
+                        "uncompressed fastq files?", default="yes"):
+            break
+        clean_exit(1,logfile,args.dry)
+            
     rsync_files(to_copy,
                 logfile,
                 args.dry)
         
-    if not args.dry:
-        logfile.close()
+    clean_exit(0,logfile,args.dry)
         
-
+def clean_exit(exitcode, logfile, dry=False):
+    """Close the logfile and exit with the given exit code
+    """
+    if not dry and logfile is not None:
+        logfile.close()
+    sys.exit(exitcode)
 
 if __name__ == "__main__":
     main()
     
+########## Tests ###########
+
+import unittest
+import shutil
+import tempfile
+import random
+import uuid
+
+class TestDataDelivery(unittest.TestCase):
+    
+    def test_fixProjName(self):
+        """Fix project name
+        """
+        
+        test_pnames = [("j.doe_11_01","J.Doe_11_01"),
+                       ("j.Doe_11_01","J.Doe_11_01"),
+                       ("J.doe_11_01","J.Doe_11_01"),
+                       ("J.Doe_11_01","J.Doe_11_01"),
+                       ("doe_11_01","Doe_11_01"),
+                       ("j.d.doe_11_01","J.D.Doe_11_01"),]
+        
+        for test_pname, exp_pname in test_pnames:
+            obs_pname = fixProjName(test_pname)
+            self.assertEqual(obs_pname,
+                             exp_pname,
+                             "Did not get the expected fix ({:s}) for project name {:s} (got {:s})".format(exp_pname,test_pname,obs_pname))
+        
+    def test_is_fastq(self):
+        """Determine if a file name corresponds to a fastq file
+        """
+        
+        test_fnames = [("foo.fastq",True),
+                       ("foo.fastq.gz",True),
+                       ("foo_fastq.txt",True),
+                       ("foo_fastq.txt.gz",True),
+                       ("foo.fastq.bar",False),
+                       ("foo.txt",False),]
+        
+        for test_fname, exp_result in test_fnames:
+            obs_result = is_fastq(test_fname)
+            self.assertEqual(obs_result,
+                             exp_result,
+                             "Did not get expected result ({:s}) for file name {:s}".format(str(exp_result),test_fname))
+    
+    def test_rsync_files(self):
+        """Test the rsync functionality
+        """
+        root = tempfile.mkdtemp(prefix="rsync_test_")
+        
+        # Create some files to move
+        to_copy = []
+        for n in xrange(10):
+            fd, sfile = tempfile.mkstemp(suffix=".tmp", prefix="rsync_test_", dir=root)
+            os.close(fd)
+            # Generate destination file hierarchies
+            ddir = root
+            for l in xrange(random.randint(1,5)):
+                ddir = os.path.join(ddir,str(uuid.uuid4()))
+            to_copy.append([sfile,ddir,"{:s}.tmp".format(str(uuid.uuid4()))])
+        
+        # Run rsync
+        with open(os.devnull, 'w') as f:
+            sys.stdout = f
+            rsync_files(to_copy,sys.stdout,False)
+        
+        # Verify the copy process
+        for src, ddir, dname in to_copy:
+            self.assertTrue(os.path.exists(src),
+                            "The rsync process have removed source file")
+            self.assertTrue(os.path.exists(ddir) and os.path.isdir(ddir),
+                            "The expected destination directory was not created")
+            dfile = os.path.join(ddir,dname)
+            self.assertTrue(os.path.exists(dfile) and os.path.isfile(dfile),
+                            "The expected destination file was not created")
+            exp_stat = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP
+            obs_stat = stat.S_IMODE(os.stat(dfile).st_mode)
+            self.assertEqual(obs_stat,
+                             exp_stat,
+                            "The mode of the created file is not as expected")
+            
+        shutil.rmtree(root)
+        
+    def test_create_final_name(self):
+        """Create the destination file name
+        """
+        
+        date = "111111"
+        fcid = "A11A22BCXX"
+        sample_name = "P101_150B_index5"
+        
+        test_names = [("1_{}_{}_1_nophix_1_fastq.txt.gz".format(date,fcid),
+                       "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name)),
+                      ("1_{}_{}_1_nophix_1_fastq.txt".format(date,fcid),
+                       "1_{}_{}_{}_1.fastq".format(date,fcid,sample_name)),
+                      ("1_{}_{}_1_1_fastq.txt.gz".format(date,fcid),
+                       "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name)),
+                      ("{}_CGATGT_L001_R1_001.fastq.gz".format(sample_name),
+                       "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name)),
+                      ("{}_CGATGT_L001_R1_001.fastq".format(sample_name),
+                       "1_{}_{}_{}_1.fastq".format(date,fcid,sample_name))]
+        
+        for test_fname, exp_result in test_names:
+            obs_result = create_final_name(test_fname,date,fcid,sample_name)
+            self.assertEqual(obs_result,
+                             exp_result,
+                             "Did not get expected final name ({:s}) for file name {:s}".format(exp_result,test_fname))
+    
+        # Try some illegal file names and assert that they raise exceptions
+        test_names = ["1_{}_{}_1_nophix_1_fastq.gz".format(date,fcid),
+                      "a_{}_{}_1_nophix_1_fastq.txt".format(date,fcid),
+                      "{}_CGATRGT_L1_R1_001.fastq.gz".format(sample_name)]
+        for test_name in test_names:
+            with self.assertRaises(ValueError):
+                create_final_name(test_name,date,fcid,sample_name)
+            
+    def test_get_file_copy_list(self):
+        """Get list of files to copy and the destinations
+        """
+        
+        # Create a file hierarchy to search for files
+        root = tempfile.mkdtemp(prefix="test_casava_data_delivery_")
+        date = "111111"
+        
+        # Create some sample files
+        exp_files = []
+        samples = []
+        for n in xrange(2):
+            sample = tempfile.mkdtemp(dir=root)
+            samples.append(os.path.basename(sample))
+            for fcid in ["FCA", "FCB"]:
+                fcdir = os.path.join(sample,fcid)
+                nophixdir = os.path.join(fcdir,"nophix")
+                for d in [fcdir,nophixdir]:
+                    os.mkdir(d)
+                    test_names = ["{:d}_{:s}_{:s}_1_1_fastq.txt.gz".format(random.randint(1,8),
+                                                                           date,
+                                                                           fcdir),
+                                  "{}_CGATGT_L001_R1_001.fastq.gz".format(samples[-1]),]
+                    for test_name in test_names:
+                        test_file = os.path.join(d,test_name)
+                        open(test_file,"w").close()
+                        exp_files.append([samples[-1],fcid,os.path.basename(d) == "nophix",test_file])
+                    
+        # Get the list of files to copy
+        obs_to_copy = get_file_copy_list(root,"","FCA",False,False,[])
+        
+            
