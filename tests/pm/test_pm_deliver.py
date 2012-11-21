@@ -33,8 +33,9 @@ class PmProductionTest(PmTest):
                          "flowcell": "AC003CCCXX",
                          "project":"J.Doe_00_01", 
                          "exclude_samples": "{'P001_102':[]}"}
-        
+
     @classmethod
+    @unittest.skipIf(not has_couchdb, "No couchdb server running in http://localhost:5984")
     def setUpClass(cls):
         # Temporarily add new sample for use in exclusion tests
         s_con = SampleRunMetricsConnection(dbname="samples-test", username="u", password="p")
@@ -55,6 +56,7 @@ class PmProductionTest(PmTest):
         s_con.save(new_s)
 
     @classmethod
+    @unittest.skipIf(not has_couchdb, "No couchdb server running in http://localhost:5984")
     def tearDownClass(cls):
         s_con = SampleRunMetricsConnection(dbname="samples-test", username="u", password="p")
         s = s_con.get_entry("1_121015_BB002BBBXX_AGTTGA")
