@@ -272,6 +272,9 @@ def setup_sample(f, analysis, amplicon=False, genome_build="hg19", **kw):
         else:
             LOG.info("setting parallell execution")
             pp['algorithm']['num_cores'] = kw['num_cores']
+        if kw.get('snpEff', None):
+            LOG.info("setting snpEff to {}".format(kw["snpEff"]))
+            pp['program']['snpEff'] = kw['snpEff']
         dry_unlink(ppfile, dry_run=kw['dry_run'])
         dry_write(ppfile, yaml.safe_dump(pp, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw['dry_run'])
 
