@@ -26,7 +26,7 @@ setup(name = "scilifelab",
         # packages and not in virtualenv
         #"pandas >= 0.9",
         "biopython",
-        "psutil",
+        #"psutil",
         ],
       test_suite = 'nose.collector',
       packages=find_packages(exclude=['tests']),

@@ -1,8 +1,12 @@
 """Shell core module"""
 import os
-import psutil
 import subprocess
-
+try:
+    import psutil
+    has_psutil = True
+except ImportError:
+    has_psutil = False
+    
 from cement.core import backend, handler
 from cement.utils import shell
 
@@ -44,12 +48,13 @@ class ShCommandHandler(command.CommandHandler):
             return
         with open(PIDFILE) as fh:
             pid = fh.read()
-        if psutil.pid_exists(pid):
-            self.app.log.warn("pid {} still running; please terminate job before proceeding".format(pid))
-            return True
-        else:
-            return False
-            
+        if has_psutil:
+            if psutil.pid_exists(pid):
+                self.app.log.warn("pid {} still running; please terminate job before proceeding".format(pid))
+                return True
+            else:
+                return False
+        return False
 
     def command(self, cmd_args, capture=True, ignore_error=False, cwd=None, **kw):
         cmd = " ".join(cmd_args)

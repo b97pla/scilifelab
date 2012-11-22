@@ -6,8 +6,8 @@ from data import setup_data_files
 from empty_files import setup_empty_files
 
 ## Set default configuration
-filedir = os.path.abspath(os.curdir)
-config_defaults = backend.defaults('production', 'archive', 'config', 'project','log')
+filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+config_defaults = backend.defaults('production', 'archive', 'config', 'project','log', 'db')
 config_defaults['production']['root']  = os.path.join(filedir, "data", "production")
 config_defaults['archive']['root']  = os.path.join(filedir, "data", "archive")
 config_defaults['project']['root']  = os.path.join(filedir, "data", "projects")
@@ -15,6 +15,12 @@ config_defaults['project']['repos']  = os.path.join(filedir, "data", "repos")
 config_defaults['config']['ignore'] = ["slurm*", "tmp*"]
 config_defaults['log']['level']  = "INFO"
 config_defaults['log']['file']  = os.path.join(filedir, "data", "log", "pm.log")
+config_defaults['db']['url'] = "localhost"
+config_defaults['db']['user'] = "u"
+config_defaults['db']['password'] = "p"
+config_defaults['db']['samples'] = "samples-test"
+config_defaults['db']['flowcells'] = "flowcells-test"
+config_defaults['db']['projects'] = "projects-test"
 
 
 def safe_makedir(dname):

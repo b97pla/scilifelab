@@ -41,7 +41,7 @@ class PmApp(foundation.CementApp):
         super(PmApp, self).setup()
         self._setup_cmd_handler()
         ## FIXME: look at backend in cement
-        self._output_data = dict(stdout=StringIO(), stderr=StringIO())
+        self._output_data = dict(stdout=StringIO(), stderr=StringIO(), debug=StringIO())
 
     def _setup_cmd_handler(self):
         """Setup a command handler"""

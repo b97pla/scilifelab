@@ -12,11 +12,12 @@ from scilifelab.log import minimal_logger
 
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import cm
-from reportlab.platypus import Paragraph, SimpleDocTemplate
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Image
 from reportlab.rl_config import defaultPageSize
+from reportlab.pdfbase.pdfmetrics import stringWidth
 
 ## Set minimal logger
 LOG = minimal_logger(__name__)
@@ -37,7 +38,7 @@ def sample_note_paragraphs():
     """Get paragraphs for sample notes."""
     paragraphs = OrderedDict()
     paragraphs["Project name"] = dict(style=h3, 
-                                      tpl=Template("${project_name} (${customer_reference})"))
+                                      tpl=Template("${project_name} ${'({})'.format(customer_reference) if customer_reference not in ['', 'N/A'] else ''}"))
     
     paragraphs["UPPNEX project id"] = dict(style=h3, 
                                            tpl=Template("${uppnex_project_id}"))
@@ -76,15 +77,28 @@ def sample_note_headers():
     headers["{:%B %d, %Y}".format(datetime.now())] = h2
     return headers
 
-def make_sample_table(data):
+def make_sample_table(data,  header_size=11, row_size=9, **kw):
     """Format sample table"""
-    t=Table(data,5*[1.25*inch], len(data)*[0.25*inch])
-    t.setStyle(TableStyle([('ALIGN',(1,1),(-2,-2),'RIGHT'),
-                           ('VALIGN',(0,0),(0,-1),'TOP'),
-                           ('ALIGN',(0,-1),(-1,-1),'CENTER'),
-                           ('VALIGN',(0,-1),(-1,-1),'MIDDLE'),
-                           ('INNERGRID', (0,0), (-1,-1), 0.25, colors.black),
-                           ('BOX', (0,0), (-1,-1), 0.25, colors.black),
+    default_colWidths=[1.5*inch, 2*inch, 1*inch, 1*inch, 1*inch, .8*inch]
+
+    if not kw.get("colWidths", None):
+        colWidths = len(data[0]) * [0*inch]
+        for row in data:
+            for i in range(0, len(row)):
+                width = stringWidth(str(row[i]), "Helvetica", header_size)
+                colWidths[i] = min(default_colWidths, max(colWidths[i], 1.2 * width))
+        
+    if not kw.get("rowHeights", None):
+        rowHeights = len(data)*[0.25*inch]
+    t=Table(data, colWidths, rowHeights) 
+    
+    t.setStyle(TableStyle([
+                           ('VALIGN',(0,0),(-1,-1),'BOTTOM'),
+                           ('ALIGN',(1,0),(-1,-1),'RIGHT'),
+                           ('ALIGN',(0,0),(0,-1),'LEFT'),
+                           ('FONTSIZE',(0,0),(-1,0),header_size),
+                           ('FONTSIZE',(0,1),(-1,-1), row_size),
+                           ('LINEABOVE',(0,1),(-1,1),1,colors.black),
                            ]))
     return t
 
@@ -93,12 +107,12 @@ def make_sample_table(data):
 def project_note_paragraphs():
     """Get paragraphs for project notes."""
     paragraphs = OrderedDict()
-    paragraphs["Project name"] = dict(style=h3, tpl=Template("${project_name} (${customer_reference})"))
+    paragraphs["Project name"] = dict(style=h3, tpl=Template("${project_name} ${'({})'.format(customer_reference) if customer_reference not in ['','N/A'] else ''}"))
     
     paragraphs["UPPNEX project id"] = dict(style=h3, tpl=Template("${uppnex_project_id}"))
     
     paragraphs["Sequence data directories"] = dict(style=h3, tpl=Template("/proj/${uppnex_project_id}/INBOX/${project_name}/"))
-    
+
     paragraphs["Samples"] = dict(style=h3, tpl=Template(""))
     
     paragraphs["Comments"] = dict(style=h3, tpl=Template("${finished}"))
@@ -172,7 +186,9 @@ def make_note(outfile, headers, paragraphs, **kw):
             if isinstance(paragraph.get("tpl"), Template):
                 story.append(Paragraph(paragraph.get("tpl").render(**kw), p))
             elif isinstance(paragraph.get("tpl"), Table):
+                story.append(Spacer(1, 0.2 * inch))
                 story.append(paragraph.get("tpl"))
+                story.append(Spacer(1, 0.2 * inch))
             else:
                 pass
 
