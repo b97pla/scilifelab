@@ -17,3 +17,6 @@ config_defaults['distributed']['jobaccount'] = None
 config_defaults['db']['url'] = None
 config_defaults['db']['password'] = None
 config_defaults['db']['username'] = None
+config_defaults['db']['samples'] = "samples"
+config_defaults['db']['projects'] = "projects" 
+config_defaults['db']['flowcells'] = "flowcells"

@@ -15,7 +15,7 @@ def _purge_by_sample(files, dry_run, fsize=MINFILESIZE):
     for i in range(0, len(files)-1):
         f1 = os.path.basename(files[i])
         f2 = os.path.basename(files[i+1])
-        if f1.startswith(os.path.splitext(f2)[0]):
+        if f2.startswith(os.path.splitext(f1)[0]):
             statinfo = os.stat(files[i])
             if statinfo.st_size < fsize:
                 continue

@@ -153,7 +153,6 @@ class DistributedCommandHandler(command.CommandHandler):
             
         return self.dry(command, runpipe)
 
-
 def opt_to_dict(opts):
     """Transform option list to a dictionary.
 
@@ -168,6 +167,41 @@ def opt_to_dict(opts):
              for k,v in zip(args, args[1:]+["--"]) if k.startswith('-')}
     return opt_d
 
+
+def convert_to_drmaa_time(t):
+    """Convert time assignment to format understood by drmaa.
+
+    In particular transforms days to hours if provided format is
+    d-hh:mm:ss. Also transforms mm:ss to 00:mm:ss.
+
+    :param t: time string
+
+    :returns: converted time string formatted as hh:mm:ss or None if
+    time string is malformatted
+    """
+    m = re.search("(^[0-9]+\-)?([0-9]+:)?([0-9]+):([0-9]+)", t)
+    if not m:
+        return None
+    days = None
+    if m.group(1):
+        days = m.group(1).rstrip("-")
+    hours = None
+    if m.group(2):
+        hours = m.group(2).rstrip(":")
+    minutes = m.group(3)
+    seconds = m.group(4)
+    if days:
+        hours = 24 * int(days) + int(hours)
+    else:
+        if not hours:
+            hours = "00"
+        if len(str(hours)) == 1:
+            hours = "0" + hours
+        if len(str(minutes)) == 1:
+            minutes = "0" + minutes
+    t_new = "{}:{}:{}".format(hours, minutes, seconds)
+    return t_new
+
 def make_job_template_args(opt_d, **kw):
     """Given a dictionary of arguments, update with kw dict that holds arguments passed to argv.
 
@@ -179,6 +213,7 @@ def make_job_template_args(opt_d, **kw):
     job_args = {}
     job_args['jobname'] = kw.get('jobname', None) or opt_d.get('-J', None) or  opt_d.get('--job-name', None)
     job_args['time'] = kw.get('time', None) or opt_d.get('-t', None) or  opt_d.get('--time', None)
+    job_args['time'] = convert_to_drmaa_time(job_args['time'])
     job_args['partition'] = kw.get('partition', None) or opt_d.get('-p', None) or  opt_d.get('--partition', None)
     job_args['account'] = kw.get('account', None) or opt_d.get('-A', None) or  opt_d.get('--account', None)
     job_args['outputPath'] = kw.get('outputPath', None) or opt_d.get('-o', os.curdir)
@@ -221,6 +256,7 @@ def add_shared_distributed_options(app):
                           action='store', help='extra arguments to pass to drmaa native specification. NOTE: must be supplied last since it uses remaining part of argument list', default=None)
     group.add_argument('--max_node_jobs', type=int, default=10,
                           action='store', help='maximum number of node jobs (default 10)')
+    group.add_argument('--email', help="set user email address", action="store", default=None, type=str)
 
 def set_distributed_handler(app):
     """
@@ -237,7 +273,7 @@ def set_distributed_handler(app):
 def load():
     """Called by the framework when the extension is 'loaded'."""
     if not os.getenv("DRMAA_LIBRARY_PATH"):
-        LOG.warn("No environment variable $DRMAA_LIBRARY_PATH: loading {} failed".format(__name__))
+        LOG.debug("No environment variable $DRMAA_LIBRARY_PATH: loading {} failed".format(__name__))
         return
     hook.register('post_setup', add_drmaa_option)
     hook.register('post_setup', add_shared_distributed_options)
