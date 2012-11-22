@@ -4,42 +4,83 @@ import logbook
 import re
 import yaml
 import unittest
-import drmaa
+import pandas as pd
+import numpy as np
+
+try:
+    import drmaa
+except:
+    pass
 
 from ..classes import SciLifeTest
 from classes import PmFullTest
 
 from cement.core import handler
 from scilifelab.pm.core.production import ProductionController
-from scilifelab.pm.ext.ext_distributed import make_job_template_args, opt_to_dict
-from scilifelab.utils.misc import filtered_walk
-from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command
+from scilifelab.utils.misc import filtered_walk, opt_to_dict
+from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command, setup_merged_samples, sample_table, get_vcf_files
 
 LOG = logbook.Logger(__name__)
 
-j_doe_00_01 = os.path.abspath(os.path.join(os.curdir, "data", "production", "J.Doe_00_01"))
-j_doe_00_04 = os.path.abspath(os.path.join(os.curdir, "data", "production", "J.Doe_00_04"))
-j_doe_00_05 = os.path.abspath(os.path.join(os.curdir, "data", "production", "J.Doe_00_05"))
-
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 
+j_doe_00_01 = os.path.abspath(os.path.join(filedir, "data", "production", "J.Doe_00_01"))
+j_doe_00_04 = os.path.abspath(os.path.join(filedir, "data", "production", "J.Doe_00_04"))
+j_doe_00_05 = os.path.abspath(os.path.join(filedir, "data", "production", "J.Doe_00_05"))
+
 ANALYSIS_TYPE = 'Align_standard_seqcap'
+GALAXY_CONFIG = os.path.abspath(os.path.join(filedir, "data", "config"))
 SAMPLES =  ['P001_101_index3', 'P001_102_index6']
 FLOWCELL = '120924_AC003CCCXX'
 
 FINISHED = {
-    'J.Doe_00_01': {'P001_101_index3': os.path.join(os.curdir, "data", "production", "J.Doe_00_01", SAMPLES[0], "FINISHED_AND_DELIVERED"),
-                    'P001_102_index6': os.path.join(os.curdir, "data", "production", "J.Doe_00_01", SAMPLES[1], "FINISHED_AND_DELIVERED")},
-    'J.Doe_00_04': {'P001_101_index3': os.path.join(os.curdir, "data", "production", "J.Doe_00_04", SAMPLES[0], "FINISHED_AND_DELIVERED"),
-                    'P001_102_index6': os.path.join(os.curdir, "data", "production", "J.Doe_00_04", SAMPLES[1], "FINISHED_AND_DELIVERED")}
+    'J.Doe_00_01': {'P001_101_index3': os.path.join(filedir, "data", "production", "J.Doe_00_01", SAMPLES[0], "FINISHED_AND_DELIVERED"),
+                    'P001_102_index6': os.path.join(filedir, "data", "production", "J.Doe_00_01", SAMPLES[1], "FINISHED_AND_DELIVERED")},
+    'J.Doe_00_04': {'P001_101_index3': os.path.join(filedir, "data", "production", "J.Doe_00_04", SAMPLES[0], "FINISHED_AND_DELIVERED"),
+                    'P001_102_index6': os.path.join(filedir, "data", "production", "J.Doe_00_04", SAMPLES[1], "FINISHED_AND_DELIVERED")}
     }
 
 REMOVED = {
-    'J.Doe_00_01': {'P001_101_index3': os.path.join(os.curdir, "data", "production", "J.Doe_00_01", SAMPLES[0], "FINISHED_AND_REMOVED"),
-                    'P001_102_index6': os.path.join(os.curdir, "data", "production", "J.Doe_00_01", SAMPLES[1], "FINISHED_AND_REMOVED")},
-    'J.Doe_00_04': {'P001_101_index3': os.path.join(os.curdir, "data", "production", "J.Doe_00_04", SAMPLES[0], "FINISHED_AND_REMOVED"),
-                    'P001_102_index6': os.path.join(os.curdir, "data", "production", "J.Doe_00_04", SAMPLES[1], "FINISHED_AND_REMOVED")}
+    'J.Doe_00_01': {'P001_101_index3': os.path.join(filedir, "data", "production", "J.Doe_00_01", SAMPLES[0], "FINISHED_AND_REMOVED"),
+                    'P001_102_index6': os.path.join(filedir, "data", "production", "J.Doe_00_01", SAMPLES[1], "FINISHED_AND_REMOVED")},
+    'J.Doe_00_04': {'P001_101_index3': os.path.join(filedir, "data", "production", "J.Doe_00_04", SAMPLES[0], "FINISHED_AND_REMOVED"),
+                    'P001_102_index6': os.path.join(filedir, "data", "production", "J.Doe_00_04", SAMPLES[1], "FINISHED_AND_REMOVED")}
     }
+
+
+
+class ProductionConsoleTest(PmFullTest):
+    """Class for testing functions without drmaa"""
+
+    def setUp(self):
+        pass
+
+    def test_compression_suite(self):
+        """Test various combinations of compression, decompression, cleaning"""
+        self.app = self.make_app(argv = ['production', 'decompress', 'J.Doe_00_01', '--debug', '--force', '--fastq',  '-n'])
+        handler.register(ProductionController)
+        self._run_app()
+        l1 = self.app._output_data["stderr"].getvalue()
+        self.app = self.make_app(argv = ['production', 'decompress', 'J.Doe_00_01', '-f', FLOWCELL, '--debug', '--force', '--fastq',  '-n'])
+        handler.register(ProductionController)
+        self._run_app()
+        l2 = self.app._output_data["stderr"].getvalue()
+        self.assertTrue(len(l1) > len(l2))
+        os.chdir(filedir)
+
+    def test_run(self):
+        """Test various combinations of compression, decompression, cleaning"""
+        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_01', '--debug', '--force', '--fastq',  '-n'])
+        handler.register(ProductionController)
+        self._run_app()
+        l1 = self.app._output_data["stderr"].getvalue()
+        self.app = self.make_app(argv = ['production', 'run', 'J.Doe_00_01', '-f', FLOWCELL, '--debug', '--force', '--fastq',  '-n'])
+        handler.register(ProductionController)
+        self._run_app()
+        l2 = self.app._output_data["stderr"].getvalue()
+        self.assertTrue(len(l1) > len(l2))
+        os.chdir(filedir)
+        
 
 
 @unittest.skipIf(not os.getenv("MAILTO"), "not running production test: set $MAILTO environment variable to your mail address to test mailsend")
@@ -116,7 +157,7 @@ class ProductionTest(PmFullTest):
         handler.register(ProductionController)
         self._run_app()
         os.chdir(filedir)
-        j_doe_00_03 = os.path.abspath(os.path.join(os.curdir, "data", "projects", "j_doe_00_03"))
+        j_doe_00_03 = os.path.abspath(os.path.join(filedir, "data", "projects", "j_doe_00_03"))
         pattern = ".fastq(.gz)?$"
         def fastq_filter(f):
             return re.search(pattern, f) != None
@@ -129,7 +170,7 @@ class ProductionTest(PmFullTest):
         handler.register(ProductionController)
         self._run_app()
         self.assertTrue(os.path.exists(FINISHED['J.Doe_00_01'][SAMPLES[0]]))
-        samplefile = os.path.join(os.curdir, "data", "production", "J.Doe_00_01", "finished_sample.txt")
+        samplefile = os.path.join(filedir, "data", "production", "J.Doe_00_01", "finished_sample.txt")
         with open(samplefile, "w") as fh:
             fh.write(SAMPLES[0] + "\n")
             fh.write(SAMPLES[1] + "\n")
@@ -179,42 +220,45 @@ class UtilsTest(SciLifeTest):
     def test_find_samples(self):
         """Test finding samples"""
         flist = find_samples(j_doe_00_05)
-        self.assertEqual(len(flist), 3)
+        self.assertIn(len(flist), [3,4])
         flist = find_samples(j_doe_00_05, **{'only_failed':True})
-        self.assertEqual(len(flist), 0)
+        self.assertIn(len(flist), [0,1])
+
+    def test_setup_merged_samples(self):
+        """Test setting up merged samples"""
+        flist = find_samples(j_doe_00_05)
+        setup_merged_samples(flist, **{'dry_run':False})
 
     def test_setup_samples(self):
         """Test setting up samples, changing genome to rn4"""
         flist = find_samples(j_doe_00_05)
+        
         for f in flist:
-            setup_sample(f, **{'analysis_type':'Align_standard_seqcap', 'genome_build':'rn4', 'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'num_cores':8, 'distributed':False})
+            setup_sample(f, **{'analysis':'Align_standard_seqcap', 'genome_build':'rn4', 'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'num_cores':8, 'distributed':False})
         for f in flist:
             with open(f, "r") as fh:
                 config = yaml.load(fh)
-            self.assertEqual(config["details"][0]["multiplex"][0]["genome_build"], "rn4")
+            if config["details"][0].get("multiplex", None):
+                self.assertEqual(config["details"][0]["multiplex"][0]["genome_build"], "rn4")
+            else:
+                self.assertEqual(config["details"][0]["genome_build"], "rn4")
 
-            with open(f.replace("-bcbb-config.yaml", "-bcbb-command.txt")) as fh:
-                cl = fh.read().split()
-            self.assertIn("--no-google-report", cl)
-            self.assertIn("--only-run", cl)
             with open(f.replace("-bcbb-config.yaml", "-post_process.yaml")) as fh:
                 config = yaml.load(fh)
             self.assertEqual(config["custom_algorithms"][ANALYSIS_TYPE]["hybrid_bait"], 'rat_baits.interval_list')
             self.assertEqual(config["custom_algorithms"][ANALYSIS_TYPE]["hybrid_target"], 'rat_targets.interval_list')
             self.assertEqual(config["algorithm"]["num_cores"], 8)
                 
-
         for f in flist:
-            setup_sample(f, **{'analysis_type':ANALYSIS_TYPE, 'genome_build':'rn4', 'dry_run':False,
-                               'no_only_run':True, 'google_report':True, 'analysis_type':'Align_standard_seqcap'
-                               , 'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'amplicon':True, 'num_cores':8, 'distributed':False})
+            setup_sample(f, **{'analysis':ANALYSIS_TYPE, 'genome_build':'rn4', 'dry_run':False,
+                               'no_only_run':True, 'google_report':True,
+                               'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'amplicon':True, 'num_cores':8, 'distributed':False})
             with open(f, "r") as fh:
                 config = yaml.load(fh)
-            self.assertEqual(config["details"][0]["multiplex"][0]["genome_build"], "rn4")
-            with open(f.replace("-bcbb-config.yaml", "-bcbb-command.txt")) as fh:
-                cl = fh.read().split()
-            self.assertNotIn("--no-google-report", cl)
-            self.assertNotIn("--only-run", cl)
+            if config["details"][0].get("multiplex", None):
+                self.assertEqual(config["details"][0]["multiplex"][0]["genome_build"], "rn4")
+            else:
+                self.assertEqual(config["details"][0]["genome_build"], "rn4")
             with open(f.replace("-bcbb-config.yaml", "-post_process.yaml")) as fh:
                 config = yaml.load(fh)
             self.assertEqual(config["algorithm"]["mark_duplicates"], False)
@@ -249,15 +293,15 @@ class UtilsTest(SciLifeTest):
         setting targets and baits"""
         flist = find_samples(j_doe_00_05)
         for f in flist:
-            setup_sample(f, **{'analysis_type':ANALYSIS_TYPE, 'genome_build':'rn4', 'dry_run':False,
-                               'no_only_run':False, 'google_report':False, 'analysis_type':'Align_standard_seqcap',
+            setup_sample(f, **{'analysis':ANALYSIS_TYPE, 'genome_build':'rn4', 'dry_run':False,
+                               'no_only_run':False, 'google_report':False,
                                'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'amplicon':True, 'num_cores':8, 'distributed':False})
             with open(f.replace("-bcbb-config.yaml", "-bcbb-command.txt")) as fh:
                 cl = fh.read().split()
             (cl, platform_args) = run_bcbb_command(f)
             self.assertIn("automated_initial_analysis.py",cl)
-            setup_sample(f, **{'analysis_type':ANALYSIS_TYPE, 'genome_build':'rn4', 'dry_run':False,
-                               'no_only_run':False, 'google_report':False, 'analysis_type':'Align_standard_seqcap',
+            setup_sample(f, **{'analysis':ANALYSIS_TYPE, 'genome_build':'rn4', 'dry_run':False,
+                               'no_only_run':False, 'google_report':False, 
                                'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'amplicon':True, 'num_cores':8, 'distributed':True})
             with open(f.replace("-bcbb-config.yaml", "-bcbb-command.txt")) as fh:
                 cl = fh.read().split()
@@ -267,6 +311,7 @@ class UtilsTest(SciLifeTest):
     @unittest.skipIf(not os.getenv("DRMAA_LIBRARY_PATH"), "not running UtilsTest.test_platform: no $DRMAA_LIBRARY_PATH")
     def test_platform_args(self):
         """Test making platform args and changing them on the fly. """
+        from scilifelab.pm.ext.ext_distributed import make_job_template_args
         pp = os.path.join(j_doe_00_05, SAMPLES[1], FLOWCELL, "{}-post_process.yaml".format(SAMPLES[1]))
         with open(pp) as fh:
             config = yaml.load(fh)
@@ -281,3 +326,16 @@ class UtilsTest(SciLifeTest):
         self.assertEqual("00:01:00", nativeSpec[3:11])
                     
 
+    def test_sample_table(self):
+        """Test making a sample table"""
+        flist = find_samples(j_doe_00_01)
+        samples = sample_table(flist)
+        grouped = samples.groupby("sample")
+        self.assertEqual(len(grouped.groups["P001_101_index3"]), 2)
+        self.assertEqual(len(grouped.groups["P001_102_index6"]), 1)
+
+    def test_summarize_variants(self):
+        """Test summarizing variants"""
+        flist = find_samples(j_doe_00_01)
+        vcf_d = get_vcf_files(flist)
+            
