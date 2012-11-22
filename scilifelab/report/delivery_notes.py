@@ -28,13 +28,13 @@ def _get_ordered_million_reads(sample_name, ordered_million_reads):
     else:
         return ordered_million_reads
 
-def sample_status_note(project_id=None, flowcell_id=None, username=None, password=None, url=None,
+def sample_status_note(project_id=None, flowcell=None, username=None, password=None, url=None,
                        ordered_million_reads=None, uppnex_id=None, customer_reference=None,
                        projectdb="projects", samplesdb="samples", flowcelldb="flowcells", **kw):
     """Make a sample status note. Used keywords:
 
     :param project_id: project id
-    :param flowcell_id: flowcell id
+    :param flowcell: flowcell id
     :param username: db username
     :param password: db password
     :param url: db url
@@ -84,7 +84,7 @@ def sample_status_note(project_id=None, flowcell_id=None, username=None, passwor
     if not project:
         LOG.warn("No such project '{}'".format(project_id))
         return output_data
-    samples = s_con.get_samples(sample_prj=project_id, fc_id=flowcell_id)
+    samples = s_con.get_samples(sample_prj=project_id, fc_id=flowcell)
     if ordered_million_reads:
         if os.path.exists(ordered_million_reads):
             with open(ordered_million_reads) as fh:
@@ -149,7 +149,7 @@ def sample_status_note(project_id=None, flowcell_id=None, username=None, passwor
             outfile = "{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"])
         notes.append(make_note(outfile, headers, paragraphs, **s_param))
         s_param_out[s_param["scilifelab_name"]] = s_param
-    output_data["debug"].write(json.dumps(s_param_out))
+    output_data["debug"].write(json.dumps({'s_param': s_param_out, 'sample_runs':{s["name"]:s["barcode_name"] for s in samples}}))
     concatenate_notes(notes, "{}_{}_{}_sample_summary.pdf".format(project_id, s.get("date", None), s.get("flowcell", None)))
     return output_data
 
