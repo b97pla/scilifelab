@@ -112,6 +112,8 @@ class IlluminaRun():
     def parse_directory(self):
         """Traverse a CASAVA 1.8+ generated directory structure and return a dictionary
         """ 
+        raise NotImplementedError("This method is not yet implemented")
+    
         projects = []
         
         # Create a Flowcell object
