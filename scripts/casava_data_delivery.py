@@ -362,10 +362,14 @@ class TestDataDelivery(unittest.TestCase):
     def test_get_file_copy_list(self):
         """Get list of files to copy and the destinations
         """
+                     
+        so = sys.stdout
+        dn = open(os.devnull,"w")
         
         # Create a file hierarchy to search for files
         root = tempfile.mkdtemp(prefix="test_casava_data_delivery_")
         date = "111111"
+        fcs = ["{}_{}".format(date,fcid) for fcid in ["FCA","FCB"]]
         
         # Create some sample files
         exp_files = []
@@ -373,21 +377,50 @@ class TestDataDelivery(unittest.TestCase):
         for n in xrange(2):
             sample = tempfile.mkdtemp(dir=root)
             samples.append(os.path.basename(sample))
-            for fcid in ["FCA", "FCB"]:
+            for fcid in fcs:
                 fcdir = os.path.join(sample,fcid)
                 nophixdir = os.path.join(fcdir,"nophix")
                 for d in [fcdir,nophixdir]:
-                    os.mkdir(d)
-                    test_names = ["{:d}_{:s}_{:s}_1_1_fastq.txt.gz".format(random.randint(1,8),
-                                                                           date,
-                                                                           fcdir),
+                    os.makedirs(d)
+                    test_names = ["{:d}_{:s}_1_1_fastq.txt.gz".format(random.randint(1,8),
+                                                                           fcid),
                                   "{}_CGATGT_L001_R1_001.fastq.gz".format(samples[-1]),]
                     for test_name in test_names:
                         test_file = os.path.join(d,test_name)
                         open(test_file,"w").close()
-                        exp_files.append([samples[-1],fcid,os.path.basename(d) == "nophix",test_file])
+                        exp_files.append([samples[-1],
+                                          fcid,
+                                          os.path.basename(d) == "nophix",
+                                          test_file,
+                                          os.path.join(samples[-1],fcid),
+                                          create_final_name(os.path.basename(test_name),date,fcid.split("_")[-1],samples[-1])])
                     
-        # Get the list of files to copy
-        obs_to_copy = get_file_copy_list(root,"","FCA",False,False,[])
+        # Get the list of files to copy under various conditions
+        
+        for deliver_all_fcs in [False, True]:
+            for fcid in fcs:
+                for deliver_nophix in [False, True]:
+                    for skip_sample_list in [[],[samples[0]],[samples[1]],samples]:
+                        sys.stdout = dn
+                        obs_to_copy = sorted(get_file_copy_list(root,"",fcid,deliver_all_fcs,deliver_nophix,skip_sample_list))
+                        sys.stdout = so
+                        exp_to_copy = sorted([ef[3:6] for ef in exp_files if (deliver_all_fcs or ef[1] == fcid) and \
+                                              deliver_nophix == ef[2] and \
+                                              ef[0] not in skip_sample_list])
+                        #import pdb; pdb.set_trace()
+                        self.assertListEqual(obs_to_copy,
+                                             exp_to_copy,
+                                             "The files to copy result did not match the expected for " \
+                                             "{:s}".format(", ".join(["{:s}: {:s}".format(k,v) for k, v in \
+                                                                      dict(zip(["deliver_all_fcs",
+                                                                                "fcid",
+                                                                                "deliver_nophix",
+                                                                                "skip_samples"],
+                                                                               [str(deliver_all_fcs),
+                                                                                fcid,
+                                                                                str(deliver_nophix),
+                                                                                " ".join(skip_sample_list)])).items()])))
+          
+                        
         
             
