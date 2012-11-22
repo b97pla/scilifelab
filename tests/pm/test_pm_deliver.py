@@ -73,8 +73,9 @@ class PmProductionTest(PmTest):
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
-        self.assertEqual(data['P001_101_index3']['scilifelab_name'], 'P001_101_index3')
-        self.assertEqual(data['P001_101_index3']['customer_reference'], 'GnuGenome')
+        self.assertEqual(data['s_param']['P001_101_index3']['scilifelab_name'], 'P001_101_index3')
+        self.assertEqual(data['s_param']['P001_101_index3']['customer_reference'], 'GnuGenome')
+        self.assertEqual(len(data['sample_runs'].keys()), 2)
 
     def test_project_status(self):
         self.app = self.make_app(argv = ['report', 'project_status', self.examples["project"]],extensions=['scilifelab.pm.ext.ext_couchdb'])
