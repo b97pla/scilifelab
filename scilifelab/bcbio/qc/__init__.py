@@ -7,6 +7,7 @@ from uuid import uuid4
 import json
 import numpy as np
 import csv
+import collections
 
 from bs4 import BeautifulSoup
 
@@ -56,6 +57,12 @@ class MetricsParser():
             data[vals[0]]["Mapped_Multiple_Libraries"] = float(vals[3])
         return data
 
+    def parse_undemultiplexed_barcode_metrics(self, in_handle):
+
+        data = collections.defaultdict(list)
+        for line in in_handle:
+            data[line['Lane']].append({c:line[c] for c in in_handle.fieldnames if c != 'Lane'})
+        return data
 
 class ExtendedPicardMetricsParser(PicardMetricsParser):
     """Extend basic functionality and parse all picard metrics"""
@@ -570,6 +577,31 @@ class FlowcellRunMetricsParser(RunMetricsParser):
                 self.log.warn("No bc_metrics info for lane {}".format(lane))
         return lanes
 
+    def parse_undemultiplexed_barcode_metrics(self, fc_name, **kw):
+        """Parse the undetermined indices top barcodes materics
+        """
+        
+        metrics_file = os.path.join(self.path, "Unaligned", "Basecall_Stats_{}".format(fc_name[1:]), "Undemultiplexed_stats.metrics")
+        self.log.debug("parsing {}".format(metrics_file))
+        if not os.path.exists(metrics_file):
+            self.log.warn("No such file {}".format(metrics_file))
+            return {}
+        
+        lanes = {str(k):{} for k in self._lanes}
+        with open(metrics_file) as fh:
+            parser = MetricsParser()
+            in_handle = csv.DictReader(fh, dialect=csv.excel_tab)
+            data = parser.parse_undemultiplexed_barcode_metrics(in_handle)
+            for k in lanes.keys():
+                lanes[str(k)]["undemultiplexed_barcodes"] = collections.defaultdict(list)
+                try:
+                    for barcode in data[str(k)]:
+                        for key, val in barcode.items():
+                            lanes[str(k)]["undemultiplexed_barcodes"][key].append(val)
+                except KeyError:
+                    self.log.warn("No undemultiplexed barcode metrics for lane {}".format(k))
+        return lanes
+    
     def parse_demultiplex_stats_htm(self, fc_name, **kw):
         """Parse the Unaligned/Basecall_Stats_*/Demultiplex_Stats.htm file
         generated from CASAVA demultiplexing and returns barcode metrics.
