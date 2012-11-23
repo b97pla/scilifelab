@@ -126,10 +126,13 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
         project_sample = p_con.get_project_sample(project_id, s["barcode_name"])
         if project_sample:
             p_sample = project_sample.popitem()[1]
+            print p_sample
             if "library_prep" in p_sample.keys():
                 project_sample_d = {x:y for d in [v["sample_run_metrics"] for k,v in p_sample["library_prep"].iteritems()] for x,y in d.iteritems()}
             else:
-                project_sample_d = {x:y for x,y in p_sample["sample_run_metrics"].iteritems()}
+                project_sample_d = {x:y for x,y in p_sample.get("sample_run_metrics", {}).iteritems()}
+                if not p_sample.get("sample_run_metrics", {}):
+                    LOG.warn("No sample_run_metrics information for sample '{}', id '{}'\n\tProject summary information {}".format(s["name"], s["_id"], p_sample))
             if s["name"] not in project_sample_d.keys():
                 LOG.warn("'{}' not found in project sample run metrics for project".format(s["name"]) )
             else:
