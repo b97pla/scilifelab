@@ -89,11 +89,8 @@ def main():
     parser.add_argument('--no-mismatch', dest='mismatch', action='store_false', default=True, 
                         help="Require exact sequence match for barcode lookups. Default is to allow one mismatch")
     parser.add_argument('--csv-file', dest='csvfile', action='store', default=None, 
-                        help="The csv samplesheet for the run. If supplied, will be used together with --lane " \
+                        help="The csv samplesheet for the run. If supplied, will be used together with lane " \
                         "to exclude expected barcodes")
-    parser.add_argument('--no-mismatch', dest='mismatch', action='store_false', default=True, 
-                        help="Require exact match for excluding known barcodes. "\
-                        "Default is to allow one mismatch")
     parser.add_argument('infile', action='store',
                         help="The input FastQ file to process. Can be gzip compressed")
     parser.add_argument('lane', dest='lane', action='store', default=None, 
