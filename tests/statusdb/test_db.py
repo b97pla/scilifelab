@@ -64,6 +64,14 @@ class TestDbConnection(unittest.TestCase):
         LOG.info("Selecting on project, subsetting on flowcell: " + str(len(samples)))
         self.assertEqual(len(samples), 2)
 
+    def test_get_samples_wrong_info(self):
+        """Test getting samples when either flowcell or project id information is wrong"""
+        sample_con = SampleRunMetricsConnection(dbname="samples-test", username=self.user, password=self.pw, url=self.url)
+
+        samples = sample_con.get_samples(sample_prj="bogusproject", fc_id=self.examples["flowcell"])
+        LOG.info("Selecting on bogus project, subsetting on flowcell: " + str(len(samples)))
+        self.assertEqual(len(samples), 0)
+        
                 
     def test_get_project_sample_ids(self):
         """Test getting project sample ids"""
