@@ -61,7 +61,7 @@ class MetricsParser():
 
         data = collections.defaultdict(list)
         for line in in_handle:
-            data[line['Lane']].append({c:line[c] for c in in_handle.fieldnames if c != 'Lane'})
+            data[line['lane']].append({c:line[c] for c in in_handle.fieldnames if c != 'lane'})
         return data
 
 class ExtendedPicardMetricsParser(PicardMetricsParser):
