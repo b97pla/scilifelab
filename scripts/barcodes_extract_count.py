@@ -16,21 +16,19 @@ def extract_barcodes(fqfile, lane, nindex=25, casava18=True, offset=101, bclen=6
     c = Counter(bcx)
     c = remove_expected(c,expected,mismatch)
     counts = []
-    
+    header = ['lane', 'sequence', 'count', 'index_name']
     for bc, count in c.most_common(nindex):
-        counts.append({'Lane': lane,
-                       'Index': bc,
-                       'Reads': count,
-                       'Names': ','.join(map_index_name(bc,int(mismatch)))})
+        counts.append(dict(zip(header,
+                               [lane, bc, count, ','.join(map_index_name(bc,int(mismatch)))])))
         
-    return counts
+    return [header, counts]
 
-def write_metrics(counts):
+def write_metrics(header, counts):
     """Write the counts to stdout
     """
     # Write the metrics data
     if len(counts) > 0:
-        csvw = csv.DictWriter(sys.stdout, counts[0].keys(), dialect=csv.excel_tab)
+        csvw = csv.DictWriter(sys.stdout, fieldnames=header, dialect=csv.excel_tab)
         csvw.writeheader()
         csvw.writerows(counts)
           
@@ -93,7 +91,7 @@ def main():
                         "to exclude expected barcodes")
     parser.add_argument('infile', action='store',
                         help="The input FastQ file to process. Can be gzip compressed")
-    parser.add_argument('lane', dest='lane', action='store', default=None, 
+    parser.add_argument('lane', action='store', default=None, 
                         help="The lane to be analyzed")
     
     args = parser.parse_args()
@@ -101,8 +99,8 @@ def main():
     if args.csvfile is not None:
         expected = get_expected(args.csvfile,args.lane)
     
-    counts = extract_barcodes(args.infile, args.lane, args.nindex, args.casava18, args.offset, args.barcode_length, expected, args.mismatch)
-    write_metrics(counts)
+    header, counts = extract_barcodes(args.infile, args.lane, int(args.nindex), args.casava18, int(args.offset), int(args.barcode_length), expected, args.mismatch)
+    write_metrics(header, counts)
     
 if __name__ == "__main__":
     main()
