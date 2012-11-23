@@ -7,8 +7,8 @@ from scilifelab.utils.string import hamming_distance
 from scilifelab.illumina.hiseq import HiSeqRun
 from scilifelab.illumina import map_index_name
 from collections import Counter
-
-def extract_barcodes(fqfile, nindex, casava18, offset, bclen, mismatch, expected=[]):
+      
+def extract_barcodes(fqfile, lane, nindex=25, casava18=True, offset=101, bclen=6, expected=[], mismatch=True):
     """Parse the fastq file and extract barcodes. Return a dict structure suitable for upload to StatusDB
     """
     
@@ -18,22 +18,22 @@ def extract_barcodes(fqfile, nindex, casava18, offset, bclen, mismatch, expected
     counts = []
     
     for bc, count in c.most_common(nindex):
-        counts.append({'Index': bc,
+        counts.append({'Lane': lane,
+                       'Index': bc,
                        'Reads': count,
                        'Names': ','.join(map_index_name(bc,int(mismatch)))})
         
     return counts
 
 def write_metrics(counts):
-    """Write the counts to a csv stdout
+    """Write the counts to stdout
     """
-        
     # Write the metrics data
     if len(counts) > 0:
         csvw = csv.DictWriter(sys.stdout, counts[0].keys(), dialect=csv.excel_tab)
         csvw.writeheader()
         csvw.writerows(counts)
-        
+          
 def generate_mismatches(src):
     """
     Generate a list of all possible nucleotide sequences with one 
@@ -49,7 +49,7 @@ def generate_mismatches(src):
             seqs.append("".join(src_list))
         # Reset the mutated nucleotide
         src_list[i] = src[i]
-    
+        
     return list(set(seqs))
 
 def remove_expected(bc_counter, expected_bc, mismatch=False):
@@ -89,22 +89,22 @@ def main():
     parser.add_argument('--no-mismatch', dest='mismatch', action='store_false', default=True, 
                         help="Require exact sequence match for barcode lookups. Default is to allow one mismatch")
     parser.add_argument('--csv-file', dest='csvfile', action='store', default=None, 
-                        help="The csv samplesheet for the run. If supplied, will be used together with --lane to exclude expected barcodes")
-    parser.add_argument('--lane', dest='lane', action='store', default=None, 
-                        help="The lane to be analyzed. Used together with --csv-file to exclude expected barcodes")
-#    parser.add_argument('-m','--metrics-file', dest='outfile', action='store', default=None,
-#                        help="The output metrics file to write to. Default is stdout")
+                        help="The csv samplesheet for the run. If supplied, will be used together with --lane " \
+                        "to exclude expected barcodes")
+    parser.add_argument('--no-mismatch', dest='mismatch', action='store_false', default=True, 
+                        help="Require exact match for excluding known barcodes. "\
+                        "Default is to allow one mismatch")
     parser.add_argument('infile', action='store',
                         help="The input FastQ file to process. Can be gzip compressed")
-    
+    parser.add_argument('lane', dest='lane', action='store', default=None, 
+                        help="The lane to be analyzed")
     
     args = parser.parse_args()
-    assert args.csvfile is None or args.lane is not None, "--lane must be specified if --csv-file is supplied"
     expected = []
     if args.csvfile is not None:
         expected = get_expected(args.csvfile,args.lane)
     
-    counts = extract_barcodes(args.infile, int(args.nindex), args.casava18, int(args.offset), int(args.barcode_length), args.mismatch, expected)
+    counts = extract_barcodes(args.infile, args.lane, args.nindex, args.casava18, args.offset, args.barcode_length, expected, args.mismatch)
     write_metrics(counts)
     
 if __name__ == "__main__":
