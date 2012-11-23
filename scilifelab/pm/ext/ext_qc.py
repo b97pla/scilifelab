@@ -89,12 +89,79 @@ class RunMetricsController(AbstractBaseController):
     ##############################
     ## New structures
     ##############################
+    def _parse_samplesheet(self, runinfo, qc_objects, fc_date, fc_name, as_yaml=False):
+        """Parse samplesheet information and populate sample run metrics object"""
+        if as_yaml:
+            for info in runinfo:
+                if not info.get("multiplex", None):
+                    self.app.log.warn("No multiplex information for lane {}".format(info.get("lane")))
+                    sample = {}
+                    sample.update({k: info.get(k, None) for k in ('analysis', 'description', 'flowcell_id', 'lane')})
+                    sample_kw = dict(path=fcdir, flowcell=fc_name, date=fc_date, lane=sample.get('lane', None), barcode_name=sample.get('name', None), sample_prj=sample.get('sample_prj', None),
+                                     barcode_id=sample.get('barcode_id', None), sequence=sample.get('sequence', "NoIndex"))
+                for sample in info["multiplex"]:
+                    sample.update({k: info.get(k, None) for k in ('analysis', 'description', 'flowcell_id', 'lane')})
+                    sample_kw = dict(flowcell=fc_name, date=fc_date, lane=sample['lane'], barcode_name=sample['name'], sample_prj=sample.get('sample_prj', None),
+                                     barcode_id=sample['barcode_id'], sequence=sample.get('sequence', "NoIndex"))
+                
+                    parser = SampleRunMetricsParser(fcid)
+                    obj = sample_run_metrics(**sample_kw)
+                    obj["picard_metrics"] = parser.read_picard_metrics(**sample_kw)
+                    obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
+                    obj["bc_metrics"] = parser.parse_bc_metrics(**sample_kw)
+                    obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
+                    qc_objects.append(obj)
+        else:
+            for sample in runinfo[1:]:
+                d = dict(zip(runinfo[0], sample))
+                if self.app.pargs.project_id and self.app.pargs.project_id != d['SampleProject']:
+                    continue
+                if self.app.pargs.sample and self.app.pargs.sample != d['SampleID']:
+                    continue
+                
+                sampledir = os.path.join(os.path.abspath(self._meta.production_root_path), d['SampleProject'].replace("__", "."), d['SampleID'])
+                if not os.path.exists(sampledir):
+                    self.app.log.warn("No such sample directory: {}".format(sampledir))
+                    continue
+                sample_fcdir = os.path.join(sampledir, fc_fullname(self.pargs.flowcell))
+                if not os.path.exists(sample_fcdir):
+                    self.app.log.warn("No such sample flowcell directory: {}".format(sample_fcdir))
+                    continue
+                if not modified_within_days(sample_fcdir, self.pargs.mtime):
+                    continue
+                runinfo_yaml_file = os.path.join(sample_fcdir, "{}-bcbb-config.yaml".format(d['SampleID']))
+                if not os.path.exists(runinfo_yaml_file):
+                    self.app.log.warn("No such yaml file for sample: {}".format(runinfo_yaml_file))
+                    raise IOError(2, "No such yaml file for sample: {}".format(runinfo_yaml_file), runinfo_yaml_file)
+                with open(runinfo_yaml_file) as fh:
+                    runinfo_yaml = yaml.load(fh)
+                if not runinfo_yaml['details'][0].get("multiplex", None):
+                    self.app.log.warn("No multiplex information for sample {}".format(d['SampleID']))
+                    continue
+                sample_kw = dict(flowcell=fc_name, date=fc_date, lane=d['Lane'], barcode_name=d['SampleID'], sample_prj=d['SampleProject'].replace("__", "."), barcode_id=runinfo_yaml['details'][0]['multiplex'][0]['barcode_id'], sequence=runinfo_yaml['details'][0]['multiplex'][0]['sequence'])
+                parser = SampleRunMetricsParser(sample_fcdir)
+                obj = sample_run_metrics(**sample_kw)
+                obj["picard_metrics"] = parser.read_picard_metrics(**sample_kw)
+                obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
+                obj["bc_metrics"] = parser.parse_bc_metrics(**sample_kw)
+                obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
+                qc_objects.append(obj)
+        return qc_objects
+
     def _collect_pre_casava_qc(self):
         qc_objects = []
+        as_yaml = False
+        runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "{}.csv".format(fc_id(self.pargs.flowcell)))
         runinfo_yaml = os.path.join(os.path.abspath(self.pargs.flowcell), "run_info.yaml")
         try:
-            with open(runinfo_yaml) as fh:
-                runinfo = yaml.load(fh)
+            if os.path.exists(runinfo_csv):
+                with open(runinfo_csv) as fh:
+                    runinfo_reader = csv.reader(fh)
+                    runinfo = [x for x in runinfo_reader]
+            else:
+                as_yaml = True
+                with open(runinfo_yaml) as fh:
+                    runinfo = yaml.load(fh)
         except IOError as e:
             self.app.log.warn(str(e))
             raise e
@@ -113,24 +180,7 @@ class RunMetricsController(AbstractBaseController):
             qc_objects.append(fcobj)
         else:
             return qc_objects
-        for info in runinfo:
-            if not info.get("multiplex", None):
-                self.app.log.warn("No multiplex information for lane {}".format(info.get("lane")))
-                sample.update({k: info.get(k, None) for k in ('analysis', 'description', 'flowcell_id', 'lane')})
-                sample_kw = dict(path=fcdir, flowcell=fc_name, date=fc_date, lane=sample.get('lane', None), barcode_name=sample.get('name', None), sample_prj=sample.get('sample_prj', None),
-                                 barcode_id=sample.get('barcode_id', None), sequence=sample.get('sequence', "NoIndex"))
-            for sample in info["multiplex"]:
-                sample.update({k: info.get(k, None) for k in ('analysis', 'description', 'flowcell_id', 'lane')})
-                sample_kw = dict(flowcell=fc_name, date=fc_date, lane=sample['lane'], barcode_name=sample['name'], sample_prj=sample.get('sample_prj', None),
-                                 barcode_id=sample['barcode_id'], sequence=sample.get('sequence', "NoIndex"))
-                
-                parser = SampleRunMetricsParser(fcid)
-                obj = sample_run_metrics(**sample_kw)
-                obj["picard_metrics"] = parser.read_picard_metrics(**sample_kw)
-                obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
-                obj["bc_metrics"] = parser.parse_bc_metrics(**sample_kw)
-                obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
-                qc_objects.append(obj)
+        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, as_yaml=as_yaml)
         return qc_objects
 
     def _collect_casava_qc(self):
@@ -155,41 +205,7 @@ class RunMetricsController(AbstractBaseController):
             fcobj["illumina"].update({"Demultiplex_Stats" : parser.parse_demultiplex_stats_htm(**fc_kw)})
             fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(**fc_kw)
             qc_objects.append(fcobj)
-
-        for sample in runinfo[1:]:
-            d = dict(zip(runinfo[0], sample))
-            if self.app.pargs.project_id and self.app.pargs.project_id != d['SampleProject']:
-                continue
-            if self.app.pargs.sample and self.app.pargs.sample != d['SampleID']:
-                continue
-                
-            sampledir = os.path.join(os.path.abspath(self._meta.production_root_path), d['SampleProject'].replace("__", "."), d['SampleID'])
-            if not os.path.exists(sampledir):
-                self.app.log.warn("No such sample directory: {}".format(sampledir))
-                continue
-            sample_fcdir = os.path.join(sampledir, fc_fullname(self.pargs.flowcell))
-            if not os.path.exists(sample_fcdir):
-                self.app.log.warn("No such sample flowcell directory: {}".format(sample_fcdir))
-                continue
-            if not modified_within_days(sample_fcdir, self.pargs.mtime):
-                continue
-            runinfo_yaml_file = os.path.join(sample_fcdir, "{}-bcbb-config.yaml".format(d['SampleID']))
-            if not os.path.exists(runinfo_yaml_file):
-                self.app.log.warn("No such yaml file for sample: {}".format(runinfo_yaml_file))
-                raise IOError(2, "No such yaml file for sample: {}".format(runinfo_yaml_file), runinfo_yaml_file)
-            with open(runinfo_yaml_file) as fh:
-                runinfo_yaml = yaml.load(fh)
-            if not runinfo_yaml['details'][0].get("multiplex", None):
-                self.app.log.warn("No multiplex information for sample {}".format(d['SampleID']))
-                continue
-            sample_kw = dict(flowcell=fc_name, date=fc_date, lane=d['Lane'], barcode_name=d['SampleID'], sample_prj=d['SampleProject'].replace("__", "."), barcode_id=runinfo_yaml['details'][0]['multiplex'][0]['barcode_id'], sequence=runinfo_yaml['details'][0]['multiplex'][0]['sequence'])
-            parser = SampleRunMetricsParser(sample_fcdir)
-            obj = sample_run_metrics(**sample_kw)
-            obj["picard_metrics"] = parser.read_picard_metrics(**sample_kw)
-            obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
-            obj["bc_metrics"] = parser.parse_bc_metrics(**sample_kw)
-            obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
-            qc_objects.append(obj)
+        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name)
         return qc_objects
 
     @controller.expose(help="Upload run metrics to statusdb")
