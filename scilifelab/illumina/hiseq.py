@@ -71,20 +71,4 @@ class HiSeqRun(illumina.IlluminaRun):
                 ids.append(e['SampleID'])
         return ids
     
-    def _unmatched_dir(self):
-        """Returns the path to the folder containing undetermined index reads
-        """
-        return os.path.join(self.base,"Unaligned","Undetermined_indices")
-    
-    def get_unmatched_reads(self, lanes=range(1,9)):
-        """Return a list of fastq files with unmatched reads for each lane specified
-        """
-        
-        reads = []
-        for lane in lanes:
-            fq_pattern = os.path.join(self._unmatched_dir(),"Sample_lane{:d}".format(lane),"lane{l:d}_Undetermined_L00{l:d}_R[12]_*.fastq.gz".format(l=lane))
-            reads.append(glob.glob(fq_pattern))
-        
-        return reads
-    
              

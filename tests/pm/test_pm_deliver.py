@@ -55,6 +55,15 @@ class PmProductionTest(PmTest):
         new_s["name"] = "1_121015_BB002BBBXX_CGAACG"
         s_con.save(new_s)
 
+        s = s_con.get_entry("3_120924_AC003CCCXX_ACAGTG")
+        kw = copy.deepcopy(s)
+        del kw["_id"]
+        new_s = sample_run_metrics(**kw)
+        new_s["sample_prj"] = "j-doe_00_02"
+        new_s["sequence"] = "GGAAGG"
+        new_s["name"] = "3_120924_AC003CCCXX_GGAAGG"
+        s_con.save(new_s)
+
     @classmethod
     @unittest.skipIf(not has_couchdb, "No couchdb server running in http://localhost:5984")
     def tearDownClass(cls):
@@ -65,7 +74,9 @@ class PmProductionTest(PmTest):
         s = s_con.get_entry("1_121015_BB002BBBXX_CGAACG")
         doc = s_con.db.get(s["_id"])
         s_con.db.delete(doc)
-
+        s = s_con.get_entry("3_120924_AC003CCCXX_GGAAGG")
+        doc = s_con.db.get(s["_id"])
+        s_con.db.delete(doc)
 
     # Will currently fail since no PhiX in document
     def test_sample_status(self):
@@ -91,9 +102,9 @@ class PmProductionTest(PmTest):
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
-        self.assertEqual(data['P001_101_index3']['uppnex_project_id'], 'MyUppnexID')
-        self.assertEqual(data['P001_101_index3']['customer_reference'], 'MyCustomerReference')
-        self.assertEqual(data['P001_101_index3']['ordered_amount'], 10)
+        self.assertEqual(data['s_param']['P001_101_index3']['uppnex_project_id'], 'MyUppnexID')
+        self.assertEqual(data['s_param']['P001_101_index3']['customer_reference'], 'MyCustomerReference')
+        self.assertEqual(data['s_param']['P001_101_index3']['ordered_amount'], 10)
 
     def test_project_status_exclude_samples(self):
         self.app = self.make_app(argv = ['report', 'project_status', self.examples["project"], '--debug',  '--exclude_sample_ids', "{'P001_102':[]}"],extensions=['scilifelab.pm.ext.ext_couchdb'])
@@ -123,6 +134,15 @@ class PmProductionTest(PmTest):
         ordered = {x[0]:x[4] for x in data['table']}
         self.assertEqual(ordered["P001_101_index3"], 10)
         self.assertEqual(ordered["P001_102"], 20)
+
+    def test_bc_count(self):
+        """Test setting ordered amount to different values for different samples"""
+        self.app = self.make_app(argv = ['report', 'sample_status', self.examples["project"], self.examples["flowcell"],  '--debug',  '--bc_count', "{'P001_101_index3':1333333, 'P001_102_index6':666}"],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        handler.register(DeliveryReportController)
+        self._run_app()
+        data = ast.literal_eval(self.app._output_data['debug'].getvalue())
+        self.assertEqual(data['s_param']['P001_101_index3']['rounded_read_count'], "1.3 million")
+        self.assertEqual(data['s_param']['P001_102_index6']['rounded_read_count'], "666.0 ")
 
     def test_sample_aliases(self):
         """Test setting sample aliases to different values for different samples"""
@@ -157,3 +177,18 @@ class PmProductionTest(PmTest):
         barcodes = [x[2] for x in data['table'][1:]]
         self.assertEqual(len(data['table']), 5)
         self.assertIn("CGAACG", barcodes)
+
+        self.app = self.make_app(argv = ['report', 'sample-status', 'J.Doe_00_02', 'AC003CCCXX', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        handler.register(DeliveryReportController)
+        self._run_app()
+        data = ast.literal_eval(self.app._output_data['debug'].getvalue())
+        self.assertEqual(len(data['sample_runs'].keys()), 2)
+        self.assertNotIn("3_120924_AC003CCCXX_GGAAGG", data['sample_runs'].keys())
+
+        self.app = self.make_app(argv = ['report', 'sample-status', 'J.Doe_00_02', 'AC003CCCXX', '--project_alias', '["j-doe_00_02"]', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        handler.register(DeliveryReportController)
+        self._run_app()
+        data = ast.literal_eval(self.app._output_data['debug'].getvalue())
+        self.assertEqual(len(data['sample_runs'].keys()), 3)
+        self.assertIn("3_120924_AC003CCCXX_GGAAGG", data['sample_runs'].keys())
+

@@ -4,6 +4,7 @@ import re
 import itertools
 import ast
 import json
+import math
 from cStringIO import StringIO
 from collections import Counter
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, calc_avg_qv
@@ -12,6 +13,16 @@ from scilifelab.report.rl import make_note, concatenate_notes, sample_note_parag
 import scilifelab.log
 
 LOG = scilifelab.log.minimal_logger(__name__)
+
+
+# http://stackoverflow.com/questions/3154460/python-human-readable-large-numbers
+def _format_read_count(n):
+    if n is None:
+        return None
+    millnames=['', 'thousand', 'million']
+    millidx=max(0,min(len(millnames)-1,
+                      int(math.floor(math.log10(abs(n))/3.0))))
+    return '{} {}'.format(round(float(n)/10**(3*millidx),1), millnames[millidx])
 
 def _get_ordered_million_reads(sample_name, ordered_million_reads):
     """Retrieve ordered million reads for sample
@@ -28,9 +39,24 @@ def _get_ordered_million_reads(sample_name, ordered_million_reads):
     else:
         return ordered_million_reads
 
+def _get_bc_count(sample_name, bc_count):
+    """Retrieve barcode count for a sample
+
+    :param sample_name: sample name
+    :param bc_count: parsed option passed to application
+
+    :returns: barcode count or None"""
+    if isinstance(bc_count, dict):
+        if sample_name in bc_count:
+            return bc_count[sample_name]
+        else:
+            return bc_count.get("default", None)
+    else:
+        return bc_count
+
 def sample_status_note(project_id=None, flowcell=None, username=None, password=None, url=None,
-                       ordered_million_reads=None, uppnex_id=None, customer_reference=None,
-                       projectdb="projects", samplesdb="samples", flowcelldb="flowcells", **kw):
+                       ordered_million_reads=None, uppnex_id=None, customer_reference=None, bc_count=None,
+                       project_alias=[], projectdb="projects", samplesdb="samples", flowcelldb="flowcells", **kw):
     """Make a sample status note. Used keywords:
 
     :param project_id: project id
@@ -41,6 +67,7 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
     :param ordered_million_reads: number of ordered reads in millions
     :param uppnex_id: the uppnex id
     :param customer_reference: customer project name
+    :param project_alias: project alias name
     """
     ## Cutoffs
     cutoffs = {
@@ -84,18 +111,30 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
     if not project:
         LOG.warn("No such project '{}'".format(project_id))
         return output_data
-    samples = s_con.get_samples(sample_prj=project_id, fc_id=flowcell)
+    sample_run_list = s_con.get_samples(sample_prj=project_id, fc_id=flowcell)
+    if project_alias:
+        project_alias = ast.literal_eval(project_alias)
+        for p_alias in project_alias:
+            sample_run_list_tmp = s_con.get_samples(sample_prj=p_alias, fc_id=flowcell)
+            if sample_run_list_tmp:
+                sample_run_list.extend(sample_run_list_tmp)
     if ordered_million_reads:
         if os.path.exists(ordered_million_reads):
             with open(ordered_million_reads) as fh:
                 ordered_million_reads = json.load(fh)
         else:
             ordered_million_reads = ast.literal_eval(ordered_million_reads)
-    if len(samples) == 0:
-        LOG.warn("No samples for project '{}', flowcell '{}'. Maybe there are no sample run metrics in statusdb?".format(project_id, flowcell_id))
+    if bc_count:
+        if os.path.exists(bc_count):
+            with open(bc_count) as fh:
+                bc_count = json.load(fh)
+        else:
+            bc_count = ast.literal_eval(bc_count)
+    if len(sample_run_list) == 0:
+        LOG.warn("No samples for project '{}', flowcell '{}'. Maybe there are no sample run metrics in statusdb?".format(project_id, flowcell))
         return output_data
-    sample_count = Counter([x.get("barcode_name") for x in samples])
-    for s in samples:
+    sample_count = Counter([x.get("barcode_name") for x in sample_run_list])
+    for s in sample_run_list:
         s_param = {}
         LOG.debug("working on sample '{}', sample run metrics name '{}', id '{}'".format(s.get("barcode_name", None), s.get("name", None), s.get("_id", None)))
         s_param.update(parameters)
@@ -112,12 +151,14 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
         if s_param["avg_quality_score"] < cutoffs["qv_cutoff"]:
             qv_stat = "LOW"
         output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format(s["barcode_name"], s["lane"], s_param["phix_error_rate"], err_stat, s_param["avg_quality_score"], qv_stat))
-        s_param['rounded_read_count'] = round(float(s_param['rounded_read_count'])/1e6,1) if s_param['rounded_read_count'] else None
         s_param['ordered_amount'] = s_param.get('ordered_amount', p_con.get_ordered_amount(project_id))
         s_param['customer_reference'] = s_param.get('customer_reference', project.get('customer_reference'))
         s_param['uppnex_project_id'] = s_param.get('uppnex_project_id', project.get('uppnex_id'))
         if ordered_million_reads:
             s_param["ordered_amount"] = _get_ordered_million_reads(s["barcode_name"], ordered_million_reads)
+        if bc_count:
+            s_param["rounded_read_count"] = _get_bc_count(s["barcode_name"], bc_count)
+        s_param['rounded_read_count'] = _format_read_count(s_param['rounded_read_count'])# 
         if uppnex_id:
             s_param["uppnex_project_id"] = uppnex_id
         if customer_reference:
@@ -129,7 +170,9 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
             if "library_prep" in p_sample.keys():
                 project_sample_d = {x:y for d in [v["sample_run_metrics"] for k,v in p_sample["library_prep"].iteritems()] for x,y in d.iteritems()}
             else:
-                project_sample_d = {x:y for x,y in p_sample["sample_run_metrics"].iteritems()}
+                project_sample_d = {x:y for x,y in p_sample.get("sample_run_metrics", {}).iteritems()}
+                if not p_sample.get("sample_run_metrics", {}):
+                    LOG.warn("No sample_run_metrics information for sample '{}', barcode name '{}', id '{}'\n\tProject summary information {}".format(s["name"], s["barcode_name"], s["_id"], p_sample))
             if s["name"] not in project_sample_d.keys():
                 LOG.warn("'{}' not found in project sample run metrics for project".format(s["name"]) )
             else:
@@ -149,7 +192,7 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
             outfile = "{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"])
         notes.append(make_note(outfile, headers, paragraphs, **s_param))
         s_param_out[s_param["scilifelab_name"]] = s_param
-    output_data["debug"].write(json.dumps({'s_param': s_param_out, 'sample_runs':{s["name"]:s["barcode_name"] for s in samples}}))
+    output_data["debug"].write(json.dumps({'s_param': s_param_out, 'sample_runs':{s["name"]:s["barcode_name"] for s in sample_run_list}}))
     concatenate_notes(notes, "{}_{}_{}_sample_summary.pdf".format(project_id, s.get("date", None), s.get("flowcell", None)))
     return output_data
 
