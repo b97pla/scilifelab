@@ -135,6 +135,15 @@ class PmProductionTest(PmTest):
         self.assertEqual(ordered["P001_101_index3"], 10)
         self.assertEqual(ordered["P001_102"], 20)
 
+    def test_bc_count(self):
+        """Test setting ordered amount to different values for different samples"""
+        self.app = self.make_app(argv = ['report', 'sample_status', self.examples["project"], self.examples["flowcell"],  '--debug',  '--bc_count', "{'P001_101_index3':1333333, 'P001_102_index6':666}"],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        handler.register(DeliveryReportController)
+        self._run_app()
+        data = ast.literal_eval(self.app._output_data['debug'].getvalue())
+        self.assertEqual(data['s_param']['P001_101_index3']['rounded_read_count'], "1.3 million")
+        self.assertEqual(data['s_param']['P001_102_index6']['rounded_read_count'], "666.0 ")
+
     def test_sample_aliases(self):
         """Test setting sample aliases to different values for different samples"""
         self.app = self.make_app(argv = ['report', 'project_status', 'J.Doe_00_03', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])

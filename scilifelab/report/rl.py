@@ -1,9 +1,6 @@
 """Reportlab module for generating pdf documents"""
-
-import sys
 import os
 from datetime import datetime
-
 from pyPdf import PdfFileWriter, PdfFileReader
 from collections import OrderedDict
 from mako.template import Template
@@ -59,9 +56,8 @@ according to manufacturer's instructions. Base
 conversion using OLB v1.9, demultiplexed and
 converted to fastq using CASAVA v1.8. The quality scale
 is Sanger / phred33 / Illumina 1.8+."""))
-    
     paragraphs["Results"] = dict(style=h3,
-                                 tpl = Template("""${rounded_read_count} million reads in lane with PhiX
+                                 tpl = Template("""${rounded_read_count} reads in lane with PhiX
 error rate ${phix_error_rate}%. Average quality score
 ${avg_quality_score}."""))
     
