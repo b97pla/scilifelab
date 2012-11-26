@@ -511,7 +511,7 @@ class FlowcellRunMetricsParser(RunMetricsParser):
             self.log.warn("Reading file {} failed".format(infile))
             return {}
             
-    def parse_run_info_yaml(self, run_info_yaml="run_info.yaml"):
+    def parse_run_info_yaml(self, run_info_yaml="run_info.yaml", **kw):
         infile = os.path.join(os.path.abspath(self.path), run_info_yaml)
         self.log.debug("parse_run_info_yaml: going to read {}".format(infile))
         if not os.path.exists(infile):

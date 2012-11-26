@@ -249,6 +249,15 @@ class SampleRunMetricsConnection(Couch):
             sample_ids = list(set(fc_sample_ids) & set(prj_sample_ids))
         else:
             sample_ids = list(set(fc_sample_ids) | set(prj_sample_ids))
+        # Set to empty list if we actually had supplied a flowcell id and project id but one of them is non-existent
+        if fc_id and sample_prj:
+            if len(fc_sample_ids)==0:
+                sample_ids = []
+                self.log.warn("No such flowcell '{}' for project '{}'".format(fc_id, sample_prj))
+            elif len(prj_sample_ids)==0:
+                sample_ids = []
+                self.log.warn("No such project '{}' for flowcell '{}'".format(sample_prj, fc_id))
+
         self.log.debug("Number of samples: {}, number of fc samples: {}, number of project samples: {}".format(len(sample_ids), len(fc_sample_ids), len(prj_sample_ids)))
         return sample_ids
 

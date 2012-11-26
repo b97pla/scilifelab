@@ -5,7 +5,7 @@ import yaml
 from collections import OrderedDict
 from cStringIO import StringIO
 
-from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection
+from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, get_qc_data
 from scilifelab.bcbio.qc import SampleRunMetricsParser
 from scilifelab.log import minimal_logger
 from scilifelab.bcbio.run import find_samples
@@ -156,57 +156,65 @@ def _qc_info_header(project, application, output_data):
     output_data["stdout"].write(header_out + "\n")
     return output_data
 
-def application_qc(project=None, flowcell=None, application=None,
-                   user=None, password=None, url=None,
-                   use_ps_map=True, use_bc_map=False, check_consistency=False, **kw):
+def application_qc(project_id=None, flowcell=None, application=None,
+                   username=None, password=None, url=None,
+                   sampledb="samples", projectdb="projects", **kw):
     """Perform application specific qc on a project.
 
-    :param project: project identifier
+    :param project_id: project identifier
     :param flowcell: flowcell identifier
     :param application: application for which to perform qc
-    :param user: database username
+    :param username: database username
     :param password: database password
     :param url: database url
-    :param use_ps_map: use project summary mapping
-    :param use_bc_map: use barcode name mapping
-    :param check_consistency: check 
+    :param sampledb: samples database name
+    :param projectdb: project database name
     """
-    LOG.debug("Doing application qc for project {}, flowcell {}".format(project, flowcell))
+    LOG.debug("Doing application qc for project {}, flowcell {}".format(project_id, flowcell))
 
     output_data = {'stdout':StringIO(), 'stderr':StringIO()}
-    p_con = ProjectSummaryConnection(username=user, password=password, url=url)
-    project = p_con.get_entry(project)
-    qc_data = p_con.get_qc_data(project, flowcell)
+    p_con = ProjectSummaryConnection(dbname=projectdb, username=username, password=password, url=url)
+    s_con = SampleRunMetricsConnection(dbname=sampledb, username=username, password=password, url=url)
+    prj_summary = p_con.get_entry(project_id)
+    qc_data = get_qc_data(project_id, p_con, s_con, flowcell)
 
-    if not project is None:
-        qc_data = p_con.get_qc_data(project, flowcell)
-        if project.get("application") not in application_map.keys():
+    if not prj_summary is None:
+        qc_data = get_qc_data(project_id, p_con, s_con, flowcell)
+        if prj_summary.get("application") not in APPLICATION_MAP.keys():
             if not application:
                 LOG.warn("No such application {}. Please use the application option (available choices {})".format(application, ",".join(QC_CUTOFF.keys())))
                 return output_data
             application = application
         else:
-            application = application_map[project.get("application")]
+            application = APPLICATION_MAP[prj_summary.get("application")]
     else:
-        LOG.info("No such project {} in project summary. Trying to get qc data anyway.".format(project))
+        LOG.info("No such project {} in project summary. Trying to get qc data anyway.".format(project_id))
         if not application:
             LOG.warn("No application provided. Please use the application option (available choices {})".format(",".join(QC_CUTOFF.keys())))
             return output_data
-        s_con = SampleRunMetricsConnection(username=user, password=password, url=url)
-        qc_data = _get_sample_qc_data(project, application, s_con, flowcell)
+        qc_data = _get_sample_qc_data(project_id, application, s_con, flowcell)
 
-    output_data = _qc_info_header(project, application, output_data)
+    output_data = _qc_info_header(project_id, application, output_data)
     for k,v in sorted(qc_data.iteritems()):
         y = [str(x) for x in assess_qc(v, application)]
         output_data["stdout"].write("".join(y) + "\n")
     return output_data
 
-def fastq_screen(project=None, flowcell=None,
-                 user=None, password=None, url=None,
-                 use_ps_map=True, use_bc_map=False, check_consistency=False, **kw):
+def fastq_screen(project_id=None, flowcell=None,
+                 username=None, password=None, url=None, dbname="samples", **kw):
+    """Perform application specific qc on a project.
+
+    :param project_id: project identifier
+    :param flowcell: flowcell identifier
+    :param username: database username
+    :param password: database password
+    :param url: database url
+    :param dbname: samples database name
+    """
+    LOG.debug("Running fastq screen summary on project {}, flowcell ".format(project_id, flowcell))
     output_data = {'stdout':StringIO(), 'stderr':StringIO()}
-    s_con = SampleRunMetricsConnection(username=user, password=password, url=url)
-    samples = s_con.get_samples(fc_id=flowcell, sample_prj=project)
+    s_con = SampleRunMetricsConnection(dbname=dbname, username=username, password=password, url=url)
+    samples = s_con.get_samples(fc_id=flowcell, sample_prj=project_id)
     for s in samples:
         LOG.debug("Checking fastq_screen data for sample {}, id {}, project {}".format(s.get("name", None), s.get("_id", None), s.get("sample_prj", None)))
         fqscreen_data = s.get("fastq_scr", {})
