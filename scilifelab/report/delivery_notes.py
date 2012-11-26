@@ -30,7 +30,7 @@ def _get_ordered_million_reads(sample_name, ordered_million_reads):
 
 def sample_status_note(project_id=None, flowcell=None, username=None, password=None, url=None,
                        ordered_million_reads=None, uppnex_id=None, customer_reference=None,
-                       projectdb="projects", samplesdb="samples", flowcelldb="flowcells", **kw):
+                       project_alias=[], projectdb="projects", samplesdb="samples", flowcelldb="flowcells", **kw):
     """Make a sample status note. Used keywords:
 
     :param project_id: project id
@@ -41,6 +41,7 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
     :param ordered_million_reads: number of ordered reads in millions
     :param uppnex_id: the uppnex id
     :param customer_reference: customer project name
+    :param project_alias: project alias name
     """
     ## Cutoffs
     cutoffs = {
@@ -84,18 +85,24 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
     if not project:
         LOG.warn("No such project '{}'".format(project_id))
         return output_data
-    samples = s_con.get_samples(sample_prj=project_id, fc_id=flowcell)
+    sample_run_list = s_con.get_samples(sample_prj=project_id, fc_id=flowcell)
+    if project_alias:
+        project_alias = ast.literal_eval(project_alias)
+        for p_alias in project_alias:
+            sample_run_list_tmp = s_con.get_samples(sample_prj=p_alias, fc_id=flowcell)
+            if sample_run_list_tmp:
+                sample_run_list.extend(sample_run_list_tmp)
     if ordered_million_reads:
         if os.path.exists(ordered_million_reads):
             with open(ordered_million_reads) as fh:
                 ordered_million_reads = json.load(fh)
         else:
             ordered_million_reads = ast.literal_eval(ordered_million_reads)
-    if len(samples) == 0:
-        LOG.warn("No samples for project '{}', flowcell '{}'. Maybe there are no sample run metrics in statusdb?".format(project_id, flowcell_id))
+    if len(sample_run_list) == 0:
+        LOG.warn("No samples for project '{}', flowcell '{}'. Maybe there are no sample run metrics in statusdb?".format(project_id, flowcell))
         return output_data
-    sample_count = Counter([x.get("barcode_name") for x in samples])
-    for s in samples:
+    sample_count = Counter([x.get("barcode_name") for x in sample_run_list])
+    for s in sample_run_list:
         s_param = {}
         LOG.debug("working on sample '{}', sample run metrics name '{}', id '{}'".format(s.get("barcode_name", None), s.get("name", None), s.get("_id", None)))
         s_param.update(parameters)
@@ -129,7 +136,9 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
             if "library_prep" in p_sample.keys():
                 project_sample_d = {x:y for d in [v["sample_run_metrics"] for k,v in p_sample["library_prep"].iteritems()] for x,y in d.iteritems()}
             else:
-                project_sample_d = {x:y for x,y in p_sample["sample_run_metrics"].iteritems()}
+                project_sample_d = {x:y for x,y in p_sample.get("sample_run_metrics", {}).iteritems()}
+                if not p_sample.get("sample_run_metrics", {}):
+                    LOG.warn("No sample_run_metrics information for sample '{}', barcode name '{}', id '{}'\n\tProject summary information {}".format(s["name"], s["barcode_name"], s["_id"], p_sample))
             if s["name"] not in project_sample_d.keys():
                 LOG.warn("'{}' not found in project sample run metrics for project".format(s["name"]) )
             else:
@@ -149,7 +158,7 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
             outfile = "{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"])
         notes.append(make_note(outfile, headers, paragraphs, **s_param))
         s_param_out[s_param["scilifelab_name"]] = s_param
-    output_data["debug"].write(json.dumps({'s_param': s_param_out, 'sample_runs':{s["name"]:s["barcode_name"] for s in samples}}))
+    output_data["debug"].write(json.dumps({'s_param': s_param_out, 'sample_runs':{s["name"]:s["barcode_name"] for s in sample_run_list}}))
     concatenate_notes(notes, "{}_{}_{}_sample_summary.pdf".format(project_id, s.get("date", None), s.get("flowcell", None)))
     return output_data
 

@@ -186,7 +186,7 @@ def application_qc(project_id=None, flowcell=None, application=None,
                 return output_data
             application = application
         else:
-            application = application_map[prj_summary.get("application")]
+            application = APPLICATION_MAP[prj_summary.get("application")]
     else:
         LOG.info("No such project {} in project summary. Trying to get qc data anyway.".format(project_id))
         if not application:
