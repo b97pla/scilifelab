@@ -19,6 +19,8 @@ LOG = scilifelab.log.minimal_logger(__name__)
 def _format_read_count(n):
     if n is None:
         return None
+    if n == 0:
+        return '0'
     millnames=['', 'thousand', 'million']
     millidx=max(0,min(len(millnames)-1,
                       int(math.floor(math.log10(abs(n))/3.0))))

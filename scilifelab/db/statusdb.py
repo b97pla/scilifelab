@@ -326,7 +326,7 @@ class ProjectSummaryConnection(Couch):
             return None
         project_samples = project.get('samples', None)
         if barcode_name in project_samples.keys():
-            return {'sample_name':barcode_name, 'project_sample':project_samples[project_sample_name]}
+            return {'sample_name':barcode_name, 'project_sample':project_samples[barcode_name]}
         for project_sample_name in project_samples.keys():
             if not re.search(re_project_id_nr, barcode_name):
                 sample_id = re.search("(\d+)_?([A-Z])?_",barcode_name)
