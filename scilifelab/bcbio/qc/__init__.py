@@ -452,7 +452,7 @@ class SampleRunMetricsParser(RunMetricsParser):
             self.log.warn("No filter nophix metrics for lane {}".format(lane))
             return {"reads":None, "reads_aligned":None, "reads_fail_align":None}
 
-    def parse_bc_metrics(self, barcode_name, sample_prj, flowcell, lane, **kw):
+    def parse_bc_metrics(self, barcode_name, sample_prj, flowcell, lane, barcode_id, **kw):
         """Parse bc metrics at sample level"""
         self.log.debug("parse_bc_metrics for sample {}, project {} in flowcell {}".format(barcode_name, sample_prj, flowcell))
         pattern = "{}_[0-9]+_[0-9A-Za-z]+(_nophix)?[\._]bc[\._]metrics".format(lane)
@@ -564,7 +564,7 @@ class FlowcellRunMetricsParser(RunMetricsParser):
         lanes = {str(k):{} for k in self._lanes}
         for lane in self._lanes:
             pattern = "{}_[0-9]+_[0-9A-Za-z]+(_nophix)?[\._]bc[\._]metrics".format(lane)
-            lanes[str(lane)]["bc_metrics"] = {"reads":None, "reads_aligned":None, "reads_fail_align":None}
+            lanes[str(lane)]["bc_metrics"] = {}
             files = self.filter_files(pattern)
             self.log.debug("bc metrics files {}".format(",".join(files)))
             try:
