@@ -185,7 +185,7 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
         ## FIX ME: This is where we need a key in SampleRunMetrics that provides a mapping to a project sample name
         project_sample = p_con.get_project_sample(project_id, s["barcode_name"])
         if project_sample:
-            project_sample_item = project_sample.popitem()[1]
+            project_sample_item = project_sample['project_sample']
             if "library_prep" in project_sample_item.keys():
                 project_sample_d = {x:y for d in [v["sample_run_metrics"] for k,v in project_sample_item["library_prep"].iteritems()] for x,y in d.iteritems()}
             else:
@@ -278,7 +278,7 @@ def project_status_note(project_id=None, username=None, password=None, url=None,
     for s in sample_run_list:
         prj_sample = p_con.get_project_sample(project_id, s["barcode_name"])
         if prj_sample:
-            sample_name = prj_sample.popitem()[1].get("scilife_name", None)
+            sample_name = prj_sample['project_sample'].get("scilife_name", None)
             s_d = {s["name"] : {'sample':sample_name, 'id':s["_id"]}}
             samples.update(s_d)
         else:
