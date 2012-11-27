@@ -143,7 +143,7 @@ class RunMetricsController(AbstractBaseController):
                 obj = sample_run_metrics(**sample_kw)
                 obj["picard_metrics"] = parser.read_picard_metrics(**sample_kw)
                 obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
-                obj["bc_metrics"] = parser.parse_bc_metrics(**sample_kw)
+                obj["bc_count"] = parser.parse_bc_metrics(**sample_kw)
                 obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
                 qc_objects.append(obj)
         return qc_objects
@@ -248,7 +248,7 @@ class RunMetricsController(AbstractBaseController):
             if isinstance(obj, sample_run_metrics):
                 project_sample = p_con.get_project_sample(obj.get("sample_prj", None), obj.get("barcode_name", None))
                 if project_sample:
-                    obj["project_sample_name"] = project_sample.keys()[0]
+                    obj["project_sample_name"] = project_sample['sample_name']
                 dry("Saving object {}".format(repr(obj)), s_con.save(obj))
 
 def load():

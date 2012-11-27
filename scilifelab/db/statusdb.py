@@ -318,7 +318,7 @@ class ProjectSummaryConnection(Couch):
         :param use_bc_map: use and give precedence to the barcode match mapping to sample run metrics (default False)
         :param check_consistency: use both mappings and check consistency (default False)
 
-        :returns: project sample or None
+        :returns: dict(sample_name:project sample name, project_sample:project sample dict) or None
         """
         # library_prep = re.search("P[0-9]+_[0-9]+([A-F])", sample_run_name)
         project = self.get_entry(project_id)
@@ -326,12 +326,12 @@ class ProjectSummaryConnection(Couch):
             return None
         project_samples = project.get('samples', None)
         if barcode_name in project_samples.keys():
-            return {barcode_name: project_samples[barcode_name]}
+            return {'sample_name':barcode_name, 'project_sample':project_samples[project_sample_name]}
         for project_sample_name in project_samples.keys():
             if not re.search(re_project_id_nr, barcode_name):
                 sample_id = re.search("(\d+)_?([A-Z])?_",barcode_name)
                 if str(sample_id.group(1)) == str(project_sample_name):
-                    return {project_sample_name: project_samples[project_sample_name]}
+                    return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
                 m = re.search("(_index[0-9]+)", barcode_name)
                 if not m:
                     index = ""
@@ -339,26 +339,26 @@ class ProjectSummaryConnection(Couch):
                     index = m.group(1)
                     sample_id = re.search("([A-Za-z0-9\_]+)(\_index[0-9]+)?", barcode_name.replace(index, ""))
                     if str(sample_id.group(1)) == str(project_sample_name):
-                        return {project_sample_name: project_samples[project_sample_name]}
+                        return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
                     if str(sample_id.group(1)) == str(project_samples[project_sample_name].get("customer_name", None)):
-                        return {project_sample_name: project_samples[project_sample_name]}
+                        return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
                     # customer well names contain a 0, as in 11A07; run names don't always
                     # FIXME: a function should convert customer name to standard forms in cases like these
                     if str(sample_id.group(1)) == str(project_samples[project_sample_name].get("customer_name", None).replace("0", "")):
-                        return {project_sample_name: project_samples[project_sample_name]}
+                        return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
             else:
                 if str(barcode_name).startswith(str(project_sample_name)):
-                    return {project_sample_name: project_samples[project_sample_name]}
+                    return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
                 elif str(barcode_name).startswith(str(project_sample_name).rstrip("F")):
-                    return {project_sample_name: project_samples[project_sample_name]}
+                    return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
                 elif str(barcode_name).startswith(str(project_sample_name).rstrip("B")):
-                    return {project_sample_name: project_samples[project_sample_name]}
+                    return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
                 elif str(barcode_name).startswith(str(project_sample_name).rstrip("C")):
-                    return {project_sample_name: project_samples[project_sample_name]}
+                    return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
                 elif str(barcode_name).startswith(str(project_sample_name).rstrip("D")):
-                    return {project_sample_name: project_samples[project_sample_name]}
+                    return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
                 elif str(barcode_name).startswith(str(project_sample_name).rstrip("E")):
-                    return {project_sample_name: project_samples[project_sample_name]}
+                    return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
         return None
 
     def map_srm_to_name(self, project_id, include_all=True, **args):

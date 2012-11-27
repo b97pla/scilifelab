@@ -112,10 +112,13 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
         LOG.warn("No such project '{}'".format(project_id))
         return output_data
     sample_run_list = s_con.get_samples(sample_prj=project_id, fc_id=flowcell)
+    print "Got sample_run_list for {} {} ".format(project_id, flowcell) + str(sample_run_list)
     if project_alias:
         project_alias = ast.literal_eval(project_alias)
         for p_alias in project_alias:
+            print p_alias, flowcell
             sample_run_list_tmp = s_con.get_samples(sample_prj=p_alias, fc_id=flowcell)
+            print "sample list " + str(sample_run_list_tmp)
             if sample_run_list_tmp:
                 sample_run_list.extend(sample_run_list_tmp)
     if ordered_million_reads:
@@ -165,14 +168,15 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
             s_param["customer_reference"] = customer_reference
         ## FIX ME: This is where we need a key in SampleRunMetrics that provides a mapping to a project sample name
         project_sample = p_con.get_project_sample(project_id, s["barcode_name"])
+        print project_sample
         if project_sample:
-            p_sample = project_sample.popitem()[1]
-            if "library_prep" in p_sample.keys():
-                project_sample_d = {x:y for d in [v["sample_run_metrics"] for k,v in p_sample["library_prep"].iteritems()] for x,y in d.iteritems()}
+            project_sample_item = project_sample.popitem()[1]
+            if "library_prep" in project_sample_item.keys():
+                project_sample_d = {x:y for d in [v["sample_run_metrics"] for k,v in project_sample_item["library_prep"].iteritems()] for x,y in d.iteritems()}
             else:
-                project_sample_d = {x:y for x,y in p_sample.get("sample_run_metrics", {}).iteritems()}
-                if not p_sample.get("sample_run_metrics", {}):
-                    LOG.warn("No sample_run_metrics information for sample '{}', barcode name '{}', id '{}'\n\tProject summary information {}".format(s["name"], s["barcode_name"], s["_id"], p_sample))
+                project_sample_d = {x:y for x,y in project_sample_item.get("sample_run_metrics", {}).iteritems()}
+                if not project_sample_item.get("sample_run_metrics", {}):
+                    LOG.warn("No sample_run_metrics information for sample '{}', barcode name '{}', id '{}'\n\tProject summary information {}".format(s["name"], s["barcode_name"], s["_id"], project_sample_item))
             if s["name"] not in project_sample_d.keys():
                 LOG.warn("'{}' not found in project sample run metrics for project".format(s["name"]) )
             else:
@@ -180,7 +184,8 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
                     LOG.debug("project sample run metrics mapping found: '{}' : '{}'".format(s["name"], project_sample_d[s["name"]]))
                 else:
                     LOG.warn("inconsistent mapping for '{}': '{}' != '{}' (project summary id)".format(s["name"], s["_id"], project_sample_d[s["name"]]))
-            s_param['customer_name'] = project_sample.get("customer_name", None)
+            s_param['customer_name'] = project_sample_item.get("customer_name", None)
+            print project_sample_item.get("customer_name")
         else:
             s_param['customer_name'] = None
             LOG.warn("No project sample name found for sample run name '{}'".format(s["barcode_name"]))
