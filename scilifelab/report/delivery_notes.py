@@ -54,6 +54,19 @@ def _get_bc_count(sample_name, bc_count):
     else:
         return bc_count
 
+def _assert_flowcell_format(flowcell):
+    """Assert name of flowcell: "[A-Z0-9]+XX"
+
+    :param flowcell: flowcell id
+    
+    :returns: boolean
+    """
+    if flowcell is None:
+        return True
+    if not re.match("[A-Z0-9]+XX$", flowcell):
+        return False
+    return True
+
 def sample_status_note(project_id=None, flowcell=None, username=None, password=None, url=None,
                        ordered_million_reads=None, uppnex_id=None, customer_reference=None, bc_count=None,
                        project_alias=[], projectdb="projects", samplesdb="samples", flowcelldb="flowcells", **kw):
@@ -92,6 +105,10 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
     
     LOG.debug("got parameters {}".format(parameters))
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
+    if not _assert_flowcell_format(flowcell):
+        LOG.warn("Wrong flowcell format {}; skipping. Please use the flowcell id (format \"[A-Z0-9]+XX\")".format(flowcell) )
+        return output_data
+
     output_data["stdout"].write("\nQuality stats\n")
     output_data["stdout"].write("************************\n")
     output_data["stdout"].write("PhiX error cutoff: > {:3}\n".format(cutoffs['phix_err_cutoff']))
@@ -112,13 +129,10 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
         LOG.warn("No such project '{}'".format(project_id))
         return output_data
     sample_run_list = s_con.get_samples(sample_prj=project_id, fc_id=flowcell)
-    print "Got sample_run_list for {} {} ".format(project_id, flowcell) + str(sample_run_list)
     if project_alias:
         project_alias = ast.literal_eval(project_alias)
         for p_alias in project_alias:
-            print p_alias, flowcell
             sample_run_list_tmp = s_con.get_samples(sample_prj=p_alias, fc_id=flowcell)
-            print "sample list " + str(sample_run_list_tmp)
             if sample_run_list_tmp:
                 sample_run_list.extend(sample_run_list_tmp)
     if ordered_million_reads:
@@ -168,7 +182,6 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
             s_param["customer_reference"] = customer_reference
         ## FIX ME: This is where we need a key in SampleRunMetrics that provides a mapping to a project sample name
         project_sample = p_con.get_project_sample(project_id, s["barcode_name"])
-        print project_sample
         if project_sample:
             project_sample_item = project_sample.popitem()[1]
             if "library_prep" in project_sample_item.keys():
@@ -185,7 +198,6 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
                 else:
                     LOG.warn("inconsistent mapping for '{}': '{}' != '{}' (project summary id)".format(s["name"], s["_id"], project_sample_d[s["name"]]))
             s_param['customer_name'] = project_sample_item.get("customer_name", None)
-            print project_sample_item.get("customer_name")
         else:
             s_param['customer_name'] = None
             LOG.warn("No project sample name found for sample run name '{}'".format(s["barcode_name"]))
