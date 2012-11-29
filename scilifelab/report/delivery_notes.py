@@ -14,9 +14,17 @@ import scilifelab.log
 
 LOG = scilifelab.log.minimal_logger(__name__)
 
-
+def _round_read_count_in_millions(n):
+    """Round absolute read counts to million reads"""
+    if n is None:
+        return None
+    if n == 0:
+        return 0
+    return round(float(n)/10**(6),1)
+    
 # http://stackoverflow.com/questions/3154460/python-human-readable-large-numbers
 def _format_read_count(n):
+    """Format raw read counts to human readable format"""
     if n is None:
         return None
     if n == 0:
@@ -177,7 +185,8 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
             s_param["ordered_amount"] = _get_ordered_million_reads(s["barcode_name"], ordered_million_reads)
         if bc_count:
             s_param["rounded_read_count"] = _get_bc_count(s["barcode_name"], bc_count)
-        s_param['rounded_read_count'] = _format_read_count(s_param['rounded_read_count'])# 
+        else:
+            s_param["rounded_read_count"] = _round_read_count_in_millions(s_param["rounded_read_count"])
         if uppnex_id:
             s_param["uppnex_project_id"] = uppnex_id
         if customer_reference:
