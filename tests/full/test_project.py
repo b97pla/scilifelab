@@ -13,13 +13,13 @@ from scilifelab.utils.misc import filtered_walk
 
 LOG = logbook.Logger(__name__)
 
-j_doe_00_01 = os.path.abspath(os.path.join(os.curdir, "data", "production", "J.Doe_00_01"))
-j_doe_00_04 = os.path.abspath(os.path.join(os.curdir, "data", "projects", "j_doe_00_04"))
-
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 
+j_doe_00_01 = os.path.abspath(os.path.join(filedir, "data", "production", "J.Doe_00_01"))
+j_doe_00_04 = os.path.abspath(os.path.join(filedir, "data", "projects", "j_doe_00_04"))
+
 SAMPLE="P001_102_index6"
-SAMPLEFILE=os.path.join(os.curdir, "data", "projects", "j_doe_00_04", "samples.txt")
+SAMPLEFILE=os.path.join(filedir, "data", "projects", "j_doe_00_04", "samples.txt")
 
 @unittest.skipIf(not os.getenv("MAILTO"), "not running production test: set $MAILTO environment variable to your mail address to test mailsend")
 @unittest.skipIf(not os.getenv("DRMAA_LIBRARY_PATH"), "not running production test: no $DRMAA_LIBRARY_PATH")
@@ -42,7 +42,13 @@ class ProjectTest(PmFullTest):
         """Test running an amplicon project in project folder"""
         self.app = self.make_app(argv = ['project', 'run', 'j_doe_00_04', '--email', os.getenv("MAILTO"), '--restart', '--amplicon', '--drmaa', '-t', '00:05:00', '--partition', 'devel', '--sample', SAMPLE, '--debug', '--force', '--quiet'], extensions=['scilifelab.pm.ext.ext_distributed'])
         handler.register(ProjectController)
-        handler.register(BcbioRunController)
+        self._run_app()
+        os.chdir(filedir)
+
+    def test_project_merge_run(self):
+        """Test running an merged sample in project folder"""
+        self.app = self.make_app(argv = ['project', 'run', 'j_doe_00_04', '--email', os.getenv("MAILTO"), '-t', '00:15:00', '--partition', 'core', '--sample', "P001_101_index3", '--debug', '--force', '--quiet', '--num_cores', '1'], extensions=['scilifelab.pm.ext.ext_distributed'])
+        handler.register(ProjectController)
         self._run_app()
         os.chdir(filedir)
 
@@ -65,5 +71,17 @@ class ProjectTest(PmFullTest):
         self._run_app()
         os.chdir(filedir)
 
-
+    def test_project_monitor_job_fake_jobid(self):
+        """Add fake JOBID and make sure command doesn't fail"""
+        s = "P001_102_index6"
+        jobidfile = os.path.join(j_doe_00_04, s, "121015_BB002BBBXX", "JOBID")
+        LOG.info("Writing to jobid file {}".format(jobidfile))
+        with open(jobidfile, "w") as fh:
+            fh.write("1")
+        self.app = self.make_app(argv = ['project', 'run', 'j_doe_00_04', '--drmaa', '--partition', 'devel', '-t', '00:10:00', '--sample', s, '--debug', '--force', '--quiet'], extensions=['scilifelab.pm.ext.ext_distributed'])
+        handler.register(ProjectController)
+        handler.register(BcbioRunController)
+        self._run_app()
+        os.chdir(filedir)
+    
         

@@ -49,7 +49,7 @@ def process_fastq(fastq_r1, fastq_r2, bins, phred_offset, casava17):
     for r1 in fh_r1:
         r2 = fh_r2.next()
         assert fastq_utils.is_read_pair(r1,r2,not casava17), "FATAL: Read identifiers differ for paired reads ({:s} and {:s})".format(r1[0],r2[0])
-        
+
         bin = min(int(round(fastq_utils.avgQ(r1,phred_offset))),int(round(fastq_utils.avgQ(r2,phred_offset))))
         
         for b in bins:

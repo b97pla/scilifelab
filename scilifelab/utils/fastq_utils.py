@@ -18,7 +18,7 @@ class FastQParser:
         else:
             self._fh = fh
         self._records_read = 0
-        self._next = setup_next()
+        self._next = self.setup_next()
         
     def __iter__(self):
         return self

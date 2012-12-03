@@ -194,3 +194,18 @@ class CommandHandler(handler.CementBaseHandler):
                 except:
                     pass
         return self.dry("removing directory {}".format(d), runpipe)
+
+    def link(self, src, tgt):
+        """Wrapper for making links.
+
+        :param src: source link
+        :param tgt: target link
+        """
+        def runpipe():
+            if not os.path.exists(tgt):
+                try:
+                    os.symlink(src, tgt)
+                except:
+                    self.app.log.warn("Couldn't create link {} -> {}".format(tgt, src))
+                    pass
+        return self.dry("creating link {} -> {}".format(tgt, src), runpipe)

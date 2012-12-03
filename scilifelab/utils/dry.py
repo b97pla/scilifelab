@@ -86,3 +86,19 @@ def dry_backup(fn, ext=".bak", dry_run=True):
         shutil.copyfile(fn, fn_bak)
     return dry("making backup of file {} as ".format(fn, fn_bak), runpipe, dry_run)
     
+def dry_makedir(dname, dry_run=True):
+    """Make a directory if it doesn't exist.
+    
+    :param dname: directory to create
+    """
+    def runpipe():
+        if not os.path.exists(dname):
+            try:
+                os.makedirs(dname)
+            except OSError:
+                if not os.path.isdir(dname):
+                    raise
+        else:
+            LOG.warn("Directory %s already exists" % dname)
+        return dname
+    return dry("Make directory %s" % dname, runpipe, dry_run)
