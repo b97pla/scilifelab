@@ -148,8 +148,6 @@ class PmProductionTest(PmTest):
         self.assertEqual(data['s_param']['P001_101_index3']['success'], 'Successful run.')
         self.assertEqual(data['s_param']['P001_102_index6']['success'], 'The yield may be lower than expected.')
 
-
-
     def test_sample_aliases(self):
         """Test setting sample aliases to different values for different samples"""
         self.app = self.make_app(argv = ['report', 'project_status', 'J.Doe_00_03', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])

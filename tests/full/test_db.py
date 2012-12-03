@@ -149,3 +149,12 @@ class TestQCUpload(PmFullTest):
         self.assertEqual(s1["project_sample_name"], "P001_101_index3")
         self.assertEqual(s2["project_sample_name"], "P001_102")
 
+
+class TestMetricsParser(PmFullTest):
+    def setUp(self):
+        self.sample_kw = dict(flowcell="AC003CCCXX", date="120924", lane=1, barcode_name='P001_101_index3', sample_prj="J.Doe_00_01".replace("__", "."), barcode_id="1", sequence="TGACCA")
+
+    def test_get_bc_count(self):
+        parser = SampleRunMetricsParser(os.path.join(project_dir, "J.Doe_00_01", "P001_101_index3", "120924_AC003CCCXX"))
+        bc_count = parser.get_bc_count(**self.sample_kw)
+        self.assertEqual(bc_count, 0)

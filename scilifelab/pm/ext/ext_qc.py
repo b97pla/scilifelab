@@ -108,7 +108,7 @@ class RunMetricsController(AbstractBaseController):
                     obj = sample_run_metrics(**sample_kw)
                     obj["picard_metrics"] = parser.read_picard_metrics(**sample_kw)
                     obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
-                    obj["bc_metrics"] = parser.parse_bc_metrics(**sample_kw)
+                    obj["bc_count"] = parser.get_bc_count(**sample_kw)
                     obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
                     qc_objects.append(obj)
         else:
@@ -143,7 +143,7 @@ class RunMetricsController(AbstractBaseController):
                 obj = sample_run_metrics(**sample_kw)
                 obj["picard_metrics"] = parser.read_picard_metrics(**sample_kw)
                 obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
-                obj["bc_count"] = parser.parse_bc_metrics(**sample_kw)
+                obj["bc_count"] = parser.get_bc_count(**sample_kw)
                 obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
                 qc_objects.append(obj)
         return qc_objects
