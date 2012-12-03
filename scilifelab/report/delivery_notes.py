@@ -14,6 +14,7 @@ import scilifelab.log
 
 LOG = scilifelab.log.minimal_logger(__name__)
 
+# http://stackoverflow.com/questions/3154460/python-human-readable-large-numbers
 def _round_read_count_in_millions(n):
     """Round absolute read counts to million reads"""
     LOG.debug("Rounding read count: got {}".format(n))
@@ -21,7 +22,9 @@ def _round_read_count_in_millions(n):
         return None
     if n == 0:
         return 0
-    return round(float(n)/10**(6),1)
+    round_factor = [2,2,1]
+    millidx = max(0, min(len(round_factor) - 1, int(math.floor(math.log10(abs(n))/3.0))))
+    return round(float(n)/10**(6),round_factor[millidx])
 
 def _get_ordered_million_reads(sample_name, ordered_million_reads):
     """Retrieve ordered million reads for sample

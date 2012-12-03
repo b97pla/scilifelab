@@ -137,7 +137,7 @@ class PmProductionTest(PmTest):
 
     def test_bc_count(self):
         """Test setting ordered amount to different values for different samples"""
-        self.app = self.make_app(argv = ['report', 'sample_status', self.examples["project"], self.examples["flowcell"],  '--debug',  '--bc_count', "{'P001_101_index3':1.3, 'P001_102_index6':0.02}"],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['report', 'sample_status', self.examples["project"], self.examples["flowcell"],  '--debug',  '--phix', '0.1', '--bc_count', "{'P001_101_index3':1300000, 'P001_102_index6':20000}"],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
