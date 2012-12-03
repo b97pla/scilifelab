@@ -83,13 +83,11 @@ class RunMetricsController(AbstractBaseController):
                             continue
                     s["project_sample_name"] = names_d[barcode_name]
                     s_con.save(s)
-
                 
-
     ##############################
     ## New structures
     ##############################
-    def _parse_samplesheet(self, runinfo, qc_objects, fc_date, fc_name, as_yaml=False):
+    def _parse_samplesheet(self, runinfo, qc_objects, fc_date, fc_name, fcdir, as_yaml=False):
         """Parse samplesheet information and populate sample run metrics object"""
         if as_yaml:
             for info in runinfo:
@@ -104,11 +102,11 @@ class RunMetricsController(AbstractBaseController):
                     sample_kw = dict(flowcell=fc_name, date=fc_date, lane=sample['lane'], barcode_name=sample['name'], sample_prj=sample.get('sample_prj', None),
                                      barcode_id=sample['barcode_id'], sequence=sample.get('sequence', "NoIndex"))
                 
-                    parser = SampleRunMetricsParser(fcid)
+                    parser = SampleRunMetricsParser(fcdir)
                     obj = sample_run_metrics(**sample_kw)
                     obj["picard_metrics"] = parser.read_picard_metrics(**sample_kw)
                     obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
-                    obj["bc_metrics"] = parser.parse_bc_metrics(**sample_kw)
+                    obj["bc_count"] = parser.get_bc_count(**sample_kw)
                     obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
                     qc_objects.append(obj)
         else:
@@ -143,7 +141,7 @@ class RunMetricsController(AbstractBaseController):
                 obj = sample_run_metrics(**sample_kw)
                 obj["picard_metrics"] = parser.read_picard_metrics(**sample_kw)
                 obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
-                obj["bc_count"] = parser.parse_bc_metrics(**sample_kw)
+                obj["bc_count"] = parser.get_bc_count(**sample_kw)
                 obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
                 qc_objects.append(obj)
         return qc_objects
@@ -152,6 +150,9 @@ class RunMetricsController(AbstractBaseController):
         qc_objects = []
         as_yaml = False
         runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "{}.csv".format(fc_id(self.pargs.flowcell)))
+        if not os.path.exists(runinfo_csv):
+            LOG.warn("No such file {}: trying fallback SampleSheet.csv".format(runinfo_csv))
+            runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "SampleSheet.csv")
         runinfo_yaml = os.path.join(os.path.abspath(self.pargs.flowcell), "run_info.yaml")
         try:
             if os.path.exists(runinfo_csv):
@@ -180,12 +181,15 @@ class RunMetricsController(AbstractBaseController):
             qc_objects.append(fcobj)
         else:
             return qc_objects
-        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, as_yaml=as_yaml)
+        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, as_yaml=as_yaml)
         return qc_objects
 
     def _collect_casava_qc(self):
         qc_objects = []
         runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "{}.csv".format(fc_id(self.pargs.flowcell)))
+        if not os.path.exists(runinfo_csv):
+            LOG.warn("No such file {}: trying fallback SampleSheet.csv".format(runinfo_csv))
+            runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "SampleSheet.csv")
         try:
             with open(runinfo_csv) as fh:
                 runinfo_reader = csv.reader(fh)
@@ -206,7 +210,7 @@ class RunMetricsController(AbstractBaseController):
             fcobj["illumina"].update({"Demultiplex_Stats" : parser.parse_demultiplex_stats_htm(**fc_kw)})
             fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(**fc_kw)
             qc_objects.append(fcobj)
-        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name)
+        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir)
         return qc_objects
 
     @controller.expose(help="Upload run metrics to statusdb")
