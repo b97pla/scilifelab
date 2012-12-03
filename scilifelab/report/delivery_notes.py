@@ -14,15 +14,13 @@ import scilifelab.log
 
 LOG = scilifelab.log.minimal_logger(__name__)
 
-
-# http://stackoverflow.com/questions/3154460/python-human-readable-large-numbers
-def _format_read_count(n):
+def _round_read_count_in_millions(n):
+    """Round absolute read counts to million reads"""
     if n is None:
         return None
-    millnames=['', 'thousand', 'million']
-    millidx=max(0,min(len(millnames)-1,
-                      int(math.floor(math.log10(abs(n))/3.0))))
-    return '{} {}'.format(round(float(n)/10**(3*millidx),1), millnames[millidx])
+    if n == 0:
+        return 0
+    return round(float(n)/10**(6),1)
 
 def _get_ordered_million_reads(sample_name, ordered_million_reads):
     """Retrieve ordered million reads for sample
@@ -53,6 +51,19 @@ def _get_bc_count(sample_name, bc_count):
             return bc_count.get("default", None)
     else:
         return bc_count
+
+def _assert_flowcell_format(flowcell):
+    """Assert name of flowcell: "[A-Z0-9]+XX"
+
+    :param flowcell: flowcell id
+    
+    :returns: boolean
+    """
+    if flowcell is None:
+        return True
+    if not re.match("[A-Z0-9]+XX$", flowcell):
+        return False
+    return True
 
 def sample_status_note(project_id=None, flowcell=None, username=None, password=None, url=None,
                        ordered_million_reads=None, uppnex_id=None, customer_reference=None, bc_count=None,
@@ -92,6 +103,10 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
     
     LOG.debug("got parameters {}".format(parameters))
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
+    if not _assert_flowcell_format(flowcell):
+        LOG.warn("Wrong flowcell format {}; skipping. Please use the flowcell id (format \"[A-Z0-9]+XX\")".format(flowcell) )
+        return output_data
+
     output_data["stdout"].write("\nQuality stats\n")
     output_data["stdout"].write("************************\n")
     output_data["stdout"].write("PhiX error cutoff: > {:3}\n".format(cutoffs['phix_err_cutoff']))
@@ -158,7 +173,8 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
             s_param["ordered_amount"] = _get_ordered_million_reads(s["barcode_name"], ordered_million_reads)
         if bc_count:
             s_param["rounded_read_count"] = _get_bc_count(s["barcode_name"], bc_count)
-        s_param['rounded_read_count'] = _format_read_count(s_param['rounded_read_count'])# 
+        else:
+            s_param["rounded_read_count"] = _round_read_count_in_millions(s_param["rounded_read_count"])
         if uppnex_id:
             s_param["uppnex_project_id"] = uppnex_id
         if customer_reference:
@@ -166,13 +182,13 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
         ## FIX ME: This is where we need a key in SampleRunMetrics that provides a mapping to a project sample name
         project_sample = p_con.get_project_sample(project_id, s["barcode_name"])
         if project_sample:
-            p_sample = project_sample.popitem()[1]
-            if "library_prep" in p_sample.keys():
-                project_sample_d = {x:y for d in [v["sample_run_metrics"] for k,v in p_sample["library_prep"].iteritems()] for x,y in d.iteritems()}
+            project_sample_item = project_sample['project_sample']
+            if "library_prep" in project_sample_item.keys():
+                project_sample_d = {x:y for d in [v["sample_run_metrics"] for k,v in project_sample_item["library_prep"].iteritems()] for x,y in d.iteritems()}
             else:
-                project_sample_d = {x:y for x,y in p_sample.get("sample_run_metrics", {}).iteritems()}
-                if not p_sample.get("sample_run_metrics", {}):
-                    LOG.warn("No sample_run_metrics information for sample '{}', barcode name '{}', id '{}'\n\tProject summary information {}".format(s["name"], s["barcode_name"], s["_id"], p_sample))
+                project_sample_d = {x:y for x,y in project_sample_item.get("sample_run_metrics", {}).iteritems()}
+                if not project_sample_item.get("sample_run_metrics", {}):
+                    LOG.warn("No sample_run_metrics information for sample '{}', barcode name '{}', id '{}'\n\tProject summary information {}".format(s["name"], s["barcode_name"], s["_id"], project_sample_item))
             if s["name"] not in project_sample_d.keys():
                 LOG.warn("'{}' not found in project sample run metrics for project".format(s["name"]) )
             else:
@@ -180,7 +196,7 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
                     LOG.debug("project sample run metrics mapping found: '{}' : '{}'".format(s["name"], project_sample_d[s["name"]]))
                 else:
                     LOG.warn("inconsistent mapping for '{}': '{}' != '{}' (project summary id)".format(s["name"], s["_id"], project_sample_d[s["name"]]))
-            s_param['customer_name'] = project_sample.get("customer_name", None)
+            s_param['customer_name'] = project_sample_item.get("customer_name", None)
         else:
             s_param['customer_name'] = None
             LOG.warn("No project sample name found for sample run name '{}'".format(s["barcode_name"]))
@@ -259,7 +275,7 @@ def project_status_note(project_id=None, username=None, password=None, url=None,
     for s in sample_run_list:
         prj_sample = p_con.get_project_sample(project_id, s["barcode_name"])
         if prj_sample:
-            sample_name = prj_sample.popitem()[1].get("scilife_name", None)
+            sample_name = prj_sample['project_sample'].get("scilife_name", None)
             s_d = {s["name"] : {'sample':sample_name, 'id':s["_id"]}}
             samples.update(s_d)
         else:

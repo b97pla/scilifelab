@@ -11,11 +11,15 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from reportlab.rl_config import defaultPageSize
+import scilifelab.log
+
+LOG = scilifelab.log.minimal_logger(__name__)
 
 FILEPATH=os.path.dirname(os.path.realpath(__file__))
 
 def sequencing_success(parameters, cutoffs):
-    """Set sequencing success for a sample.
+    """Set sequencing success for a sample. It is assumed that ordered
+    comparisons are done in units "millions".
 
     :param parameters: Collected parameters for a sample
     :param cutoffs: Cutoff values for key QC data
@@ -29,7 +33,8 @@ def sequencing_success(parameters, cutoffs):
         else:
             if float(parameters['phix_error_rate']) > cutoffs['phix_err_cutoff']: success_message += "High average error rate."
             if float(parameters['rounded_read_count']) < float(parameters['ordered_amount']): success_message += "The yield may be lower than expected."
-    except:
+    except ValueError as e:
+        LOG.warn(e)
         success_message = "Could not assess success or failure of run."
     return success_message
 
