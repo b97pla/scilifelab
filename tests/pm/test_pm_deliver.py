@@ -137,12 +137,16 @@ class PmProductionTest(PmTest):
 
     def test_bc_count(self):
         """Test setting ordered amount to different values for different samples"""
-        self.app = self.make_app(argv = ['report', 'sample_status', self.examples["project"], self.examples["flowcell"],  '--debug',  '--bc_count', "{'P001_101_index3':1333333, 'P001_102_index6':666}"],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['report', 'sample_status', self.examples["project"], self.examples["flowcell"],  '--debug',  '--phix', '0.1', '--bc_count', "{'P001_101_index3':1300000, 'P001_102_index6':20000}"],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
-        self.assertEqual(data['s_param']['P001_101_index3']['rounded_read_count'], "1.3 million")
-        self.assertEqual(data['s_param']['P001_102_index6']['rounded_read_count'], "666.0 ")
+        self.assertEqual(data['s_param']['P001_101_index3']['ordered_amount'], 0.1)
+        self.assertEqual(data['s_param']['P001_102_index6']['ordered_amount'], 0.1)
+        self.assertEqual(data['s_param']['P001_101_index3']['rounded_read_count'], 1.3)
+        self.assertEqual(data['s_param']['P001_102_index6']['rounded_read_count'], 0.02)
+        self.assertEqual(data['s_param']['P001_101_index3']['success'], 'Successful run.')
+        self.assertEqual(data['s_param']['P001_102_index6']['success'], 'The yield may be lower than expected.')
 
     def test_sample_aliases(self):
         """Test setting sample aliases to different values for different samples"""
