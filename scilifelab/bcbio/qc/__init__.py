@@ -421,7 +421,7 @@ class SampleRunMetricsParser(RunMetricsParser):
             return {}
 
     def read_fastqc_metrics(self, barcode_name, sample_prj, lane, flowcell, barcode_id, **kw):
-        self.log.debug("read_fastq_metrics for sample {}, project {}, lane {} in run {}".format(barcode_name, sample_prj, lane, flowcell))
+        self.log.debug("read_fastqc_metrics for sample {}, project {}, lane {} in run {}".format(barcode_name, sample_prj, lane, flowcell))
         if barcode_name == "unmatched":
             return
         pattern = "fastqc/{}_[0-9]+_[0-9A-Za-z]+(_nophix)?_{}-*".format(lane, barcode_id)
@@ -432,8 +432,9 @@ class SampleRunMetricsParser(RunMetricsParser):
             fqparser = ExtendedFastQCParser(fastqc_dir)
             stats = fqparser.get_fastqc_summary()
             return {'stats':stats}
-        except:
-            self.log.warn("no fastq screen metrics for sample {}".format(barcode_name))
+        except Exception as e:
+            self.log.warn("Exception: {}".format(e))
+            self.log.warn("no fastqc metrics for sample {} using pattern '{}'".format(barcode_name, pattern))
             return {'stats':{}}
 
     def parse_filter_metrics(self, **kw):
