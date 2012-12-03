@@ -16,6 +16,7 @@ LOG = scilifelab.log.minimal_logger(__name__)
 
 def _round_read_count_in_millions(n):
     """Round absolute read counts to million reads"""
+    LOG.debug("Rounding read count: got {}".format(n))
     if n is None:
         return None
     if n == 0:
@@ -33,22 +34,23 @@ def _get_ordered_million_reads(sample_name, ordered_million_reads):
         if sample_name in ordered_million_reads:
             return ordered_million_reads[sample_name]
         else:
-            return ordered_million_reads.get("default", None)
+            return ordered_million_reads.get("default", -1)
     else:
         return ordered_million_reads
 
-def _get_bc_count(sample_name, bc_count):
+def _get_bc_count(sample_name, bc_count, sample_run):
     """Retrieve barcode count for a sample
 
     :param sample_name: sample name
     :param bc_count: parsed option passed to application
+    :param sample_run: sample run object
 
     :returns: barcode count or None"""
     if isinstance(bc_count, dict):
         if sample_name in bc_count:
             return bc_count[sample_name]
         else:
-            return bc_count.get("default", None)
+            return bc_count.get("default", sample_run.get("bc_count", -1))
     else:
         return bc_count
 
@@ -67,7 +69,8 @@ def _assert_flowcell_format(flowcell):
 
 def sample_status_note(project_id=None, flowcell=None, username=None, password=None, url=None,
                        ordered_million_reads=None, uppnex_id=None, customer_reference=None, bc_count=None,
-                       project_alias=[], projectdb="projects", samplesdb="samples", flowcelldb="flowcells", **kw):
+                       project_alias=[], projectdb="projects", samplesdb="samples", flowcelldb="flowcells",
+                       phix=None, **kw):
     """Make a sample status note. Used keywords:
 
     :param project_id: project id
@@ -79,6 +82,7 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
     :param uppnex_id: the uppnex id
     :param customer_reference: customer project name
     :param project_alias: project alias name
+    :param phix: phix error rate
     """
     ## Cutoffs
     cutoffs = {
@@ -155,7 +159,7 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
         s_param.update(parameters)
         s_param.update({key:s[srm_to_parameter[key]] for key in srm_to_parameter.keys()})
         fc = "{}_{}".format(s.get("date"), s.get("flowcell"))
-        s_param["phix_error_rate"] = fc_con.get_phix_error_rate(str(fc), s["lane"])
+        s_param["phix_error_rate"] = phix if phix else fc_con.get_phix_error_rate(str(fc), s["lane"])
         s_param['avg_quality_score'] = calc_avg_qv(s)
         if not s_param['avg_quality_score']:
             LOG.warn("Calculation of average quality failed for sample {}, id {}".format(s.get("name"), s.get("_id")))
@@ -163,6 +167,8 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
         qv_stat = "OK"
         if s_param["phix_error_rate"] > cutoffs["phix_err_cutoff"]:
             err_stat = "HIGH"
+        elif s_param["phix_error_rate"] == -1:
+            err_stat = "N/A"
         if s_param["avg_quality_score"] < cutoffs["qv_cutoff"]:
             qv_stat = "LOW"
         output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format(s["barcode_name"], s["lane"], s_param["phix_error_rate"], err_stat, s_param["avg_quality_score"], qv_stat))
@@ -172,7 +178,7 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
         if ordered_million_reads:
             s_param["ordered_amount"] = _get_ordered_million_reads(s["barcode_name"], ordered_million_reads)
         if bc_count:
-            s_param["rounded_read_count"] = _get_bc_count(s["barcode_name"], bc_count)
+            s_param["rounded_read_count"] = _round_read_count_in_millions(_get_bc_count(s["barcode_name"], bc_count, s))
         else:
             s_param["rounded_read_count"] = _round_read_count_in_millions(s_param["rounded_read_count"])
         if uppnex_id:
@@ -201,7 +207,7 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
             s_param['customer_name'] = None
             LOG.warn("No project sample name found for sample run name '{}'".format(s["barcode_name"]))
         s_param['success'] = sequencing_success(s_param, cutoffs)
-        s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None or s_param[k] ==  ""})
+        s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None or s_param[k] ==  "" or s_param[k] == -1.0})
         if sample_count[s.get("barcode_name")] > 1:
             outfile = "{}_{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"], s["lane"])
         else:
