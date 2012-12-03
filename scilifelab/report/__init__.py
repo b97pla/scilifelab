@@ -27,6 +27,10 @@ def sequencing_success(parameters, cutoffs):
     :returns: string
     """
     success_message = ''
+    LOG.debug("Received parameters {}".format(parameters))
+    if not parameters['ordered_amount']:
+        LOG.warn("No ordered amount provided. Please check the project summary and make sure min_m_reads_per_sample_ordered is a number.")
+        return "Could not assess success or failure of run."
     try:
         if float(parameters['phix_error_rate']) < cutoffs['phix_err_cutoff'] and float(parameters['rounded_read_count']) > float(parameters['ordered_amount']):
             success_message += "Successful run."
