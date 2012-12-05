@@ -421,7 +421,7 @@ class SampleRunMetricsParser(RunMetricsParser):
             return {}
 
     def read_fastqc_metrics(self, barcode_name, sample_prj, lane, flowcell, barcode_id, **kw):
-        self.log.debug("read_fastq_metrics for sample {}, project {}, lane {} in run {}".format(barcode_name, sample_prj, lane, flowcell))
+        self.log.debug("read_fastqc_metrics for sample {}, project {}, lane {} in run {}".format(barcode_name, sample_prj, lane, flowcell))
         if barcode_name == "unmatched":
             return
         pattern = "fastqc/{}_[0-9]+_[0-9A-Za-z]+(_nophix)?_{}-*".format(lane, barcode_id)
@@ -432,8 +432,9 @@ class SampleRunMetricsParser(RunMetricsParser):
             fqparser = ExtendedFastQCParser(fastqc_dir)
             stats = fqparser.get_fastqc_summary()
             return {'stats':stats}
-        except:
-            self.log.warn("no fastq screen metrics for sample {}".format(barcode_name))
+        except Exception as e:
+            self.log.warn("Exception: {}".format(e))
+            self.log.warn("no fastqc metrics for sample {} using pattern '{}'".format(barcode_name, pattern))
             return {'stats':{}}
 
     def parse_filter_metrics(self, **kw):
@@ -452,14 +453,14 @@ class SampleRunMetricsParser(RunMetricsParser):
             self.log.warn("No filter nophix metrics for lane {}".format(lane))
             return {"reads":None, "reads_aligned":None, "reads_fail_align":None}
 
-    def parse_bc_metrics(self, barcode_name, sample_prj, flowcell, lane, barcode_id, **kw):
-        """Parse bc metrics at sample level"""
-        self.log.debug("parse_bc_metrics for sample {}, project {} in flowcell {}".format(barcode_name, sample_prj, flowcell))
+    def get_bc_count(self, barcode_name, sample_prj, flowcell, lane, barcode_id, **kw):
+        """Parse bc metrics at sample level and get *bc_count* for a sample run!"""
+        self.log.debug("get_bc_count for sample {}, project {} in flowcell {}".format(barcode_name, sample_prj, flowcell))
         pattern = "{}_[0-9]+_[0-9A-Za-z]+(_nophix)?[\._]bc[\._]metrics".format(lane)
         files = self.filter_files(pattern)
         if len(files) == 0:
             self.log.debug("no bc metrics files for sample {}; pattern {}".format(barcode_name, pattern))
-            return {}
+            return None
         self.log.debug("files {}".format(",".join(files)))
         try:
             parser = MetricsParser()
@@ -469,7 +470,7 @@ class SampleRunMetricsParser(RunMetricsParser):
             return data[str(barcode_id)]
         except:
             self.log.warn("No bc_metrics info for lane {}".format(lane))
-            return {}
+            return None
 
 
 class FlowcellRunMetricsParser(RunMetricsParser):
