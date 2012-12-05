@@ -31,8 +31,9 @@ setup(name = "scilifelab",
       test_suite = 'nose.collector',
       packages=find_packages(exclude=['tests']),
       package_data = {'scilifelab':[
-            'data/grf/*',
-            ]}
+          'data/grf/*',
+          'data/templates/*',
+          ]}
       )
 
 os.system("git rev-parse --short --verify HEAD > ~/.scilifelab_version")

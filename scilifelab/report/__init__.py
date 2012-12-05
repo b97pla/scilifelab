@@ -16,7 +16,7 @@ import scilifelab.log
 LOG = scilifelab.log.minimal_logger(__name__)
 
 FILEPATH=os.path.dirname(os.path.realpath(__file__))
-
+             
 def sequencing_success(parameters, cutoffs):
     """Set sequencing success for a sample. It is assumed that ordered
     comparisons are done in units "millions".
