@@ -2,12 +2,13 @@
 import os
 from datetime import datetime
 from scilifelab.log import minimal_logger
+from mako.template import Template
 
 # Set minimal logger
 LOG = minimal_logger(__name__)
 
 # Now
-now = datetime.datetime.now()
+now = datetime.now()
 
 # Set sll_logo file
 FILEPATH=os.path.dirname(os.path.realpath(__file__))
