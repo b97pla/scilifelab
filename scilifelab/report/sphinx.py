@@ -31,12 +31,6 @@ def _install_sphinx_files(path, **kw):
     :param path: path
     :param kw: keyword arguments for formatting
     """
-    kw.update({'date':now.strftime("%Y-%m-%d"),
-               'year': now.year,
-               'project_lc':kw.get('project_name'),
-               'author':'N/A',
-               'description':'N/A',
-               })
     if not os.path.exists(os.path.join(path, "Makefile")):
         with open(os.path.join(path, "Makefile"), "w") as fh:
             fh.write(sphinx_templates['make'].render(**kw))
@@ -48,12 +42,18 @@ def make_sphinx_sample_table(data):
     """Format sample table"""
     pass
 
-def make_rest_note(outfile, report="sample_report", **kw):
+def make_rest_note(outfile, outdir="sphinx", report="sample_report", **kw):
     """Make reSt-formatted note."""
-    sphinx_path = os.path.join(os.path.basename(outfile), "sphinx")
+    sphinx_path = os.path.join(os.path.dirname(outfile), outdir)
+    kw.update({'date':now.strftime("%Y-%m-%d"),
+               'year': now.year,
+               'project_lc':kw.get('project_name'),
+               'author':'N/A',
+               'description':'N/A',
+               })
     if not os.path.exists(sphinx_path):
         os.makedirs(sphinx_path)
         _install_sphinx_files(sphinx_path, **kw)
-    with open(outfile, "w") as fh:
+    with open(os.path.join(outdir, os.path.basename(outfile)), "w") as fh:
         fh.write(report_templates[report].render(**kw))
     

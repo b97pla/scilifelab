@@ -13,27 +13,27 @@ ${date}
 Project name
 ^^^^^^^^^^^^
 
-${project_id} ${customer_reference}
+${project_name} ${customer_reference}
 
 UPPNEX project id
 ^^^^^^^^^^^^^^^^^
 
-${uppnex_id}
+${uppnex_project_id}
 
 Sequence data directories
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-/proj/${uppnex_id}/INBOX/${project_id}
+/proj/${uppnex_project_id}/INBOX/${project_name}
 
 Samples
 ^^^^^^^
 
-${sampletable}
+${success}
 
 Comments
 ^^^^^^^^
 
-${sequencing_status}
+${success}
 
 
 Information

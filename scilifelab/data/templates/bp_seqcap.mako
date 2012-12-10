@@ -187,7 +187,3 @@ journals.org/cgi/content/abstract/25/14/1754.
 pubmed/19505943.
 [11] James T Robinson et al. "Integrative genomics viewer". In: Nat Biotech 29.1 (Jan. 2011), pp. 24-26. URL:
 http://dx.doi.org/10.1038/nbt.1754.
-
-
-
-
