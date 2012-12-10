@@ -1,8 +1,11 @@
+.. |SLL_LOGO_SMALL| image:: ${sll_logo_small}
+
+
+|SLL_LOGO_SMALL|
+
 ===================
 Project status note
 ===================
-:Info: See <http://docutils.sf.net/rst.html> for introductory docs.
-
 
 SciLifeLab Stockholm
 --------------------
@@ -13,7 +16,7 @@ ${date}
 Project name
 ^^^^^^^^^^^^
 
-${project_name} ${customer_reference}
+${project_name} ${'({})'.format(customer_reference) if customer_reference not in ['', 'N/A'] else ''}
 
 UPPNEX project id
 ^^^^^^^^^^^^^^^^^
@@ -28,12 +31,12 @@ Sequence data directories
 Samples
 ^^^^^^^
 
-${success}
+${sample_table}
 
 Comments
 ^^^^^^^^
 
-${success}
+${finished}
 
 
 Information

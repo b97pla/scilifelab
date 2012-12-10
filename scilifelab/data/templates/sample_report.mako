@@ -1,7 +1,10 @@
+.. |SLL_LOGO_SMALL| image:: /home/peru/opt/scilifelab.git/scilifelab/report/../data/grf/sll_logo_small.gif
+
+|SLL_LOGO_SMALL|
+
 ======================
 Raw data delivery note
 ======================
-:Info: See <http://docutils.sf.net/rst.html> for introductory docs.
 
 SciLifeLab Stockholm
 --------------------
