@@ -217,7 +217,7 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
         else:
             outfile = "{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"])
         notes.append(make_note(outfile, headers, paragraphs, **s_param))
-        make_rest_note(outfile, **s_param)
+        make_rest_note(outfile.replace(".pdf", ".rst"), **s_param)
         s_param_out[s_param["scilifelab_name"]] = s_param
     output_data["debug"].write(json.dumps({'s_param': s_param_out, 'sample_runs':{s["name"]:s["barcode_name"] for s in sample_run_list}}))
     concatenate_notes(notes, "{}_{}_{}_sample_summary.pdf".format(project_id, s.get("date", None), s.get("flowcell", None)))
