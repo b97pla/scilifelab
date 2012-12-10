@@ -186,8 +186,8 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', '${project}.tex', u'${project} Documentation',
-   u'${author}', 'manual'),
+  ('index', '${project}.tex', u'${project} Documentation', u'${author}', 'manual'),
+  ${latex_documents}
 ]
 
 # The name of an image file (relative to this directory) to place at the top of

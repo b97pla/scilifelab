@@ -175,20 +175,19 @@ References
 [2] URL: https://github.com/chapmanb/bcbb.
 [3] URL: genome.ucsc.edu.
 [4] URL: www.ensembl.org.
-[5] URL: http://www.broadinstitute.org/gsa/wiki/index.php/Best_Practice_Varian
-t_Detection_with_the_GATK_v3.
+[5] URL: http://www.broadinstitute.org/gsa/wiki/index.php/Best_Practice_Variant_Detection_with_the_GATK_v3.
 [6] P Cingolani. snpEff: Variant effect prediction. 2012. URL: http://snpeff.sourceforge.net.
-[7] Petr Danecek et al. “The variant call format and VCFtools”. In: Bioinformatics (Oxford, England) 27.15
-(Aug. 2011). PMID: 21653522, pp. 2156–2158. URL: http://www.ncbi.nlm.nih.gov/pubmed/2
-1653522.
-[8] Mark A DePristo et al. “A framework for variation discovery and genotyping using next-generation
-DNA sequencing data”. In: Nature Genetics 43.5 (May 2011). PMID: 21478889, pp. 491–498. URL: htt
-p://www.ncbi.nlm.nih.gov/pubmed/21478889.
-[9] Heng Li and Richard Durbin. “Fast and accurate short read alignment with Burrows-Wheeler transform”.
-In: Bioinformatics 25.14 (July 2009), pp. 1754–1760. URL: http://bioinformatics.oxford
+[7] Petr Danacek et al. "The variant call format and VCFtools". In: Bioinformatics (Oxford, England) 27.15 (Aug. 2011). PMID: 21653522, pp. 2156-2158. URL: http://www.ncbi.nlm.nih.gov/pubmed/21653522.
+[8] Mark A DePristo et al. "A framework for variation discovery and genotyping using next-generation DNA sequencing data". In: Nature Genetics 43.5 (May 2011). PMID: 21478889, pp. 491-498. URL: http://www.ncbi.nlm.nih.gov/pubmed/21478889.
+[9] Heng Li and Richard Durbin. "Fast and accurate short read alignment with Burrows-Wheeler transform".
+In: Bioinformatics 25.14 (July 2009), pp. 1754-1760. URL: http://bioinformatics.oxford
 journals.org/cgi/content/abstract/25/14/1754.
-[10] Heng Li et al. “The Sequence Alignment/Map format and SAMtools”. In: Bioinformatics (Oxford, England)
-25.16 (Aug. 2009). PMID: 19505943, pp. 2078–2079. URL: http://www.ncbi.nlm.nih.gov/
+[10] Heng Li et al. "The Sequence Alignment/Map format and SAMtools". In: Bioinformatics (Oxford, England)
+25.16 (Aug. 2009). PMID: 19505943, pp. 2078-2079. URL: http://www.ncbi.nlm.nih.gov/
 pubmed/19505943.
-[11] James T Robinson et al. “Integrative genomics viewer”. In: Nat Biotech 29.1 (Jan. 2011), pp. 24–26. URL:
+[11] James T Robinson et al. "Integrative genomics viewer". In: Nat Biotech 29.1 (Jan. 2011), pp. 24-26. URL:
 http://dx.doi.org/10.1038/nbt.1754.
+
+
+
+
