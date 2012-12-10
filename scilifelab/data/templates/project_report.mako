@@ -1,7 +1,5 @@
-.. |SLL_LOGO_SMALL| image:: ${sll_logo_small}
-
-
-|SLL_LOGO_SMALL|
+.. image:: ${sll_logo_small}
+   :align: left
 
 ===================
 Project status note

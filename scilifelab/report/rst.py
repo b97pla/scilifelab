@@ -5,6 +5,7 @@ from datetime import datetime
 from scilifelab.log import minimal_logger
 from mako.template import Template
 from mako.exceptions import RichTraceback
+from cStringIO import StringIO
 
 # Set minimal logger
 LOG = minimal_logger(__name__)
@@ -85,11 +86,46 @@ def make_rest_note(outfile, sample_table=None, outdir="rst", report="sample_repo
                'stylefile': os.path.join(TEMPLATEPATH, "rst", "scilife.txt"),
                'sll_logo_small':sll_logo_small,
                })
-    if not os.path.exists(sphinx_path):
-        os.makedirs(sphinx_path)
+    if not os.path.exists(rst_path):
+        os.makedirs(rst_path)
     # add makefile if not present
-    _install_makefile(sphinx_path, **kw)
+    _install_makefile(rst_path, **kw)
     # Write report note
     with open(os.path.join(outdir, os.path.basename(outfile)), "w") as fh:
         fh.write(_render(report_templates[report], **kw))
+    
+def make_sample_rest_notes(concat_outfile, s_param_list, outdir="rst"):
+    """Make reST-formatted sample note and concatenated ditto
+
+    :param outdir: output directory
+    :param concat_outfile: concatenated outfile
+    :param s_param_list: list of samples parameter dictionaries
+    """
+    concatenated_rst = StringIO()
+    for s_param in s_param_list:
+        if s_param["outfile"].endswith(".pdf"):
+            s_param["outfile"] = s_param["outfile"].replace(".pdf", ".rst")
+        rst_path = os.path.join(os.path.dirname(s_param["outfile"]), outdir)
+        s_param.update({'date':"{:%B %d, %Y}".format(datetime.now()),
+                        'year': now.year,
+                        'project_lc':s_param.get('project_name'),
+                        'author':'N/A',
+                        'description':'N/A',
+                        'stylefile': os.path.join(TEMPLATEPATH, "rst", "scilife.txt"),
+                        'sll_logo_small':sll_logo_small,
+                        })
+        if not os.path.exists(rst_path):
+            os.makedirs(rst_path)
+        # add makefile if not present
+        _install_makefile(rst_path, **s_param)
+        # Write report note
+        rst_out = _render(report_templates["sample_report"], **s_param)
+        with open(os.path.join(outdir, os.path.basename(s_param["outfile"])), "w") as fh:
+            fh.write(rst_out)
+        concatenated_rst.write(rst_out)
+        concatenated_rst.write(".. raw:: pdf\n\n   PageBreak\n\n")
+
+    # Write concatenated outfile
+    with open(os.path.join(outdir, concat_outfile), "w") as fh:
+        fh.write(concatenated_rst.getvalue())
     

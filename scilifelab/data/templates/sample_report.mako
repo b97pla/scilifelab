@@ -1,15 +1,15 @@
-.. |SLL_LOGO_SMALL| image:: /home/peru/opt/scilifelab.git/scilifelab/report/../data/grf/sll_logo_small.gif
-
-|SLL_LOGO_SMALL|
+.. image:: ${sll_logo_small}
+   :align: left
 
 ======================
 Raw data delivery note
 ======================
 
 SciLifeLab Stockholm
---------------------
+-----------------------
 
 ${date}
+---------------------------------
 
 Project name
 ^^^^^^^^^^^^

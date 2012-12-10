@@ -25,3 +25,4 @@ latexpdf:
 	$(RST2PDF) $(OPTS) $<
 	@echo
 	@echo "Build finished."
+
