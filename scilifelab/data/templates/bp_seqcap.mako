@@ -1,3 +1,6 @@
+.. image:: ${sll_logo_small}
+   :align: right
+
 ================================
 Analysis report sequence capture
 ================================

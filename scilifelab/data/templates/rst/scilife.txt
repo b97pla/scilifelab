@@ -208,6 +208,10 @@
       parent: normal
       alignment: TA_CENTER
 
+    widepar:
+      parent: null
+      width: 150%
+
     attribution:
       parent: bodytext
       alignment: TA_RIGHT

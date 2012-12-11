@@ -1,5 +1,5 @@
 .. image:: ${sll_logo_small}
-   :align: left
+   :align: right
 
 ===================
 Project status note
