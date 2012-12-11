@@ -32,6 +32,7 @@ class RunMetricsController(AbstractBaseController):
             (['--sample_prj'], dict(help="Sample project name, as in 'J.Doe_00_01'", default=None, action="store", type=str)),
             (['--project_id'], dict(help="Project identifier, as in 'J.Doe_00_01'", default=None, action="store", type=str)),
             (['--names'], dict(help="Sample name mapping from barcode name to project name as a JSON string, as in \"{'sample_run_name':'project_run_name'}\". Mapping can also be given in a file", default=None, action="store", type=str)),
+            (['--extensive_matching'], dict(help="Perform extensive barcode to project sample name matcing", default=False, action="store_true")),
             ]
 
     def _process_args(self):
@@ -82,6 +83,15 @@ class RunMetricsController(AbstractBaseController):
                         if not query_yes_no("'project_sample_name':{} for sample {}; are you sure you want to overwrite?".format(s["project_sample_name"], s["name"]), force=self.pargs.force):
                             continue
                     s["project_sample_name"] = names_d[barcode_name]
+                    s_con.save(s)
+        else:
+            self.app.log.info("Trying to use extensive matching...")
+            p_con = ProjectSummaryConnection(dbname=self.app.config.get("db", "projects"), **vars(self.app.pargs))
+            for s in samples:
+                project_sample = p_con.get_project_sample(self.pargs.sample_prj, s["barcode_name"], extensive_matching=True)
+                if project_sample:
+                    self.app.log.info("using mapping '{} : {}'...".format(s["barcode_name"], project_sample["sample_name"]))
+                    s["project_sample_name"] = project_sample["sample_name"]
                     s_con.save(s)
                 
     ##############################
@@ -250,7 +260,7 @@ class RunMetricsController(AbstractBaseController):
             if isinstance(obj, FlowcellRunMetricsDocument):
                 dry("Saving object {}".format(repr(obj)), fc_con.save(obj))
             if isinstance(obj, SampleRunMetricsDocument):
-                project_sample = p_con.get_project_sample(obj.get("sample_prj", None), obj.get("barcode_name", None))
+                project_sample = p_con.get_project_sample(obj.get("sample_prj", None), obj.get("barcode_name", None), self.pargs.extensive_matching)
                 if project_sample:
                     obj["project_sample_name"] = project_sample['sample_name']
                 dry("Saving object {}".format(repr(obj)), s_con.save(obj))
