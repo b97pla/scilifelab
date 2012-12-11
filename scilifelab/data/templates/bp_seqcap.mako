@@ -1,7 +1,6 @@
 ================================
 Analysis report sequence capture
 ================================
-:Info: See <http://docutils.sf.net/rst.html> for introductory docs.
 
 :abstract: The Agilent SureSelect All Exon 50mb target enrichment kit
            was used to prepare and sequence DNA enriched for exon sequence.
