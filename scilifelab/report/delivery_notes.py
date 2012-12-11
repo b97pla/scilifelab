@@ -9,6 +9,7 @@ from cStringIO import StringIO
 from collections import Counter
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, calc_avg_qv
 from scilifelab.report import sequencing_success
+from scilifelab.report.rst import make_sample_rest_notes, make_rest_note
 from scilifelab.report.rl import make_note, concatenate_notes, sample_note_paragraphs, sample_note_headers, project_note_paragraphs, project_note_headers, make_sample_table
 import scilifelab.log
 
@@ -128,7 +129,6 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
     paragraphs = sample_note_paragraphs()
     headers = sample_note_headers()
     project = p_con.get_entry(project_id)
-    notes = []
     s_param_out = {}
     if not project:
         LOG.warn("No such project '{}'".format(project_id))
@@ -215,9 +215,11 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
             outfile = "{}_{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"], s["lane"])
         else:
             outfile = "{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"])
-        notes.append(make_note(outfile, headers, paragraphs, **s_param))
+        s_param["outfile"] = outfile
         s_param_out[s_param["scilifelab_name"]] = s_param
     output_data["debug"].write(json.dumps({'s_param': s_param_out, 'sample_runs':{s["name"]:s["barcode_name"] for s in sample_run_list}}))
+    notes = [make_note(headers=headers, paragraphs=paragraphs, **sp) for sp in s_param_out.itervalues()]
+    rest_notes = make_sample_rest_notes("{}_{}_{}_sample_summary.rst".format(project_id, s.get("date", None), s.get("flowcell", None)), s_param_out.itervalues())
     concatenate_notes(notes, "{}_{}_{}_sample_summary.pdf".format(project_id, s.get("date", None), s.get("flowcell", None)))
     return output_data
 
@@ -354,6 +356,7 @@ def project_status_note(project_id=None, username=None, password=None, url=None,
     sample_table.insert(0, ['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status'])
     paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
     make_note("{}_project_summary.pdf".format(project_id), headers, paragraphs, **param)
+    make_rest_note("{}_project_summary.rst".format(project_id), sample_table=sample_table, report="project_report", **param)
     param.update({k:"N/A" for k in param.keys() if param[k] is None or param[k] ==  ""})
     output_data["debug"].write(json.dumps({'param':param, 'table':sample_table}))
     return output_data

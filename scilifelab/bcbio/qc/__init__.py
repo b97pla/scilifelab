@@ -17,8 +17,6 @@ LOG = backend.minimal_logger("bcbio")
 from bcbio.broad.metrics import PicardMetricsParser
 from bcbio.pipeline.qcsummary import FastQCParser
 
-from scilifelab.db.statusdb import sample_run_metrics, flowcell_run_metrics
-
 class MetricsParser():
     """Basic class for parsing metrics"""
     def __init__(self, log=None):
