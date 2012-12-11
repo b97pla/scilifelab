@@ -61,14 +61,14 @@ def query_ok(statement="", force=False):
     prompt = " [press <enter> to continue] "
     while True:
         sys.stdout.write(statement + prompt)
-    if not force:
-        ok = raw_input().lower()
-    else:
-        ok = ""
-    if ok == "":
-        return True
-    else:
-        sys.stdout.write("Please respond with <enter>")
+        if not force:
+            ok = raw_input().lower()
+        else:
+            ok = ""
+        if ok == "":
+            return True
+        else:
+            sys.stdout.write("Please respond with <enter>")
 
 def walk(rootdir):
     """
