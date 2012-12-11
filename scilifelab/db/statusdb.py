@@ -117,7 +117,7 @@ def _match_barcode_name_to_project_sample(barcode_name, project_samples):
 ##############################
 # Documents
 ##############################
-class status_document(dict):
+class StatusDocument(dict):
     """Generic status document class"""
     _entity_type = "status_document"
     _fields = []
@@ -135,38 +135,36 @@ class status_document(dict):
             self[f] = kw.get(f, {})
         for f in self._list_fields:
             self[f] = kw.get(f, {})
-        # Will this even work for deeply nested dicts
         self = _update(self, kw)
-        #self.update(**kw)
 
     def __repr__(self):
         return "<{} {}>".format(self["entity_type"], self["name"])
 
-class project_summary(status_document):
+class ProjectSummaryDocument(StatusDocument):
     """project summary document"""
     _entity_type = "project_summary"
     _fields = ["application", "customer_reference", "min_m_reads_per_sample_ordered",
                "no_of_samples", "project_id"]
     _dict_fields = ["samples"]
     def __init__(self, **kw):
-        status_document.__init__(self, **kw)
+        StatusDocument.__init__(self, **kw)
 
     def __repr__(self):
         return "<{} {}>".format(self["entity_type"], self["project_id"])
 
-class flowcell_run_metrics(status_document):
+class FlowcellRunMetricsDocument(StatusDocument):
     """Flowcell level class for holding qc data."""
     _entity_type = "flowcell_run_metrics"
     _fields = ["name"]
     _dict_fields = ["run_info_yaml", "illumina", "samplesheet_csv"]
     def __init__(self, fc_date=None, fc_name=None, **kw):
-        status_document.__init__(self, **kw)
+        StatusDocument.__init__(self, **kw)
         self._lanes = [1,2,3,4,5,6,7,8]
         self["lanes"] = {str(k):{"lane":str(k), "filter_metrics":{}, "bc_metrics":{}} for k in self._lanes}
         if fc_date and fc_name:
             self["name"] = "{}_{}".format(fc_date, fc_name)
 
-class sample_run_metrics(status_document):
+class SampleRunMetricsDocument(StatusDocument):
     """Sample-level class for holding run metrics data"""
     _entity_type = "sample_run_metrics"
     _fields =["barcode_id", "barcode_name", "barcode_type", "bc_count", "date",
@@ -174,7 +172,7 @@ class sample_run_metrics(status_document):
               "genomes_filter_out", "project_sample_name", "project_id"] 
     _dict_fields = ["fastqc", "fastq_scr", "picard_metrics"]
     def __init__(self, **kw):
-        status_document.__init__(self, **kw)
+        StatusDocument.__init__(self, **kw)
         self["name"] = "{}_{}_{}_{}".format(self["lane"], self["date"], self["flowcell"], self["sequence"])
         if self["barcode_name"]:
             self.set_project_id()
@@ -293,7 +291,7 @@ def get_qc_data(sample_prj, p_con, s_con, fc_id=None):
 # Connections
 ##############################
 class SampleRunMetricsConnection(Couch):
-    _doc_type = sample_run_metrics
+    _doc_type = SampleRunMetricsDocument
     _update_fn = update_fn
     def __init__(self, dbname="samples", **kwargs):
         super(SampleRunMetricsConnection, self).__init__(**kwargs)
@@ -350,7 +348,7 @@ class SampleRunMetricsConnection(Couch):
         return [self.get_entry(x) for x in sample_names]
 
 class FlowcellRunMetricsConnection(Couch):
-    _doc_type = flowcell_run_metrics
+    _doc_type = FlowcellRunMetricsDocument
     _update_fn = update_fn
     def __init__(self, dbname="flowcells", **kwargs):
         super(FlowcellRunMetricsConnection, self).__init__(**kwargs)
@@ -372,7 +370,7 @@ class FlowcellRunMetricsConnection(Couch):
             return (phix_r1, phix_r2)/2
 
 class ProjectSummaryConnection(Couch):
-    _doc_type = project_summary
+    _doc_type = ProjectSummaryDocument
     _update_fn = update_fn
     def __init__(self, dbname="projects", **kwargs):
         super(ProjectSummaryConnection, self).__init__(**kwargs)

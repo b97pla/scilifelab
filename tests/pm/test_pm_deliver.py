@@ -9,7 +9,7 @@ import copy
 from cement.core import handler
 from test_default import PmTest
 from scilifelab.pm.core.deliver import *
-from scilifelab.db.statusdb import SampleRunMetricsConnection, sample_run_metrics
+from scilifelab.db.statusdb import SampleRunMetricsConnection, SampleRunMetricsDocument
 
 from ..classes import has_couchdb_installation
 
@@ -42,14 +42,14 @@ class PmProductionTest(PmTest):
         s = s_con.get_entry("1_121015_BB002BBBXX_TGACCA")
         kw = copy.deepcopy(s)
         del kw["_id"]
-        new_s = sample_run_metrics(**kw)
+        new_s = SampleRunMetricsDocument(**kw)
         new_s["sequence"] = "AGTTGA"
         new_s["name"] = "1_121015_BB002BBBXX_AGTTGA"
         s_con.save(new_s)
 
         kw = copy.deepcopy(s)
         del kw["_id"]
-        new_s = sample_run_metrics(**kw)
+        new_s = SampleRunMetricsDocument(**kw)
         new_s["sample_prj"] = "j-doe_00_01"
         new_s["sequence"] = "CGAACG"
         new_s["name"] = "1_121015_BB002BBBXX_CGAACG"
@@ -58,7 +58,7 @@ class PmProductionTest(PmTest):
         s = s_con.get_entry("3_120924_AC003CCCXX_ACAGTG")
         kw = copy.deepcopy(s)
         del kw["_id"]
-        new_s = sample_run_metrics(**kw)
+        new_s = SampleRunMetricsDocument(**kw)
         new_s["sample_prj"] = "j-doe_00_02"
         new_s["sequence"] = "GGAAGG"
         new_s["name"] = "3_120924_AC003CCCXX_GGAAGG"
