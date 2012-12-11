@@ -4,6 +4,7 @@ import collections
 from itertools import izip
 from scilifelab.db import Couch
 from scilifelab.utils.timestamp import utc_time
+from scilifelab.utils.misc import query_yes_no
 from uuid import uuid4
 from scilifelab.log import minimal_logger
 
@@ -40,15 +41,32 @@ def _update(d, u, override=True):
             d[k] = u[k]
     return d
 
+def _return_extensive_match_result(name_map, barcode_name, force=False):
+    """Wrap return value for extensive matching"""
+    if query_yes_no("found mapping '{} : {}' (barcode_name:project_sample_name); do you want to use this project_sample_name?".format(barcode_name, name_map["sample_name"]), default="no", force=force):
+        return name_map
+    else:
+        return None
+                        
 
-def _match_barcode_name_to_project_sample(barcode_name, project_samples):
+def _match_barcode_name_to_project_sample(barcode_name, project_samples, extensive_matching=False, force=False):
     """Take a barcode name and map it to a list of project sample names.
+
+    :param barcode_name: barcode name as it appears in sample sheet
+    :param project_samples: dictionary of project samples as obtained from statusdb project_summary
+    :param extensive_matching: perform extensive matching of barcode to project sample names
+    :param force: override interactive queries. NB: not called from get_project_sample.
+    
+    :returns: dictionary with keys project sample name and project sample or None
     """
     if barcode_name in project_samples.keys():
         return {'sample_name':barcode_name, 'project_sample':project_samples[barcode_name]}
     for project_sample_name in project_samples.keys():
         # Look for cases where barcode name is formatted in a way that does not conform to convention
+        # NB: only do this interactively!!!
         if not re.search(re_project_id_nr, barcode_name):
+            if not extensive_matching:
+                return None
             # Project id could be project number without a P, i.e. XXX_XXX_indexXX
             sample_id = re.search("(\d+_)?(\d+)_?([A-Z])?_",barcode_name)
             # Fall back if no hit
@@ -59,13 +77,9 @@ def _match_barcode_name_to_project_sample(barcode_name, project_samples):
             if not prj_id:
                 prj_id=""
             if str(smp_id) == str(project_sample_name):
-                return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
+                return _return_extensive_match_result({'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}, barcode_name, force=force)
             elif str("P{}_{}".format(prj_id.rstrip("_"), smp_id)) == str(project_sample_name):
-                return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
-            elif str("P{}_{}".format(prj_id.rstrip("_"), 100 + int(smp_id))) == str(project_sample_name):
-                return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
-            elif str("P{}_{}".format(prj_id.rstrip("_"), 100 + int(smp_id))) == str(project_sample_name):
-                return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
+                return _return_extensive_match_result({'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}, barcode_name, force=force)
 
             # Sometimes barcode name is of format XX_indexXX, where the number is the sample number
             m = re.search("(_index[0-9]+)", barcode_name)
@@ -75,13 +89,13 @@ def _match_barcode_name_to_project_sample(barcode_name, project_samples):
                 index = m.group(1)
                 sample_id = re.search("([A-Za-z0-9\_]+)(\_index[0-9]+)?", barcode_name.replace(index, ""))
                 if str(sample_id.group(1)) == str(project_sample_name):
-                    return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
+                    return _return_extensive_match_result({'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}, barcode_name, force=force)
                 if str(sample_id.group(1)) == str(project_samples[project_sample_name].get("customer_name", None)):
-                    return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
+                    return _return_extensive_match_result({'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}, barcode_name, force=force)
                 # customer well names contain a 0, as in 11A07; run names don't always
                 # FIXME: a function should convert customer name to standard forms in cases like these
-                if str(sample_id.group(1)) == str(project_samples[project_sample_name].get("customer_name", None).replace("0", "")):
-                    return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
+                if str(sample_id.group(1)) == str(project_samples[project_sample_name].get("customer_name", "").replace("0", "")):
+                    return _return_extensive_match_result({'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}, barcode_name, force=force)
         else:
             prj_id = barcode_name.split("_")[0]
             # Matches project id naming convention PXXX_
@@ -381,19 +395,22 @@ class ProjectSummaryConnection(Couch):
         """Make sure we don't change db from projects"""
         pass
 
-    def get_project_sample(self, project_id, barcode_name):
+    def get_project_sample(self, project_id, barcode_name=None, extensive_matching=False):
         """Get project sample name for a SampleRunMetrics barcode_name.
         
         :param project_id: the project id
         :param barcode_name: the barcode name of a sample run
+        :param extensive_matching: do extensive matching of barcode names
 
         :returns: dict(sample_name:project sample name, project_sample:project sample dict) or None
         """
+        if not barcode_name:
+            return None
         project = self.get_entry(project_id)
         if not project:
             return None
         project_samples = project.get('samples', None)
-        return _match_barcode_name_to_project_sample(barcode_name, project_samples)
+        return _match_barcode_name_to_project_sample(barcode_name, project_samples, extensive_matching)
 
     def map_srm_to_name(self, project_id, include_all=True, **args):
         """Map sample run metrics names to project sample names for a

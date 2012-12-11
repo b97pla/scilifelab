@@ -8,6 +8,7 @@ import math
 from cStringIO import StringIO
 from collections import Counter
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, calc_avg_qv
+from scilifelab.utils.misc import query_ok
 from scilifelab.report import sequencing_success
 from scilifelab.report.rst import make_sample_rest_notes, make_rest_note
 from scilifelab.report.rl import make_note, concatenate_notes, sample_note_paragraphs, sample_note_headers, project_note_paragraphs, project_note_headers, make_sample_table
@@ -188,8 +189,7 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
             s_param["uppnex_project_id"] = uppnex_id
         if customer_reference:
             s_param["customer_reference"] = customer_reference
-        ## FIX ME: This is where we need a key in SampleRunMetrics that provides a mapping to a project sample name
-        project_sample = p_con.get_project_sample(project_id, s["barcode_name"])
+        project_sample = p_con.get_project_sample(project_id, s.get("project_sample_name", None))
         if project_sample:
             project_sample_item = project_sample['project_sample']
             if "library_prep" in project_sample_item.keys():
@@ -209,6 +209,10 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
         else:
             s_param['customer_name'] = None
             LOG.warn("No project sample name found for sample run name '{}'".format(s["barcode_name"]))
+            LOG.info("Please run 'pm qc upload-qc FLOWCELL_ID --extensive-matching' to update project sample names ")
+            LOG.info("or 'pm qc update --sample_prj PROJECT_ID --names BARCODE_TO_SAMPLE_MAP to update project sample names.")
+            LOG.info("Please refer to the pm documentation for examples.")
+            query_ok(force=self.pargs.force)
         s_param['success'] = sequencing_success(s_param, cutoffs)
         s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None or s_param[k] ==  "" or s_param[k] == -1.0})
         if sample_count[s.get("barcode_name")] > 1:
@@ -284,7 +288,7 @@ def project_status_note(project_id=None, username=None, password=None, url=None,
                 sample_run_list.extend(sample_run_list_tmp)
     samples = {}
     for s in sample_run_list:
-        prj_sample = p_con.get_project_sample(project_id, s["barcode_name"])
+        prj_sample = p_con.get_project_sample(project_id, s.get("project_sample_name", None))
         if prj_sample:
             sample_name = prj_sample['project_sample'].get("scilife_name", None)
             s_d = {s["name"] : {'sample':sample_name, 'id':s["_id"]}}
