@@ -65,14 +65,14 @@ except:
     sys.exit("Could not open configuration file " + conffile)
 
 for fname in flist:
-    if not os.path.splitext(fname)[1]==".fastq": continue
+    #if not (os.path.splitext(fname)[1]==".fastq") & (os.path.splitext(fname)[1]==".gz"): continue
     read = fname.split("_")[-1]
     tag = "_".join(fname.split("_")[3:-2])
     print fname.split("_")
     # 2_date_fcid_sample_1.fastq
     if not tag in sample_names: sample_names.append(tag)
-    if (read == "1.Q25.fastq") | (read == "1.fastq"): read1forsample[tag]=fname
-    if (read == "2.Q25.fastq") | (read == "2.fastq"): read2forsample[tag]=fname
+    if (read == "1.Q25.fastq") | (read == "1.fastq") | (read == "1.fastq.gz"): read1forsample[tag]=fname
+    if (read == "2.Q25.fastq") | (read == "2.fastq") | (read == "2.fastq.gz"): read2forsample[tag]=fname
 
 print "Best guess for sample names: "
 for n in sorted(sample_names):
