@@ -11,7 +11,7 @@ import socket
 from classes import PmFullTest
 from ..classes import has_couchdb_installation
 
-from scilifelab.db.statusdb import SampleRunMetricsConnection, VIEWS, flowcell_run_metrics, sample_run_metrics, project_summary, ProjectSummaryConnection, update_fn, FlowcellRunMetricsConnection
+from scilifelab.db.statusdb import SampleRunMetricsConnection, VIEWS, ProjectSummaryDocument, ProjectSummaryConnection, update_fn, FlowcellRunMetricsConnection
 from scilifelab.bcbio.qc import FlowcellRunMetricsParser, SampleRunMetricsParser
 from scilifelab.pm.bcbio.utils import fc_id, fc_parts, fc_fullname
 
@@ -52,7 +52,7 @@ def setUpModule():
     db = server["samples-test"]
     p_con = ProjectSummaryConnection(dbname="projects-test", username="u", password="p")
     for p in prj_sum:
-        prj = project_summary(**p)
+        prj = ProjectSummaryDocument(**p)
         p_con.save(prj, key="project_id")
 
     #
@@ -149,3 +149,11 @@ class TestQCUpload(PmFullTest):
         self.assertEqual(s1["project_sample_name"], "P001_101_index3")
         self.assertEqual(s2["project_sample_name"], "P001_102")
 
+class TestMetricsParser(PmFullTest):
+    def setUp(self):
+        self.sample_kw = dict(flowcell="AC003CCCXX", date="120924", lane=1, barcode_name='P001_101_index3', sample_prj="J.Doe_00_01".replace("__", "."), barcode_id="1", sequence="TGACCA")
+
+    def test_get_bc_count(self):
+        parser = SampleRunMetricsParser(os.path.join(project_dir, "J.Doe_00_01", "P001_101_index3", "120924_AC003CCCXX"))
+        bc_count = parser.get_bc_count(**self.sample_kw)
+        self.assertEqual(bc_count, 0)

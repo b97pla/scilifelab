@@ -39,7 +39,7 @@ import logging
 
 import bcbio
 import bcbio.google
-import bcbio.scilifelab.google.project_metadata as pm
+import scilifelab.google.project_metadata as pm
 import bcbio.pipeline.config_loader as cl
 from bcbio.google import _to_unicode, spreadsheet
 import couchdb
