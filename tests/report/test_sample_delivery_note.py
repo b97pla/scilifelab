@@ -1,6 +1,7 @@
 import os
 import unittest
 import logbook
+from scilifelab.report import sequencing_success
 from scilifelab.report.rl import make_example_sample_note
 
 from ..classes import has_couchdb_installation
@@ -31,3 +32,23 @@ class TestSampleDeliveryNote(unittest.TestCase):
         except:
             success = False
         self.assertTrue(success)
+
+class TestSampleDeliveryFunctions(unittest.TestCase):
+    def test_sequencing_success(self):
+        """Make sure sequencing success returns correct assessment"""
+        cutoffs = {'phix_err_cutoff':2.0}
+        # Successful run
+        msg = sequencing_success({'phix_error_rate':1.3, 'rounded_read_count':50.3, 'ordered_amount':35.2}, cutoffs)
+        self.assertEqual(msg, "Successful run.")
+        # Failed run on account of # sequences
+        msg = sequencing_success({'phix_error_rate':1.3, 'rounded_read_count':11.3, 'ordered_amount':35.2}, cutoffs)
+        self.assertEqual(msg, "The yield may be lower than expected.")
+        # Failed run on account of phix error rate
+        msg = sequencing_success({'phix_error_rate':2.3, 'rounded_read_count':50.3, 'ordered_amount':35.2}, cutoffs)
+        self.assertEqual(msg, "High average error rate.")
+        # Failed run on account of both phix error rate and # sequences
+        msg = sequencing_success({'phix_error_rate':2.3, 'rounded_read_count':20.3, 'ordered_amount':35.2}, cutoffs)
+        self.assertEqual(msg, "High average error rate.The yield may be lower than expected.")
+
+
+        

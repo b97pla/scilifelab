@@ -11,7 +11,7 @@ from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.utils.timestamp import modified_within_days
 from scilifelab.bcbio.qc import FlowcellRunMetricsParser, SampleRunMetricsParser
 from scilifelab.pm.bcbio.utils import validate_fc_directory_format, fc_id, fc_parts, fc_fullname
-from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectSummaryConnection, sample_run_metrics, flowcell_run_metrics
+from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectSummaryConnection, SampleRunMetricsDocument, FlowcellRunMetricsDocument
 from scilifelab.utils.dry import dry
 
 class RunMetricsController(AbstractBaseController):
@@ -32,6 +32,7 @@ class RunMetricsController(AbstractBaseController):
             (['--sample_prj'], dict(help="Sample project name, as in 'J.Doe_00_01'", default=None, action="store", type=str)),
             (['--project_id'], dict(help="Project identifier, as in 'J.Doe_00_01'", default=None, action="store", type=str)),
             (['--names'], dict(help="Sample name mapping from barcode name to project name as a JSON string, as in \"{'sample_run_name':'project_run_name'}\". Mapping can also be given in a file", default=None, action="store", type=str)),
+            (['--extensive_matching'], dict(help="Perform extensive barcode to project sample name matcing", default=False, action="store_true")),
             ]
 
     def _process_args(self):
@@ -83,13 +84,20 @@ class RunMetricsController(AbstractBaseController):
                             continue
                     s["project_sample_name"] = names_d[barcode_name]
                     s_con.save(s)
-
+        else:
+            self.app.log.info("Trying to use extensive matching...")
+            p_con = ProjectSummaryConnection(dbname=self.app.config.get("db", "projects"), **vars(self.app.pargs))
+            for s in samples:
+                project_sample = p_con.get_project_sample(self.pargs.sample_prj, s["barcode_name"], extensive_matching=True)
+                if project_sample:
+                    self.app.log.info("using mapping '{} : {}'...".format(s["barcode_name"], project_sample["sample_name"]))
+                    s["project_sample_name"] = project_sample["sample_name"]
+                    s_con.save(s)
                 
-
     ##############################
     ## New structures
     ##############################
-    def _parse_samplesheet(self, runinfo, qc_objects, fc_date, fc_name, as_yaml=False):
+    def _parse_samplesheet(self, runinfo, qc_objects, fc_date, fc_name, fcdir, as_yaml=False):
         """Parse samplesheet information and populate sample run metrics object"""
         if as_yaml:
             for info in runinfo:
@@ -104,11 +112,11 @@ class RunMetricsController(AbstractBaseController):
                     sample_kw = dict(flowcell=fc_name, date=fc_date, lane=sample['lane'], barcode_name=sample['name'], sample_prj=sample.get('sample_prj', None),
                                      barcode_id=sample['barcode_id'], sequence=sample.get('sequence', "NoIndex"))
                 
-                    parser = SampleRunMetricsParser(fcid)
-                    obj = sample_run_metrics(**sample_kw)
+                    parser = SampleRunMetricsParser(fcdir)
+                    obj = SampleRunMetricsDocument(**sample_kw)
                     obj["picard_metrics"] = parser.read_picard_metrics(**sample_kw)
                     obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
-                    obj["bc_metrics"] = parser.parse_bc_metrics(**sample_kw)
+                    obj["bc_count"] = parser.get_bc_count(**sample_kw)
                     obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
                     qc_objects.append(obj)
         else:
@@ -140,10 +148,10 @@ class RunMetricsController(AbstractBaseController):
                     continue
                 sample_kw = dict(flowcell=fc_name, date=fc_date, lane=d['Lane'], barcode_name=d['SampleID'], sample_prj=d['SampleProject'].replace("__", "."), barcode_id=runinfo_yaml['details'][0]['multiplex'][0]['barcode_id'], sequence=runinfo_yaml['details'][0]['multiplex'][0]['sequence'])
                 parser = SampleRunMetricsParser(sample_fcdir)
-                obj = sample_run_metrics(**sample_kw)
+                obj = SampleRunMetricsDocument(**sample_kw)
                 obj["picard_metrics"] = parser.read_picard_metrics(**sample_kw)
                 obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
-                obj["bc_metrics"] = parser.parse_bc_metrics(**sample_kw)
+                obj["bc_count"] = parser.get_bc_count(**sample_kw)
                 obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
                 qc_objects.append(obj)
         return qc_objects
@@ -152,6 +160,9 @@ class RunMetricsController(AbstractBaseController):
         qc_objects = []
         as_yaml = False
         runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "{}.csv".format(fc_id(self.pargs.flowcell)))
+        if not os.path.exists(runinfo_csv):
+            LOG.warn("No such file {}: trying fallback SampleSheet.csv".format(runinfo_csv))
+            runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "SampleSheet.csv")
         runinfo_yaml = os.path.join(os.path.abspath(self.pargs.flowcell), "run_info.yaml")
         try:
             if os.path.exists(runinfo_csv):
@@ -171,7 +182,7 @@ class RunMetricsController(AbstractBaseController):
         if modified_within_days(fcdir, self.pargs.mtime):
             fc_kw = dict(fc_date = fc_date, fc_name=fc_name)
             parser = FlowcellRunMetricsParser(fcdir)
-            fcobj = flowcell_run_metrics(**fc_kw)
+            fcobj = FlowcellRunMetricsDocument(**fc_kw)
             fcobj["illumina"] = parser.parse_illumina_metrics(fullRTA=False, **fc_kw)
             fcobj["bc_metrics"] = parser.parse_bc_metrics(**fc_kw)
             fcobj["filter_metrics"] = parser.parse_filter_metrics(**fc_kw)
@@ -180,12 +191,15 @@ class RunMetricsController(AbstractBaseController):
             qc_objects.append(fcobj)
         else:
             return qc_objects
-        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, as_yaml=as_yaml)
+        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, as_yaml=as_yaml)
         return qc_objects
 
     def _collect_casava_qc(self):
         qc_objects = []
         runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "{}.csv".format(fc_id(self.pargs.flowcell)))
+        if not os.path.exists(runinfo_csv):
+            LOG.warn("No such file {}: trying fallback SampleSheet.csv".format(runinfo_csv))
+            runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "SampleSheet.csv")
         try:
             with open(runinfo_csv) as fh:
                 runinfo_reader = csv.reader(fh)
@@ -199,14 +213,14 @@ class RunMetricsController(AbstractBaseController):
         if modified_within_days(fcdir, self.pargs.mtime):
             fc_kw = dict(fc_date = fc_date, fc_name=fc_name)
             parser = FlowcellRunMetricsParser(fcdir)
-            fcobj = flowcell_run_metrics(fc_date, fc_name)
+            fcobj = FlowcellRunMetricsDocument(fc_date, fc_name)
             fcobj["illumina"] = parser.parse_illumina_metrics(fullRTA=False, **fc_kw)
             fcobj["bc_metrics"] = parser.parse_bc_metrics(**fc_kw)
             fcobj["undemultiplexed_barcodes"] = parser.parse_undemultiplexed_barcode_metrics(**fc_kw)
             fcobj["illumina"].update({"Demultiplex_Stats" : parser.parse_demultiplex_stats_htm(**fc_kw)})
             fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(**fc_kw)
             qc_objects.append(fcobj)
-        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name)
+        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir)
         return qc_objects
 
     @controller.expose(help="Upload run metrics to statusdb")
@@ -243,12 +257,12 @@ class RunMetricsController(AbstractBaseController):
         for obj in qc_objects:
             if self.app.pargs.debug:
                 self.log.debug("{}: {}".format(str(obj), obj["_id"]))
-            if isinstance(obj, flowcell_run_metrics):
+            if isinstance(obj, FlowcellRunMetricsDocument):
                 dry("Saving object {}".format(repr(obj)), fc_con.save(obj))
-            if isinstance(obj, sample_run_metrics):
-                project_sample = p_con.get_project_sample(obj.get("sample_prj", None), obj.get("barcode_name", None))
+            if isinstance(obj, SampleRunMetricsDocument):
+                project_sample = p_con.get_project_sample(obj.get("sample_prj", None), obj.get("barcode_name", None), self.pargs.extensive_matching)
                 if project_sample:
-                    obj["project_sample_name"] = project_sample.keys()[0]
+                    obj["project_sample_name"] = project_sample['sample_name']
                 dry("Saving object {}".format(repr(obj)), s_con.save(obj))
 
 def load():

@@ -9,7 +9,7 @@ import copy
 from cement.core import handler
 from test_default import PmTest
 from scilifelab.pm.core.deliver import *
-from scilifelab.db.statusdb import SampleRunMetricsConnection, sample_run_metrics
+from scilifelab.db.statusdb import SampleRunMetricsConnection, SampleRunMetricsDocument
 
 from ..classes import has_couchdb_installation
 
@@ -42,14 +42,14 @@ class PmProductionTest(PmTest):
         s = s_con.get_entry("1_121015_BB002BBBXX_TGACCA")
         kw = copy.deepcopy(s)
         del kw["_id"]
-        new_s = sample_run_metrics(**kw)
+        new_s = SampleRunMetricsDocument(**kw)
         new_s["sequence"] = "AGTTGA"
         new_s["name"] = "1_121015_BB002BBBXX_AGTTGA"
         s_con.save(new_s)
 
         kw = copy.deepcopy(s)
         del kw["_id"]
-        new_s = sample_run_metrics(**kw)
+        new_s = SampleRunMetricsDocument(**kw)
         new_s["sample_prj"] = "j-doe_00_01"
         new_s["sequence"] = "CGAACG"
         new_s["name"] = "1_121015_BB002BBBXX_CGAACG"
@@ -58,7 +58,7 @@ class PmProductionTest(PmTest):
         s = s_con.get_entry("3_120924_AC003CCCXX_ACAGTG")
         kw = copy.deepcopy(s)
         del kw["_id"]
-        new_s = sample_run_metrics(**kw)
+        new_s = SampleRunMetricsDocument(**kw)
         new_s["sample_prj"] = "j-doe_00_02"
         new_s["sequence"] = "GGAAGG"
         new_s["name"] = "3_120924_AC003CCCXX_GGAAGG"
@@ -134,6 +134,19 @@ class PmProductionTest(PmTest):
         ordered = {x[0]:x[4] for x in data['table']}
         self.assertEqual(ordered["P001_101_index3"], 10)
         self.assertEqual(ordered["P001_102"], 20)
+
+    def test_bc_count(self):
+        """Test setting ordered amount to different values for different samples"""
+        self.app = self.make_app(argv = ['report', 'sample_status', self.examples["project"], self.examples["flowcell"],  '--debug',  '--phix', '0.1', '--bc_count', "{'P001_101_index3':1300000, 'P001_102_index6':20000}"],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        handler.register(DeliveryReportController)
+        self._run_app()
+        data = ast.literal_eval(self.app._output_data['debug'].getvalue())
+        self.assertEqual(data['s_param']['P001_101_index3']['ordered_amount'], 0.1)
+        self.assertEqual(data['s_param']['P001_102_index6']['ordered_amount'], 0.1)
+        self.assertEqual(data['s_param']['P001_101_index3']['rounded_read_count'], 1.3)
+        self.assertEqual(data['s_param']['P001_102_index6']['rounded_read_count'], 0.02)
+        self.assertEqual(data['s_param']['P001_101_index3']['success'], 'Successful run.')
+        self.assertEqual(data['s_param']['P001_102_index6']['success'], 'The yield may be lower than expected.')
 
     def test_sample_aliases(self):
         """Test setting sample aliases to different values for different samples"""

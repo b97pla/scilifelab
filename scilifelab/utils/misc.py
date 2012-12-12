@@ -50,6 +50,26 @@ def query_yes_no(question, default="yes", force=False):
             sys.stdout.write("Please respond with 'yes' or 'no' "\
                                  "(or 'y' or 'n').\n")
 
+def query_ok(statement="", force=False):
+    """Prompt a statement requiring an interactive <enter> from the user.
+
+    :param statement: the displayed statement 
+    :param force: proceed without waiting for input
+
+    :returns: True
+    """
+    prompt = " [press <enter> to continue] "
+    while True:
+        sys.stdout.write(statement + prompt)
+        if not force:
+            ok = raw_input().lower()
+        else:
+            ok = ""
+        if ok == "":
+            return True
+        else:
+            sys.stdout.write("Please respond with <enter>")
+
 def walk(rootdir):
     """
     Perform a directory walk

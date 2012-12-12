@@ -359,9 +359,6 @@ def _write_sample_fastq(fh, outfiles, startiter=0, nseqout=1000):
             break
     [h.close() for h in outh]
 
-
-
-
 def _download_ucsc_genome_and_index(build="hg19", chr="chr11", start=0, end=2000000):
     """Download chromosome from ucsc, extract a given region and
     format for bwa and bowtie2.
