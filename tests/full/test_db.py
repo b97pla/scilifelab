@@ -11,7 +11,7 @@ import socket
 from classes import PmFullTest
 from ..classes import has_couchdb_installation
 
-from scilifelab.db.statusdb import SampleRunMetricsConnection, VIEWS, flowcell_run_metrics, sample_run_metrics, project_summary, ProjectSummaryConnection, update_fn, FlowcellRunMetricsConnection
+from scilifelab.db.statusdb import SampleRunMetricsConnection, VIEWS, ProjectSummaryDocument, ProjectSummaryConnection, update_fn, FlowcellRunMetricsConnection
 from scilifelab.bcbio.qc import FlowcellRunMetricsParser, SampleRunMetricsParser
 from scilifelab.pm.bcbio.utils import fc_id, fc_parts, fc_fullname
 
@@ -52,7 +52,7 @@ def setUpModule():
     db = server["samples-test"]
     p_con = ProjectSummaryConnection(dbname="projects-test", username="u", password="p")
     for p in prj_sum:
-        prj = project_summary(**p)
+        prj = ProjectSummaryDocument(**p)
         p_con.save(prj, key="project_id")
 
     #
@@ -148,7 +148,6 @@ class TestQCUpload(PmFullTest):
         s2 = self.s_con.get_entry("2_120924_AC003CCCXX_ACAGTG")
         self.assertEqual(s1["project_sample_name"], "P001_101_index3")
         self.assertEqual(s2["project_sample_name"], "P001_102")
-
 
 class TestMetricsParser(PmFullTest):
     def setUp(self):
