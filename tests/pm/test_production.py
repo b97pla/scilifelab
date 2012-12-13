@@ -86,7 +86,6 @@ class PmProductionTest(PmTest):
         delivery_dir = os.path.abspath(os.path.join(filedir, "data", "projects", "j_doe_00_04_custom", "data"))
         with open(os.path.join(delivery_dir, "P001_101_index3", "120924_CC003CCCXX", "P001_101_index3-bcbb-config.yaml")) as fh:
             runinfo_yaml = yaml.load(fh)
-        self.eq(runinfo_yaml['details'][0]['multiplex'][0]['files'], ['P001_101_index3_TGACCA_L001_R1_001.fastq', 'P001_101_index3_TGACCA_L001_R2_001.fastq'])
         res = shell.exec_cmd(["ls", "-1", os.path.join(delivery_dir,  "P001_101_index3", "120924_CC003CCCXX")])
         self.eq(len(set(res[0].split())), 22)
 
