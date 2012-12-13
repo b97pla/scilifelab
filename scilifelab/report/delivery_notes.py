@@ -126,6 +126,23 @@ def _update_sample_output_data(output_data, cutoffs):
     output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format("=============", "====", "=========", "===========", "=====", "========"))
     return output_data
 
+def _set_project_sample_dict(project_sample_item):
+    """Set a project sample dict, mapping a project sample to sample run metrics if present in project summary.
+
+    :param project_sample_item: a project sample item
+
+    :returns: project_sample_d or empty dict
+    """
+    project_sample_d = {}
+    if "library_prep" in project_sample_item.keys():
+        project_sample_d = {x:y for d in [v["sample_run_metrics"] for k,v in project_sample_item["library_prep"].iteritems()] for x,y in d.iteritems()}
+    else:
+        project_sample_d = {x:y for x,y in project_sample_item.get("sample_run_metrics", {}).iteritems()}
+        if not project_sample_item.get("sample_run_metrics", {}):
+            LOG.warn("No sample_run_metrics information for sample '{}'".format(project_sample_item))
+    return project_sample_d
+
+
 def sample_status_note(project_id=None, flowcell=None, username=None, password=None, url=None,
                        ordered_million_reads=None, uppnex_id=None, customer_reference=None, bc_count=None,
                        project_alias=[], projectdb="projects", samplesdb="samples", flowcelldb="flowcells",
@@ -245,15 +262,10 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
         if project_sample:
             LOG.debug("project sample run metrics mapping found: '{}' : '{}'".format(s["name"], project_sample["sample_name"]))
             project_sample_item = project_sample['project_sample']
-
             # Set project_sample_d: a dictionary mapping from sample run metrics name to sample run metrics database id
-            if "library_prep" in project_sample_item.keys():
-                project_sample_d = {x:y for d in [v["sample_run_metrics"] for k,v in project_sample_item["library_prep"].iteritems()] for x,y in d.iteritems()}
-            else:
-                project_sample_d = {x:y for x,y in project_sample_item.get("sample_run_metrics", {}).iteritems()}
-                if not project_sample_item.get("sample_run_metrics", {}):
-                    LOG.warn("No sample_run_metrics information for sample '{}', barcode name '{}', id '{}'\n\tProject summary information {}".format(s["name"], s["barcode_name"], s["_id"], project_sample_item))
-
+            project_sample_d = _set_project_sample_dict(project_sample_item)
+            if not project_sample_d:
+                LOG.warn("No sample_run_metrics information for sample '{}', barcode name '{}', id '{}'\n\tProject summary information {}".format(s["name"], s["barcode_name"], s["_id"], project_sample))
             # Check if sample run metrics name present in project database: if so, verify that database ids are consistent
             if s["name"] not in project_sample_d.keys():
                 LOG.warn("no such sample run metrics '{}' in project sample run metrics dictionary".format(s["name"]) )
@@ -430,17 +442,21 @@ def project_status_note(project_id=None, username=None, password=None, url=None,
     # Loop through samples in sample_dict for which there is no sample run information
     samples_in_table_or_excluded = list(set([x[0] for x in sample_table])) + samples_excluded
     samples_not_in_table = list(set(sample_dict.keys()) - set(samples_in_table_or_excluded))
-    for s in samples_not_in_table:
-        project_sample = sample_dict[s]
-        vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
-        if ordered_million_reads:
-            param["ordered_amount"] = _get_ordered_million_reads(s, ordered_million_reads)
-        vals['Status'] = project_sample.get("status", "N/A")
-        vals['MOrdered'] = param["ordered_amount"]
-        vals['BarcodeSeq'] = None
-        vals.update({k:"N/A" for k in vals.keys() if vals[k] is None or vals[k] == ""})
-        if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
-        sample_table.append([vals[k] for k in table_keys])
+    for sample in samples_not_in_table:
+        project_sample = sample_dict[sample]
+        # Set project_sample_d: a dictionary mapping from sample run metrics name to sample run metrics database id
+        project_sample_d = _set_project_sample_dict(project_sample)
+        for k,v in project_sample_d.iteritems():
+            barcode_seq = s_con.get_entry(k, "sequence")
+            vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
+            if ordered_million_reads:
+                param["ordered_amount"] = _get_ordered_million_reads(s, ordered_million_reads)
+            vals['Status'] = project_sample.get("status", "N/A")
+            vals['MOrdered'] = param["ordered_amount"]
+            vals['BarcodeSeq'] = barcode_seq
+            vals.update({k:"N/A" for k in vals.keys() if vals[k] is None or vals[k] == ""})
+            if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
+            sample_table.append([vals[k] for k in table_keys])
     if all_passed: param["finished"] = 'Project finished.'
     sample_table.sort()
     sample_table = list(sample_table for sample_table,_ in itertools.groupby(sample_table))
