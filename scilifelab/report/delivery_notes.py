@@ -325,6 +325,28 @@ def _exclude_sample_id(exclude_sample_ids, sample_name, barcode_seq):
             return True
 
 
+def _set_sample_table_values(sample_name, project_sample, barcode_seq, ordered_million_reads, param):
+    """Set the values for a sample that is to appear in the final table.
+
+    :param sample_name: string identifier of sample
+    :param project_sample: project sample dictionary from project summary database
+    :param barcode_seq: barcode sequence
+    :param ordered_million_reads: the number of ordered reads
+    :param param: project parameters
+
+    :returns: vals, a dictionary of table values
+    """
+    prjs_to_table = {'ScilifeID':'scilife_name', 'CustomerID':'customer_name', 'MSequenced':'m_reads_sequenced'}#, 'MOrdered':'min_m_reads_per_sample_ordered', 'Status':'status'}
+    vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
+    # Set status
+    vals['Status'] = project_sample.get("status", "N/A")
+    if ordered_million_reads:
+        param["ordered_amount"] = _get_ordered_million_reads(v['sample'], ordered_million_reads)
+    vals['MOrdered'] = param["ordered_amount"]
+    vals['BarcodeSeq'] = barcode_seq
+    vals.update({k:"N/A" for k in vals.keys() if vals[k] is None or vals[k] == ""})
+    return vals
+
 def project_status_note(project_id=None, username=None, password=None, url=None,
                         use_ps_map=True, use_bc_map=False, check_consistency=False,
                         ordered_million_reads=None, uppnex_id=None, customer_reference=None,
@@ -355,7 +377,6 @@ def project_status_note(project_id=None, username=None, password=None, url=None,
     ps_to_parameter = {"scilife_name":"scilife_name", "customer_name":"customer_name", "project_name":"project_id"}
     # mapping project sample to table
     table_keys = ['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status']
-    prjs_to_table = {'ScilifeID':'scilife_name', 'CustomerID':'customer_name', 'MSequenced':'m_reads_sequenced'}#, 'MOrdered':'min_m_reads_per_sample_ordered', 'Status':'status'}
 
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
     # Connect and run
@@ -426,16 +447,9 @@ def project_status_note(project_id=None, username=None, password=None, url=None,
         if _exclude_sample_id(exclude_sample_ids, v['sample'], barcode_seq):
             samples_excluded.append(v['sample'])
             continue
-        # Get the project sample name from the sample run and set parameters
+        # Get the project sample name from the sample run and set table values
         project_sample = sample_dict[v['sample']]
-        vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
-        # Set status
-        vals['Status'] = project_sample.get("status", "N/A")
-        if ordered_million_reads:
-            param["ordered_amount"] = _get_ordered_million_reads(v['sample'], ordered_million_reads)
-        vals['MOrdered'] = param["ordered_amount"]
-        vals['BarcodeSeq'] = barcode_seq
-        vals.update({k:"N/A" for k in vals.keys() if vals[k] is None or vals[k] == ""})
+        vals = _set_sample_table_values(v['sample'], project_sample, barcode_seq, ordered_million_reads, param)
         if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
         sample_table.append([vals[k] for k in table_keys])
 
@@ -443,18 +457,20 @@ def project_status_note(project_id=None, username=None, password=None, url=None,
     samples_in_table_or_excluded = list(set([x[0] for x in sample_table])) + samples_excluded
     samples_not_in_table = list(set(sample_dict.keys()) - set(samples_in_table_or_excluded))
     for sample in samples_not_in_table:
+        if re.search("Unexpected", sample):
+            continue
         project_sample = sample_dict[sample]
         # Set project_sample_d: a dictionary mapping from sample run metrics name to sample run metrics database id
         project_sample_d = _set_project_sample_dict(project_sample)
-        for k,v in project_sample_d.iteritems():
-            barcode_seq = s_con.get_entry(k, "sequence")
-            vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
-            if ordered_million_reads:
-                param["ordered_amount"] = _get_ordered_million_reads(s, ordered_million_reads)
-            vals['Status'] = project_sample.get("status", "N/A")
-            vals['MOrdered'] = param["ordered_amount"]
-            vals['BarcodeSeq'] = barcode_seq
-            vals.update({k:"N/A" for k in vals.keys() if vals[k] is None or vals[k] == ""})
+        if project_sample_d:
+            for k,v in project_sample_d.iteritems():
+                barcode_seq = s_con.get_entry(k, "sequence")
+                vals = _set_sample_table_values(v, project_sample, barcode_seq, ordered_million_reads, param)
+                if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
+                sample_table.append([vals[k] for k in table_keys])
+        else:
+            barcode_seq = None
+            vals = _set_sample_table_values(v, project_sample, barcode_seq, ordered_million_reads, param)
             if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
             sample_table.append([vals[k] for k in table_keys])
     if all_passed: param["finished"] = 'Project finished.'
