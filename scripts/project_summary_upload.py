@@ -37,15 +37,14 @@ import hashlib
 from optparse import OptionParser
 import logging
 
-import bcbio
 import bcbio.google
-import scilifelab.google.project_metadata as pm
+import bcbio.scilifelab.google.project_metadata as pm
 import bcbio.pipeline.config_loader as cl
 from bcbio.google import _to_unicode, spreadsheet
 import couchdb
 #from scilifelab.utils.string import replace_ascii
 
-def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_file):
+def get_proj_inf(project_name_swe, samp_db, proj_db, CREDENTIALS_FILE, config):
 
 	project_name = _replace_ascii(_to_unicode(project_name_swe))
 	key = find_proj_from_view(proj_db, project_name)
@@ -67,7 +66,6 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 	### Get minimal #M reads and uppnexid from Genomics Project list
 	logger.debug('Getting minimal #M reads and uppnexid from Genomics Project list for project %s' % project_name_swe)
 
-	config = cl.load_config(config_file)
 	p = pm.ProjectMetaData(project_name, config)
 	if p.project_name is None:
 		p = pm.ProjectMetaData(project_name_swe, config)
@@ -92,7 +90,7 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 		    "05": ["Reception control", 'SciLifeLab ID']}
 
 	# Load google document
-	client = make_client(credentials_file)
+	client = make_client(CREDENTIALS_FILE)
 	feed = bcbio.google.spreadsheet.get_spreadsheets_feed(client, project_name_swe + '_20132', False)
 	if len(feed.entry) == 0:
     		ssheet = None
@@ -102,7 +100,7 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
   		version	= ssheet.split('_20132_')[1].split(' ')[0].split('_')[0]
 		wsheet = versions[version][0]
 		header = versions[version][1]
-		content, ws_key, ss_key = get_google_document(ssheet, wsheet, credentials_file)
+		content, ws_key, ss_key = get_google_document(ssheet, wsheet, CREDENTIALS_FILE)
 		logger.debug("Document found")
 		logger.debug(ssheet)	
 
@@ -157,7 +155,7 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 			try:
 				ssheet = feed.entry[0].title.text
 				version = ssheet.split(str(m + '20158_'))[1].split(' ')[0].split('_')[0]	
-				content, ws_key, ss_key = get_google_document(ssheet, "Sheet1", credentials_file)
+				content, ws_key, ss_key = get_google_document(ssheet, "Sheet1", CREDENTIALS_FILE)
 				found = True
 				break
                 	except:
@@ -221,7 +219,6 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
                 scilife_name, preps = strip_scilife_name([sci_name_raw])
                 scilife_name = scilife_name[sci_name_raw]
                 prep = 'A' if preps[sci_name_raw].replace('F','') == '' else preps[sci_name_raw].replace('F','')
-		
 		if not obj['samples'].has_key(scilife_name):
 			scilife_name_old = convert_to_old_sci_format(scilife_name)
 			try:
@@ -253,7 +250,7 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, credentials_file, config_fi
 	        if len(feed.entry) != 0:
 	                ssheet = feed.entry[0].title.text
 			version = ssheet.split('20135')[1].replace('_',' ').lstrip(' ').split(' ')[0]
-	                content, ws_key, ss_key = get_google_document(ssheet, "Library QC", credentials_file)
+	                content, ws_key, ss_key = get_google_document(ssheet, "Library QC", CREDENTIALS_FILE)
 	                found = True
                 
 	if found:
@@ -323,8 +320,8 @@ def my_logging(log_file):
 
 
 #		GOOGLE DOCS
-def get_google_document(ssheet_title, wsheet_title, credentials_file):
-	client = make_client(credentials_file)
+def get_google_document(ssheet_title, wsheet_title, CREDENTIALS_FILE):
+	client = make_client(CREDENTIALS_FILE)
 	ssheet = bcbio.google.spreadsheet.get_spreadsheet(client, ssheet_title)
 	wsheet = bcbio.google.spreadsheet.get_worksheet(client, ssheet, wsheet_title)
 	content = bcbio.google.spreadsheet.get_cell_content(client,ssheet,wsheet)
@@ -332,8 +329,8 @@ def get_google_document(ssheet_title, wsheet_title, credentials_file):
 	ws_key = bcbio.google.spreadsheet.get_key(wsheet)
 	return content, ws_key, ss_key
 
-def make_client(credentials_file):
-        credentials = bcbio.google.get_credentials({'gdocs_upload': {'gdocs_credentials': credentials_file}})
+def make_client(CREDENTIALS_FILE):
+        credentials = bcbio.google.get_credentials({'gdocs_upload': {'gdocs_credentials': CREDENTIALS_FILE}})
         client = bcbio.google.spreadsheet.get_client(credentials)
         return client
 
@@ -389,7 +386,7 @@ def find_samp_from_view(samp_db, proj_id):
         view = samp_db.view('names/id_to_proj')
 	samps = {}
         for doc in view:
-                if doc.value[0] == proj_id:
+                if (doc.value[0] == proj_id)|(doc.value[0] == proj_id.lower()):
 			samps[doc.key] = doc.value[1:3]
         return samps
 
@@ -428,7 +425,7 @@ def strip_scilife_name(names):
         preps = 'F_BCDE'
         for name_init in names:
 		prep = ''
-		name = name_init.replace('-', '_').replace(' ', '').split("_index")[0].strip()
+		name = name_init.replace('-', '_').replace(' ', '').split("_index")[0].split("_ss")[0].strip()
 		if name != '':
 			while name[-1] in preps:
 				prep = name[-1] + prep
@@ -439,21 +436,21 @@ def strip_scilife_name(names):
 	return N, P
 
 
-def  main(credentials_file, config_file, URL, proj_ID, all_projects):
-	client = make_client(credentials_file)
+def  main(CREDENTIALS_FILE, CONFIG, URL, proj_ID, all_projects):
+	client = make_client(CREDENTIALS_FILE)
 	couch = couchdb.Server("http://" + URL)
        	samp_db = couch['samples']
         proj_db = couch['projects']
 	info = None
 	
         if all_projects:
-		content, ws_key, ss_key = get_google_document("Genomics Project list", "Ongoing", credentials_file)	
+		content, ws_key, ss_key = get_google_document("Genomics Project list", "Ongoing", CREDENTIALS_FILE)	
 		row_ind, col_ind = get_column(content, 'Project name')
 		for j, row in enumerate(content):
       			try:
 	        		proj_ID = str(row[col_ind]).strip().split(' ')[0]
 				if (proj_ID != '') & (j > row_ind + 2):
-                       			obj = get_proj_inf(proj_ID, samp_db, proj_db, credentials_file, config_file)
+                       			obj = get_proj_inf(proj_ID, samp_db, proj_db, CREDENTIALS_FILE, CONFIG)
         				if obj['samples'].keys() != []:
                 				info = save_couchdb_obj(proj_db, obj)
 						if info:
@@ -461,7 +458,7 @@ def  main(credentials_file, config_file, URL, proj_ID, all_projects):
 			except:
 				pass		
 	elif proj_ID is not None:
-	        obj = get_proj_inf(proj_ID, samp_db, proj_db, credentials_file, config_file)
+	        obj = get_proj_inf(proj_ID, samp_db, proj_db, CREDENTIALS_FILE, CONFIG)
         	if obj['samples'].keys() != []:
                 	info = save_couchdb_obj(proj_db, obj)
 	else:
@@ -471,16 +468,15 @@ def  main(credentials_file, config_file, URL, proj_ID, all_projects):
 		logger.info('CouchDB: %s %s %s' % (obj['_id'], obj['project_id'], info))
 
 if __name__ == '__main__':
-    	usage = """Usage:	python project_summary_upload.py <url> [options]
+    	usage = """Usage:	python project_summary_upload.py [options]
 
-Arguments:
-	<url>			Database url (excluding http://)
 Options (Only one option is acceptab):
 	-a,			upploads all projects in genomics project list into couchDB
      	-p <project_ID>,	upploads the project <project_ID> into couchDB                                         
 
 """
 	logger = my_logging('proj_coucdb.log')
+
     	parser = OptionParser(usage=usage)
     	parser.add_option("-p", "--project", dest="project_ID", default=None)
     	parser.add_option("-a", "--all_projects", dest="all_projects", action="store_true", default=False)
@@ -488,15 +484,16 @@ Options (Only one option is acceptab):
 
 	CREDENTIALS_FILE = os.path.join(os.environ['HOME'], 'opt/config/gdocs_credentials')
 	CONFIG_FILE = os.path.join(os.environ['HOME'], 'opt/config/post_process.yaml')
-
+	CONFIG = cl.load_config(CONFIG_FILE)
+	URL = CONFIG['couch_db']['maggie_url']
 
 	if (options.project_ID is None) and (options.all_projects is False):
-                print usage
                 sys.exit()
+
 	kwargs = {'proj_ID': options.project_ID,
                   'all_projects': options.all_projects}
 
-    	main(CREDENTIALS_FILE, CONFIG_FILE, *args, **kwargs)
+    	main(CREDENTIALS_FILE, CONFIG, URL , **kwargs)
 
 
 
