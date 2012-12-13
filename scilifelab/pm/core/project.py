@@ -7,25 +7,29 @@ import yaml
 from cement.core import controller, hook
 from scilifelab.pm.core.controller import AbstractExtendedBaseController, AbstractBaseController
 from scilifelab.utils.misc import query_yes_no, filtered_walk, walk
+from scilifelab.pm.lib.clean import purge_alignments
+from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command
+from scilifelab.pm.core.bcbio import BcbioRunController
 
 ## Main project controller
-class ProjectController(AbstractExtendedBaseController):
+class ProjectController(AbstractExtendedBaseController, BcbioRunController):
     """
     Functionality for project management.
     """
     class Meta:
         label = 'project'
         description = 'Manage projects'
-        arguments = [
-            (['project'], dict(help="Scilife project id (e.g. j_doe_00_00)", default=None, action="store", nargs="?")),
-            (['-g', '--git'], dict(help="Initialize git directory in repos and project gitdir", default=False, action="store_true")),
-            (['-S', '--sample'], dict(help="project sample id", action="store", default=None, type=str)),
-            (['-F', '--flowcell'], dict(help="project flowcell id", action="store", default=None, type=str)),
-            (['--finished'], dict(help="include finished project listing", action="store_true", default=False)),
-            (['--intermediate'], dict(help="Work on intermediate data", default=False, action="store_true")),
-            (['--data'], dict(help="Work on data folder", default=False, action="store_true")),
-            ]
         flowcelldir = None
+
+    def _setup(self, base_app):
+        super(ProjectController, self)._setup(base_app)
+        base_app.args.add_argument('-g', '--git', help="Initialize git directory in repos and project gitdir", default=False, action="store_true")
+        base_app.args.add_argument('--minfilesize', help="Min file size to keep (in bytes). Default 2000.", default=2000, action="store", type=int)
+        group = base_app.args.add_argument_group('Project path group.', 'Options to restrict operations to certain paths.')
+        group.add_argument('--finished', help="include finished project listing", action="store_true", default=False)
+        group.add_argument('--intermediate', help="Work on intermediate data", default=False, action="store_true")
+        group.add_argument('--data', help="Work on data folder", default=False, action="store_true")
+
 
     ## Remember: need to do argument processing here also for stacked controllers
     ## FIX ME: _process_args should be called in the stacked controller
@@ -90,11 +94,6 @@ class ProjectController(AbstractExtendedBaseController):
                 return []
             files = os.listdir(self._meta.flowcelldir)
         return files
-
-    ## add
-    @controller.expose(help="Add boilerplate code")
-    def add(self):
-        self._not_implemented()
         
     ## NOTE: this is a temporary workaround for cases where data has
     ## been removed from production directory
@@ -103,43 +102,21 @@ class ProjectController(AbstractExtendedBaseController):
         if not self.pargs.flowcell:
             self.log.warn("No flowcellid provided. Please provide a flowcellid from which to deliver. Available options are:\n\t{}".format("\n\t".join(self._flowcells())))
             return
-
+    
     ## purge_alignments
     @controller.expose(help="purge alignments in project folders")
-    def purge_alignments(self):
+    def purge(self):
         """Cleanup sam and bam files. In some cases, sam files
         persist. If the corresponding bam file exists, replace the sam
         file contents with a message that the file has been removed to
         save space.
         """
-        pattern = ".sam$"
-        def purge_filter(f):
-            if not pattern:
-                return
-            return re.search(pattern, f) != None
-
-        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), purge_filter)
-        if len(flist) == 0:
-            self.app.log.info("No sam files found")
+        if not self._check_pargs(["project"]):
             return
-        if len(flist) > 0 and not query_yes_no("Going to remove/cleanup {} sam files ({}...). Are you sure you want to continue?".format(len(flist), ",".join([os.path.basename(x) for x in flist[0:10]])), force=self.pargs.force):
-            return
-        for f in flist:
-            self.app.log.info("Purging sam file {}".format(f))
-            self.app.cmd.safe_unlink(f)
-            if os.path.exists(f.replace(".sam", ".bam")):
-                self.app.cmd.write(f, "File removed to save disk space: SAM converted to BAM")
-
-        ## Find bam files in alignments subfolders
-        pattern = ".bam$"
-        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), purge_filter, include_dirs=["alignments"])
-        for f in flist:
-            f_tgt = [f.replace(".bam", "-sort.bam"), os.path.join(os.path.dirname(os.path.dirname(f)),os.path.basename(f) )]
-            for tgt in f_tgt:
-                if os.path.exists(tgt):
-                    self.app.log.info("Purging bam file {}".format(f))
-                    self.app.cmd.safe_unlink(f)
-                    self.app.cmd.write(f, "File removed to save disk space: Moved to {}".format(os.path.abspath(tgt)))
+        if self.app.pargs.sam:
+            purge_alignments(path=os.path.join(self._meta.root_path, self._meta.path_id), dry_run=self.app.pargs.dry_run, force=self.app.pargs.force, fsize=self.app.pargs.minfilesize)
+        else:
+            purge_alignments(path=os.path.join(self._meta.root_path, self._meta.path_id), dry_run=self.app.pargs.dry_run, force=self.app.pargs.force, ftype="bam", fsize=self.app.pargs.minfilesize)
 
 class ProjectRmController(AbstractBaseController):
     class Meta:
@@ -167,75 +144,3 @@ class ProjectRmController(AbstractBaseController):
             self.app.cmd.safe_unlink(f)
         self.app.log.info("removing {}".format(indir))
         self.app.cmd.safe_rmdir(indir)
-
-
-class BcbioRunController(AbstractBaseController):
-    class Meta:
-        label = 'runbcbio'
-        description = 'Wrapper for bcbio analyses'
-        arguments = [
-            ## Also relies on the project argument from above
-            (['post_process'], dict(help="post process file", action="store", default=None, nargs="?", type=str)),
-            (['analysis_type'], dict(help="set analysis ", action="store", default=None, type=str, nargs="?")),
-            (['--genome_build'], dict(help="genome build ", action="store", default="hg19", type=str)),
-            (['--only_failed'], dict(help="only run on failed samples ", action="store_true", default=False)),
-            ]
-        stacked_on = 'project'
-
-    def _sample_status(self, x):
-        """Find the status of a sample.
-
-        Look for output files: currently only look for project-summary.csv"""
-        if os.path.exists(os.path.join(os.path.dirname(x), "project-summary.csv")):
-            return "PASS"
-        else:
-            return "FAIL"
-
-    @controller.expose(help="run automated initial analysis on samples in a project")
-    def run(self):
-        if not self._check_pargs(["project", "post_process", "analysis_type"]):
-            return
-        ## Gather sample yaml files
-        pattern = "-bcbb-config.yaml$"
-        flist = []
-        if self.pargs.sample:
-            if os.path.exists(self.pargs.sample):
-                with open(self.pargs.sample) as fh:
-                    flist = [x.rstrip() for x in fh.readlines()]
-            else:
-                pattern = "{}{}".format(self.pargs.sample, pattern)
-        def bcbb_yaml_filter(f):
-            return re.search(pattern, f) != None
-        if not flist:
-            flist = filtered_walk(os.path.join(self.app.controller._meta.project_root, self.pargs.project, "data"), bcbb_yaml_filter)
-        if self.pargs.only_failed:
-            status = {x:self._sample_status(x) for x in flist}
-            flist = [x for x in flist if self._sample_status(x)=="FAIL"]
-        if len(flist) == 0 and self.pargs.sample:
-            self.app.log.info("No such sample {}".format(self.pargs.sample))
-        if len(flist) > 0 and not query_yes_no("Going to start {} jobs... Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
-            return
-        for f in flist:
-            with open(f) as fh:
-                config = yaml.load(fh)
-            if self.pargs.analysis_type:
-                config["details"][0]["multiplex"][0]["analysis"] = self.pargs.analysis_type
-                config["details"][0]["analysis"] = self.pargs.analysis_type
-            if config["details"][0]["genome_build"] == 'unknown':
-                config["details"][0]["genome_build"] = self.pargs.genome_build
-            ## Check if files exist: if they don't, then change the suffix
-            config["details"][0]["multiplex"][0]["files"].sort()
-            if not os.path.exists(config["details"][0]["multiplex"][0]["files"][0]):
-                if os.path.splitext(config["details"][0]["multiplex"][0]["files"][0])[1] == ".gz":
-                    config["details"][0]["multiplex"][0]["files"] = [x.replace(".gz", "") for x in config["details"][0]["multiplex"][0]["files"]]
-                else:
-                    config["details"][0]["multiplex"][0]["files"] = ["{}.gz".format(x) for x in config["details"][0]["multiplex"][0]["files"]]
-            config_file = f.replace("-bcbb-config.yaml", "-pm-bcbb-analysis-config.yaml")
-            self.app.cmd.write(config_file, yaml.dump(config))
-            ## Run automated_initial_analysis.py
-            cur_dir = os.getcwd()
-            new_dir = os.path.abspath(os.path.dirname(f))
-            os.chdir(new_dir)
-            self.app.cmd.command(['automated_initial_analysis.py', os.path.abspath(self.pargs.post_process), new_dir, config_file])
-            os.chdir(cur_dir)
-

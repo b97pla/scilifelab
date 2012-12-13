@@ -113,12 +113,12 @@ class CleanTest(PmTest):
                     safe_makedir(os.path.dirname(outfile))
                 exit_code = shell.exec_cmd2(['touch', outfile])
 
-    def test_1_clean_dry(self):
+    def test_clean_dry(self):
         self.app = self.make_app(argv = ['project', 'clean', 'j_doe_00_02', '--pileup', '-n', '--intermediate', '--force'])
         handler.register(ProjectController)
         self._run_app()
 
-    def test_1_clean(self):
+    def test_clean(self):
         before = glob.glob(os.path.join(intermediate, "120829_AA001AAAXX", "*"))
         self.app = self.make_app(argv = ['project', 'clean', 'j_doe_00_02', '--pileup', '--intermediate', '--force'])
         handler.register(ProjectController)
@@ -127,7 +127,7 @@ class CleanTest(PmTest):
         diff = [os.path.basename(x) for x in list(set(before).difference(set(after)))]
         self.eq(set(diff), set(['1_120829_AA001AAAXX_nophix_12-sort-dup-target.pileup.gz', '1_120829_AA001AAAXX_nophix_12-sort-dup-target.pileup', '1_120829_AA001AAAXX_nophix_12-sort-dup-target.crisp_pileup.gz', '1_120829_AA001AAAXX_nophix_12-sort-dup-target.crisp_pileup', '1_120829_AA001AAAXX_nophix_10-sort-dup-target.crisp_pileup.gz', '1_120829_AA001AAAXX_nophix_10-sort-dup-target.crisp_pileup', '1_120829_AA001AAAXX_nophix_10-sort-dup-target.pileup', '1_120829_AA001AAAXX_nophix_10-sort-dup-target.pileup.gz']))
 
-    def test_2_clean_fastqbam(self):
+    def test_clean_fastqbam(self):
         before = glob.glob(os.path.join(data, "P1_106F_index6/120829_AA001AAAXX/alignments", "*"))
         self.app = self.make_app(argv = ['project', 'clean', 'j_doe_00_02', '--data', '--fastqbam', '--force'])
         handler.register(ProjectController)
@@ -138,7 +138,7 @@ class CleanTest(PmTest):
         diff = [os.path.basename(x) for x in list(set(before).difference(set(after)))]
         self.eq(set(diff), set(['1_120829_AA001AAAXX_nophix_10_1_fastq-fastq.bam', '1_120829_AA001AAAXX_nophix_10_2_fastq-fastq.bam']))
 
-    def test_3_clean_split_tmp(self):
+    def test_clean_split_tmp(self):
         before = {'realign-split' : glob.glob(os.path.join(j_doe_00_04, "intermediate", "analysis_1", "1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-split", "*.*")),
                   'realign-split-tx' : glob.glob(os.path.join(j_doe_00_04, "intermediate", "analysis_1", "1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-split", "tx", "*.*")),
                   'variants-split' : glob.glob(os.path.join(j_doe_00_04, "intermediate", "analysis_1", "1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-variants-split", "*.*")),
@@ -152,7 +152,6 @@ class CleanTest(PmTest):
                   'variants-split' : glob.glob(os.path.join(j_doe_00_04, "intermediate", "analysis_1", "1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-variants-split", "*.*")),
                   'variants-split-tx' : glob.glob(os.path.join(j_doe_00_04, "intermediate", "analysis_1", "1_120924_CC003CCCXX_7-sort-dup-gatkrecal-realign-variants-split", "tx", "*.*")),
                   'all' : glob.glob(os.path.join(j_doe_00_04, "intermediate", "analysis_1", "*"))}
-
         self.eq(set(before['all']), set(after['all']))
         self.eq(len(after['realign-split']), 0)
         self.eq(len(after['realign-split-tx']), 0)

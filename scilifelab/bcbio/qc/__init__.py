@@ -1,23 +1,20 @@
 """bcbio qc module. Parsers for collecting qc metrics."""
 import os
-import sys
 import re
 import yaml
 import xml.parsers.expat
-import hashlib
-import time
 from uuid import uuid4
-import glob
 import json
-import fnmatch
 import numpy as np
 import csv
+import collections
 
+from bs4 import BeautifulSoup
 
 from cement.core import backend
 LOG = backend.minimal_logger("bcbio")
 
-from bcbio.broad.metrics import *
+from bcbio.broad.metrics import PicardMetricsParser
 from bcbio.pipeline.qcsummary import FastQCParser
 
 class MetricsParser():
@@ -45,7 +42,6 @@ class MetricsParser():
         return data
 
     def parse_fastq_screen_metrics(self, in_handle):
-        column_names = ["Library", "Unmapped", "Mapped_One_Library", "Mapped_Multiple_Libraries"]
         in_handle.readline()
         data = {}
         while 1:
@@ -59,6 +55,12 @@ class MetricsParser():
             data[vals[0]]["Mapped_Multiple_Libraries"] = float(vals[3])
         return data
 
+    def parse_undemultiplexed_barcode_metrics(self, in_handle):
+
+        data = collections.defaultdict(list)
+        for line in in_handle:
+            data[line['lane']].append({c:line[c] for c in in_handle.fieldnames if c != 'lane'})
+        return data
 
 class ExtendedPicardMetricsParser(PicardMetricsParser):
     """Extend basic functionality and parse all picard metrics"""
@@ -67,7 +69,6 @@ class ExtendedPicardMetricsParser(PicardMetricsParser):
         PicardMetricsParser.__init__(self)
 
     def _get_command(self, in_handle):
-        analysis = None
         while 1:
             line = in_handle.readline()
             if line.startswith("# net.sf.picard.analysis") or line.startswith("# net.sf.picard.sam"):
@@ -81,7 +82,7 @@ class ExtendedPicardMetricsParser(PicardMetricsParser):
                 break
         return in_handle.readline().rstrip("\n").split("\t")
 
-    def _read_vals_of_interest(self, want, header, info):
+    def _read_vals_of_interest(self, header, info):
         want_indexes = [header.index(w) for w in header]
         vals = dict()
         for i in want_indexes:
@@ -98,7 +99,7 @@ class ExtendedPicardMetricsParser(PicardMetricsParser):
             category = info[0]
             if len(info) <= 1:
                 break
-            vals = self._read_vals_of_interest(header, header, info)
+            vals = self._read_vals_of_interest(header, info)
             res[category] = vals
         return res
 
@@ -106,7 +107,7 @@ class ExtendedPicardMetricsParser(PicardMetricsParser):
         command = self._get_command(in_handle)
         header = self._read_off_header(in_handle)
         info = in_handle.readline().rstrip("\n").split("\t")
-        vals = self._read_vals_of_interest(header, header, info)
+        vals = self._read_vals_of_interest(header, info)
         histvals = self._read_histogram(in_handle)
         return dict(command=command, metrics = vals, hist = histvals)
 
@@ -114,7 +115,7 @@ class ExtendedPicardMetricsParser(PicardMetricsParser):
         command = self._get_command(in_handle)
         header = self._read_off_header(in_handle)
         info = in_handle.readline().rstrip("\n").split("\t")
-        vals = self._read_vals_of_interest(header, header, info)
+        vals = self._read_vals_of_interest(header, info)
         histvals = self._read_histogram(in_handle)
         return dict(command=command, metrics = vals, hist = histvals)
 
@@ -122,7 +123,7 @@ class ExtendedPicardMetricsParser(PicardMetricsParser):
         command = self._get_command(in_handle)
         header = self._read_off_header(in_handle)
         info = in_handle.readline().rstrip("\n").split("\t")
-        vals = self._read_vals_of_interest(header, header, info)
+        vals = self._read_vals_of_interest(header, info)
         return dict(command=command, metrics = vals)
     
     def _read_histogram(self, in_handle):
@@ -155,8 +156,7 @@ class RunInfoParser():
         self._element = None
 
     def parse(self, fp):
-        if os.path.exists(fp):
-            self._parse_RunInfo(fp)
+        self._parse_RunInfo(fp)
         return self._data
 
     def _start_element(self, name, attrs):
@@ -201,7 +201,6 @@ class IlluminaXMLParser():
             self._header = attrs
         if name == "Layout":
             n_tiles_per_lane = int(attrs['RowsPerLane']) * int(attrs['ColsPerLane'])
-            nrow = int(attrs['NumLanes']) * n_tiles_per_lane
             if self._tmp is None:
                 self._tmp = self._header
                 self._tmp.update(attrs)
@@ -341,324 +340,23 @@ class ExtendedFastQCParser(FastQCParser):
         data = np.array(d)
         df = {header[i]:data[:,i].tolist() for i in range(0,len(header))}
         return df
-
-##############################
-## QCMetrics objects
-##############################
-class QCMetrics(dict):
-    """Generic QCMetrics class"""
-    _entity_version = 0.2
-    _metrics = []
-    ## Following paths are ignored
-    ignore = "|".join(["tmp", "tx", "-split", "log"])
-    reignore = re.compile(ignore)
-
-    def __init__(self):
-        self["_id"] = hashlib.md5(self.entity_type()).hexdigest()
-        self["entity_type"] = self.entity_type()
-        self["entity_version"] = self.entity_version()
-        self["name"] = self.name()
-        self["creation_time"] = None
-        self["modification_time"] = None
-        self["metrics"] = None
-        self.files = []
-        self.path=None
-        #self._collect_files()
-
-    def entity_version(self):
-        return str(self._entity_version)
-
-    def entity_type(self):
-        return type(self).__name__
-    
-    # FIXME: should raise error: QCMetrics must be subclassed
-    def name(self):
-        return u"{}".format(self.get("entity_type", None))
-
-    def get_id(self):
-        return self.name()
-    
-    def get_db_id(self):
-        return self["_id"]
-
-    def to_json(self):
-        return json.dumps({'metrics':self["metrics"]})
-
-    def parse(self):
-        raise NotImplementedError
-
-    def _collect_files(self):
-        if not self.path:
-            return
-        if not os.path.exists(self.path):
-            raise IOError
-        self.files = []
-        for root, dirs, files in os.walk(self.path):
-            if re.search(self.reignore, root):
-                continue
-            self.files = self.files + [os.path.join(root, x) for x in files]
-
-    def filter_files(self, pattern, filter_fn=None):
-        """Take file list and return those files that pass the filter_fn criterium"""
-        def filter_function(f):
-            return re.search(pattern, f) != None
-        if not filter_fn:
-            filter_fn = filter_function
-        return [x for x in filter(filter_fn, self.files)]
-
-    
-class LaneQCMetrics(QCMetrics):
-    """Lane level class for holding qc data"""
-    _entity_version = 0.2
-    _metrics = ["bc_metrics","filter_metrics"]
-    
-    def __init__(self, path, flowcell, date, lane):
-        QCMetrics.__init__(self)
-        self["_id"] = hashlib.md5("{}_{}_{}".format(lane, date, flowcell)).hexdigest()
-        self["lane"] = lane
-        self["flowcell"] = flowcell
-        self["date"] = date
-        self["bc_metrics"] = {}
-        self["filter_metrics"] = {}
-        self.path = path
-        self._collect_files()
-
-    def name(self):
-        return "%s_%s_%s" % (self.get("lane"), self.get("date"), self.get("flowcell"))
-
-    def parse_filter_metrics(self, re_str="*filter[_.]metrics"):
-        log.info("parse_filter_metrics for lane {} in flowcell {}".format(self["lane"], self["flowcell"]))
-        pattern = "nophix/{}_[0-9]+_[0-9A-Za-z]+(_nophix)?.filter_metrics".format(self["lane"])
-        files = self.filter_files(pattern)
-        self["filter_metrics"] = {"reads":None, "reads_aligned":None, "reads_fail_align":None}
-        try:
-            fp = open(files[0])
-            parser = MetricsParser()
-            data = parser.parse_filter_metrics(fp)
-            fp.close()
-            self["filter_metrics"] = data
-        except:
-            log.warn("No filter nophix metrics for lane {}".format(self["lane"]))
-            
-    def parse_bc_metrics(self):
-        log.info("parse_bc_metrics for lane {} in flowcell {}".format(self["lane"], self["flowcell"]))
-        pattern = "{}*barcode/{}_[0-9]+_[0-9A-Za-z]+(_nophix)?.bc_metrics".format(self["lane"], self["lane"])
-        files = self.filter_files(pattern)
-        try:
-            parser = MetricsParser()
-            fp = open(files[0])
-            data = parser.parse_bc_metrics(fp)
-            fp.close()
-            self["bc_metrics"] = data
-        except:
-            log.warn("No bc_metrics info for lane {}".format(self["lane"]))
-
-class SampleQCMetrics(QCMetrics):
-    """Sample-level class for holding qc metrics data"""
-    _entity_version = 0.2
-    _metrics = ["picard_metrics","fastqc","fastq_scr", "bc_metrics", "filter_metrics"]
-
-    def __init__(self, path, flowcell, date, lane, barcode_name, barcode_id, sample_prj, sequence=None, barcode_type=None, genomes_filter_out=None, customer_prj=None, customer_sample_name=None):
-        QCMetrics.__init__(self)
-        self.path = path
-        self["_id"] = hashlib.md5("{}_{}_{}_{}".format(flowcell, date, lane, barcode_name)).hexdigest()
-        self["flowcell"] = flowcell
-        self["date"] = date
-        self["lane"] = lane
-        self["barcode_name"] = barcode_name
-        self["barcode_id"] = barcode_id
-        self["sample_prj"] = sample_prj
-        self["customer_prj"] = customer_prj
-        self["customer_sample_name"] = customer_sample_name
-        self["sequence"] = sequence
-        self["barcode_type"] = barcode_type
-        self["genomes_filter_out"] = genomes_filter_out
-        self["bc_count"] = None
-        self["metrics"] = dict()
-        self._collect_files()
-        for m in self._metrics:
-            self["metrics"][m] = {}
-
-    def read_picard_metrics(self):
-        log.info("read_picard_metrics for sample {}, lane {} in run {}".format(self["barcode_name"], self["lane"], self["flowcell"]))
-        picard_parser = ExtendedPicardMetricsParser()
-        pattern = "{}_[0-9]+_[0-9A-Za-z]+(_nophix)?_{}-.*.(align|hs|insert|dup)_metrics".format(self["lane"], self["barcode_id"])
-        try:
-            files = self.filter_files(pattern)
-            metrics = picard_parser.extract_metrics(files)
-            self["metrics"]["picard_metrics"] = metrics
-        except:
-            log.warn("no picard metrics for sample {}".format(self["barcode_name"]))
-
-    def parse_fastq_screen(self):
-        log.info("parse_fastq_screen for sample {}, lane {} in run {}".format(self["barcode_name"], self["lane"], self["flowcell"]))
-        parser = MetricsParser()
-        pattern = "{}_[0-9]+_[0-9A-Za-z]+(_nophix)?_{}_[12]_fastq_screen.txt".format(self["lane"], self["barcode_id"])
-        files = self.filter_files(pattern)
-        try:
-            fp = open(files[0])
-            data = parser.parse_fastq_screen_metrics(fp)
-            fp.close()
-            self["metrics"]["fastq_scr"] = data
-        except:
-            log.warn("no fastq screen metrics for sample {}".format(self["barcode_name"]))
-
-                
-    def read_fastqc_metrics(self):
-        log.info("read_fastq_metrics for sample {}, lane {} in run {}".format(self["barcode_name"], self["lane"], self["flowcell"]))
-        if self["barcode_name"] == "unmatched":
-            return
-        self["metrics"]["fastqc"] = {'stats':None}
-        pattern = "fastqc/{}_[0-9]+_[0-9A-Za-z]+(_nophix)?_{}-*".format(self["lane"], self["barcode_id"])
-        files = self.filter_files(pattern)
-        try:
-            fastqc_dir = os.path.dirname(files[0])
-            fqparser = ExtendedFastQCParser(fastqc_dir)
-            stats = fqparser.get_fastqc_summary()
-            self["metrics"]["fastqc"] = {'stats':stats}
-        except:
-            log.warn("no fastq screen metrics for sample {}".format(self["barcode_name"]))
-
-    def parse_filter_metrics(self):
-        """CASAVA: Parse filter metrics at sample level"""
-        log.info("parse_filter_metrics for lane {} in flowcell {}".format(self["lane"], self["flowcell"]))
-        pattern = "nophix/{}_[0-9]+_[0-9A-Za-z]+_{}(_nophix)?.filter_metrics".format(self["lane"], self["barcode_id"])
-
-    def parse_bc_metrics(self):
-        """CASAVA: parse bc metrics at sample level"""
-        log.info("parse_bc_metrics for sample {} in flowcell {}".format(self["barcode_name"], self["flowcell"]))
-        pattern = "{}_[0-9]+_[0-9A-Za-z]+.bc_metrics".format(self["lane"])
-        files = self.filter_files(pattern)
-        try:
-            parser = MetricsParser()
-            fp = open(files[0])
-            data = parser.parse_bc_metrics(fp)
-            fp.close()
-            self["metrics"]["bc_metrics"] = data
-            self["bc_count"] = data[str(self["barcode_id"])]
-        except:
-            log.warn("No bc_metrics info for lane {}".format(self["lane"]))
-
-    def name(self):
-        return "{}_{}_{}_{}".format(self.get("lane"),  self.get("date"), self.get("flowcell"),  self.get("barcode_id"))
-
-    def get_name(self, nophix=False):
-        if nophix:
-            s = "%s_%s_%s_nophix_%s" % (self["lane"], self["date"], self["flowcell"], self["barcode_id"])
-        else:
-            s = "%s_%s_%s_%s"  % (self["lane"], self["date"], self["flowcell"], self["barcode_id"])
-        return s
-
-class FlowcellQCMetrics(QCMetrics):
-    """Flowcell level class for holding qc data."""
-    _metrics = ["RunInfo", "run_info_yaml"]
-    _entity_version = 0.2
-
-    def __init__(self, path, fc_date, fc_name, runinfo="RunInfo.xml"):#, parse=True, fullRTA=False):
-        self.run_id = "%s_%s" % (fc_date, fc_name)
-        QCMetrics.__init__(self)
-        self["_id"] = hashlib.md5("{}_{}".format(fc_date, fc_name)).hexdigest()
-        self.path = path
-        self.db=None
-        self["metrics"] = dict()
-        for m in self._metrics:
-            self["metrics"][m] = None
-        ## initialize runinfo in case no RunInfo.xml
-        self["metrics"]["RunInfo"] = {"Id" : self.run_id, "Flowcell":fc_name, "Date": fc_date, "Instrument": "NA"}
-        self._parseRunInfo(runinfo)
-
-    def _parseRunInfo(self, fn="RunInfo.xml"):
-        log.info("_parseRunInfo: going to read RunInfo.xml in directory {}".format(self.path))
-        try:
-            fp = open(os.path.join(os.path.abspath(self.path), fn))
-            parser = RunInfoParser()
-            data = parser.parse(fp)
-            fp.close()
-            self["metrics"]["RunInfo"] = data
-            self.run_id = data.get("Id")
-        except:
-            log.warn("No such file %s" % os.path.join(os.path.abspath(self.path), fn))
-
-    def parse_run_info_yaml(self, run_info_yaml):
-        log.info("parse_run_info_yaml: going to read {} in directory {}".format(run_info_yaml, self.path))
-        fp = open(run_info_yaml)
-        runinfo = yaml.load(fp)
-        fp.close()
-        for info in runinfo:
-            if not self["lane"].has_key(info["lane"]):
-                lane = LaneQCMetrics(self.get_full_flowcell(), self.get_date(), info["lane"])
-                self["lane"][info["lane"]] = lane
-                ## Add sample for unmatched data
-                sample = SampleQCMetrics(self.get_full_flowcell(), self.get_date(), info["lane"], "unmatched", "unmatched", "NA", "NA", "NA", "NA")
-                bc_index = "%s_%s" % (info["lane"], "unmatched")
-                self.sample[bc_index] = sample
-            ## Lane could be empty
-            try:
-                for mp in info["multiplex"]:
-                    sample = SampleQCMetrics(self.get_full_flowcell(), self.get_date(), info["lane"], mp["name"], mp["barcode_id"], mp.get("sample_prj", None), mp["sequence"], mp["barcode_type"], mp.get("genomes_filter_out", None))
-                    bc_index = "%s_%s" % (info["lane"], mp["barcode_id"])
-                    self.sample[bc_index] = sample
-            except:
-                log.warn("No multiplexing information for lane %s" % info['lane'])
-        self["metrics"]["run_info_yaml"] = runinfo
-
-    def get_full_flowcell(self):
-        vals = self["metrics"]["RunInfo"]["Id"].split("_")
-        return vals[-1]
-    def get_flowcell(self):
-        return self.get("metrics").get("RunInfo").get("Flowcell")
-    def get_date(self):
-        return self.get("metrics").get("RunInfo").get("Date")
-    def get_run_name(self):
-        return "%s_%s" % (self.get_date(), self.get_full_flowcell())
-    def name(self):
-        return str(self.run_id)
-
-    def parse_illumina_metrics(self, fullRTA):
-        log.info("parse_illumina_metrics")
-        fn = []
-        for root, dirs, files in os.walk(os.path.abspath(self.path)):
-            for file in files:
-                if file.endswith(".xml"):
-                    fn.append(os.path.join(root, file))
-        parser = IlluminaXMLParser()
-        metrics = parser.parse(fn, fullRTA)
-        self["metrics"]["illumina"] = metrics
-
-
 ##############################
 ##  objects
 ##############################
-class RunMetrics(dict):
-    """Generic Run class"""
+class RunMetricsParser(dict):
+    """Generic Run Parser class"""
     _metrics = []
     ## Following paths are ignored
     ignore = "|".join(["tmp", "tx", "-split", "log"])
     reignore = re.compile(ignore)
 
     def __init__(self, log=None):
-        self["_id"] = uuid4().hex
-        self["entity_type"] = self.entity_type()
-        self["name"] = None
-        self["creation_time"] = None
-        self["modification_time"] = None
+        super(RunMetricsParser, self).__init__()
         self.files = []
         self.path=None
         self.log = LOG
         if log:
             self.log = log
-
-    def entity_type(self):
-        return type(self).__name__
-    
-    def get_db_id(self):
-        return self["_id"]
-
-    def to_json(self):
-        return json.dumps(self)
-
-    def parse(self):
-        raise NotImplementedError
 
     def _collect_files(self):
         if not self.path:
@@ -677,214 +375,277 @@ class RunMetrics(dict):
             return re.search(pattern, f) != None
         if not filter_fn:
             filter_fn = filter_function
-        return [x for x in filter(filter_fn, self.files)]
+        return filter(filter_fn, self.files)
 
-class SampleRunMetrics(RunMetrics):
-    """Sample-level class for holding run metrics data"""
+class SampleRunMetricsParser(RunMetricsParser):
+    """Sample-level class for parsing run metrics data"""
 
-    def __init__(self, path, flowcell, date, lane, barcode_name, barcode_id, sample_prj, sequence=None, barcode_type=None, genomes_filter_out=None):
-        RunMetrics.__init__(self)
+    def __init__(self, path):
+        RunMetricsParser.__init__(self)
         self.path = path
-        self["entity_type"] = "sample_run_metrics"
-        self["barcode_id"] = barcode_id
-        self["barcode_name"] = barcode_name
-        self["barcode_type"] = barcode_type
-        self["bc_count"] = None
-        self["date"] = date
-        self["flowcell"] = flowcell
-        self["lane"] = lane
-        self["sample_prj"] = sample_prj
-        self["sequence"] = sequence
-        self["barcode_type"] = barcode_type
-        self["genomes_filter_out"] = genomes_filter_out
-        self["name"] = "{}_{}_{}_{}".format(lane, date, flowcell, barcode_id)
-        
-        ## Metrics
-        self["fastqc"] = {}
-        self["fastq_scr"] = {}
-        self["picard_metrics"] = {}
-
         self._collect_files()
-
-    def __repr__(self):
-        return "<sample_run_metrics {}>".format(self["name"])
-
-    def __str__(self):
-        return self
         
-    def read_picard_metrics(self):
-        self.log.info("read_picard_metrics for sample {}, project {}, lane {} in run {}".format(self["barcode_name"], self["sample_prj"], self["lane"], self["flowcell"]))
+    def read_picard_metrics(self, barcode_name, sample_prj, lane, flowcell, barcode_id, **kw):
+        self.log.debug("read_picard_metrics for sample {}, project {}, lane {} in run {}".format(barcode_name, sample_prj, lane, flowcell))
         picard_parser = ExtendedPicardMetricsParser()
-        pattern = "{}_[0-9]+_[0-9A-Za-z]+(_nophix)?_{}-.*.(align|hs|insert|dup)_metrics".format(self["lane"], self["barcode_id"])
-        try:
-            files = self.filter_files(pattern)
-            metrics = picard_parser.extract_metrics(files)
-            self["picard_metrics"] = metrics
-        except:
-            self.log.warn("no picard metrics for sample {}".format(self["barcode_name"]))
-
-    def parse_fastq_screen(self):
-        self.log.info("parse_fastq_screen for sample {}, project {}, lane {} in run {}".format(self["barcode_name"], self["sample_prj"], self["lane"], self["flowcell"]))
-        parser = MetricsParser()
-        pattern = "|".join(["{}_[0-9]+_[0-9A-Za-z]+(_nophix)?_{}_[12]_fastq_screen.txt".format(self["lane"], self["barcode_id"]),
-                            "{}_[0-9]+_[0-9A-Za-z]+_{}(_nophix)?_[12]_fastq_screen.txt".format(self["lane"], self["barcode_id"])])
+        pattern = "|".join(["{}_[0-9]+_[0-9A-Za-z]+(_nophix)?_{}-.*.(align|hs|insert|dup)_metrics".format(lane, barcode_id),
+                            "{}_[0-9]+_[0-9A-Za-z]+_{}(_nophix)?-.*.(align|hs|insert|dup)_metrics".format(lane, barcode_id)])
         files = self.filter_files(pattern)
+        if len(files) == 0:
+            self.log.warn("no picard metrics files for sample {}; pattern {}".format(barcode_name, pattern))
+            return {}
+        try:
+            self.log.debug("files {}".format(",".join(files)))
+            metrics = picard_parser.extract_metrics(files)
+            return metrics
+        except:
+            self.log.warn("no picard metrics for sample {}".format(barcode_name))
+            return {}
+
+    def parse_fastq_screen(self, barcode_name, sample_prj, lane, flowcell, barcode_id, **kw):
+        self.log.debug("parse_fastq_screen for sample {}, project {}, lane {} in run {}".format(barcode_name, sample_prj, lane, flowcell))
+        parser = MetricsParser()
+        pattern = "|".join(["{}_[0-9]+_[0-9A-Za-z]+(_nophix)?_{}_[12]_fastq_screen.txt".format(lane, barcode_id),
+                            "{}_[0-9]+_[0-9A-Za-z]+_{}(_nophix)?_[12]_fastq_screen.txt".format(lane, barcode_id)])
+        files = self.filter_files(pattern)
+        self.log.debug("files {}".format(",".join(files)))
         try:
             fp = open(files[0])
             data = parser.parse_fastq_screen_metrics(fp)
             fp.close()
-            self["fastq_scr"] = data
+            return data
         except:
-            self.log.warn("no fastq screen metrics for sample {}".format(self["barcode_name"]))
+            self.log.warn("no fastq screen metrics for sample {}".format(barcode_name))
+            return {}
 
-    def read_fastqc_metrics(self):
-        self.log.info("read_fastq_metrics for sample {}, project {}, lane {} in run {}".format(self["barcode_name"], self["sample_prj"], self["lane"], self["flowcell"]))
-        if self["barcode_name"] == "unmatched":
+    def read_fastqc_metrics(self, barcode_name, sample_prj, lane, flowcell, barcode_id, **kw):
+        self.log.debug("read_fastqc_metrics for sample {}, project {}, lane {} in run {}".format(barcode_name, sample_prj, lane, flowcell))
+        if barcode_name == "unmatched":
             return
-        self["fastqc"] = {'stats':None}
-        pattern = "fastqc/{}_[0-9]+_[0-9A-Za-z]+(_nophix)?_{}-*".format(self["lane"], self["barcode_id"])
+        pattern = "fastqc/{}_[0-9]+_[0-9A-Za-z]+(_nophix)?_{}-*".format(lane, barcode_id)
         files = self.filter_files(pattern)
+        self.log.debug("files {}".format(",".join(files)))
         try:
             fastqc_dir = os.path.dirname(files[0])
             fqparser = ExtendedFastQCParser(fastqc_dir)
             stats = fqparser.get_fastqc_summary()
-            self["fastqc"] = {'stats':stats}
-        except:
-            self.log.warn("no fastq screen metrics for sample {}".format(self["barcode_name"]))
+            return {'stats':stats}
+        except Exception as e:
+            self.log.warn("Exception: {}".format(e))
+            self.log.warn("no fastqc metrics for sample {} using pattern '{}'".format(barcode_name, pattern))
+            return {'stats':{}}
 
-    def parse_filter_metrics(self):
+    def parse_filter_metrics(self, **kw):
         """CASAVA: Parse filter metrics at sample level"""
-        self.log.info("parse_filter_metrics for lane {}, project {} in flowcell {}".format(self["lane"], self["sample_prj"], self["flowcell"]))
-        pattern = "{}_[0-9]+_[0-9A-Za-z]+_{}(_nophix)?.filter_metrics".format(self["lane"], self["barcode_id"])
+        self.log.debug("parse_filter_metrics for lane {}, project {} in flowcell {}".format(lane, sample_prj, flowcell))
+        pattern = "{}_[0-9]+_[0-9A-Za-z]+_{}(_nophix)?.filter_metrics".format(lane, barcode_id)
         files = self.filter_files(pattern)
-        self["filter_metrics"] = {"reads":None, "reads_aligned":None, "reads_fail_align":None}
+        self.log.debug("files {}".format(",".join(files)))
         try:
             fp = open(files[0])
             parser = MetricsParser()
             data = parser.parse_filter_metrics(fp)
             fp.close()
-            self["filter_metrics"] = data
+            return data
         except:
-            self.log.warn("No filter nophix metrics for lane {}".format(self["lane"]))
+            self.log.warn("No filter nophix metrics for lane {}".format(lane))
+            return {"reads":None, "reads_aligned":None, "reads_fail_align":None}
 
-    def parse_bc_metrics(self):
-        """Parse bc metrics at sample level"""
-        self.log.info("parse_bc_metrics for sample {}, project {} in flowcell {}".format(self["barcode_name"], self["sample_prj"], self["flowcell"]))
-        pattern = "{}_[0-9]+_[0-9A-Za-z]+(_nophix)?[\._]bc[\._]metrics".format(self["lane"])
+    def get_bc_count(self, barcode_name, sample_prj, flowcell, lane, barcode_id, **kw):
+        """Parse bc metrics at sample level and get *bc_count* for a sample run!"""
+        self.log.debug("get_bc_count for sample {}, project {} in flowcell {}".format(barcode_name, sample_prj, flowcell))
+        pattern = "{}_[0-9]+_[0-9A-Za-z]+(_nophix)?[\._]bc[\._]metrics".format(lane)
         files = self.filter_files(pattern)
+        if len(files) == 0:
+            self.log.debug("no bc metrics files for sample {}; pattern {}".format(barcode_name, pattern))
+            return None
+        self.log.debug("files {}".format(",".join(files)))
         try:
             parser = MetricsParser()
             fp = open(files[0])
             data = parser.parse_bc_metrics(fp)
             fp.close()
-            self["bc_count"] = data[str(self["barcode_id"])]
+            return data[str(barcode_id)]
         except:
-            self.log.warn("No bc_metrics info for lane {}".format(self["lane"]))
+            self.log.warn("No bc_metrics info for lane {}".format(lane))
+            return None
 
 
-class FlowcellRunMetrics(RunMetrics):
-    """Flowcell level class for holding qc data."""
-    def __init__(self, path, fc_date, fc_name, runinfo="RunInfo.xml"):#, parse=True, fullRTA=False):
-        RunMetrics.__init__(self)
+class FlowcellRunMetricsParser(RunMetricsParser):
+    """Flowcell level class for parsing flowcell run metrics data."""
+    _lanes = range(1,9)
+    def __init__(self, path):
+        RunMetricsParser.__init__(self)
         self.path = path
-        self.db=None
-        self["name"] = "{}_{}".format(fc_date, fc_name)
-        self["RunInfo"] = {"Id" : self["name"], "Flowcell":fc_name, "Date": fc_date, "Instrument": "NA"}
-        self["run_info_yaml"] = {}
-        self["samplesheet_csv"] = {}
-        self._lanes = [1,2,3,4,5,6,7,8]
-        self["lanes"] = {str(k):{"lane":str(k), "filter_metrics":{}, "bc_metrics":{}} for k in self._lanes}
-        self._parseRunInfo(runinfo)
         self._collect_files()
 
-    def __repr__(self):
-        return "<flowcell_metrics {}>".format(self["name"])
-
-    def __str__(self):
-        return self
-
-    def _parseRunInfo(self, fn="RunInfo.xml"):
-        self.log.info("_parseRunInfo: going to read RunInfo.xml in directory {}".format(self.path))
+    def parseRunInfo(self, fn="RunInfo.xml", **kw):
+        infile = os.path.join(os.path.abspath(self.path), fn)
+        self.log.debug("parseRunInfo: going to read {}".format(infile))
+        if not os.path.exists(infile):
+            self.log.warn("No such file {}".format(infile))
+            return {}
         try:
-            fp = open(os.path.join(os.path.abspath(self.path), fn))
+            fp = open(infile)
             parser = RunInfoParser()
             data = parser.parse(fp)
             fp.close()
-            self["RunInfo"] = data
+            return data
         except:
-            self.log.warn("No such file %s" % os.path.join(os.path.abspath(self.path), fn))
+            self.log.warn("Reading file {} failed".format(os.path.join(os.path.abspath(self.path), fn)))
+            return {}
 
-    def parse_samplesheet_csv(self):
-        self.log.info("parse_samplesheet_csv: going to read {}.csv in directory {}".format(self["RunInfo"]["Flowcell"][1:], self.path))
-        infile = os.path.join(os.path.abspath(self.path), "{}.csv".format(self["RunInfo"]["Flowcell"][1:]))
+    def parse_samplesheet_csv(self, fc_name, **kw):
+        infile = os.path.join(os.path.abspath(self.path), "{}.csv".format(fc_name[1:]))
+        self.log.debug("parse_samplesheet_csv: going to read {}".format(infile))
+        if not os.path.exists(infile):
+            self.log.warn("No such file {}".format(infile))
+            return {}
         try:
             fp = open(infile)
-            runinfo = json.dumps([x for x in csv.reader(fp)])
+            runinfo = [x for x in csv.DictReader(fp)]
             fp.close()
-            self["samplesheet_csv"] = runinfo
+            return runinfo
         except:
-            self.log.warn("No such file {}".format(infile))
+            self.log.warn("Reading file {} failed".format(infile))
+            return {}
             
-    def parse_run_info_yaml(self, run_info_yaml="run_info.yaml"):
-        self.log.info("parse_run_info_yaml: going to read {} in directory {}".format(run_info_yaml, self.path))
+    def parse_run_info_yaml(self, run_info_yaml="run_info.yaml", **kw):
         infile = os.path.join(os.path.abspath(self.path), run_info_yaml)
+        self.log.debug("parse_run_info_yaml: going to read {}".format(infile))
+        if not os.path.exists(infile):
+            self.log.warn("No such file {}".format(infile))
+            return {}
         try:
             fp = open(infile)
             runinfo = yaml.load(fp)
             fp.close()
-            self["run_info_yaml"] = runinfo
+            return runinfo
+            return True
         except:
             self.log.warn("No such file {}".format(infile))
+            return False
 
-    def get_full_flowcell(self):
-        vals = self["RunInfo"]["Id"].split("_")
-        return vals[-1]
-    def get_flowcell(self):
-        return self.get("metrics").get("RunInfo").get("Flowcell")
-    def get_date(self):
-        return self.get("metrics").get("RunInfo").get("Date")
-    def get_run_name(self):
-        return "%s_%s" % (self.get_date(), self.get_full_flowcell())
-
-    def parse_illumina_metrics(self, fullRTA):
-        self.log.info("parse_illumina_metrics")
+    def parse_illumina_metrics(self, fullRTA=False, **kw):
+        self.log.debug("parse_illumina_metrics")
         fn = []
         for root, dirs, files in os.walk(os.path.abspath(self.path)):
-            for file in files:
-                if file.endswith(".xml"):
-                    fn.append(os.path.join(root, file))
+            for f in files:
+                if f.endswith(".xml"):
+                    fn.append(os.path.join(root, f))
+        self.log.debug("Found {} RTA files {}...".format(len(fn), ",".join(fn[0:10])))
         parser = IlluminaXMLParser()
         metrics = parser.parse(fn, fullRTA)
-        self["illumina"] = metrics
+        return metrics
 
-    def parse_filter_metrics(self):
+    def parse_filter_metrics(self, fc_name, **kw):
         """pre-CASAVA: Parse filter metrics at flowcell level"""
-        self.log.info("parse_filter_metrics for flowcell {}".format(self["RunInfo"]["Flowcell"]))
+        self.log.debug("parse_filter_metrics for flowcell {}".format(fc_name))
+        lanes = {str(k):{} for k in self._lanes}
         for lane in self._lanes:
             pattern = "{}_[0-9]+_[0-9A-Za-z]+(_nophix)?.filter_metrics".format(lane)
-            self["lanes"][str(lane)]["filter_metrics"] = {"reads":None, "reads_aligned":None, "reads_fail_align":None}
+            lanes[str(lane)]["filter_metrics"] = {"reads":None, "reads_aligned":None, "reads_fail_align":None}
             files = self.filter_files(pattern)
+            self.log.debug("filter metrics files {}".format(",".join(files)))
             try:
                 fp = open(files[0])
                 parser = MetricsParser()
                 data = parser.parse_filter_metrics(fp)
                 fp.close()
-                self["lanes"][str(lane)]["filter_metrics"] = data
+                lanes[str(lane)]["filter_metrics"] = data
             except:
                 self.log.warn("No filter nophix metrics for lane {}".format(lane))
+        return lanes
 
-    def parse_bc_metrics(self):
+    def parse_bc_metrics(self, fc_name, **kw):
         """Parse bc metrics at sample level"""
-        self.log.info("parse_bc_metrics for flowcell {}".format(self["RunInfo"]["Flowcell"]))
+        self.log.debug("parse_bc_metrics for flowcell {}".format(fc_name[1:]))
+        lanes = {str(k):{} for k in self._lanes}
         for lane in self._lanes:
             pattern = "{}_[0-9]+_[0-9A-Za-z]+(_nophix)?[\._]bc[\._]metrics".format(lane)
-            self["lanes"][str(lane)]["bc_metrics"] = {"reads":None, "reads_aligned":None, "reads_fail_align":None}
+            lanes[str(lane)]["bc_metrics"] = {}
             files = self.filter_files(pattern)
+            self.log.debug("bc metrics files {}".format(",".join(files)))
             try:
                 parser = MetricsParser()
                 fp = open(files[0])
                 data = parser.parse_bc_metrics(fp)
                 fp.close()
-                self["lanes"][str(lane)]["bc_metrics"] = data
+                lanes[str(lane)]["bc_metrics"] = data
             except:
                 self.log.warn("No bc_metrics info for lane {}".format(lane))
+        return lanes
+
+    def parse_undemultiplexed_barcode_metrics(self, fc_name, **kw):
+        """Parse the undetermined indices top barcodes materics
+        """
+        
+        metrics_file = os.path.join(self.path, "Unaligned", "Basecall_Stats_{}".format(fc_name[1:]), "Undemultiplexed_stats.metrics")
+        self.log.debug("parsing {}".format(metrics_file))
+        if not os.path.exists(metrics_file):
+            self.log.warn("No such file {}".format(metrics_file))
+            return {}
+        
+        lanes = {str(k):{} for k in self._lanes}
+        with open(metrics_file) as fh:
+            parser = MetricsParser()
+            in_handle = csv.DictReader(fh, dialect=csv.excel_tab)
+            data = parser.parse_undemultiplexed_barcode_metrics(in_handle)
+            for k in lanes.keys():
+                lanes[str(k)]["undemultiplexed_barcodes"] = collections.defaultdict(list)
+                try:
+                    for barcode in data[str(k)]:
+                        for key, val in barcode.items():
+                            lanes[str(k)]["undemultiplexed_barcodes"][key].append(val)
+                except KeyError:
+                    self.log.warn("No undemultiplexed barcode metrics for lane {}".format(k))
+        return lanes
+    
+    def parse_demultiplex_stats_htm(self, fc_name, **kw):
+        """Parse the Unaligned/Basecall_Stats_*/Demultiplex_Stats.htm file
+        generated from CASAVA demultiplexing and returns barcode metrics.
+        """
+        htm_file = os.path.join(self.path, "Unaligned", "Basecall_Stats_{}".format(fc_name[1:]), "Demultiplex_Stats.htm")
+        self.log.debug("parsing {}".format(htm_file))
+        if not os.path.exists(htm_file):
+            self.log.warn("No such file {}".format(htm_file))
+            return {}
+        with open(htm_file) as fh:
+            htm_doc = fh.read()
+        soup = BeautifulSoup(htm_doc)
+        ## 
+        ## Find headers
+        allrows = soup.findAll("tr")
+        column_gen=(row.findAll("th") for row in allrows)
+        parse_row = lambda row: row 
+        headers = [h for h in map(parse_row, column_gen) if h]
+        bc_header = [str(x.string) for x in headers[0]]
+        smp_header = [str(x.string) for x in headers[1]]
+        ## 'Known' headers from a Demultiplex_Stats.htm document
+        bc_header_known = ['Lane', 'Sample ID', 'Sample Ref', 'Index', 'Description', 'Control', 'Project', 'Yield (Mbases)', '% PF', '# Reads', '% of raw clusters per lane', '% Perfect Index Reads', '% One Mismatch Reads (Index)', '% of >= Q30 Bases (PF)', 'Mean Quality Score (PF)']
+        smp_header_known = ['None', 'Recipe', 'Operator', 'Directory']
+        if not bc_header == bc_header_known:
+            self.log.warn("Barcode lane statistics header information has changed. New format?\nOld format: {}\nSaw: {}".format(",".join((["'{}'".format(x) for x in bc_header_known])), ",".join(["'{}'".format(x) for x in bc_header])))
+        if not smp_header == smp_header_known:
+            self.log.warn("Sample header information has changed. New format?\nOld format: {}\nSaw: {}".format(",".join((["'{}'".format(x) for x in smp_header_known])), ",".join(["'{}'".format(x) for x in smp_header])))
+        ## Fix first header name in smp_header since htm document is mal-formatted: <th>Sample<p></p>ID</th>
+        smp_header[0] = "Sample ID"
+
+        metrics = {}
+        ## Parse Barcode lane statistics
+        soup = BeautifulSoup(htm_doc)
+        table = soup.findAll("table")[1]
+        rows = table.findAll("tr")
+        column_gen = (row.findAll("td") for row in rows)
+        parse_row = lambda row: {bc_header[i]:str(row[i].string) for i in range(0, len(bc_header)) if row}
+        metrics["Barcode_lane_statistics"] =  map(parse_row, column_gen)
+
+        ## Parse Sample information
+        soup = BeautifulSoup(htm_doc)
+        table = soup.findAll("table")[3]
+        rows = table.findAll("tr")
+        column_gen = (row.findAll("td") for row in rows)
+        parse_row = lambda row: {smp_header[i]:str(row[i].string) for i in range(0, len(smp_header)) if row}
+        metrics["Sample_information"] = map(parse_row, column_gen)
+        ## Set data
+        return metrics

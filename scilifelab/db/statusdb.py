@@ -1,38 +1,326 @@
 """Database backend for connecting to statusdb"""
-
+import re
+import collections
 from itertools import izip
 from scilifelab.db import Couch
+from scilifelab.utils.timestamp import utc_time
+from scilifelab.utils.misc import query_yes_no
+from uuid import uuid4
+from scilifelab.log import minimal_logger
+
+LOG = minimal_logger(__name__)
+
+# Statusdb views essential for pm qc functionality
+# FIXME: import ViewDefinition from couchdb.design and create views if not present
+VIEWS = {'samples' : {'names': {'name' : '''function(doc) {if (!doc["name"].match(/_[0-9]+$/)) {emit(doc["name"], null);}}''',
+                                'name_fc' : '''function(doc) {if (!doc["name"].match(/_[0-9]+$/)) {emit(doc["name"], doc["flowcell"]);}}''',
+                                'name_fc_proj' : '''var list; function(doc) {if (!doc["name"].match(/_[0-9]+$/)) {list = [doc["flowcell"], doc["sample_prj"]];emit(doc["name"], list);}}''',
+                                'name_proj' : '''function(doc) {if (!doc["name"].match(/_[0-9]+$/)) {emit(doc["name"], doc["sample_prj"]);}}''',
+                                'id_to_name' : '''function(doc) {emit(doc["_id"], doc["name"]);}''',
+                                }},
+         'flowcells' : {'names' : {'name' : '''function(doc) {emit(doc["name"], null);}''',
+                                   'id_to_name' : '''function(doc) {emit(doc["_id"], doc["name"]);}'''}},
+         'projects' : {'project' : {'project_id' : '''function(doc) {emit(doc.project_id, doc._id)}'''},
+                       'names' : {'id_to_name' : '''function(doc) {emit(doc["_id"], doc["project_id"]);}''',
+                                  'name' : '''function(doc) {emit(doc["project_id"], null);}'''}},
+         }
+
+# Regular expressions for general use
+re_project_id = "^(P[0-9][0-9][0-9])"
+re_project_id_nr = "^P([0-9][0-9][0-9])"
+
+# http://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
+# FIX ME: make override work
+def _update(d, u, override=True):
+    """Update values of a nested dictionary of varying depth"""
+    for k, v in u.iteritems():
+        if isinstance(v, collections.Mapping):
+            r = _update(d.get(k, {}), v)
+            d[k] = r
+        else:
+            d[k] = u[k]
+    return d
+
+def _return_extensive_match_result(name_map, barcode_name, force=False):
+    """Wrap return value for extensive matching"""
+    if query_yes_no("found mapping '{} : {}' (barcode_name:project_sample_name); do you want to use this project_sample_name?".format(barcode_name, name_map["sample_name"]), default="no", force=force):
+        return name_map
+    else:
+        return None
+                        
+
+def _match_barcode_name_to_project_sample(barcode_name, project_samples, extensive_matching=False, force=False):
+    """Take a barcode name and map it to a list of project sample names.
+
+    :param barcode_name: barcode name as it appears in sample sheet
+    :param project_samples: dictionary of project samples as obtained from statusdb project_summary
+    :param extensive_matching: perform extensive matching of barcode to project sample names
+    :param force: override interactive queries. NB: not called from get_project_sample.
     
+    :returns: dictionary with keys project sample name and project sample or None
+    """
+    if barcode_name in project_samples.keys():
+        return {'sample_name':barcode_name, 'project_sample':project_samples[barcode_name]}
+    for project_sample_name in project_samples.keys():
+        # Look for cases where barcode name is formatted in a way that does not conform to convention
+        # NB: only do this interactively!!!
+        if not re.search(re_project_id_nr, barcode_name):
+            if not extensive_matching:
+                return None
+            # Project id could be project number without a P, i.e. XXX_XXX_indexXX
+            sample_id = re.search("(\d+_)?(\d+)_?([A-Z])?_",barcode_name)
+            # Fall back if no hit
+            if not sample_id:
+                LOG.warn("No regular expression match for barcode name {}; implement new case".format(barcode_name))
+                return None
+            (prj_id, smp_id, _) = sample_id.groups()
+            if not prj_id:
+                prj_id=""
+            if str(smp_id) == str(project_sample_name):
+                return _return_extensive_match_result({'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}, barcode_name, force=force)
+            elif str("P{}_{}".format(prj_id.rstrip("_"), smp_id)) == str(project_sample_name):
+                return _return_extensive_match_result({'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}, barcode_name, force=force)
+
+            # Sometimes barcode name is of format XX_indexXX, where the number is the sample number
+            m = re.search("(_index[0-9]+)", barcode_name)
+            if not m:
+                index = ""
+            else:
+                index = m.group(1)
+                sample_id = re.search("([A-Za-z0-9\_]+)(\_index[0-9]+)?", barcode_name.replace(index, ""))
+                if str(sample_id.group(1)) == str(project_sample_name):
+                    return _return_extensive_match_result({'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}, barcode_name, force=force)
+                if str(sample_id.group(1)) == str(project_samples[project_sample_name].get("customer_name", None)):
+                    return _return_extensive_match_result({'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}, barcode_name, force=force)
+                # customer well names contain a 0, as in 11A07; run names don't always
+                # FIXME: a function should convert customer name to standard forms in cases like these
+                if str(sample_id.group(1)) == str(project_samples[project_sample_name].get("customer_name", "").replace("0", "")):
+                    return _return_extensive_match_result({'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}, barcode_name, force=force)
+        else:
+            prj_id = barcode_name.split("_")[0]
+            # Matches project id naming convention PXXX_
+            # Look for case barcode: PXXX_XXX[BCDEF]_indexXX, project_sample_name: PXXX_XXX
+            if str(barcode_name).startswith(str(project_sample_name)):
+                return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
+            elif str(barcode_name).startswith(str(project_sample_name).rstrip("F")):
+                return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
+            elif str(barcode_name).startswith(str(project_sample_name).rstrip("B")):
+                return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
+            elif str(barcode_name).startswith(str(project_sample_name).rstrip("C")):
+                return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
+            elif str(barcode_name).startswith(str(project_sample_name).rstrip("D")):
+                return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
+            elif str(barcode_name).startswith(str(project_sample_name).rstrip("E")):
+                return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
+            
+            # Look for cases barcode: PXXX_XX[BCDEF]_indexXX matching to project_sample_name: XX_indexXX
+            elif str(barcode_name.replace("{}_".format(prj_id), "")).startswith(str(project_sample_name)):
+                return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
+            elif str(barcode_name.replace("{}_".format(prj_id), "")).startswith(str(project_sample_name).rstrip("F")):
+                return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
+            elif str(barcode_name.replace("{}_".format(prj_id), "")).startswith(str(project_sample_name).rstrip("B")):
+                return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
+            elif str(barcode_name.replace("{}_".format(prj_id), "")).startswith(str(project_sample_name).rstrip("C")):
+                return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
+            elif str(barcode_name.replace("{}_".format(prj_id), "")).startswith(str(project_sample_name).rstrip("D")):
+                return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
+            elif str(barcode_name.replace("{}_".format(prj_id), "")).startswith(str(project_sample_name).rstrip("E")):
+                return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
+    return None
+
+##############################
+# Documents
+##############################
+class StatusDocument(dict):
+    """Generic status document class"""
+    _entity_type = "status_document"
+    _fields = []
+    _dict_fields = []
+    _list_fields = []
+    def __init__(self, **kw):
+        self["_id"] = kw.get("_id", uuid4().hex)
+        self["entity_type"] = self._entity_type
+        self["name"] = kw.get("name", None)
+        self["creation_time"] = kw.get("creation_time", utc_time())
+        self["modification_time"] = kw.get("modification_time", utc_time())
+        for f in self._fields:
+            self[f] = kw.get(f, None)
+        for f in self._dict_fields:
+            self[f] = kw.get(f, {})
+        for f in self._list_fields:
+            self[f] = kw.get(f, {})
+        self = _update(self, kw)
+
+    def __repr__(self):
+        return "<{} {}>".format(self["entity_type"], self["name"])
+
+class ProjectSummaryDocument(StatusDocument):
+    """project summary document"""
+    _entity_type = "project_summary"
+    _fields = ["application", "customer_reference", "min_m_reads_per_sample_ordered",
+               "no_of_samples", "project_id"]
+    _dict_fields = ["samples"]
+    def __init__(self, **kw):
+        StatusDocument.__init__(self, **kw)
+
+    def __repr__(self):
+        return "<{} {}>".format(self["entity_type"], self["project_id"])
+
+class FlowcellRunMetricsDocument(StatusDocument):
+    """Flowcell level class for holding qc data."""
+    _entity_type = "flowcell_run_metrics"
+    _fields = ["name"]
+    _dict_fields = ["run_info_yaml", "illumina", "samplesheet_csv"]
+    def __init__(self, fc_date=None, fc_name=None, **kw):
+        StatusDocument.__init__(self, **kw)
+        self._lanes = [1,2,3,4,5,6,7,8]
+        self["lanes"] = {str(k):{"lane":str(k), "filter_metrics":{}, "bc_metrics":{}} for k in self._lanes}
+        if fc_date and fc_name:
+            self["name"] = "{}_{}".format(fc_date, fc_name)
+
+class SampleRunMetricsDocument(StatusDocument):
+    """Sample-level class for holding run metrics data"""
+    _entity_type = "sample_run_metrics"
+    _fields =["barcode_id", "barcode_name", "barcode_type", "bc_count", "date",
+              "flowcell", "lane", "sample_prj", "sequence", "barcode_type",
+              "genomes_filter_out", "project_sample_name", "project_id"] 
+    _dict_fields = ["fastqc", "fastq_scr", "picard_metrics"]
+    def __init__(self, **kw):
+        StatusDocument.__init__(self, **kw)
+        self["name"] = "{}_{}_{}_{}".format(self["lane"], self["date"], self["flowcell"], self["sequence"])
+        if self["barcode_name"]:
+            self.set_project_id()
+        
+    def set_project_id(self, value=None):
+        """Get corresponding project id for a project name.
+
+        :param value: if not provided will try to identify project based on barcode name
+        """
+        if value:
+            self["project_id"] = value
+            return
+        m = re.search(re_project_id, self["barcode_name"])
+        if m:
+            self["project_id"] = m.group(1)
+        return 
+
+# Updating function for object comparison        
+def update_fn(cls, db, obj, viewname = "names/id_to_name", key="name"):
+    """Compare object with object in db if present.
+
+    :param cls: calling class
+    :param db: couch database
+    :param obj: database object to save
+
+    :returns: database object to save and database id if present
+    """
+    t_utc = utc_time()
+    def equal(a, b):
+        a_keys = [str(x) for x in a.keys() if x not in ["_id", "_rev", "creation_time", "modification_time"]]
+        b_keys = [str(x) for x in b.keys() if x not in ["_id", "_rev", "creation_time", "modification_time"]]
+        keys = list(set(a_keys + b_keys))
+        return {k:a.get(k, None) for k in keys} == {k:b.get(k, None) for k in keys}
+
+    view = db.view(viewname)
+    d_view = {k.value:k for k in view}
+    dbid =  d_view.get(obj[key], None)
+    dbobj = None
+
+    if dbid:
+        dbobj = db.get(dbid.id, None)
+    if dbobj is None:
+        obj["creation_time"] = t_utc
+        return (obj, dbid)
+    if equal(obj, dbobj):
+        return (None, dbid)
+    else:
+        obj["creation_time"] = dbobj.get("creation_time")
+        obj["modification_time"] = t_utc
+        obj["_rev"] = dbobj.get("_rev")
+        obj["_id"] = dbobj.get("_id")
+        return (obj, dbid)
+
+##############################
+# functions that operate on status_document objects
+##############################
+def calc_avg_qv(srm):
+    """Calculate average quality score for a sample based on
+    FastQC results.
+    
+    FastQC reports QV results in the field 'Per sequence quality scores', 
+    where the subfields 'Count' and 'Quality' refer to the counts of a given quality value.
+    
+    :param srm: sample run metrics
+    
+    :returns avg_qv: Average quality value score.
+    """
+    try:
+        count = [float(x) for x in srm["fastqc"]["stats"]["Per sequence quality scores"]["Count"]]
+        quality = srm["fastqc"]["stats"]["Per sequence quality scores"]["Quality"]
+        return round(sum([x*int(y) for x,y in izip(count, quality)])/sum(count), 1)
+    except:
+        return None
+
+
+def get_qc_data(sample_prj, p_con, s_con, fc_id=None):
+    """Get qc data for a project, possibly subset by flowcell.
+    
+    :param sample_prj: project identifier
+    :param p_con: object of type <ProjectSummaryConnection>
+    :param s_con: object of type <SampleRunMetricsConnection>
+
+    :returns: dictionary of qc results
+    """
+    project = p_con.get_entry(sample_prj)
+    application = project.get("application", None) if project else None
+    samples = s_con.get_samples(fc_id=fc_id, sample_prj=sample_prj)
+    qcdata = {}
+    for s in samples:
+        qcdata[s["name"]]={"sample":s.get("barcode_name", None),
+                           "project":s.get("sample_prj", None),
+                           "lane":s.get("lane", None),
+                           "flowcell":s.get("flowcell", None),
+                           "date":s.get("date", None),
+                           "application":application,
+                           "TOTAL_READS":int(s.get("picard_metrics", {}).get("AL_PAIR", {}).get("TOTAL_READS", -1)),
+                           "PERCENT_DUPLICATION":s.get("picard_metrics", {}).get("DUP_metrics", {}).get("PERCENT_DUPLICATION", "-1.0"),
+                           "MEAN_INSERT_SIZE":float(s.get("picard_metrics", {}).get("INS_metrics", {}).get("MEAN_INSERT_SIZE", "-1.0").replace(",", ".")),
+                           "GENOME_SIZE":int(s.get("picard_metrics", {}).get("HS_metrics", {}).get("GENOME_SIZE", -1)),
+                           "FOLD_ENRICHMENT":float(s.get("picard_metrics", {}).get("HS_metrics", {}).get("FOLD_ENRICHMENT", "-1.0").replace(",", ".")),
+                           "PCT_USABLE_BASES_ON_TARGET":s.get("picard_metrics", {}).get("HS_metrics", {}).get("PCT_USABLE_BASES_ON_TARGET", "-1.0"),
+                           "PCT_TARGET_BASES_10X":s.get("picard_metrics", {}).get("HS_metrics", {}).get("PCT_TARGET_BASES_10X", "-1.0"),
+                           "PCT_PF_READS_ALIGNED":s.get("picard_metrics", {}).get("AL_PAIR", {}).get("PCT_PF_READS_ALIGNED", "-1.0"),
+                           }
+        target_territory = float(s.get("picard_metrics", {}).get("HS_metrics", {}).get("TARGET_TERRITORY", -1))
+        pct_labels = ["PERCENT_DUPLICATION", "PCT_USABLE_BASES_ON_TARGET", "PCT_TARGET_BASES_10X",
+                      "PCT_PF_READS_ALIGNED"]
+        for l in pct_labels:
+            if qcdata[s["name"]][l]:
+                qcdata[s["name"]][l] = float(qcdata[s["name"]][l].replace(",", ".")) * 100
+        if qcdata[s["name"]]["FOLD_ENRICHMENT"] and qcdata[s["name"]]["GENOME_SIZE"] and target_territory:
+            qcdata[s["name"]]["PERCENT_ON_TARGET"] = float(qcdata[s["name"]]["FOLD_ENRICHMENT"]/ (float(qcdata[s["name"]]["GENOME_SIZE"]) / float(target_territory))) * 100
+    return qcdata
+
+##############################
+# Connections
+##############################
 class SampleRunMetricsConnection(Couch):
-    def __init__(self, **kwargs):
+    _doc_type = SampleRunMetricsDocument
+    _update_fn = update_fn
+    def __init__(self, dbname="samples", **kwargs):
         super(SampleRunMetricsConnection, self).__init__(**kwargs)
-        self.db = self.con["samples"]
-        ## FIXME: set time limits on which entries to include?
+        self.db = self.con[dbname]
         self.name_view = {k.key:k.id for k in self.db.view("names/name", reduce=False)}
         self.name_fc_view = {k.key:k for k in self.db.view("names/name_fc", reduce=False)}
         self.name_proj_view = {k.key:k for k in self.db.view("names/name_proj", reduce=False)}
         self.name_fc_proj_view = {k.key:k for k in self.db.view("names/name_fc_proj", reduce=False)}
 
-    def get_entry(self, name, field=None):
-        """Retrieve entry from db for a given name, subset to field if
-        that value is passed.
+    def set_db(self, dbname):
+        """Make sure we don't change db from samples"""
+        pass
 
-        :param name: unique name
-        :param field: database field
-
-        :returns: value if entry exists, None otherwise
-        """
-        self.log.debug("retrieving entry in field '{}' for name '{}'".format(field, name))
-        if self.name_view.get(name, None) is None:
-            self.log.warn("no field '{}' for name '{}'".format(field, name))
-            return None
-        if field:
-            return self.db.get(self.name_view.get(name))[field]
-        else:
-            return self.db.get(self.name_view.get(name))
-
-    def get_sample_ids(self, fc_id, sample_prj=None):
-        """Retrieve sample ids subset by fc_id and possibly sample_prj
+    def get_sample_ids(self, fc_id=None, sample_prj=None):
+        """Retrieve sample ids subset by fc_id and/or sample_prj
 
         :param fc_id: flowcell id
         :param sample_prj: sample project name
@@ -40,172 +328,114 @@ class SampleRunMetricsConnection(Couch):
         :returns sample_ids: list of couchdb sample ids
         """
         self.log.debug("retrieving sample ids subset by flowcell '{}' and sample_prj '{}'".format(fc_id, sample_prj))
-        sample_ids = [self.name_fc_view[k].id for k in self.name_fc_view.keys() if self.name_fc_view[k].value == fc_id]
-        if sample_prj:
-            prj_sample_ids = [self.name_fc_view[k].id for k in self.name_proj_view.keys() if self.name_proj_view[k].value == sample_prj]
-            sample_ids = list(set(sample_ids).intersection(set(prj_sample_ids)))
+        fc_sample_ids = [self.name_fc_view[k].id for k in self.name_fc_view.keys() if self.name_fc_view[k].value == fc_id] if fc_id else []
+        prj_sample_ids = [self.name_proj_view[k].id for k in self.name_proj_view.keys() if self.name_proj_view[k].value == sample_prj] if sample_prj else []
+        # | -> union, & -> intersection
+        if len(fc_sample_ids) > 0 and len(prj_sample_ids) > 0:
+            sample_ids = list(set(fc_sample_ids) & set(prj_sample_ids))
+        else:
+            sample_ids = list(set(fc_sample_ids) | set(prj_sample_ids))
+        # Set to empty list if we actually had supplied a flowcell id and project id but one of them is non-existent
+        if fc_id and sample_prj:
+            if len(fc_sample_ids)==0:
+                sample_ids = []
+                self.log.warn("No such flowcell '{}' for project '{}'".format(fc_id, sample_prj))
+            elif len(prj_sample_ids)==0:
+                sample_ids = []
+                self.log.warn("No such project '{}' for flowcell '{}'".format(sample_prj, fc_id))
+
+        self.log.debug("Number of samples: {}, number of fc samples: {}, number of project samples: {}".format(len(sample_ids), len(fc_sample_ids), len(prj_sample_ids)))
         return sample_ids
 
-    def get_samples(self, fc_id, sample_prj=None):
-        """Retrieve samples subset by fc_id and possibly sample_prj
+    def get_samples(self, fc_id=None, sample_prj=None):
+        """Retrieve samples subset by fc_id and/or sample_prj
 
         :param fc_id: flowcell id
         :param sample_prj: sample project name
 
-        :returns samples: list of samples
+        :returns samples: list of sample_run_metrics documents
         """
         self.log.debug("retrieving samples subset by flowcell '{}' and sample_prj '{}'".format(fc_id, sample_prj))
         sample_ids = self.get_sample_ids(fc_id, sample_prj)
-        return [self.db.get(x) for x in sample_ids]
-
-    def get_project_sample_ids(self, sample_prj):
-        """Retrieve sample ids subset by sample_prj
-
-        :param sample_prj: sample project name
-
-        :returns sample_ids: list of couchdb sample ids
-        """
-        self.log.debug("retrieving sample ids subset by sample_prj '{}'".format(sample_prj))
-        sample_ids = [self.name_fc_view[k].id for k in self.name_proj_view.keys() if self.name_proj_view[k].value == sample_prj]
-        return sample_ids
-
-    def get_project_samples(self, sample_prj):
-        """Retrieve samples subset related to a project.
-
-        :param sample_prj: sample project name
-
-        :returns samples: list of samples
-        """
-        self.log.debug("retrieving samples subset by sample_prj '{}'".format(sample_prj))
-        sample_ids = self.get_project_sample_ids(sample_prj)
-        return [self.db.get(x) for x in sample_ids]
-        
-    def set_db(self):
-        """Make sure we don't change db from samples"""
-        pass
-
-    def calc_avg_qv(self, name):
-        """Calculate average quality score for a sample based on
-        FastQC results.
-        
-        FastQC reports QV results in the field 'Per sequence quality scores', 
-        where the subfields 'Count' and 'Quality' refer to the counts of a given quality value.
-        
-        :param name: sample name
-        
-        :returns avg_qv: Average quality value score.
-        """
-        srm = self.get_entry(name)
-        try:
-            count = [float(x) for x in srm["fastqc"]["stats"]["Per sequence quality scores"]["Count"]]
-            quality = srm["fastqc"]["stats"]["Per sequence quality scores"]["Quality"]
-            return round(sum([x*int(y) for x,y in izip(count, quality)])/sum(count), 1)
-        except:
-            return None
+        inv_view = {v:k for k,v in self.name_view.iteritems()}
+        sample_names = [inv_view[x] for x in sample_ids]
+        return [self.get_entry(x) for x in sample_names]
 
 class FlowcellRunMetricsConnection(Couch):
-    def __init__(self, **kwargs):
+    _doc_type = FlowcellRunMetricsDocument
+    _update_fn = update_fn
+    def __init__(self, dbname="flowcells", **kwargs):
         super(FlowcellRunMetricsConnection, self).__init__(**kwargs)
-        if not self.con:
-            return
-        self.db = self.con["flowcells"]
+        self.db = self.con[dbname]
         self.name_view = {k.key:k.id for k in self.db.view("names/name", reduce=False)}
 
     def set_db(self):
         """Make sure we don't change db from flowcells"""
         pass
 
-    def get_entry(self, name, field=None):
-        """Retrieve entry from db for a given name, subset to field if
-        that value is passed.
-        """
-        self.log.debug("retrieving field entry in field '{}' for name '{}'".format(field, name))
-        if self.name_view.get(name, None) is None:
-            self.log.warn("no field '{}' for name '{}'".format(field, name))
-            return None
-        if field:
-            return self.db.get(self.name_view.get(name))[field]
-        else:
-            return self.db.get(self.name_view.get(name))
-
     def get_phix_error_rate(self, name, lane, avg=True):
         """Get phix error rate"""
         fc = self.get_entry(name)
-        phix_r1 = float(fc['illumina']['Summary']['read1'][lane]['ErrRatePhiX']) 
-        phix_r2 = float(fc['illumina']['Summary']['read3'][lane]['ErrRatePhiX'])
+        phix_r1 = float(fc.get('illumina', {}).get('Summary', {}).get('read1',{}).get(lane, {}).get('ErrRatePhiX', -1))
+        phix_r2 = float(fc.get('illumina', {}).get('Summary', {}).get('read3',{}).get(lane, {}).get('ErrRatePhiX', -1))
         if avg:
             return (phix_r1 + phix_r2)/2
         else:
             return (phix_r1, phix_r2)/2
 
 class ProjectSummaryConnection(Couch):
-    def __init__(self, **kwargs):
+    _doc_type = ProjectSummaryDocument
+    _update_fn = update_fn
+    def __init__(self, dbname="projects", **kwargs):
         super(ProjectSummaryConnection, self).__init__(**kwargs)
-        if not self.con:
-            return
-        self.db = self.con["projects"]
+        self.db = self.con[dbname]
         self.name_view = {k.key:k.id for k in self.db.view("project/project_id", reduce=False)}
 
-    def get_entry(self, name, field=None):
-        """Retrieve entry from db for a given name, subset to field if
-        that value is passed.
-
-        :param name: unique name
-        :param field: database field
-
-        :returns: value if entry exists, None otherwise
-        """
-        self.log.debug("retrieving field entry in field '{}' for name '{}'".format(field, name))
-        if self.name_view.get(name, None) is None:
-            self.log.warn("no field '{}' for name '{}'".format(field, name))
-            return None
-        if field:
-            return self.db.get(self.name_view.get(name))[field]
-        else:
-            return self.db.get(self.name_view.get(name))
-
-    def set_db(self):
+    def set_db(self, dbname):
         """Make sure we don't change db from projects"""
         pass
 
-    def map_sample_run_names(self, project_id, fc_id=None):
-        """Map sample run names for a project, possibly subset by fc_id, to
-        sample name defined by project.
+    def get_project_sample(self, project_id, barcode_name=None, extensive_matching=False):
+        """Get project sample name for a SampleRunMetrics barcode_name.
+        
+        :param project_id: the project id
+        :param barcode_name: the barcode name of a sample run
+        :param extensive_matching: do extensive matching of barcode names
+
+        :returns: dict(sample_name:project sample name, project_sample:project sample dict) or None
+        """
+        if not barcode_name:
+            return None
+        project = self.get_entry(project_id)
+        if not project:
+            return None
+        project_samples = project.get('samples', None)
+        return _match_barcode_name_to_project_sample(barcode_name, project_samples, extensive_matching)
+
+    def map_srm_to_name(self, project_id, include_all=True, **args):
+        """Map sample run metrics names to project sample names for a
+        project, possibly subset by flowcell id.
 
         :param project_id: project id
-        :param fc_id: flowcell id
-
-        :returns: dict with key sample run name and value dict with keys 'sample_id' and 'project_sample'
+         :param **kw: keyword arguments to be passed to map_name_to_srm
         """
-        project = self.get_entry(project_id)
-        project_samples = project.get('samples', None)
-        s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
-        if fc_id:
-            sample_run_samples = s_con.get_samples(fc_id, project_id)
+        samples = self.map_name_to_srm(project_id, **args)
+        srm_to_name = {}
+        for k, v in samples.items():
+            if not v:
+                if not include_all:
+                    continue
+                srm_to_name.update({"NOSRM_{}".format(k):{"sample":k, "id":None}})
+            else:
+                srm_to_name.update({x:{"sample":k,"id":y} for x,y in v.items()})
+        return srm_to_name
+
+    def _get_sample_run_metrics(self, v):
+        if v.get('library_prep', None):
+            library_preps = v.get('library_prep')
+            return {k:v for kk in library_preps.keys() for k, v in library_preps[kk]['sample_run_metrics'].items()} if library_preps else None
         else:
-            sample_run_samples = s_con.get_project_samples(project_id)
-
-        def sample_map_fn(sample_run_name, project_sample_name):
-            """Mapping from project summary sample id to run info sample id"""
-            if str(sample_run_name).startswith(str(project_sample_name)):
-                return True
-            elif str(sample_run_name).startswith(str(project_sample_name).rstrip("F")):
-                return True
-            elif str(sample_run_name).startswith(str(project_sample_name).rstrip("B")):
-                return True
-            ## Add cases here
-            return False
-
-        sample_map = {}
-        for x in sample_run_samples:
-            sample_map[x["name"]] = None
-            for y in project_samples.keys():
-                if sample_map_fn(x["barcode_name"], y):
-                    sample_map[str(x["name"])] = {'sample_id':x["_id"], 'project_sample':y}
-        for x in sample_map:
-            if x is None:
-                self.log.warn("No mapping from name to sample for {}".format(x))
-        return sample_map
+            return v.get('sample_run_metrics', None)
 
     def get_ordered_amount(self, project_id, rounded=True, dec=1):
         """Get (rounded) ordered amount of reads in millions. 
@@ -217,85 +447,9 @@ class ProjectSummaryConnection(Couch):
         :returns: ordered amount of reads if present, None otherwise
         """
         amount = self.get_entry(project_id, 'min_m_reads_per_sample_ordered')
+        self.log.debug("got amount {}".format(amount))
         if not amount:
             return None
         else:
             return round(amount, dec)
 
-class ProjectQCSummaryConnection(Couch):
-    """ProjectQCSummary. Connection to old QC database.
-
-    """
-    def __init__(self, **kwargs):
-        super(ProjectQCSummaryConnection, self).__init__(**kwargs)
-        self.db = self.con["qc"]
-        self.name_view = {self.db.get(k.id)["Project_id"]:k.id for k in self.db.view("entitytypes/ProjectSummary", reduce=False)}
-
-    def get_entry(self, name, field=None):
-        """Retrieve entry from db for a given name, subset to field if
-        that value is passed.
-
-        :param name: unique name
-        :param field: database field
-
-        :returns: value if entry exists, None otherwise
-        """
-        self.log.debug("retrieving field entry in field '{}' for name '{}'".format(field, name))
-        if self.name_view.get(name, None) is None:
-            self.log.warn("no entry with name '{}'".format(name))
-            return None
-        if field:
-            return self.db.get(self.name_view.get(name))[field]
-        else:
-            return self.db.get(self.name_view.get(name))
-
-    def set_db(self):
-        """Make sure we don't change db from projects"""
-        pass
-
-    def get_customer_name(self, sample_name):
-        """Get a customer name corresponding to <sample_name>.
-
-        :param sample_name: sample name
-
-        :returns: customer name if it exists, None otherwise
-        """
-        pass
-
-    def map_sample_run_names(self, project_id, fc_id):
-        """Map sample run names for a project subset by fc_id to
-        sample name defined by project.
-
-        :param project_id: flowcell id
-        :param fc_id: flowcell id
-
-        :returns: dict with key sample run name and value project sample name
-        """
-        project = self.get_entry(project_id)
-        project_samples = project['Samples']
-        s_con = SampleRunMetricsConnection(username=self.user, password=self.pw, url=self.url)
-        sample_run_samples = s_con.get_samples(fc_id, project_id)
-
-        ## FIX ME: Mapping must be much more general to account for anomalous cases
-        def sample_map_fn(sample_run_name, project_sample_name):
-            """Mapping from project summary sample id to run info sample id"""
-            if str(sample_run_name).startswith(str(project_sample_name)):
-                return True
-            ## Add cases here
-            return False
-
-        sample_map = {}
-        for x in sample_run_samples:
-            sample_map[x["barcode_name"]] = None
-            for y in project_samples.keys():
-                if sample_map_fn(x["barcode_name"], y):
-                    sample_map[str(x["barcode_name"])] = y
-        return sample_map
-
-    def get_samples(self):
-        """Get samples defined in ProjectQCSummary document.
-
-        :returns: list of sample names
-        """
-        pass
-        

@@ -1,20 +1,20 @@
 import os
-from subprocess import Popen
 from mako.template import Template
-from data import files as data_files
+from data import _files as data_files
 
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 
-def install_test_files():
-    for f in empty_files():
+def setup_empty_files():
+    """Setup empty files"""
+    for f in _empty_files():
         if not os.path.exists(os.path.join(filedir, f)):
             print "Preparing test: touching file {}".format(f)
             if not os.path.exists(os.path.dirname(os.path.join(filedir, f))):
                 os.makedirs(os.path.dirname(os.path.join(filedir, f)))
-                cmd_args = ['touch', os.path.join(filedir, f)]
-                proc = Popen(cmd_args, shell=False)
+            with open(os.path.join(filedir, f), "w") as fh:
+                fh.write("")
 
-def files():
+def _empty_files():
     ## pre-casava result files
     files = ['data/production/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_barcode/1_120829_AA001AAAXX_nophix_10_1_fastq.txt',
              'data/production/120829_SN0001_0001_AA001AAAXX/1_120829_AA001AAAXX_barcode/1_120829_AA001AAAXX_nophix_10_2_fastq.txt',
@@ -215,12 +215,12 @@ def files():
             'data/projects/j_doe_00_03/data/P000_104F/120914_BB002ABCXX/5_120914_BB002ABCXX_nophix_1_2_fastq.txt',
             'data/projects/j_doe_00_03/j_doe_00_03_git/config/post_process.yaml',
             ])
-    files.extend(add_casava_results(data_files()['data/archive/120924_SN0002_0003_CC003CCCXX/C003CCCXX.csv']))
-    files.extend(add_project_analyses())
+    files.extend(_add_casava_results(data_files()['data/archive/120924_SN0002_0003_CC003CCCXX/C003CCCXX.csv']))
+    files.extend(_add_project_analyses())
     return files
 
 ## Add casava result files
-def add_casava_results(runinfo):
+def _add_casava_results(runinfo):
         ## Generate the sample files for casava 
     bcids = [7,2,5,7,3,8,4,1]
     i=0
@@ -235,7 +235,7 @@ def add_casava_results(runinfo):
         tmp.append(Template("data/production/${sample_prj}/${name}/120924_CC003CCCXX/${name}_${sequence}_L00${lane}_R2_001.fastq").render(**k))
 
         ## Add meta files to root folder
-        file_types = ["-bcbb-command.txt","-bcbb-command.txtre","-bcbb.log","-post_process.yaml"]
+        file_types = ["-bcbb-command.txt","-bcbb.log","-post_process.yaml"]
         for x in file_types:
             k.update(ext=x)
             tmp.append(Template("data/production/${sample_prj}/${name}/120924_CC003CCCXX/${name}${ext}").render(**k))
@@ -277,7 +277,7 @@ def add_casava_results(runinfo):
     return tmp
 
 ## Add project analyses
-def add_project_analyses():
+def _add_project_analyses():
     k={}
     ## final results data
     file_types = ["-dup-gatkrecal-realign-insert.pdf","-dup-gatkrecal-realign-summary.aux","-dup-gatkrecal-realign-summary.log","-dup-gatkrecal-realign-summary.pdf","-dup-gatkrecal-realign-summary.tex",

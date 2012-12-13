@@ -4,12 +4,13 @@ Test project subcontroller
 import os
 import sys
 import glob
+import unittest
 from cement.core import handler
 from cement.utils import shell, test
 from test_default import PmTest, safe_makedir
 from scilifelab.pm.core.project import ProjectController, ProjectRmController
 from scilifelab.pm.core.production import ProductionController
-from scilifelab.pm.utils.misc import walk
+from scilifelab.utils.misc import walk
 
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 flowcell = "120829_SN0001_0001_AA001AAAXX"
@@ -54,57 +55,49 @@ class ProjectTest(PmTest):
         flist = walk(j_doe_00_04['data'])
         for f in flist:
             os.unlink(f)
-
-    def test_1_project_transfer(self):
-        self.app = self.make_app(argv = ['project', 'transfer'])
-        handler.register(ProjectController)
-        self._run_app()
-        
-    def test_2_project_data_delivery(self):
-        pass
-
-    def test_3_compress(self):
+         
+    def test_compress(self):
         """Test compression of project data"""
         self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '--fastq', '--force'])
         handler.register(ProjectController)
         self._run_app()
 
-    def test_3_decompress(self):
+    def test_decompress(self):
         """Test decompression of project data"""
         self.app = self.make_app(argv = ['project', 'decompress', 'j_doe_00_01', '--fastq', '--force'])
         handler.register(ProjectController)
         self._run_app()
 
-    def test_4_compress_distributed(self):
+    @unittest.skipIf(not os.getenv("DRMAA_LIBRARY_PATH"), "not running production test: no $DRMAA_LIBRARY_PATH")
+    def test_compress_distributed(self):
         """Test distributed compression of project data"""
-        if os.getenv("DRMAA_LIBRARY_PATH"):
-            self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '-n', '--force'] , extensions=['scilifelab.pm.ext.ext_distributed'])
-            handler.register(ProjectController)
-            self._run_app()
+        self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '--jobname', 'compressdist', '-t', '00:01:00', '--partition', 'devel', '--force', '-n'] , extensions=['scilifelab.pm.ext.ext_distributed'])
+        handler.register(ProjectController)
+        self._run_app()
 
-    def test_4_decompress_distributed(self):
+    @unittest.skipIf(not os.getenv("DRMAA_LIBRARY_PATH"), "not running production test: no $DRMAA_LIBRARY_PATH")
+    def test_decompress_distributed(self):
         """Test distributed compression of project data"""
-        if os.getenv("DRMAA_LIBRARY_PATH"):
-            self.app = self.make_app(argv = ['project', 'decompress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '-n', '--force'] , extensions=['scilifelab.pm.ext.ext_distributed'])
-            handler.register(ProjectController)
-            self._run_app()
+        self.app = self.make_app(argv = ['project', 'decompress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'devel', '-n',  '--force'] , extensions=['scilifelab.pm.ext.ext_distributed'])
+        handler.register(ProjectController)
+        self._run_app()
 
-    def test_5_compress_pbzip2_node(self):
+    @unittest.skipIf(not os.getenv("DRMAA_LIBRARY_PATH"), "not running production test: no $DRMAA_LIBRARY_PATH")
+    def test_compress_pbzip2_node(self):
         """Test distributed compression of project data with pbzip2"""
-        if os.getenv("DRMAA_LIBRARY_PATH"):
-            self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '--pbzip2', '-n', '--force'] , extensions=['scilifelab.pm.ext.ext_distributed'])
-            handler.register(ProjectController)
-            self._run_app()
+        self.app = self.make_app(argv = ['project', 'compress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '--pbzip2', '-n', '--force'] , extensions=['scilifelab.pm.ext.ext_distributed'])
+        handler.register(ProjectController)
+        self._run_app()
 
-    def test_5_decompress_pbzip2_node(self):
+    @unittest.skipIf(not os.getenv("DRMAA_LIBRARY_PATH"), "not running production test: no $DRMAA_LIBRARY_PATH")
+    def test_decompress_pbzip2_node(self):
         """Test distributed decompression of project data with pbzip2"""
-        if os.getenv("DRMAA_LIBRARY_PATH"):
-            self.app = self.make_app(argv = ['project', 'decompress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '--pbzip2', '-n', '--force'] , extensions=['scilifelab.pm.ext.ext_distributed'])
-            handler.register(ProjectController)
-            self._run_app()
+        self.app = self.make_app(argv = ['project', 'decompress', 'j_doe_00_01', '--pileup', '--drmaa', '-A', 'jobaccount', '-t', '00:01:00', '--partition', 'core', '--pbzip2', '-n', '--force'] , extensions=['scilifelab.pm.ext.ext_distributed'])
+        handler.register(ProjectController)
+        self._run_app()
 
     @test.raises(Exception)
-    def test_6_rm_analysis_1(self):
+    def test_rm_analysis_1(self):
         """Test removal of non-existing intermediate analysis"""
         self.app = self.make_app(argv = ['project', 'rm', 'j_doe_00_04', 'analysisoe', '--force'])
         handler.register(ProjectController)
@@ -114,7 +107,7 @@ class ProjectTest(PmTest):
         except:
             raise Exception
 
-    def test_6_rm_analysis_1_dry(self):
+    def test_rm_analysis_1_dry(self):
         """Test dry removal of one intermediate analysis"""
         self.app = self.make_app(argv = ['project', 'rm', 'j_doe_00_04', 'analysis_1','-n', '--force'])
         handler.register(ProjectController)
@@ -122,7 +115,7 @@ class ProjectTest(PmTest):
         self._run_app()
 
     @test.raises(Exception)
-    def test_7_rm_analysis_1(self):
+    def test_rm_analysis_1_intermediate(self):
         """Test removal of one intermediate analysis"""
         self.app = self.make_app(argv = ['project', 'rm', 'j_doe_00_04', 'analysis_1', '--force'])
         handler.register(ProjectController)
@@ -133,12 +126,12 @@ class ProjectTest(PmTest):
         except:
             raise Exception
 
-    def test_8_purge_alignments_dry(self):
+    def test_purge_dry(self):
         """Test purging alignments of sam files, dry run"""
         self.app = self.make_app(argv = ['production', 'transfer', 'J.Doe_00_04', '--quiet'])
         handler.register(ProductionController)
         self._run_app()
-        self.app = self.make_app(argv = ['project', 'purge_alignments', 'j_doe_00_04', 'analysis_1', '-n', '--force'])
+        self.app = self.make_app(argv = ['project', 'purge', 'j_doe_00_04', 'analysis_1', '-n', '--force'])
         handler.register(ProjectController)
         handler.register(ProjectRmController)
         self._run_app()
@@ -147,19 +140,31 @@ class ProjectTest(PmTest):
             self.eq(sam, "")
 
         
-    def test_8_purge_alignments(self):
+    def test_purge_sam(self):
         """Test purging alignments of sam files"""
         self.app = self.make_app(argv = ['production', 'transfer', 'J.Doe_00_04', '--quiet'])
         handler.register(ProductionController)
         self._run_app()
-        self.app = self.make_app(argv = ['project', 'purge_alignments', 'j_doe_00_04', 'analysis_1', '--force'])
+        self.app = self.make_app(argv = ['project', 'purge', 'j_doe_00_04', 'analysis_1', '--force', '--sam'])
         handler.register(ProjectController)
         handler.register(ProjectRmController)
         self._run_app()
         with open(os.path.join(j_doe_00_04['data'], "P001_102_index6", "120924_CC003CCCXX", "alignments", "1_120924_CC003CCCXX_2_nophix.sam")) as fh:
             sam = fh.read()
             self.eq(sam, "File removed to save disk space: SAM converted to BAM")
-        with open(os.path.join(j_doe_00_04['data'], "P001_102_index6", "120924_CC003CCCXX", "alignments", "1_120924_CC003CCCXX_2_nophix-sort.bam")) as fh:
+
+
+    def test_purge_bam(self):
+        """Test purging alignments of bam files"""
+        self.app = self.make_app(argv = ['production', 'transfer', 'J.Doe_00_04', '--quiet'])
+        handler.register(ProductionController)
+        self._run_app()
+        self.app = self.make_app(argv = ['project', 'purge', 'j_doe_00_04', '--force', '--data', '--minfilesize', "0", '--debug'])
+        handler.register(ProjectController)
+        handler.register(ProjectRmController)
+        self._run_app()
+        with open(os.path.join(j_doe_00_04['data'], "P001_102_index6", "120924_CC003CCCXX", "1_120924_CC003CCCXX_2_nophix-sort.bam")) as fh:
             bam = fh.read()
-            self.eq(bam, "File removed to save disk space: Moved to {}".format(os.path.join(j_doe_00_04['data'], "P001_102_index6", "120924_CC003CCCXX", "1_120924_CC003CCCXX_2_nophix-sort.bam")))
-        
+            self.eq(bam, "File removed to save disk space: Moved to {}".format(os.path.join(j_doe_00_04['data'], "P001_102_index6", "120924_CC003CCCXX", "1_120924_CC003CCCXX_2_nophix-sort-dup.bam")))
+
+

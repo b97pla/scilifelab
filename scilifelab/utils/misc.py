@@ -3,6 +3,10 @@ import sys
 import os
 import re
 import contextlib
+import itertools
+import scilifelab.log
+
+LOG = scilifelab.log.minimal_logger(__name__)
 
 ## yes or no: http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input
 def query_yes_no(question, default="yes", force=False):
@@ -46,6 +50,26 @@ def query_yes_no(question, default="yes", force=False):
             sys.stdout.write("Please respond with 'yes' or 'no' "\
                                  "(or 'y' or 'n').\n")
 
+def query_ok(statement="", force=False):
+    """Prompt a statement requiring an interactive <enter> from the user.
+
+    :param statement: the displayed statement 
+    :param force: proceed without waiting for input
+
+    :returns: True
+    """
+    prompt = " [press <enter> to continue] "
+    while True:
+        sys.stdout.write(statement + prompt)
+        if not force:
+            ok = raw_input().lower()
+        else:
+            ok = ""
+        if ok == "":
+            return True
+        else:
+            sys.stdout.write("Please respond with <enter>")
+
 def walk(rootdir):
     """
     Perform a directory walk
@@ -59,7 +83,7 @@ def walk(rootdir):
         flist = flist + [os.path.join(root, x) for x in files]
     return flist
 
-def filtered_walk(rootdir, filter_fn, include_dirs=None, exclude_dirs=None): 
+def filtered_walk(rootdir, filter_fn, include_dirs=None, exclude_dirs=None, get_dirs=False): 
     """Perform a filtered directory walk.
 
     :param rootdir: Root directory
@@ -70,13 +94,24 @@ def filtered_walk(rootdir, filter_fn, include_dirs=None, exclude_dirs=None):
     :returns: Filtered file list 
     """
     flist = []
+    dlist = []
     for root, dirs, files in os.walk(rootdir):
         if include_dirs and len(set(root.split(os.sep)).intersection(set(include_dirs))) == 0:
-            continue
+            ## Also try re.search in case we have patterns
+            if re.search("|".join(include_dirs), root):
+                pass
+            else:
+                continue
         if exclude_dirs and len(set(root.split(os.sep)).intersection(set(exclude_dirs))) > 0:
             continue
+        if exclude_dirs and re.search("|".join(exclude_dirs), root):
+            continue
+        dlist = dlist + [os.path.join(root, x) for x in dirs]
         flist = flist + [os.path.join(root, x) for x in filter(filter_fn, files)]
-    return flist
+    if get_dirs:
+        return dlist
+    else:
+        return flist
 
 def filtered_output(pattern, data):
     """
@@ -109,6 +144,8 @@ def safe_makedir(dname):
         except OSError:
             if not os.path.isdir(dname):
                 raise
+    else:
+        LOG.warning("Directory {} already exists; not making directory".format(dname))
     return dname
 
 @contextlib.contextmanager
@@ -126,3 +163,18 @@ def chdir(new_dir):
     finally:
         os.chdir(cur_dir)
 
+
+
+def opt_to_dict(opts):
+    """Transform option list to a dictionary.
+
+    :param opts: option list
+    
+    :returns: option dictionary
+    """
+    if isinstance(opts, dict):
+        return
+    args = list(itertools.chain.from_iterable([x.split("=") for x in opts]))
+    opt_d = {k: True if v.startswith('-') else v
+             for k,v in zip(args, args[1:]+["--"]) if k.startswith('-')}
+    return opt_d

@@ -2,12 +2,12 @@ import os
 from cement.core import backend, handler, output
 from cement.utils import test, shell
 from scilifelab.pm import PmApp
-from data import files as data_files
-from empty_files import files as empty_files
+from data import setup_data_files
+from empty_files import setup_empty_files
 
 ## Set default configuration
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
-config_defaults = backend.defaults('production', 'archive', 'config', 'project','log')
+config_defaults = backend.defaults('production', 'archive', 'config', 'project','log', 'db')
 config_defaults['production']['root']  = os.path.join(filedir, "data", "production")
 config_defaults['archive']['root']  = os.path.join(filedir, "data", "archive")
 config_defaults['project']['root']  = os.path.join(filedir, "data", "projects")
@@ -15,6 +15,12 @@ config_defaults['project']['repos']  = os.path.join(filedir, "data", "repos")
 config_defaults['config']['ignore'] = ["slurm*", "tmp*"]
 config_defaults['log']['level']  = "INFO"
 config_defaults['log']['file']  = os.path.join(filedir, "data", "log", "pm.log")
+config_defaults['db']['url'] = "localhost"
+config_defaults['db']['user'] = "u"
+config_defaults['db']['password'] = "p"
+config_defaults['db']['samples'] = "samples-test"
+config_defaults['db']['flowcells'] = "flowcells-test"
+config_defaults['db']['projects'] = "projects-test"
 
 
 def safe_makedir(dname):
@@ -55,26 +61,15 @@ class PmTest(test.CementTestCase):
     OUTPUT_FILES = []
 
     def setUp(self):
-        ## setup empty files 
-        for k,v in data_files().items():
-            if not os.path.exists(os.path.join(filedir, k)):
-                if not os.path.exists(os.path.dirname(os.path.join(filedir, k))):
-                    os.makedirs(os.path.dirname(os.path.join(filedir, k)))
-                with open(os.path.join(filedir, k), "w") as fh:
-                    print "Preparing test: writing to file {}".format(k)
-                    fh.write(v)
-        for f in empty_files():
-            if not os.path.exists(os.path.join(filedir, f)):
-                print "Preparing test: touching file {}".format(f)
-                if not os.path.exists(os.path.dirname(os.path.join(filedir, f))):
-                    os.makedirs(os.path.dirname(os.path.join(filedir, f)))
-                shell.exec_cmd(['touch', os.path.join(filedir, f)])
-
+        setup_data_files()
+        setup_empty_files()
+        
     def _run_app(self):
         try:
             self.app.setup()
-            self.app.run()
-            self.app.render(self.app._output_data)
+            with self.app.log.log_setup.applicationbound():
+                self.app.run()
+                self.app.render(self.app._output_data)
         finally:
             self.app.close()
             

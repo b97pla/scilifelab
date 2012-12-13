@@ -9,6 +9,7 @@ def cmd_interface_validator(cls, obj):
     members = [
         '_setup',
         'command',
+        'monitor',
         ]
     interface.validate(ICommand, obj, members)
 
@@ -33,6 +34,14 @@ class ICommand(interface.Interface):
         
         :param app_obj: The application object. 
                                 
+        """
+
+    def monitor(work_dir, idfile=None):
+        """
+        Check for process/job id file.
+        
+        :param work_dir: working directory
+        :param idfile: process/job id file
         """
 
     def command(cmd_args, capture=True, ignore_error=False, cwd=None, **kw):
@@ -185,3 +194,18 @@ class CommandHandler(handler.CementBaseHandler):
                 except:
                     pass
         return self.dry("removing directory {}".format(d), runpipe)
+
+    def link(self, src, tgt):
+        """Wrapper for making links.
+
+        :param src: source link
+        :param tgt: target link
+        """
+        def runpipe():
+            if not os.path.exists(tgt):
+                try:
+                    os.symlink(src, tgt)
+                except:
+                    self.app.log.warn("Couldn't create link {} -> {}".format(tgt, src))
+                    pass
+        return self.dry("creating link {} -> {}".format(tgt, src), runpipe)

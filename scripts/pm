@@ -1,16 +1,15 @@
 #!/usr/bin/env python
 import os
 import sys
-from cement.core import foundation, handler
+from cement.core import foundation, handler, backend
 from scilifelab.pm.lib.config import config_defaults
 from scilifelab.pm import PmApp
 from scilifelab.pm.core.controller import PmController
 from scilifelab.pm.core.output import PmOutputHandler
-from scilifelab.pm.core.project import ProjectController, BcbioRunController, ProjectRmController
+from scilifelab.pm.core.project import ProjectController, ProjectRmController
 from scilifelab.pm.core.archive import ArchiveController
 from scilifelab.pm.core.production import ProductionController
 from scilifelab.pm.core.deliver import DeliveryController, DeliveryReportController
-
 
 CONFIGFILE=os.path.join(os.getenv("HOME"), ".pm", "pm.conf")
 PLUGINDIR=os.path.join(os.getenv("HOME"), ".pm", "plugins")
@@ -23,9 +22,8 @@ app = PmApp('pm',
             config_files = [CONFIGFILE], 
             extensions = ['json',
                           'scilifelab.pm.ext.ext_distributed',                        
-                          'scilifelab.pm.ext.ext_hs_metrics',
+                          'scilifelab.pm.ext.ext_couchdb',
                           'scilifelab.pm.ext.ext_qc',
-                          'scilifelab.pm.ext.ext_couchdb'
                           ],
             plugin_dir = PLUGINDIR,
             plugin_config_dir = PLUGINCONFIGDIR,
@@ -35,18 +33,17 @@ try:
     handler.register(ProjectController)
     handler.register(ArchiveController)
     handler.register(ProductionController)
-    handler.register(BcbioRunController)
     handler.register(ProjectRmController)
     handler.register(DeliveryController)
     handler.register(DeliveryReportController)
     app.setup()
-    try:
-        app.config.parse_file(CONFIGFILE)
-    except:
-        app.log.warn("No config file %s; please create and set relevant config sections" % CONFIGFILE)
-        sys.exit()
-    app.run()
-    app.render(app._output_data)
-
+    with app.log.log_setup.applicationbound():
+        try:
+            app.config.parse_file(CONFIGFILE)
+        except:
+            app.log.warn("No config file %s; please create and set relevant config sections" % CONFIGFILE)
+            sys.exit()
+        app.run()
+        app.render(app._output_data)
 finally:
     app.close()

@@ -2,13 +2,12 @@
 import os
 import sys
 import re
+import pprint
 
 from cement.core import interface, handler, controller, backend
 
 from scilifelab.pm.lib.help import PmHelpFormatter
 from scilifelab.utils.misc import filtered_output, query_yes_no, filtered_walk
-
-LOG = backend.minimal_logger(__name__)
 
 class AbstractBaseController(controller.CementBaseController):
     """
@@ -17,16 +16,14 @@ class AbstractBaseController(controller.CementBaseController):
     All controllers should inherit from this class.
     """
     class Meta:
-        pass
-            
+        pattern = ""
+
     def _setup(self, base_app):
-        self._meta.arguments.append( (['-n', '--dry_run'], dict(help="dry_run - don't actually do anything", action="store_true", default=False)) )
+        self._meta.arguments.append( (['-n', '--dry_run'], dict(help="dry_run - don't actually do anything", action="store_true", default=False)))
         self._meta.arguments.append((['--force'], dict(help="force execution", action="store_true", default=False)))
         self._meta.arguments.append((['--verbose'], dict(help="verbose mode", action="store_true", default=False)))
         self._meta.arguments.append((['--java_opts'], dict(help="java options", action="store", default="Xmx3g")))
-        self._meta.arguments.append((['--input_file'], dict(help="Run on specific input file", default=None)))
         super(AbstractBaseController, self)._setup(base_app)
-
         self.ignore = self.config.get("config", "ignore")
         self.shared_config = dict()
 
@@ -45,10 +42,10 @@ class AbstractBaseController(controller.CementBaseController):
         self._process_args()
         
         if not self.command:
-            LOG.debug("no command to dispatch")
+            self.app.log.debug("no command to dispatch")
         else:    
             func = self.exposed[self.command]     
-            LOG.debug("dispatching command: %s.%s" % \
+            self.app.log.debug("dispatching command: %s.%s" % \
                       (func['controller'], func['label']))
 
             if func['controller'] == self._meta.label:
@@ -58,41 +55,18 @@ class AbstractBaseController(controller.CementBaseController):
                 controller._setup(self.app)
                 getattr(controller, func['label'])()
 
-    def _not_implemented(self, msg=None):
-        self.log.warn("FIXME: Not implemented yet")
-        if msg != None:
-            self.log.warn(msg)
-        raise NotImplementedError
-
     def _obsolete(self, msg):
-        self.log.warn("This function is obsolete.")
-        self.log.warn(msg)
+        self.app.log.warn("This function is obsolete.")
+        self.app.log.warn(msg)
 
     def _check_pargs(self, pargs, msg=None):
         """Check that list of pargs are present"""
         for p in pargs:
             if not self.pargs.__getattribute__(p):
-                self.log.warn("Required argument '{}' lacking".format(p))
+                self.app.log.warn("Required argument '{}' lacking".format(p))
                 return False
         return True
 
-    def _assert_config(self, section, label):
-        """
-        Assert existence of config label. If not present, require
-        that the section/label be defined in configuration file.
-        """
-        if not self.config.has_section(section):
-            self.log.error("no such section '{}'; please define in configuration file".format(section))
-            sys.exit()
-        config_dict = self.config.get_section_dict(section)
-        if not config_dict.has_key(label):
-            self.log.error("no section '{}' with label '{}' in config file; please define accordingly".format(section, label))
-            sys.exit()
-        elif config_dict[label] is None:
-            self.log.error("config section '{}' with label '{}' set to 'None'; please define accordingly".format(section, label))
-            sys.exit()
-        
-    ## FIXME: should this be moved?
     def _ls(self, path, filter_output=False):
         """List contents of path"""
         if not os.path.exists(path):
@@ -112,36 +86,52 @@ class AbstractExtendedBaseController(AbstractBaseController):
 
     """ 
     
-    ## Why doesn't setting arguments work?
     class Meta:
         compress_opt = "-v"
         compress_prog = "gzip"
         compress_suffix = ".gz"
-        file_pat = []
+        file_ext = []
         include_dirs = []
+        wildcard = []
         root_path = None
         path_id = None
 
     def _setup(self, base_app):
-        self._meta.arguments.append((['--pbzip2'], dict(help="Use pbzip2 as compressing device", default=False, action="store_true")))
-        self._meta.arguments.append((['--pigz'], dict(help="Use pigz as compressing device", default=False, action="store_true")))
-        self._meta.arguments.append((['--sam'], dict(help="Workon fastq files", default=False, action="store_true")))
-        self._meta.arguments.append((['--fastq'], dict(help="Workon fastq files", default=False, action="store_true")))
-        self._meta.arguments.append((['--fastqbam'], dict(help="Workon fastq-fastq.bam files", default=False, action="store_true")))
-        self._meta.arguments.append((['--pileup'], dict(help="Workon pileup files", default=False, action="store_true")))
-        self._meta.arguments.append((['--split'], dict(help="Workon *-split directories", default=False, action="store_true")))
-        self._meta.arguments.append((['--tmp'], dict(help="Workon staging (tx) and tmp directories", default=False, action="store_true")))
-        self._meta.arguments.append((['--txt'], dict(help="Workon txt files", default=False, action="store_true")))
-        self._meta.arguments.append((['--move'], dict(help="Transfer file with move", default=False, action="store_true")))
-        self._meta.arguments.append((['--copy'], dict(help="Transfer file with copy (default)", default=True, action="store_true")))
-        self._meta.arguments.append((['--rsync'], dict(help="Transfer file with rsync", default=False, action="store_true")))
         super(AbstractExtendedBaseController, self)._setup(base_app)
+        group = base_app.args.add_argument_group('Project, sample, and flowcell gorup', 'Options that modify commands to work on specific projects, sample and more.')
+        group.add_argument('project', help="Project id", nargs="?", default=None)
+        group.add_argument('-f', '--flowcell',help="Flowcell id")
+        group.add_argument('-S', '--sample', help="Project sample id. If sample is a file, read file and use sample names within it. Sample names can also be given as full paths to bcbb-config.yaml configuration file.", action="store", default=None, type=str)
+
+        group = base_app.args.add_argument_group('file types', 'Options that set file types.')
+        group.add_argument('--sam', help="Workon sam files", default=False, action="store_true")
+        group.add_argument('--bam', help="Workon bam files", default=False, action="store_true")
+        group.add_argument('--fastq', help="Workon fastq files", default=False, action="store_true")
+        group.add_argument('--fastqbam', help="Workon fastq-fastq.bam files", default=False, action="store_true")
+        group.add_argument('--pileup', help="Workon pileup files", default=False, action="store_true")
+        group.add_argument('--split', help="Workon *-split directories", default=False, action="store_true")
+        group.add_argument('--tmp', help="Workon staging (tx) and tmp directories", default=False, action="store_true")
+        group.add_argument('--txt', help="Workon txt files", default=False, action="store_true")
+        group.add_argument('--glob', help="Workon freetext glob expression. CAUTION: using wildcard expressions will remove *everything* that matches.", default=None, action="store")
+
+        group = base_app.args.add_argument_group('file transfer', 'Options affecting file transfer operations.')
+        group.add_argument('--move', help="Transfer file with move", default=False, action="store_true")
+        group.add_argument('--copy', help="Transfer file with copy (default)", default=True, action="store_true")
+        group.add_argument('--rsync', help="Transfer file with rsync", default=False, action="store_true")
+
+        group = base_app.args.add_argument_group('compression/decompression', 'Options affecting compression/decompression.')
+        group.add_argument('--pbzip2', help="Use pbzip2 as compressing device", default=False, action="store_true")
+        group.add_argument('--pigz', help="Use pigz as compressing device", default=False, action="store_true")
+        group.add_argument('--input_file', help="Run on specific input file", default=None)
+
 
     def _process_args(self):
         if self.command in ["compress", "decompress", "clean", "du"]:
             if not self._meta.path_id:
                 self.app.log.warn("not running {} on root directory".format(self.command))
                 sys.exit()
+        if self.pargs.flowcell:
+            self._meta.wildcard += [self.pargs.flowcell]
         elif self.command in ["ls"]:
             if not self._meta.path_id:
                 self._meta.path_id = ""
@@ -149,22 +139,26 @@ class AbstractExtendedBaseController(AbstractBaseController):
             pass
         ## Setup file patterns to use
         if self.pargs.fastq:
-            self._meta.file_pat += [".fastq", "fastq.txt", ".fq"]
+            self._meta.file_ext += [".fastq", "fastq.txt", ".fq"]
         if self.pargs.pileup:
-            self._meta.file_pat += [".pileup", "-pileup"]
+            self._meta.file_ext += [".pileup", "-pileup"]
         if self.pargs.txt:
-            self._meta.file_pat += [".txt"]
+            self._meta.file_ext += [".txt"]
         if self.pargs.fastqbam:
-            self._meta.file_pat += ["fastq-fastq.bam"]
+            self._meta.file_ext += ["fastq-fastq.bam"]
         if self.pargs.sam:
-            self._meta.file_pat += [".sam"]
+            self._meta.file_ext += [".sam"]
+        if self.pargs.bam:
+            self._meta.file_ext += [".bam"]
         if self.pargs.split:
-            self._meta.file_pat += [".intervals", ".bam", ".bai", ".vcf", ".idx"]
+            self._meta.file_ext += [".intervals", ".bam", ".bai", ".vcf", ".idx"]
             self._meta.include_dirs += ["realign-split", "variants-split"]
         if self.pargs.tmp:
-            self._meta.file_pat += [".idx", ".vcf", ".bai", ".bam", ".idx", ".pdf"]
+            self._meta.file_ext += [".idx", ".vcf", ".bai", ".bam", ".idx", ".pdf"]
             self._meta.include_dirs += ["tmp", "tx"]
-
+        if self.pargs.glob:
+            self._meta.file_ext += [self.pargs.glob]
+            
         ## Setup zip program
         if self.pargs.pbzip2:
             self._meta.compress_prog = "pbzip2"
@@ -173,9 +167,14 @@ class AbstractExtendedBaseController(AbstractBaseController):
 
         if self._meta.path_id:
             assert os.path.exists(os.path.join(self._meta.root_path, self._meta.path_id)), "no such folder '{}' in {} directory '{}'".format(self._meta.path_id, self._meta.label, self._meta.root_path)
-
-        ## FIXME: Setup file search if clean, compress, or decompress.
-        ## Idea: store files in list and filter later on
+            
+    def _filter_fn(self, f):
+        if not self._meta.pattern:
+            return False
+        if self.pargs.flowcell:
+            if not re.search(self.pargs.flowcell, f):
+                return False
+        return re.search(self._meta.pattern, f) != None
 
     @controller.expose(hide=True)
     def default(self):
@@ -184,6 +183,8 @@ class AbstractExtendedBaseController(AbstractBaseController):
     ## du
     @controller.expose(help="Calculate disk usage")
     def du(self):
+        if not self._check_pargs(["project"]):
+            return
         out = self.app.cmd.command(["du", "-hs", "{}".format(os.path.join(self._meta.root_path, self._meta.path_id))])
         if out:
             self.app._output_data["stdout"].write(out.rstrip())
@@ -191,15 +192,12 @@ class AbstractExtendedBaseController(AbstractBaseController):
     ## clean
     @controller.expose(help="Remove files")
     def clean(self):
-        pattern = "|".join(["{}(.gz|.bz2)?$".format(x) for x in self._meta.file_pat])
-        def clean_filter(f):
-            if not pattern:
-                return
-            return re.search(pattern , f) != None
-
-        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), clean_filter, include_dirs=self._meta.include_dirs)
+        if not self._check_pargs(["project"]):
+            return
+        self._meta.pattern = "|".join(["{}(.gz|.bz2)?$".format(x) for x in self._meta.file_ext])
+        flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), self._filter_fn, include_dirs=self._meta.include_dirs)
         if len(flist) == 0:
-            self.app.log.info("No files matching pattern {} found".format(pattern))
+            self.app.log.info("No files matching pattern '{}' found".format(self._meta.pattern))
             return
         if len(flist) > 0 and not query_yes_no("Going to remove {} files ({}...). Are you sure you want to continue?".format(len(flist), ",".join([os.path.basename(x) for x in flist[0:10]])), force=self.pargs.force):
             return
@@ -207,47 +205,41 @@ class AbstractExtendedBaseController(AbstractBaseController):
             self.app.log.info("removing {}".format(f))
             self.app.cmd.safe_unlink(f)
 
-    def _compress(self, pattern, label="compress"):
-        def compress_filter(f):
-            if not pattern:
-                return
-            return re.search(pattern, f) != None
-
+    def _compress(self, label="compress"):
         if self.pargs.input_file:
             flist = [self.pargs.input_file]
         else:
-            flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), compress_filter)
+            flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), self._filter_fn)
 
         if len(flist) == 0:
-            self.app.log.info("No files matching pattern {} found".format(pattern))
+            self.app.log.info("No files matching pattern '{}' found".format(self._meta.pattern))
             return
         if len(flist) > 0 and not query_yes_no("Going to {} {} files ({}...). Are you sure you want to continue?".format(label, len(flist), ",".join([os.path.basename(x) for x in flist[0:10]])), force=self.pargs.force):
             sys.exit()
         for f in flist:
             self.log.info("{}ing {}".format(label, f))
-            self.app.cmd.command([self._meta.compress_prog, self._meta.compress_opt, "%s" % f], label, ignore_error=True)
+            self.app.cmd.command([self._meta.compress_prog, self._meta.compress_opt, "%s" % f], label, ignore_error=True, **{'workingDirectory':os.path.dirname(f), 'outputPath':os.path.join(os.path.dirname(f), "{}-{}-drmaa.log".format(label, os.path.basename(f)))})
 
     ## decompress
     @controller.expose(help="Decompress files")
     def decompress(self):
         """Decompress files"""
+        if not self._check_pargs(["project"]):
+            return
         self._meta.compress_opt = "-dv"
         if self.pargs.pbzip2:
             self._meta.compress_suffix = ".bz2"
-        pattern = "|".join(["{}{}$".format(x, self._meta.compress_suffix) for x in self._meta.file_pat])
-        self._compress(pattern, label="decompress")
+        self._meta.pattern = "|".join(["{}{}$".format(x, self._meta.compress_suffix) for x in self._meta.file_ext])
+        self._compress(label="decompress")
         
     ## compress
     @controller.expose(help="Compress files")
     def compress(self):
-        self._meta.compress_opt = "-v"
-        pattern = "|".join(["{}$".format(x) for x in self._meta.file_pat])
-        self._compress(pattern)
-
-    def file_filter(f):
-        if not pattern:
+        if not self._check_pargs(["project"]):
             return
-        return re.search(pattern, f) != None
+        self._meta.compress_opt = "-v"
+        self._meta.pattern = "|".join(["{}$".format(x) for x in self._meta.file_ext])
+        self._compress()
 
     ## ls
     @controller.expose(help="List root folder")
@@ -255,8 +247,8 @@ class AbstractExtendedBaseController(AbstractBaseController):
         if self._meta.path_id == "":
             self._ls(self._meta.root_path, filter_output=True)
         else:
-            if self._meta.file_pat:
-                pattern = "|".join(["{}$".format(x) for x in self._meta.file_pat])
+            if self._meta.file_ext:
+                pattern = "|".join(["{}$".format(x) for x in self._meta.file_ext])
                 flist = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), file_filter)
                 if flist:
                     self.app._output_data["stdout"].write("\n".join(flist))
@@ -283,7 +275,9 @@ class PmController(controller.CementBaseController):
     @controller.expose(hide=True)
     def default(self):
         if self.app.pargs.config:
-            print "FIXME: show config"
+            pp = pprint.PrettyPrinter(indent=4)
+            out = {k:dict(v) for k,v in self.app.config._sections.iteritems()}
+            pp.pprint(out)
         elif self.app.pargs.config_example:
             print """Configuration example: save as ~/.pm/pm.conf and modify at will.
 

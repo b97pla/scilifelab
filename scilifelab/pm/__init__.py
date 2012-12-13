@@ -12,11 +12,12 @@ import textwrap
 import subprocess
 from cStringIO import StringIO
 
-from cement.core import foundation, controller, handler, backend, output
+from cement.core import foundation, controller, handler, backend, output, hook
 
 from scilifelab.pm.core import command
 from scilifelab.pm.core import shell
 from scilifelab.pm.core.controller import PmController
+from scilifelab.pm.core.log import PmLogHandler
 
 LOG = backend.minimal_logger(__name__)    
 
@@ -29,6 +30,7 @@ class PmApp(foundation.CementApp):
         label = "pm"
         base_controller = PmController
         cmd_handler = shell.ShCommandHandler
+        log_handler = PmLogHandler
 
     def __init__(self, label=None, **kw):
         super(PmApp, self).__init__(**kw)
@@ -39,7 +41,7 @@ class PmApp(foundation.CementApp):
         super(PmApp, self).setup()
         self._setup_cmd_handler()
         ## FIXME: look at backend in cement
-        self._output_data = dict(stdout=StringIO(), stderr=StringIO())
+        self._output_data = dict(stdout=StringIO(), stderr=StringIO(), debug=StringIO())
 
     def _setup_cmd_handler(self):
         """Setup a command handler"""
@@ -52,4 +54,3 @@ class PmApp(foundation.CementApp):
             print self._output_data["stdout"].getvalue()
         if self._output_data["stderr"].getvalue():
             print >> sys.stderr, self._output_data["stderr"].getvalue()
-

@@ -1,18 +1,18 @@
 """QC extension"""
 import os
-import re
 import csv
 import yaml
-import couchdb
-from datetime import datetime
-import time
-from scilifelab.utils.timestamp import utc_time
+import ast
+import itertools
 
 from cement.core import backend, controller, handler, hook
+from scilifelab.utils.misc import query_yes_no
 from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.utils.timestamp import modified_within_days
-
-from scilifelab.bcbio.qc import FlowcellQCMetrics, QCMetrics, SampleQCMetrics, LaneQCMetrics, FlowcellRunMetrics, SampleRunMetrics
+from scilifelab.bcbio.qc import FlowcellRunMetricsParser, SampleRunMetricsParser
+from scilifelab.pm.bcbio.utils import validate_fc_directory_format, fc_id, fc_parts, fc_fullname
+from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectSummaryConnection, SampleRunMetricsDocument, FlowcellRunMetricsDocument
+from scilifelab.utils.dry import dry
 
 class RunMetricsController(AbstractBaseController):
     """
@@ -26,182 +26,180 @@ class RunMetricsController(AbstractBaseController):
         description = "Extension for dealing with QC data"
         arguments = [
             (['flowcell'], dict(help="Flowcell directory", nargs="?", default=None)),
-            ## FIXME: analysis is a confusing name
-            (['analysis'], dict(help="Root path to analysis folder", default=None, nargs="?")),
-            (['--pre_casava'], dict(help="Toggle casava structure", default=False, action="store_true")),
-            (['--project'], dict(help="Project id", default=None, action="store", type=str)),
+            (['--runqc'], dict(help="Root path to qc data folder", default=None, nargs="?")),
             (['--sample'], dict(help="Sample id", default=None, action="store", type=str)),
-            (['--mtime'], dict(help="Last modification time of directory (days): skip if older. Defaults to 1 day.", default=1, action="store", type=int))
+            (['--mtime'], dict(help="Last modification time of directory (days): skip if older. Defaults to 1 day.", default=1, action="store", type=int)),
+            (['--sample_prj'], dict(help="Sample project name, as in 'J.Doe_00_01'", default=None, action="store", type=str)),
+            (['--project_id'], dict(help="Project identifier, as in 'J.Doe_00_01'", default=None, action="store", type=str)),
+            (['--names'], dict(help="Sample name mapping from barcode name to project name as a JSON string, as in \"{'sample_run_name':'project_run_name'}\". Mapping can also be given in a file", default=None, action="store", type=str)),
+            (['--extensive_matching'], dict(help="Perform extensive barcode to project sample name matcing", default=False, action="store_true")),
             ]
+
+    def _process_args(self):
+        self._meta.root_path = self.app.pargs.runqc if self.app.pargs.runqc else self.app.config.get("runqc", "root")
+        self._meta.production_root_path = self.app.config.get("runqc", "production") if self.app.config.has_option("runqc", "production") else self.app.config.get("runqc", "root")
 
     @controller.expose(hide=True)
     def default(self):
         print self._help_text
 
+    @controller.expose(help="Update database objects with additional information. Currently supports updating project_id and project_sample_names in sample_run_metrics objects.")
+    def update(self):
+        if not self._check_pargs(["sample_prj"]):
+            return
+        url = self.pargs.url if self.pargs.url else self.app.config.get("db", "url")
+        if not url:
+            self.app.log.warn("Please provide a valid url: got {}".format(url))
+            return
 
-    ## Assuming standard directory structure
-    def _fc_id(self):
-        """Return fc id"""
-        pattern = "[0-9]+_[0-9A-Za-z]+_[0-9]+_[A-Z]([A-Z0-9]+)"
-        m = re.search(pattern, self.pargs.flowcell)
-        return m.group(1)
+        s_con = SampleRunMetricsConnection(dbname=self.app.config.get("db", "samples"), **vars(self.app.pargs))
+        samples = s_con.get_samples(sample_prj=self.pargs.sample_prj)
 
-    def _fc_fullname(self):
-        """Return fc name (fc_date_fc_name)"""
-        pattern = "([0-9]+)_[0-9A-Za-z]+_[0-9]+_([A-Z0-9]+)"
-        m = re.search(pattern, self.pargs.flowcell)
-        return "{}_{}".format(m.group(1), m.group(2))
-    
-    def _fc_parts(self):
-        """return fc_name and fc_date"""
-        pattern = "([0-9]+)_[0-9A-Za-z]+_[0-9]+_([A-Z0-9]+)"
-        m = re.search(pattern, self.pargs.flowcell)
-        return (m.group(1), m.group(2))
-
-    ##############################
-    ## Old file collection functions
-    ## Will be removed when new statusdb structure in place
-    ##############################
-    def _collect_casava_qc_old(self):
-        qc_objects = []
-        runinfo_csv = os.path.join(os.path.abspath(self.pargs.flowcell), "{}.csv".format(self._fc_id()))
-        try:
-            with open(runinfo_csv) as fh:
-                runinfo_reader = csv.reader(fh)
-                runinfo = [x for x in runinfo_reader]
-        except IOError as e:
-            self.app.log.warn(str(e))
-            raise e
-
-        for sample in runinfo[1:]:
-            d = dict(zip(runinfo[0], sample))
-            if self.app.pargs.project and self.app.pargs.project != d['SampleProject']:
-                continue
-            if self.app.pargs.sample and self.app.pargs.sample != d['SampleID']:
-                continue
+        if self.pargs.project_id:
+            self.app.log.debug("Going to update 'project_id' to {} for sample runs with 'sample_prj' == {}".format(self.pargs.project_id, self.pargs.sample_prj))
+            for s in samples:
+                if not s.get("project_id", None) is None:
+                    if not query_yes_no("'project_id':{} for sample {}; are you sure you want to overwrite?".format(s["project_id"], s["name"]), force=self.pargs.force):
+                        continue
+                s["project_id"] = self.pargs.project_id
+                s_con.save(s)
+        if self.pargs.names:
+            self.app.log.debug("Going to update 'project_sample_name' for sample runs with 'sample_prj' == {}".format(self.pargs.sample_prj))
+            if os.path.exists(self.pargs.names):
+                with open(self.pargs.names) as fh:
+                    names_d = json.load(fh)
+            else:
+                names_d= ast.literal_eval(self.pargs.names)
+            samples_sort = sorted(samples, key=lambda s:s["barcode_name"])
+            groups = {}
+            for k, g in itertools.groupby(samples_sort, key=lambda x:x["barcode_name"]):
+                groups[k] = list(g)
+            for barcode_name in names_d:
+                sample_list = groups.get(barcode_name, None)
+                if not sample_list:
+                    continue
+                for s in sample_list:
+                    if not s.get("project_sample_name", None) is None:
+                        if not query_yes_no("'project_sample_name':{} for sample {}; are you sure you want to overwrite?".format(s["project_sample_name"], s["name"]), force=self.pargs.force):
+                            continue
+                    s["project_sample_name"] = names_d[barcode_name]
+                    s_con.save(s)
+        else:
+            self.app.log.info("Trying to use extensive matching...")
+            p_con = ProjectSummaryConnection(dbname=self.app.config.get("db", "projects"), **vars(self.app.pargs))
+            for s in samples:
+                project_sample = p_con.get_project_sample(self.pargs.sample_prj, s["barcode_name"], extensive_matching=True)
+                if project_sample:
+                    self.app.log.info("using mapping '{} : {}'...".format(s["barcode_name"], project_sample["sample_name"]))
+                    s["project_sample_name"] = project_sample["sample_name"]
+                    s_con.save(s)
                 
-            sampledir = os.path.join(os.path.abspath(self.pargs.analysis), d['SampleProject'].replace("__", "."), d['SampleID'])
-            if not os.path.exists(sampledir):
-                self.app.log.warn("No such sample directory: {}".format(sampledir))
-                raise IOError(2, "No such sample directory: {}".format(sampledir), sampledir)
-            sample_fcdir = os.path.join(sampledir, self._fc_fullname())
-            (fc_date, fc_name) = self._fc_parts()
-            runinfo_yaml_file = os.path.join(sample_fcdir, "{}-bcbb-config.yaml".format(d['SampleID']))
-            if not os.path.exists(runinfo_yaml_file):
-                self.app.log.warn("No such yaml file for sample: {}".format(runinfo_yaml_file))
-                raise IOError(2, "No such yaml file for sample: {}".format(sampledir), sampledir)
-            with open(runinfo_yaml_file) as fh:
-                runinfo_yaml = yaml.load(fh)
-            if not runinfo_yaml['details'][0].get("multiplex", None):
-                self.app.log.warn("No multiplex information for sample {}".format(runinfo_yaml_file))
-                continue
-            sample_kw = dict(path=sample_fcdir, flowcell=fc_name, date=fc_date, lane=d['Lane'], barcode_name=d['SampleID'], sample_prj=d['SampleProject'].replace("__", "."), barcode_id=runinfo_yaml['details'][0]['multiplex'][0]['barcode_id'], sequence=runinfo_yaml['details'][0]['multiplex'][0]['sequence'])
-            obj = SampleQCMetrics(**sample_kw)
-            obj.read_picard_metrics()
-            obj.parse_fastq_screen()
-            obj.parse_bc_metrics()
-            obj.read_fastqc_metrics()
-            qc_objects.append(obj)
-            
-        fcdir = os.path.join(os.path.abspath(self.pargs.analysis), self.pargs.flowcell)
-        fc_kw = dict(path=fcdir, fc_date = fc_date, fc_name=fc_name)
-        fcobj = FlowcellQCMetrics(**fc_kw)
-        fcobj.parse_illumina_metrics(fullRTA=False)
-        qc_objects.append(fcobj)
-        return qc_objects
-
-    ## FIX ME: no way to do dry run
-    def _save_obj(self, db, obj, url):
-        dbobj = db.get(obj.get_db_id())
-        if dbobj is None:
-            obj["creation_time"] = datetime.now().isoformat()
-            obj["modification_time"] = datetime.now().isoformat()
-            self.app.log.info("Creating entity type %s with id %s in url %s" % (obj["entity_type"], obj.get_db_id(), url))
-            db.save(obj, _id=obj["_id"])
-        else:
-            obj["_rev"] = dbobj.get("_rev")
-            obj["creation_time"] = dbobj["creation_time"]
-            ## FIXME: always ne: probably some date field gets updated somewhere
-            if obj != dbobj:
-                obj["modification_time"] = datetime.now().isoformat()
-                self.app.log.info("Updating %s object with id %s in url %s" % (obj["entity_type"], obj.get_db_id(), url))
-                db.save(obj)
-            else:
-                self.app.log.info("Object %s already present in url %s and not in need of updating" % (obj.get_db_id(), url))
-        return True
-
-    @controller.expose(help="OBSOLETE: upload QC metrics to couchdb")
-    def upload_qc_old(self):
-        if not self._check_pargs(['flowcell', 'analysis', 'url']):
-            return
-        if os.path.exists(os.path.join(os.path.abspath(self.pargs.flowcell), "{}.csv".format(self._fc_id()))):
-            self.log.info("Assuming casava based file structure for {}".format(self._fc_id()))
-            qc_objects = self._collect_casava_qc_old()
-        else:
-            self.log.info("Assuming pre-casava based file structure for {}".format(self._fc_id()))
-            #self._collect_pre_casava_qc_old()
-
-        try:
-            statusdb_url="http://{}:{}".format(self.pargs.url, self.pargs.port)
-            couch = couchdb.Server(url=statusdb_url)
-        except:
-            self.app.log.warn("Connecting to server at {} failed" % statusdb_url)
-            return
-        self.app.log.info("Connecting to server at {} succeeded".format(statusdb_url))
-        db=couch['qc']
-
-        for obj in qc_objects:
-            if self.app.pargs.debug:
-                self.log.info(obj)
-            else:
-                self._save_obj(db, obj, statusdb_url)
-
-
     ##############################
     ## New structures
     ##############################
+    def _parse_samplesheet(self, runinfo, qc_objects, fc_date, fc_name, fcdir, as_yaml=False):
+        """Parse samplesheet information and populate sample run metrics object"""
+        if as_yaml:
+            for info in runinfo:
+                if not info.get("multiplex", None):
+                    self.app.log.warn("No multiplex information for lane {}".format(info.get("lane")))
+                    sample = {}
+                    sample.update({k: info.get(k, None) for k in ('analysis', 'description', 'flowcell_id', 'lane')})
+                    sample_kw = dict(path=fcdir, flowcell=fc_name, date=fc_date, lane=sample.get('lane', None), barcode_name=sample.get('name', None), sample_prj=sample.get('sample_prj', None),
+                                     barcode_id=sample.get('barcode_id', None), sequence=sample.get('sequence', "NoIndex"))
+                for sample in info["multiplex"]:
+                    sample.update({k: info.get(k, None) for k in ('analysis', 'description', 'flowcell_id', 'lane')})
+                    sample_kw = dict(flowcell=fc_name, date=fc_date, lane=sample['lane'], barcode_name=sample['name'], sample_prj=sample.get('sample_prj', None),
+                                     barcode_id=sample['barcode_id'], sequence=sample.get('sequence', "NoIndex"))
+                
+                    parser = SampleRunMetricsParser(fcdir)
+                    obj = SampleRunMetricsDocument(**sample_kw)
+                    obj["picard_metrics"] = parser.read_picard_metrics(**sample_kw)
+                    obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
+                    obj["bc_count"] = parser.get_bc_count(**sample_kw)
+                    obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
+                    qc_objects.append(obj)
+        else:
+            for sample in runinfo[1:]:
+                d = dict(zip(runinfo[0], sample))
+                if self.app.pargs.project_id and self.app.pargs.project_id != d['SampleProject']:
+                    continue
+                if self.app.pargs.sample and self.app.pargs.sample != d['SampleID']:
+                    continue
+                
+                sampledir = os.path.join(os.path.abspath(self._meta.production_root_path), d['SampleProject'].replace("__", "."), d['SampleID'])
+                if not os.path.exists(sampledir):
+                    self.app.log.warn("No such sample directory: {}".format(sampledir))
+                    continue
+                sample_fcdir = os.path.join(sampledir, fc_fullname(self.pargs.flowcell))
+                if not os.path.exists(sample_fcdir):
+                    self.app.log.warn("No such sample flowcell directory: {}".format(sample_fcdir))
+                    continue
+                if not modified_within_days(sample_fcdir, self.pargs.mtime):
+                    continue
+                runinfo_yaml_file = os.path.join(sample_fcdir, "{}-bcbb-config.yaml".format(d['SampleID']))
+                if not os.path.exists(runinfo_yaml_file):
+                    self.app.log.warn("No such yaml file for sample: {}".format(runinfo_yaml_file))
+                    raise IOError(2, "No such yaml file for sample: {}".format(runinfo_yaml_file), runinfo_yaml_file)
+                with open(runinfo_yaml_file) as fh:
+                    runinfo_yaml = yaml.load(fh)
+                if not runinfo_yaml['details'][0].get("multiplex", None):
+                    self.app.log.warn("No multiplex information for sample {}".format(d['SampleID']))
+                    continue
+                sample_kw = dict(flowcell=fc_name, date=fc_date, lane=d['Lane'], barcode_name=d['SampleID'], sample_prj=d['SampleProject'].replace("__", "."), barcode_id=runinfo_yaml['details'][0]['multiplex'][0]['barcode_id'], sequence=runinfo_yaml['details'][0]['multiplex'][0]['sequence'])
+                parser = SampleRunMetricsParser(sample_fcdir)
+                obj = SampleRunMetricsDocument(**sample_kw)
+                obj["picard_metrics"] = parser.read_picard_metrics(**sample_kw)
+                obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
+                obj["bc_count"] = parser.get_bc_count(**sample_kw)
+                obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
+                qc_objects.append(obj)
+        return qc_objects
+
     def _collect_pre_casava_qc(self):
         qc_objects = []
+        as_yaml = False
+        runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "{}.csv".format(fc_id(self.pargs.flowcell)))
+        if not os.path.exists(runinfo_csv):
+            LOG.warn("No such file {}: trying fallback SampleSheet.csv".format(runinfo_csv))
+            runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "SampleSheet.csv")
         runinfo_yaml = os.path.join(os.path.abspath(self.pargs.flowcell), "run_info.yaml")
         try:
-            with open(runinfo_yaml) as fh:
-                runinfo = yaml.load(fh)
+            if os.path.exists(runinfo_csv):
+                with open(runinfo_csv) as fh:
+                    runinfo_reader = csv.reader(fh)
+                    runinfo = [x for x in runinfo_reader]
+            else:
+                as_yaml = True
+                with open(runinfo_yaml) as fh:
+                    runinfo = yaml.load(fh)
         except IOError as e:
             self.app.log.warn(str(e))
             raise e
         fcdir = os.path.abspath(self.pargs.flowcell)
-        (fc_date, fc_name) = self._fc_parts()
+        (fc_date, fc_name) = fc_parts(self.pargs.flowcell)
         ## Check modification time
         if modified_within_days(fcdir, self.pargs.mtime):
-            fc_kw = dict(path=fcdir, fc_date = fc_date, fc_name=fc_name)
-            fcobj = FlowcellRunMetrics(**fc_kw)
-            fcobj.parse_illumina_metrics(fullRTA=False)
-            fcobj.parse_bc_metrics()
-            fcobj.parse_filter_metrics()
-            fcobj.parse_samplesheet_csv()
-            fcobj.parse_run_info_yaml()
+            fc_kw = dict(fc_date = fc_date, fc_name=fc_name)
+            parser = FlowcellRunMetricsParser(fcdir)
+            fcobj = FlowcellRunMetricsDocument(**fc_kw)
+            fcobj["illumina"] = parser.parse_illumina_metrics(fullRTA=False, **fc_kw)
+            fcobj["bc_metrics"] = parser.parse_bc_metrics(**fc_kw)
+            fcobj["filter_metrics"] = parser.parse_filter_metrics(**fc_kw)
+            fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(**fc_kw)
+            fcobj["run_info_yaml"] = parser.parse_run_info_yaml(**fc_kw)
             qc_objects.append(fcobj)
         else:
             return qc_objects
-        for info in runinfo:
-            if not info.get("multiplex", None):
-                self.app.log.warn("No multiplex information for lane {}".format(info.get("lane")))
-                continue
-            for sample in info["multiplex"]:
-                sample.update({k: info.get(k, None) for k in ('analysis', 'description', 'flowcell_id', 'lane')})
-                sample_kw = dict(path=fcdir, flowcell=fc_name, date=fc_date, lane=sample['lane'], barcode_name=sample['name'], sample_prj=sample.get('sample_prj', None),
-                                 barcode_id=sample['barcode_id'], sequence=sample['sequence'])
-                obj = SampleRunMetrics(**sample_kw)
-                obj.read_picard_metrics()
-                obj.parse_fastq_screen()
-                obj.parse_bc_metrics()
-                obj.read_fastqc_metrics()
-                qc_objects.append(obj)
+        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, as_yaml=as_yaml)
         return qc_objects
 
     def _collect_casava_qc(self):
         qc_objects = []
-        runinfo_csv = os.path.join(os.path.abspath(self.pargs.flowcell), "{}.csv".format(self._fc_id()))
+        runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "{}.csv".format(fc_id(self.pargs.flowcell)))
+        if not os.path.exists(runinfo_csv):
+            LOG.warn("No such file {}: trying fallback SampleSheet.csv".format(runinfo_csv))
+            runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "SampleSheet.csv")
         try:
             with open(runinfo_csv) as fh:
                 runinfo_reader = csv.reader(fh)
@@ -209,117 +207,63 @@ class RunMetricsController(AbstractBaseController):
         except IOError as e:
             self.app.log.warn(str(e))
             raise e
-        fcdir = os.path.join(os.path.abspath(self.pargs.analysis), self.pargs.flowcell)
-        (fc_date, fc_name) = self._fc_parts()
+        fcdir = os.path.join(os.path.abspath(self._meta.root_path), self.pargs.flowcell)
+        (fc_date, fc_name) = fc_parts(self.pargs.flowcell)
         ## Check modification time
         if modified_within_days(fcdir, self.pargs.mtime):
-            fc_kw = dict(path=fcdir, fc_date = fc_date, fc_name=fc_name)
-            fcobj = FlowcellRunMetrics(**fc_kw)
-            fcobj.parse_illumina_metrics(fullRTA=False)
-            fcobj.parse_bc_metrics()
-            fcobj.parse_samplesheet_csv()
-            fcobj.parse_run_info_yaml()
+            fc_kw = dict(fc_date = fc_date, fc_name=fc_name)
+            parser = FlowcellRunMetricsParser(fcdir)
+            fcobj = FlowcellRunMetricsDocument(fc_date, fc_name)
+            fcobj["illumina"] = parser.parse_illumina_metrics(fullRTA=False, **fc_kw)
+            fcobj["bc_metrics"] = parser.parse_bc_metrics(**fc_kw)
+            fcobj["undemultiplexed_barcodes"] = parser.parse_undemultiplexed_barcode_metrics(**fc_kw)
+            fcobj["illumina"].update({"Demultiplex_Stats" : parser.parse_demultiplex_stats_htm(**fc_kw)})
+            fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(**fc_kw)
             qc_objects.append(fcobj)
-
-        for sample in runinfo[1:]:
-            d = dict(zip(runinfo[0], sample))
-            if self.app.pargs.project and self.app.pargs.project != d['SampleProject']:
-                continue
-            if self.app.pargs.sample and self.app.pargs.sample != d['SampleID']:
-                continue
-                
-            sampledir = os.path.join(os.path.abspath(self.pargs.analysis), d['SampleProject'].replace("__", "."), d['SampleID'])
-            if not os.path.exists(sampledir):
-                self.app.log.warn("No such sample directory: {}".format(sampledir))
-                continue
-            sample_fcdir = os.path.join(sampledir, self._fc_fullname())
-            if not os.path.exists(sample_fcdir):
-                self.app.log.warn("No such sample flowcell directory: {}".format(sample_fcdir))
-                continue
-            if not modified_within_days(sample_fcdir, self.pargs.mtime):
-                continue
-            runinfo_yaml_file = os.path.join(sample_fcdir, "{}-bcbb-config.yaml".format(d['SampleID']))
-            if not os.path.exists(runinfo_yaml_file):
-                self.app.log.warn("No such yaml file for sample: {}".format(runinfo_yaml_file))
-                raise IOError(2, "No such yaml file for sample: {}".format(runinfo_yaml_file), runinfo_yaml_file)
-            with open(runinfo_yaml_file) as fh:
-                runinfo_yaml = yaml.load(fh)
-            if not runinfo_yaml['details'][0].get("multiplex", None):
-                self.app.log.warn("No multiplex information for sample {}".format(d['SampleID']))
-                continue
-            sample_kw = dict(path=sample_fcdir, flowcell=fc_name, date=fc_date, lane=d['Lane'], barcode_name=d['SampleID'], sample_prj=d['SampleProject'].replace("__", "."), barcode_id=runinfo_yaml['details'][0]['multiplex'][0]['barcode_id'], sequence=runinfo_yaml['details'][0]['multiplex'][0]['sequence'])
-            obj = SampleRunMetrics(**sample_kw)
-            obj.read_picard_metrics()
-            obj.parse_fastq_screen()
-            obj.parse_bc_metrics()
-            obj.read_fastqc_metrics()
-            qc_objects.append(obj)
+        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir)
         return qc_objects
 
     @controller.expose(help="Upload run metrics to statusdb")
     def upload_qc(self):
-        if not self._check_pargs(['flowcell', 'analysis', 'url']):
+        if not self._check_pargs(['flowcell']):
             return
-        runinfo_csv = os.path.join(os.path.abspath(self.pargs.flowcell), "{}.csv".format(self._fc_id()))
+        url = self.pargs.url if self.pargs.url else self.app.config.get("db", "url")
+        if not url:
+            self.app.log.warn("Please provide a valid url: got {}".format(url))
+            return
+        if not validate_fc_directory_format(self.pargs.flowcell):
+            self.app.log.warn("Path '{}' does not conform to bcbio flowcell directory format; aborting".format(self.pargs.flowcell))
+            return
+            
+        runinfo_csv = os.path.join(os.path.abspath(self.pargs.flowcell), "{}.csv".format(fc_id(self.pargs.flowcell)))
         runinfo_yaml = os.path.join(os.path.abspath(self.pargs.flowcell), "run_info.yaml")
-        if os.path.exists(runinfo_yaml):
-            self.log.info("Assuming pre-casava based file structure for {}".format(self._fc_id()))
+        (fc_date, fc_name) = fc_parts(self.pargs.flowcell)
+        if int(fc_date) < 120815:
+            self.log.info("Assuming pre-casava based file structure for {}".format(fc_id(self.pargs.flowcell)))
             qc_objects = self._collect_pre_casava_qc()
         else:
-            self.log.info("Assuming casava based file structure for {}".format(self._fc_id()))
+            self.log.info("Assuming casava based file structure for {}".format(fc_id(self.pargs.flowcell)))
             qc_objects = self._collect_casava_qc()
+
         if len(qc_objects) == 0:
-            self.log.info("No out-of-date qc objects for {}".format(self._fc_id()))
+            self.log.info("No out-of-date qc objects for {}".format(fc_id(self.pargs.flowcell)))
             return
         else:
             self.log.info("Retrieved {} updated qc objects".format(len(qc_objects)))
 
-        ## Make sure couchdb handler is set
-        if not '--couchdb' in self.app._meta.argv:
-            self.app._meta.cmd_handler = 'couchdb'
-            self.app._setup_cmd_handler()
-        self.app.cmd.connect(self.pargs.url, self.pargs.port)
-        db = self.app.cmd.db("qc")
-        if not db and not self.pargs.dry_run:
-            return
+        s_con = SampleRunMetricsConnection(dbname=self.app.config.get("db", "samples"), **vars(self.app.pargs))
+        fc_con = FlowcellRunMetricsConnection(dbname=self.app.config.get("db", "flowcells"), **vars(self.app.pargs))
+        p_con = ProjectSummaryConnection(dbname=self.app.config.get("db", "projects"), **vars(self.app.pargs))
         for obj in qc_objects:
             if self.app.pargs.debug:
-                self.log.info(obj)
-                continue
-            if isinstance(obj, FlowcellRunMetrics):
-                self.app.cmd.save("flowcells", obj, update_fn)
-            if isinstance(obj, SampleRunMetrics):
-                self.app.cmd.save("samples", obj, update_fn)
-
-def update_fn(db, obj):
-    t_utc = utc_time()
-    def equal(a, b):
-        a_keys = [str(x) for x in a.keys() if x not in ["_id", "_rev", "creation_time", "modification_time"]]
-        b_keys = [str(x) for x in b.keys() if x not in ["_id", "_rev", "creation_time", "modification_time"]]
-        keys = list(set(a_keys + b_keys))
-        return {k:a.get(k, None) for k in keys} == {k:b.get(k, None) for k in keys}
-
-    if isinstance(obj, FlowcellRunMetrics):
-        view = db.view("names/id_to_name")
-    if isinstance(obj, SampleRunMetrics):
-        view = db.view("names/id_to_name")
-
-    d_view = {k.value:k for k in view}
-    dbid =  d_view.get(obj["name"], None)
-    dbobj = None
-    if dbid:
-        dbobj = db.get(dbid.id, None)
-    if dbobj is None:
-        obj["creation_time"] = t_utc
-        return obj
-    if equal(obj, dbobj):
-        return None
-    else:
-        obj["creation_time"] = dbobj.get("creation_time")
-        obj["modification_time"] = t_utc
-        obj["_rev"] = dbobj.get("_rev")
-        obj["_id"] = dbobj.get("_id")
-        return obj
+                self.log.debug("{}: {}".format(str(obj), obj["_id"]))
+            if isinstance(obj, FlowcellRunMetricsDocument):
+                dry("Saving object {}".format(repr(obj)), fc_con.save(obj))
+            if isinstance(obj, SampleRunMetricsDocument):
+                project_sample = p_con.get_project_sample(obj.get("sample_prj", None), obj.get("barcode_name", None), self.pargs.extensive_matching)
+                if project_sample:
+                    obj["project_sample_name"] = project_sample['sample_name']
+                dry("Saving object {}".format(repr(obj)), s_con.save(obj))
 
 def load():
     """Called by the framework when the extension is 'loaded'."""
