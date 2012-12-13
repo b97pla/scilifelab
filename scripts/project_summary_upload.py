@@ -38,7 +38,7 @@ from optparse import OptionParser
 import logging
 
 import bcbio.google
-import bcbio.scilifelab.google.project_metadata as pm
+import scilifelab.google.project_metadata as pmeta
 import bcbio.pipeline.config_loader as cl
 from bcbio.google import _to_unicode, spreadsheet
 import couchdb
@@ -66,9 +66,9 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, CREDENTIALS_FILE, config):
 	### Get minimal #M reads and uppnexid from Genomics Project list
 	logger.debug('Getting minimal #M reads and uppnexid from Genomics Project list for project %s' % project_name_swe)
 
-	p = pm.ProjectMetaData(project_name, config)
+	p = pmeta.ProjectMetaData(project_name, config)
 	if p.project_name is None:
-		p = pm.ProjectMetaData(project_name_swe, config)
+		p = pmeta.ProjectMetaData(project_name_swe, config)
 	if p.project_name is None:
 		logger.warning('Google Document Genomics Project list: %s not found' % project_name) 
 	else:
@@ -219,13 +219,6 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, CREDENTIALS_FILE, config):
                 scilife_name, preps = strip_scilife_name([sci_name_raw])
                 scilife_name = scilife_name[sci_name_raw]
                 prep = 'A' if preps[sci_name_raw].replace('F','') == '' else preps[sci_name_raw].replace('F','')
-		if not obj['samples'].has_key(scilife_name):
-			scilife_name_old = convert_to_old_sci_format(scilife_name)
-			try:
-				if obj['samples'].has_key(scilife_name_old):
-					scilife_name = scilife_name_old
-			except:
-				pass
 
                 if obj['samples'].has_key(scilife_name):
                         if obj['samples'][scilife_name].has_key("library_prep"):
@@ -400,15 +393,6 @@ def _replace_ascii(str):
     str = str.replace(u'\xd6','O')
     str = str.replace(u'\xf6','o')
     return str.encode('ascii','replace')
-
-def convert_to_old_sci_format(scilife_name):
-	if scilife_name[0]=='P':
-		try:
-			return str(int(scilife_name.split('_')[1])-100)
-		except:
-			return None
-	else:
-		return None
 
 def find_duplicates(list):
 	dup = []
