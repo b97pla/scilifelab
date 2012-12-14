@@ -18,7 +18,7 @@ from classes import PmFullTest
 from cement.core import handler
 from scilifelab.pm.core.production import ProductionController
 from scilifelab.utils.misc import filtered_walk, opt_to_dict
-from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command, setup_merged_samples, sample_table, get_vcf_files
+from scilifelab.bcbio.run import find_samples, setup_sample, run_bcbb_command, setup_merged_samples, sample_table, get_vcf_files, validate_sample_directories
 
 LOG = logbook.Logger(__name__)
 
@@ -210,6 +210,12 @@ class UtilsTest(SciLifeTest):
         LOG.info("Copy tree {} to {}".format(j_doe_00_01, j_doe_00_05))
         if not os.path.exists(j_doe_00_05):
             shutil.copytree(j_doe_00_01, j_doe_00_05)
+            with open(os.path.join(j_doe_00_05, "samples.txt"), "w") as fh:
+                fh.write("\n\nP001_101_index3\nP001_104_index3")
+            with open(os.path.join(j_doe_00_05, "samples2.txt"), "w") as fh:
+                fh.write("\n\nP001_101_index3-bcbb-config.yaml")
+            with open(os.path.join(j_doe_00_05, "P001_101_index3-bcbb-config.yaml"), "w") as fh:
+                fh.write("\n")
 
     @classmethod
     def tearDownClass(cls):
@@ -223,6 +229,19 @@ class UtilsTest(SciLifeTest):
         self.assertIn(len(flist), [3,4])
         flist = find_samples(j_doe_00_05, **{'only_failed':True})
         self.assertIn(len(flist), [0,1])
+
+    def test_find_samples_from_file(self):
+        """Find samples defined in file with empty lines and erroneous names"""
+        flist = find_samples(j_doe_00_05, sample=os.path.join(j_doe_00_05, "samples.txt"))
+        validate_sample_directories(flist, j_doe_00_05)
+        self.assertEqual(len(flist),2)
+
+
+    def test_find_samples_from_file_with_yaml(self):
+        """Find samples defined in file with empty lines and a bcbb-config.yaml file lying directly under root directory"""
+        flist = find_samples(j_doe_00_05, sample=os.path.join(j_doe_00_05, "samples2.txt"))
+        args = [flist, j_doe_00_05]
+        self.assertRaises(Exception, validate_sample_directories, *args)
 
     def test_setup_merged_samples(self):
         """Test setting up merged samples"""

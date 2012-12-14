@@ -283,7 +283,7 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
             LOG.info("Please run 'pm qc upload-qc FLOWCELL_ID --extensive-matching' to update project sample names ")
             LOG.info("or 'pm qc update --sample_prj PROJECT_ID --names BARCODE_TO_SAMPLE_MAP to update project sample names.")
             LOG.info("Please refer to the pm documentation for examples.")
-            query_ok(force=self.pargs.force)
+            query_ok(force=kw.get("force", False))
 
         # Finally assess sequencing success, update parameters and set outputs
         s_param['success'] = sequencing_success(s_param, cutoffs)

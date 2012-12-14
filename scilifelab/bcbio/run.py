@@ -3,7 +3,7 @@ import os
 import re
 import yaml
 import glob
-
+from itertools import chain
 import pandas as pd
 
 from scilifelab.utils.misc import filtered_walk, query_yes_no, opt_to_dict
@@ -166,6 +166,21 @@ def setup_merged_samples(flist, sample_group_fn=_group_samples, **kw):
     return new_flist
 
 
+def validate_sample_directories(flist, pdir):
+    """Validate that config files in flist are indeed in subdirectories of pdir.
+
+    :param flist: list of config files
+    :param pdir: project/production directory
+
+    :raises: Exception if item in flist not in subdirectory of pdir
+    """
+    for run_info in flist:
+        if not os.path.realpath(run_info).startswith(os.path.realpath(pdir)) or os.path.realpath(run_info) == os.path.realpath(pdir):
+            LOG.warning("{} *must* be in a subdirectory of {}".format(run_info, pdir))
+            raise Exception
+
+
+
 def find_samples(path, sample=None, pattern = "-bcbb-config.yaml$", only_failed=False, **kw):
     """Find bcbb config files in a path.
 
@@ -175,15 +190,22 @@ def find_samples(path, sample=None, pattern = "-bcbb-config.yaml$", only_failed=
 
     :returns: list of file names
     """
+    def bcbb_yaml_filter(f):
+        return re.search(pattern, f) != None
     flist = []
     if sample:
         if os.path.exists(sample):
             with open(sample) as fh:
-                flist = [x.rstrip() for x in fh.readlines()]
+                samplelist = fh.readlines()
+            flist = [x.rstrip() for x in samplelist if re.search(pattern, x)]
+            if len(flist) == 0:
+                flist = [os.path.join(path, x.rstrip()) for x in samplelist if len(x) > 1]
+                # Make sure there actually is a config file in path
+                flist = list(chain.from_iterable([filtered_walk(x, bcbb_yaml_filter, exclude_dirs=kw.get("exclude_dirs", None), include_dirs=kw.get("include_dirs", None)) for x in flist]))
+            if len(flist) == 0:
+                return flist
         else:
             pattern = "{}{}".format(sample, pattern)
-    def bcbb_yaml_filter(f):
-        return re.search(pattern, f) != None
     if not flist:
         flist = filtered_walk(path, bcbb_yaml_filter, exclude_dirs=kw.get("exclude_dirs", None), include_dirs=kw.get("include_dirs", None))
     if only_failed:
@@ -191,7 +213,7 @@ def find_samples(path, sample=None, pattern = "-bcbb-config.yaml$", only_failed=
         flist = [x for x in flist if _sample_status(x)=="FAIL"]
     if len(flist) == 0 and sample:
         LOG.info("No such sample {}".format(sample))
-    return [os.path.abspath(f) for f in flist]
+    return [os.path.realpath(f) for f in flist]
 
 def setup_sample(f, analysis, amplicon=False, genome_build="hg19", **kw):
     """Setup config files, making backups and writing new files
