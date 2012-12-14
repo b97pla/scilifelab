@@ -33,7 +33,8 @@ setup(name = "scilifelab",
       packages=find_packages(exclude=['tests']),
       package_data = {'scilifelab':[
           'data/grf/*',
-          'data/templates/*',
+          'data/templates/*.mako',
+          'data/templates/rst/*',
           ]}
       )
 

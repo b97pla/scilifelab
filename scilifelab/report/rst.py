@@ -63,6 +63,7 @@ def make_rst_sample_table(data):
         return ""
     else:
         tab_tt = tt.Texttable()
+        tab_tt.set_precision(2)
         tab_tt.add_rows(data)
         return tab_tt.draw()
 
