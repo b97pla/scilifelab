@@ -48,7 +48,7 @@ class ProjectMetaData:
         for wtitle in wsheet_title.split(','):
             wsheet = bcbio.google.spreadsheet.get_worksheet(client, ssheet, wtitle.strip())
             if not wsheet:
-                logger2.warning("Could not locate %s in %s." % (wsheet_title, ssheet_title))
+                print("WARNING: Could not locate {} in {}".format(wsheet_title, ssheet_title))
                 continue
 
             # Get the rows for the project
