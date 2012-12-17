@@ -31,7 +31,7 @@ def _round_read_count_in_millions(n):
 def _get_ordered_million_reads(sample_name, ordered_million_reads):
     """Retrieve ordered million reads for sample
 
-    :param sample_name: sample name
+    :param sample_name: sample name (possibly barcode name)
     :param ordered_million_reads: parsed option passed to application
 
     :returns: ordered number of reads or None"""
@@ -283,7 +283,7 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
             LOG.info("Please run 'pm qc upload-qc FLOWCELL_ID --extensive-matching' to update project sample names ")
             LOG.info("or 'pm qc update --sample_prj PROJECT_ID --names BARCODE_TO_SAMPLE_MAP to update project sample names.")
             LOG.info("Please refer to the pm documentation for examples.")
-            query_ok(force=self.pargs.force)
+            query_ok(force=kw.get("force", False))
 
         # Finally assess sequencing success, update parameters and set outputs
         s_param['success'] = sequencing_success(s_param, cutoffs)
@@ -341,7 +341,7 @@ def _set_sample_table_values(sample_name, project_sample, barcode_seq, ordered_m
     # Set status
     vals['Status'] = project_sample.get("status", "N/A")
     if ordered_million_reads:
-        param["ordered_amount"] = _get_ordered_million_reads(v['sample'], ordered_million_reads)
+        param["ordered_amount"] = _get_ordered_million_reads(sample_name, ordered_million_reads)
     vals['MOrdered'] = param["ordered_amount"]
     vals['BarcodeSeq'] = barcode_seq
     vals.update({k:"N/A" for k in vals.keys() if vals[k] is None or vals[k] == ""})
@@ -465,12 +465,12 @@ def project_status_note(project_id=None, username=None, password=None, url=None,
         if project_sample_d:
             for k,v in project_sample_d.iteritems():
                 barcode_seq = s_con.get_entry(k, "sequence")
-                vals = _set_sample_table_values(v, project_sample, barcode_seq, ordered_million_reads, param)
+                vals = _set_sample_table_values(sample, project_sample, barcode_seq, ordered_million_reads, param)
                 if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
                 sample_table.append([vals[k] for k in table_keys])
         else:
             barcode_seq = None
-            vals = _set_sample_table_values(v, project_sample, barcode_seq, ordered_million_reads, param)
+            vals = _set_sample_table_values(sample, project_sample, barcode_seq, ordered_million_reads, param)
             if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
             sample_table.append([vals[k] for k in table_keys])
     if all_passed: param["finished"] = 'Project finished.'
