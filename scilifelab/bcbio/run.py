@@ -175,7 +175,7 @@ def validate_sample_directories(flist, pdir):
     :raises: Exception if item in flist not in subdirectory of pdir
     """
     for run_info in flist:
-        if not os.path.realpath(run_info).startswith(os.path.realpath(pdir)) or os.path.realpath(run_info) == os.path.realpath(pdir):
+        if not os.path.abspath(run_info).startswith(os.path.abspath(pdir)) or os.path.abspath(run_info) == os.path.abspath(pdir):
             LOG.warning("{} *must* be in a subdirectory of {}".format(run_info, pdir))
             raise Exception
 
@@ -213,7 +213,7 @@ def find_samples(path, sample=None, pattern = "-bcbb-config.yaml$", only_failed=
         flist = [x for x in flist if _sample_status(x)=="FAIL"]
     if len(flist) == 0 and sample:
         LOG.info("No such sample {}".format(sample))
-    return [os.path.realpath(f) for f in flist]
+    return [os.path.abspath(f) for f in flist]
 
 def setup_sample(f, analysis, amplicon=False, genome_build="hg19", **kw):
     """Setup config files, making backups and writing new files
