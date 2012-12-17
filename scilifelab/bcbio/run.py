@@ -280,7 +280,7 @@ def setup_sample(f, analysis, amplicon=False, genome_build="hg19", **kw):
 
 def remove_files(f, **kw):
     ## Remove old files if requested
-    keep_files = ["-post_process.yaml$", "-post_process.yaml.bak$", "-bcbb-config.yaml$", "-bcbb-config.yaml.bak$",  "-bcbb-command.txt$", "-bcbb-command.txt.bak$", "_[0-9]+.fastq$", "_[0-9]+.fastq.gz$",
+    keep_files = ["-post_process.yaml$", "-post_process.yaml.bak$", "-bcbb-config.yaml$", "-bcbb-config.yaml.bak$",  "-bcbb-command.txt$", "-bcbb-command.txt.bak$", "_[0-9]+.fastq$", "_[0-9]+.fastq.gz$", "_[0-9]+_fastq.txt.gz$", "_[0-9]+_fastq.txt$",
                   "^[0-9][0-9]_.*.txt$", "JOBID", "PID"]
     pattern = "|".join(keep_files)
     def remove_filter_fn(f):

@@ -17,6 +17,8 @@
         A:
           sample_run_metrics: 
             2_120924_AC003CCCXX_ACAGTG: null
+    P001_103:
+      scilife_name: P001_103
 - application: RNA-Seq
   customer_reference: "GeneExp"
   min_m_reads_per_sample_ordered: .2
