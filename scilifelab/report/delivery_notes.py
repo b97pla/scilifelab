@@ -31,7 +31,7 @@ def _round_read_count_in_millions(n):
 def _get_ordered_million_reads(sample_name, ordered_million_reads):
     """Retrieve ordered million reads for sample
 
-    :param sample_name: sample name
+    :param sample_name: sample name (possibly barcode name)
     :param ordered_million_reads: parsed option passed to application
 
     :returns: ordered number of reads or None"""
@@ -464,13 +464,16 @@ def project_status_note(project_id=None, username=None, password=None, url=None,
         project_sample_d = _set_project_sample_dict(project_sample)
         if project_sample_d:
             for k,v in project_sample_d.iteritems():
+                sample_name = None
+                if v:
+                    sample_name = v['sample']
                 barcode_seq = s_con.get_entry(k, "sequence")
-                vals = _set_sample_table_values(v['sample'], project_sample, barcode_seq, ordered_million_reads, param)
+                vals = _set_sample_table_values(sample_name, project_sample, barcode_seq, ordered_million_reads, param)
                 if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
                 sample_table.append([vals[k] for k in table_keys])
         else:
             barcode_seq = None
-            vals = _set_sample_table_values(v['sample'], project_sample, barcode_seq, ordered_million_reads, param)
+            vals = _set_sample_table_values(None, project_sample, barcode_seq, ordered_million_reads, param)
             if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
             sample_table.append([vals[k] for k in table_keys])
     if all_passed: param["finished"] = 'Project finished.'
