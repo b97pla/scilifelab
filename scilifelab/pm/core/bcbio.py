@@ -7,7 +7,7 @@ import shutil
 from cement.core import backend, controller, handler, hook
 from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.utils.misc import query_yes_no, filtered_walk
-from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command, setup_merged_samples, get_vcf_files
+from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command, setup_merged_samples, get_vcf_files, validate_sample_directories
 from scilifelab.report.qc import compile_qc 
 import scilifelab.log
 
@@ -54,16 +54,23 @@ class BcbioRunController(AbstractBaseController):
             return
         if self.pargs.post_process:
             self.pargs.post_process = os.path.abspath(self.pargs.post_process)
-        flist = find_samples(os.path.abspath(os.path.join(self.app.controller._meta.root_path, self.app.controller._meta.path_id)), **vars(self.pargs))
+        basedir = os.path.abspath(os.path.join(self.app.controller._meta.root_path, self.app.controller._meta.path_id))
+        flist = find_samples(basedir, **vars(self.pargs))
         # Add filtering on flowcell if necessary
         self._meta.pattern = ".*"
         flist = [x for x in flist if self._filter_fn(x)]
         if self.pargs.merged:
             ##  Setup merged samples and append to flist if new list longer
             flist = setup_merged_samples(flist, **vars(self.pargs))
+        if not len(flist) > 0:
+            self.log.info("No sample configuration files found")
+            return
         if len(flist) > 0 and not query_yes_no("Going to start {} jobs... Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
             return
+        # Make absolutely sure analysis directory is a *subdirectory* of the working directory
+        validate_sample_directories(flist, basedir)
         orig_dir = os.path.abspath(os.getcwd())
+
         for run_info in flist:
             os.chdir(os.path.abspath(os.path.dirname(run_info)))
             setup_sample(run_info, **vars(self.pargs))

@@ -13,6 +13,9 @@ from scilifelab.bcbio.qc import FlowcellRunMetricsParser, SampleRunMetricsParser
 from scilifelab.pm.bcbio.utils import validate_fc_directory_format, fc_id, fc_parts, fc_fullname
 from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectSummaryConnection, SampleRunMetricsDocument, FlowcellRunMetricsDocument
 from scilifelab.utils.dry import dry
+import scilifelab.log
+
+LOG = scilifelab.log.minimal_logger(__name__)
 
 class RunMetricsController(AbstractBaseController):
     """
