@@ -214,8 +214,6 @@ class UtilsTest(SciLifeTest):
                 fh.write("\n\nP001_101_index3\nP001_104_index3")
             with open(os.path.join(j_doe_00_05, "samples2.txt"), "w") as fh:
                 fh.write("\n\nP001_101_index3-bcbb-config.yaml")
-            with open(os.path.join(j_doe_00_05, "P001_101_index3-bcbb-config.yaml"), "w") as fh:
-                fh.write("\n")
 
     @classmethod
     def tearDownClass(cls):
@@ -232,10 +230,12 @@ class UtilsTest(SciLifeTest):
 
     def test_find_samples_from_file(self):
         """Find samples defined in file with empty lines and erroneous names"""
+        with open(os.path.join(j_doe_00_05, "P001_101_index3-bcbb-config.yaml"), "w") as fh:
+            fh.write("\n")
         flist = find_samples(j_doe_00_05, sample=os.path.join(j_doe_00_05, "samples.txt"))
         validate_sample_directories(flist, j_doe_00_05)
         self.assertEqual(len(flist),2)
-
+        os.unlink(os.path.join(j_doe_00_05, "P001_101_index3-bcbb-config.yaml"))
 
     def test_find_samples_from_file_with_yaml(self):
         """Find samples defined in file with empty lines and a bcbb-config.yaml file lying directly under root directory"""
@@ -251,7 +251,6 @@ class UtilsTest(SciLifeTest):
     def test_setup_samples(self):
         """Test setting up samples, changing genome to rn4"""
         flist = find_samples(j_doe_00_05)
-        
         for f in flist:
             setup_sample(f, **{'analysis':'Align_standard_seqcap', 'genome_build':'rn4', 'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'num_cores':8, 'distributed':False})
         for f in flist:
