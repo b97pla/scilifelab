@@ -94,7 +94,7 @@ class TestCouchDB(unittest.TestCase):
         projects_d = {x["project_id"]:x for x in projects}
         self.assertEqual(projects_d["J.Doe_00_01"]["min_m_reads_per_sample_ordered"], 0.1)
         self.assertEqual(projects_d["J.Doe_00_01"]["no_of_samples"], 2)        
-        self.assertEqual(set(projects_d["J.Doe_00_01"]["samples"].keys()),set(["P001_101_index3","P001_102"]))
+        self.assertEqual(set(projects_d["J.Doe_00_01"]["samples"].keys()),set(["P001_101_index3","P001_102","P001_103"]))
         self.assertEqual(projects_d["J.Doe_00_01"]["customer_reference"], "GnuGenome")
         self.assertEqual(projects_d["J.Doe_00_02"]["min_m_reads_per_sample_ordered"], 0.2)        
         self.assertEqual(projects_d["J.Doe_00_03"]["samples"].keys(),["3_index6"])
