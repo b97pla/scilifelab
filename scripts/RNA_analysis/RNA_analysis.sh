@@ -40,7 +40,7 @@ Arguments:
   exit
 fi
 
-WP=os.path.join(os.environ['HOME'], '/opt/scilifelab/scripts/RNA_analysis')
+WP=~/opt/scilifelab/scripts/RNA_analysis
 path=`pwd`
 while getopts ":p:b:g:m:c:" option; do
         case ${option} in
