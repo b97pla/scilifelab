@@ -84,8 +84,9 @@ class PmProductionTest(PmTest):
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
-        self.assertEqual(data['s_param']['P001_101_index3']['scilifelab_name'], 'P001_101_index3')
-        self.assertEqual(data['s_param']['P001_101_index3']['customer_reference'], 'GnuGenome')
+        s_param_map = {x["scilifelab_name"]:x for x in data["s_param"]}
+        self.assertEqual(s_param_map['P001_101_index3']['scilifelab_name'], 'P001_101_index3')
+        self.assertEqual(s_param_map['P001_101_index3']['customer_reference'], 'GnuGenome')
         self.assertEqual(len(data['sample_runs'].keys()), 2)
 
     def test_project_status(self):
@@ -102,9 +103,10 @@ class PmProductionTest(PmTest):
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
-        self.assertEqual(data['s_param']['P001_101_index3']['uppnex_project_id'], 'MyUppnexID')
-        self.assertEqual(data['s_param']['P001_101_index3']['customer_reference'], 'MyCustomerReference')
-        self.assertEqual(data['s_param']['P001_101_index3']['ordered_amount'], 10)
+        s_param_map = {x["scilifelab_name"]:x for x in data["s_param"]}
+        self.assertEqual(s_param_map['P001_101_index3']['uppnex_project_id'], 'MyUppnexID')
+        self.assertEqual(s_param_map['P001_101_index3']['customer_reference'], 'MyCustomerReference')
+        self.assertEqual(s_param_map['P001_101_index3']['ordered_amount'], 10)
 
     def test_project_status_exclude_samples(self):
         self.app = self.make_app(argv = ['report', 'project_status', self.examples["project"], '--debug',  '--exclude_sample_ids', "{'P001_102':[]}"],extensions=['scilifelab.pm.ext.ext_couchdb'])
@@ -141,12 +143,13 @@ class PmProductionTest(PmTest):
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
-        self.assertEqual(data['s_param']['P001_101_index3']['ordered_amount'], 0.1)
-        self.assertEqual(data['s_param']['P001_102_index6']['ordered_amount'], 0.1)
-        self.assertEqual(data['s_param']['P001_101_index3']['rounded_read_count'], 1.3)
-        self.assertEqual(data['s_param']['P001_102_index6']['rounded_read_count'], 0.02)
-        self.assertEqual(data['s_param']['P001_101_index3']['success'], 'Successful run.')
-        self.assertEqual(data['s_param']['P001_102_index6']['success'], 'The yield may be lower than expected.')
+        s_param_map = {x["scilifelab_name"]:x for x in data["s_param"]}
+        self.assertEqual(s_param_map['P001_101_index3']['ordered_amount'], 0.1)
+        self.assertEqual(s_param_map['P001_102_index6']['ordered_amount'], 0.1)
+        self.assertEqual(s_param_map['P001_101_index3']['rounded_read_count'], 1.3)
+        self.assertEqual(s_param_map['P001_102_index6']['rounded_read_count'], 0.02)
+        self.assertEqual(s_param_map['P001_101_index3']['success'], 'Successful run.')
+        self.assertEqual(s_param_map['P001_102_index6']['success'], 'The yield may be lower than expected.')
 
     def test_sample_aliases(self):
         """Test setting sample aliases to different values for different samples"""
