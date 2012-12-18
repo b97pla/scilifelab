@@ -305,8 +305,7 @@ def generate_report(proj_conf):
     tab.set_cols_dtype(['t','t','t','t'])
     tab.add_row(['Sample','tot_#_read_pairs','%_uniquely_mapped_reads','%_uniquely_mapped_reads_left_after_dup_rem'])
     statistics={}
-    #try:
-    if 'u'=='u':
+    try:
 	for sample_name in proj_conf['samples']:
 	    f = open('tophat_out_'+sample_name+'/logs/prep_reads.log', 'r')
 	    tot_NO_read_pairs = f.readlines()[2].split()[3]
@@ -320,9 +319,9 @@ def generate_report(proj_conf):
         json = open('stat.json','w')
         print>> json, statistics
         json.close()
-    #except:
-#	    print "Could not make Mapping Statistics table"
-#            pass
+    except:
+	    print "Could not make Mapping Statistics table"
+            pass
 
     ## Read Distribution 
     try:
@@ -333,7 +332,6 @@ def generate_report(proj_conf):
 	for i in range(len(proj_conf['samples'])):
             sample_name = proj_conf['samples'][i]
 	    dict = {}
-	    
 	    try:
 	    	f = open('RSeQC_rd_'+sample_name+'.out','r')
 	    	dict = read_RSeQC_rd233(f)
@@ -347,9 +345,9 @@ def generate_report(proj_conf):
             tab.add_row(row)
             read_dist[sample_name] = dict
 	json = open('RSeQC_rd.json','w')
-        print>> json, read_dist
+        print >> json, read_dist
 	json.close()
-	d['Read_Distribution']=tab.draw()
+	d['Read_Distribution'] = tab.draw()
     except:
     	print "Could not make Read Distribution table"
         pass
@@ -444,19 +442,7 @@ def read_RSeQC_rd200(f):
 
 ##-----------------------------------------------------------------------------
 if __name__ == "__main__":
-    usage = """
-    analysis_reports.py <run name> <project id> <samle names> [options]
-			-r, --rRNA_table	to include an rRNA table in the repport
-			-s, --Map_Stat          to include mapping statistics table in the repport
-  			-d, --Read_Dist         to include read distribution table in the repport
-  			-f, --FPKM          	to include fpkm-heatmap and -pca plot in the repport
-  			-c FILE, --config-file=FILE
-						FILE should be a config file. (post_process.yaml) 
-
-    For more extensive help type analysis_report.py
-"""
-
-    parser = OptionParser(usage=usage)
+    parser = OptionParser()
     parser.add_option("-n", "--dry_run", dest="dry_run", action="store_true",default=False)
     parser.add_option("--v1.5", dest="v1_5_fc", action="store_true", default=False)
     parser.add_option("-c", "--config-file", dest="config_file", default=None)
