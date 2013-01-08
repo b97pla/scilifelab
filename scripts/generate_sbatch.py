@@ -3,14 +3,17 @@ import sys
 import os
 import optparse
 import yaml
+import couchdb
+import bcbio.google
+import bcbio.pipeline.config_loader as cl
+
 
 usage = """
 Generate sbatch files for running an mRNA-seq pipeline.
 Usage:
 
-generate_sbatch.py <directory of FASTQ files> <Bowtie index for reference genome> <gene/transcript annotation GTF file> 
-
-The three first options are mandatory. There are further flags you can use:
+generate_sbatch.py <directory of FASTQ files> <Bowtie index for reference genome> <gene/transcript annotation GTF file> <project ID>
+The four first options are mandatory. There are further flags you can use:
 
 -c, --config: Provide config file (post_process.yaml)
 -o, --old: Run old TopHat (1.0.14) instead - mainly to reproduce old runs
@@ -21,9 +24,48 @@ The three first options are mandatory. There are further flags you can use:
 -a, --alloc-time: Time to allocate in SLURM. Hours:minutes:seconds or days-hours:minutes:seconds
 """
 
-if len(sys.argv) < 4:
+if len(sys.argv) < 5:
     print usage
     sys.exit(0)
+
+
+
+def find_proj_from_view(proj_db, proj_id):
+        view = proj_db.view('project/project_id')
+        for proj in view:                
+		if proj.key == proj_id:
+                	return proj.value        
+	return None
+
+def get_size(n,info):
+	preps = 'BCDE'
+	prep = ''
+	name = n.replace('-', '_').replace(' ', '').split("_index")[0].split("_ss")[0].strip()
+        while name[-1] in preps:
+        	prep = name[-1] + prep
+               	name = name[0: -1]
+	if prep == '':
+		prep = 'A'
+	for samp in info['samples']:
+        	if samp==name:
+                	size=info['samples'][samp]['library_prep'][prep]['average_size_bp']
+		elif name[0]=='P' and name.split('_')[1]==samp:
+			print "Best gues for sample found on statusDB corresponding to sample name ",n ," is ",samp
+			r = raw_input("If this seems to be correct press y	")
+			if r.upper() == "Y":
+				size=info['samples'][samp]['library_prep'][prep]['average_size_bp']	
+	return int(float(size))
+
+CONFIG_FILE = os.path.join(os.environ['HOME'], 'opt/config/post_process.yaml')
+CONFIG = cl.load_config(CONFIG_FILE)
+URL = CONFIG['couch_db']['maggie_url']
+couch = couchdb.Server("http://" + URL)
+proj_db = couch['projects']
+proj_ID = sys.argv[4]
+key=find_proj_from_view(proj_db, proj_ID)
+info=proj_db[key]
+
+
 
 parser = optparse.OptionParser()
 parser.add_option('-c', '--config', action="store", dest="conffile", default=os.path.expanduser("~/config/post_process.yaml"), help="Specify config file (post_process.yaml)")
@@ -65,14 +107,14 @@ except:
     sys.exit("Could not open configuration file " + conffile)
 
 for fname in flist:
-    if not os.path.splitext(fname)[1]==".fastq": continue
+    #if not os.path.splitext(fname)[1]==".fastq": continue
     read = fname.split("_")[-1]
     tag = "_".join(fname.split("_")[3:-2])
     print fname.split("_")
     # 2_date_fcid_sample_1.fastq
     if not tag in sample_names: sample_names.append(tag)
-    if (read == "1.Q25.fastq") | (read == "1.fastq"): read1forsample[tag]=fname
-    if (read == "2.Q25.fastq") | (read == "2.fastq"): read2forsample[tag]=fname
+    if (read == "1.Q25.fastq") | (read == "1.fastq") | (read == "1.fastq.gz") | (read == "1.Q25.fastq.gz"): read1forsample[tag]=fname
+    if (read == "2.Q25.fastq") | (read == "2.fastq") | (read == "2.fastq.gz") | (read == "2.Q25.fastq.gz"): read2forsample[tag]=fname
 
 print "Best guess for sample names: "
 for n in sorted(sample_names):
@@ -86,7 +128,7 @@ if r.upper() == "N": sys.exit(0)
 #    sFile.write(n + "\n")
 
 for n in sorted(sample_names):
-    print "Generating sbatch files for sample ", n
+    print "Generating sbatch files for sample ",n
     oF = open("map_tophat_" + n + ".sh", "w")
     oF.write("#! /bin/bash -l\n")
     oF.write("#SBATCH -A a2012043\n")                   
@@ -114,9 +156,16 @@ for n in sorted(sample_names):
     oF.write("module load htseq/" + tool_versions['counts_version'] + "\n")
 
     # TopHat
-
-    size = raw_input("Fragment size including adapters for sample" + n + "? ")
+    try:
+	# trying to get average fragemnt length from couchDB
+	size=get_size(n,info)
+	print "Average fragment length ",str(size)
+    except:
+	print ""
+    	size = raw_input("Could not find information on statusDB. Enter manualy fragment size including adapters for sample " + n + ": ")
+	pass
     innerdist = int(size) - 101 - 101 - 121
+    size=str(size)
     if not size.isdigit(): sys.exit(0)
 
     oF.write("tophat -o tophat_out_" + n + " " + qscale + " -p 8 -r " + str(innerdist) + " " + refpath + " " + fpath + "/" + read1forsample[n] + " " + fpath + "/" + read2forsample[n] + "\n")
