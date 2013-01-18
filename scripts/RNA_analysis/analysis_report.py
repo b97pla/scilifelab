@@ -305,24 +305,26 @@ def generate_report(proj_conf):
     tab.set_cols_dtype(['t','t','t','t'])
     tab.add_row(['Sample','tot_#_read_pairs','%_uniquely_mapped_reads','%_uniquely_mapped_reads_left_after_dup_rem'])
     statistics={}
-    #try:
-    if 'u'=='u':
+    try:
 	for sample_name in proj_conf['samples']:
-	    f = open('tophat_out_'+sample_name+'/logs/prep_reads.log', 'r')
-	    tot_NO_read_pairs = f.readlines()[2].split()[3]
-	    f.close()
-	    f = open('tophat_out_'+sample_name+'/stat'+sample_name, 'r')
-	    dict = make_stat(f,tot_NO_read_pairs)
-	    tab.add_row([sample_name,tot_NO_read_pairs,dict['bef_dup_rem']['%uniq_mapped'],dict['aft_dup_rem']['%uniq_mapped']])
-	    statistics[sample_name] = dict
+	    try:
+	    	f = open('tophat_out_'+sample_name+'/logs/prep_reads.log', 'r')
+	    	tot_NO_read_pairs = f.readlines()[2].split()[3]
+	    	f.close()
+	    	f = open('tophat_out_'+sample_name+'/stat'+sample_name, 'r')
+	    	dict = make_stat(f,tot_NO_read_pairs)
+	    	tab.add_row([sample_name,tot_NO_read_pairs,dict['bef_dup_rem']['%uniq_mapped'],dict['aft_dup_rem']['%uniq_mapped']])
+	    	statistics[sample_name] = dict
+	    except:
+		print 'Could not make mapping statistics for sample '+sample_name
 
 	d['Mapping_statistics'] = tab.draw()
         json = open('stat.json','w')
         print>> json, statistics
         json.close()
-    #except:
-#	    print "Could not make Mapping Statistics table"
-#            pass
+    except:
+	    print "Could not make Mapping Statistics table"
+            pass
 
     ## Read Distribution 
     try:
@@ -333,23 +335,21 @@ def generate_report(proj_conf):
 	for i in range(len(proj_conf['samples'])):
             sample_name = proj_conf['samples'][i]
 	    dict = {}
-	    
 	    try:
 	    	f = open('RSeQC_rd_'+sample_name+'.out','r')
 	    	dict = read_RSeQC_rd233(f)
-	    except:
-		f = open('RSeQC_rd_'+sample_name+'.err','r')
-		dict = read_RSeQC_rd200(f)
-		pass
-	    row = [sample_name,dict['CDS_Exons']['Tags/Kb'], dict["5'UTR_Exons"]['Tags/Kb'],
+	    	row = [sample_name,dict['CDS_Exons']['Tags/Kb'], dict["5'UTR_Exons"]['Tags/Kb'],
 		dict["3'UTR_Exons"]['Tags/Kb'],dict['Introns']['Tags/Kb'], 
 		dict['TSS_up_1kb']['Tags/Kb'],dict['TES_down_1kb']['Tags/Kb'], dict['mRNA_frac']]
-            tab.add_row(row)
-            read_dist[sample_name] = dict
+            	tab.add_row(row)
+            	read_dist[sample_name] = dict
+            except:
+		print "Could not make read distribution for sample "+sample_name
+                pass
 	json = open('RSeQC_rd.json','w')
-        print>> json, read_dist
+        print >> json, read_dist
 	json.close()
-	d['Read_Distribution']=tab.draw()
+	d['Read_Distribution'] = tab.draw()
     except:
     	print "Could not make Read Distribution table"
         pass
@@ -404,9 +404,18 @@ def make_stat(f,counts):
                                 pass
 
         f.close()
-        bef_dup_rem['%uniq_mapped'] = round(100*(float(bef_dup_rem['Read-1'])+float(bef_dup_rem['Read-2']))/(2*float(counts)),2)
-        aft_dup_rem['%uniq_mapped'] = round(100*(float(aft_dup_rem['Read-1'])+float(aft_dup_rem['Read-2']))/(2*float(counts)),2)
-        aft_dup_rem['%spliced'] = round(100*float(aft_dup_rem['spliced'])/(float(aft_dup_rem['Read-1'])+float(aft_dup_rem['Read-2'])))
+	if float(counts) > 0:
+        	bef_dup_rem['%uniq_mapped'] = round(100*(float(bef_dup_rem['Read-1'])+float(bef_dup_rem['Read-2']))/(2*float(counts)),2)
+        	aft_dup_rem['%uniq_mapped'] = round(100*(float(aft_dup_rem['Read-1'])+float(aft_dup_rem['Read-2']))/(2*float(counts)),2)
+	else:
+		aft_dup_rem['%uniq_mapped'] = 0
+		bef_dup_rem['%uniq_mapped'] = 0
+
+	if (float(aft_dup_rem['Read-1']) + float(aft_dup_rem['Read-2'])) > 0:
+		aft_dup_rem['%spliced'] = round(100*float(aft_dup_rem['spliced'])/(float(aft_dup_rem['Read-1'])+float(aft_dup_rem['Read-2'])))
+	else:
+		aft_dup_rem['%spliced'] = 0
+
         stat={'Total_No_read-pairs':counts,'bef_dup_rem':bef_dup_rem,'aft_dup_rem':aft_dup_rem}
         return stat
 
@@ -425,38 +434,9 @@ def read_RSeQC_rd233(f):
 	return dict
 
 
-
-def read_RSeQC_rd200(f):
-	dict={}
-        for i, line in enumerate(f):
-        	if 6 < i < 17:
-        		line = line.replace(' ','_').split()
-                	dict[line[0].strip(':').replace('Intronic_region','Introns')] = {'Total_bases':line[1],'Tag_count':line[2],'Tags/Kb':line[3].strip('_')}
-        	elif i==3: 
-        		Total_Tags = int(line.split()[2])
-        f.close()
-        mRNA_frac = (float(dict['CDS_Exons']['Tag_count']) + float(dict["5'UTR_Exons"]['Tag_count'])
-                        + float(dict["3'UTR_Exons"]['Tag_count'])) / Total_Tags
-        dict['mRNA_frac'] = round(mRNA_frac,2)
-	return dict
-
-	
-
 ##-----------------------------------------------------------------------------
 if __name__ == "__main__":
-    usage = """
-    analysis_reports.py <run name> <project id> <samle names> [options]
-			-r, --rRNA_table	to include an rRNA table in the repport
-			-s, --Map_Stat          to include mapping statistics table in the repport
-  			-d, --Read_Dist         to include read distribution table in the repport
-  			-f, --FPKM          	to include fpkm-heatmap and -pca plot in the repport
-  			-c FILE, --config-file=FILE
-						FILE should be a config file. (post_process.yaml) 
-
-    For more extensive help type analysis_report.py
-"""
-
-    parser = OptionParser(usage=usage)
+    parser = OptionParser()
     parser.add_option("-n", "--dry_run", dest="dry_run", action="store_true",default=False)
     parser.add_option("--v1.5", dest="v1_5_fc", action="store_true", default=False)
     parser.add_option("-c", "--config-file", dest="config_file", default=None)
