@@ -9,10 +9,9 @@ from scilifelab.log import minimal_logger
 
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import cm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, Image
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter, inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Image
+from reportlab.lib.pagesizes import inch
 from reportlab.rl_config import defaultPageSize
 from reportlab.pdfbase.pdfmetrics import stringWidth
 
@@ -30,7 +29,6 @@ h2 = styles['Heading2']
 h3 = styles['Heading3']
 h4 = styles['Heading4']
 
-## FIXME: should mako templates go to data/templates?
 def sample_note_paragraphs():
     """Get paragraphs for sample notes."""
     paragraphs = OrderedDict()
@@ -57,7 +55,7 @@ conversion using OLB v1.9, demultiplexed and
 converted to fastq using CASAVA v1.8. The quality scale
 is Sanger / phred33 / Illumina 1.8+."""))
     paragraphs["Results"] = dict(style=h3,
-                                 tpl = Template("""${rounded_read_count} million reads in lane with PhiX
+                                 tpl = Template("""${rounded_read_count} million paired reads in lane with PhiX
 error rate ${phix_error_rate}%. Average quality score
 ${avg_quality_score}."""))
     

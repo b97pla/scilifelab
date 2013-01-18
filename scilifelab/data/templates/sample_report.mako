@@ -47,8 +47,8 @@ scale is Sanger / phred33 / Illumina 1.8+.
 Results
 ^^^^^^^
 
-${rounded_read_count} million reads in lane with PhiX error rate
-${phix_error_rate}. Average quality score ${avg_quality_score}.
+${rounded_read_count} million paired reads in lane with PhiX error
+rate ${phix_error_rate}. Average quality score ${avg_quality_score}.
 
 Comments
 ^^^^^^^^
