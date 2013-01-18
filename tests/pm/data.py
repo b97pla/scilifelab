@@ -222,7 +222,6 @@ C003CCCXX,2,P003_103_index6,hg19,CGTTAA,J__Doe_00_06,N,R1,NN,J__Doe_00_06""",
   </Run>
 </RunInfo>
 """,
-
         ### Casava analysis data structures
         'data/production/120924_SN0002_0003_CC003CCCXX/1_120924_CC003CCCXX.bc_metrics':
             """7       22463443        TGACCA  P001_101_index3
