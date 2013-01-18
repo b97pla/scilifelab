@@ -1,19 +1,16 @@
 import os
-import csv
 import yaml
 import couchdb
 from couchdb.design import ViewDefinition
 import unittest
-import time
 import logbook
-import socket
+import xml.etree.cElementTree as ET
 
 from classes import PmFullTest
 from ..classes import has_couchdb_installation
 
-from scilifelab.db.statusdb import SampleRunMetricsConnection, VIEWS, ProjectSummaryDocument, ProjectSummaryConnection, update_fn, FlowcellRunMetricsConnection
-from scilifelab.bcbio.qc import FlowcellRunMetricsParser, SampleRunMetricsParser
-from scilifelab.pm.bcbio.utils import fc_id, fc_parts, fc_fullname
+from scilifelab.db.statusdb import SampleRunMetricsConnection, VIEWS, ProjectSummaryDocument, ProjectSummaryConnection, FlowcellRunMetricsConnection
+from scilifelab.bcbio.qc import FlowcellRunMetricsParser, SampleRunMetricsParser,  XmlToDict
 
 filedir = os.path.dirname(os.path.abspath(__file__))
 dirs = {'production': os.path.join(filedir, "data", "production")}
@@ -26,6 +23,7 @@ projects = ["J.Doe_00_01", "J.Doe_00_02", "J.Doe_00_03"]
 project_dir = os.path.join(filedir, "data", "production")
 has_couchdb = has_couchdb_installation()
 DATABASES = ["samples-test", "projects-test", "flowcells-test"]
+
 
 def setUpModule():
     """Create test databases in local server"""
@@ -153,7 +151,7 @@ class TestMetricsParser(PmFullTest):
     def setUp(self):
         self.sample_kw = dict(flowcell="AC003CCCXX", date="120924", lane=1, barcode_name='P001_101_index3', sample_prj="J.Doe_00_01".replace("__", "."), barcode_id="1", sequence="TGACCA")
         self.fc_kw = dict(fc_date = "120924", fc_name = "AC003CCCXX")
-        self.fcdir = os.path.join(flowcell_dir, flowcells[0])
+        self.fcdir = os.path.join(flowcell_dir, "120924_SN0002_0003_AC003CCCXX")
 
     def test_get_bc_count(self):
         parser = SampleRunMetricsParser(os.path.join(project_dir, "J.Doe_00_01", "P001_101_index3", "120924_AC003CCCXX"))
@@ -161,4 +159,8 @@ class TestMetricsParser(PmFullTest):
         self.assertEqual(bc_count, 0)
 
     def test_parseRunParameters(self):
-        
+        parser = FlowcellRunMetricsParser(self.fcdir)
+        data = parser.parseRunParameters(**self.fc_kw)
+        self.assertEqual(data['Setup']['FPGADynamicFocusSettings']['CVGainPosLocked'],'500')
+        self.assertEqual(data['Setup']['Reads']['Read'][0]['NumCycles'],'101')
+        self.assertEqual(data['Setup']['SelectedSections']['Section'][1]['Name'],'B_1')

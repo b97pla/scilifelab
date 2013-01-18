@@ -72,8 +72,7 @@ RUNINFO=Template("""<?xml version="1.0"?>
   </Run>
 </RunInfo>
 """)
-RUNPARAMETERS=Template("""
-<?xml version="1.0"?>
+RUNPARAMETERS=Template("""<?xml version="1.0"?>
 <RunParameters xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Setup>
     <ExperimentName>FCA</ExperimentName>
@@ -450,9 +449,9 @@ def _make_casava_archive_files(fc, ssname, prefix, startiter = 1, nseqout=1000):
     with open(os.path.join(fc_dir, "{}.csv".format(ssname)), "w") as fh:
         fh.write(SAMPLESHEETS[ssname])
     with open(os.path.join(fc_dir, "RunInfo.xml"), "w") as fh:
-        fh.write(RUNINFO.render(**{'flowcell':os.path.basename(fc), 'fc_id':fc_id(fc), 'date':fc_parts(fc)[0], 'instrument':split("_", fc)[1]}))
+        fh.write(RUNINFO.render(**{'flowcell':os.path.basename(fc), 'fc_id':fc_id(fc), 'date':fc_parts(fc)[0], 'instrument':fc.split("_")[1]}))
     with open(os.path.join(fc_dir, "runParameters.xml"), "w") as fh:
-        fh.write(RUNPARAMETERS.render(**{'flowcell':os.path.basename(fc), 'fc_id':fc_id(fc)[1:], 'date':fc_parts(fc)[0], 'instrument':split("_", fc)[1]}))
+        fh.write(RUNPARAMETERS.render(**{'flowcell':os.path.basename(fc), 'fc_id':fc_id(fc), 'date':fc_parts(fc)[0], 'instrument':fc.split("_")[1]}))
 
     outf1 = []
     outf2 = []

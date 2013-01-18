@@ -191,6 +191,8 @@ class RunMetricsController(AbstractBaseController):
             fc_kw = dict(fc_date = fc_date, fc_name=fc_name)
             parser = FlowcellRunMetricsParser(fcdir)
             fcobj = FlowcellRunMetricsDocument(**fc_kw)
+            fcobj["RunInfo"] = parser.parseRunInfo(**fc_kw)
+            fcobj["RunParameters"] = parser.parseRunParameters(**fc_kw)
             fcobj["illumina"] = parser.parse_illumina_metrics(fullRTA=False, **fc_kw)
             fcobj["bc_metrics"] = parser.parse_bc_metrics(**fc_kw)
             fcobj["filter_metrics"] = parser.parse_filter_metrics(**fc_kw)
