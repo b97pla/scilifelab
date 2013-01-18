@@ -495,6 +495,25 @@ class FlowcellRunMetricsParser(RunMetricsParser):
             self.log.warn("Reading file {} failed".format(os.path.join(os.path.abspath(self.path), fn)))
             return {}
 
+    def parseRunParameters(self, fn="runParameters.xml", **kw):
+        """Parse runParameters.xml from an Illumina run.
+
+        :param fn: filename
+        :param **kw: keyword argument
+
+        :returns: parsed data structure
+        """
+        infile = os.path.join(os.path.abspath(self.path), fn)
+        self.log.debug("parseRunParameters: going to read {}".format(infile))
+        if not os.path.exists(infile):
+            self.log.warn("No such files {}".format(infile))
+            return {}
+        try:
+            with open(infile) as fh:
+                runparam = fh.read()
+            soup = BeautifulSoup(runparam)
+            print dir(soup)
+
     def parse_samplesheet_csv(self, fc_name, **kw):
         infile = os.path.join(os.path.abspath(self.path), "{}.csv".format(fc_name[1:]))
         self.log.debug("parse_samplesheet_csv: going to read {}".format(infile))
