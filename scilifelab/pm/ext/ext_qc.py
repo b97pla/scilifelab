@@ -36,7 +36,9 @@ class RunMetricsController(AbstractBaseController):
             (['--project_id'], dict(help="Project identifier, as in 'J.Doe_00_01'", default=None, action="store", type=str)),
             (['--names'], dict(help="Sample name mapping from barcode name to project name as a JSON string, as in \"{'sample_run_name':'project_run_name'}\". Mapping can also be given in a file", default=None, action="store", type=str)),
             (['--extensive_matching'], dict(help="Perform extensive barcode to project sample name matcing", default=False, action="store_true")),
+            (['--project_alias'], dict(help="True project name as defined in project summary, as in 'J.Doe_00_01'.", default=None, action="store", type=str)),
             ]
+
 
     def _process_args(self):
         self._meta.root_path = self.app.pargs.runqc if self.app.pargs.runqc else self.app.config.get("runqc", "root")
@@ -90,8 +92,11 @@ class RunMetricsController(AbstractBaseController):
         else:
             self.app.log.info("Trying to use extensive matching...")
             p_con = ProjectSummaryConnection(dbname=self.app.config.get("db", "projects"), **vars(self.app.pargs))
+            project_id = self.pargs.sample_prj
+            if self.pargs.project_alias:
+                project_id = self.pargs.project_alias
             for s in samples:
-                project_sample = p_con.get_project_sample(self.pargs.sample_prj, s["barcode_name"], extensive_matching=True)
+                project_sample = p_con.get_project_sample(project_id, s["barcode_name"], extensive_matching=True)
                 if project_sample:
                     self.app.log.info("using mapping '{} : {}'...".format(s["barcode_name"], project_sample["sample_name"]))
                     s["project_sample_name"] = project_sample["sample_name"]
@@ -186,6 +191,8 @@ class RunMetricsController(AbstractBaseController):
             fc_kw = dict(fc_date = fc_date, fc_name=fc_name)
             parser = FlowcellRunMetricsParser(fcdir)
             fcobj = FlowcellRunMetricsDocument(**fc_kw)
+            fcobj["RunInfo"] = parser.parseRunInfo(**fc_kw)
+            fcobj["RunParameters"] = parser.parseRunParameters(**fc_kw)
             fcobj["illumina"] = parser.parse_illumina_metrics(fullRTA=False, **fc_kw)
             fcobj["bc_metrics"] = parser.parse_bc_metrics(**fc_kw)
             fcobj["filter_metrics"] = parser.parse_filter_metrics(**fc_kw)
@@ -267,6 +274,7 @@ class RunMetricsController(AbstractBaseController):
                 if project_sample:
                     obj["project_sample_name"] = project_sample['sample_name']
                 dry("Saving object {}".format(repr(obj)), s_con.save(obj))
+
 
 def load():
     """Called by the framework when the extension is 'loaded'."""
