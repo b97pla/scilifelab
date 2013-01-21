@@ -278,7 +278,10 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, CREDENTIALS_FILE, config):
 				prep=preps[key]
 				prep = 'A' if preps[key].replace('F','') == '' else preps[key].replace('F','')
 	                try:
-	               		obj['samples'][striped_scilife_name]["library_prep"][prep]["average_size_bp"]=Av_sice
+				if obj['samples'][striped_scilife_name].has_key("library_prep"):
+	               			obj['samples'][striped_scilife_name]["library_prep"][prep]["average_size_bp"]=Av_sice
+				else:
+					obj['samples'][striped_scilife_name]["library_prep"]={prep:{"average_size_bp":Av_sice}}
         	        except:
 	                	pass
         except:

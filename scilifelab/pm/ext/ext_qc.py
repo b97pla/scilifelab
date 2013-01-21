@@ -27,6 +27,18 @@ class RunMetricsController(AbstractBaseController):
     class Meta:
         label = 'qc'
         description = "Extension for dealing with QC data"
+        arguments = [
+            (['flowcell'], dict(help="Flowcell directory", nargs="?", default=None)),
+            (['--runqc'], dict(help="Root path to qc data folder", default=None, nargs="?")),
+            (['--sample'], dict(help="Sample id", default=None, action="store", type=str)),
+            (['--mtime'], dict(help="Last modification time of directory (days): skip if older. Defaults to 1 day.", default=1, action="store", type=int)),
+            (['--sample_prj'], dict(help="Sample project name, as in 'J.Doe_00_01'", default=None, action="store", type=str)),
+            (['--project_id'], dict(help="Project identifier, as in 'J.Doe_00_01'", default=None, action="store", type=str)),
+            (['--names'], dict(help="Sample name mapping from barcode name to project name as a JSON string, as in \"{'sample_run_name':'project_run_name'}\". Mapping can also be given in a file", default=None, action="store", type=str)),
+            (['--extensive_matching'], dict(help="Perform extensive barcode to project sample name matcing", default=False, action="store_true")),
+            (['--project_alias'], dict(help="True project name as defined in project summary, as in 'J.Doe_00_01'.", default=None, action="store", type=str)),
+            ]
+
 
     def _process_args(self):
         self._meta.root_path = self.app.pargs.runqc if self.app.pargs.runqc else self.app.config.get("runqc", "root")
@@ -179,6 +191,8 @@ class RunMetricsController(AbstractBaseController):
             fc_kw = dict(fc_date = fc_date, fc_name=fc_name)
             parser = FlowcellRunMetricsParser(fcdir)
             fcobj = FlowcellRunMetricsDocument(**fc_kw)
+            fcobj["RunInfo"] = parser.parseRunInfo(**fc_kw)
+            fcobj["RunParameters"] = parser.parseRunParameters(**fc_kw)
             fcobj["illumina"] = parser.parse_illumina_metrics(fullRTA=False, **fc_kw)
             fcobj["bc_metrics"] = parser.parse_bc_metrics(**fc_kw)
             fcobj["filter_metrics"] = parser.parse_filter_metrics(**fc_kw)
@@ -210,6 +224,8 @@ class RunMetricsController(AbstractBaseController):
             fc_kw = dict(fc_date = fc_date, fc_name=fc_name)
             parser = FlowcellRunMetricsParser(fcdir)
             fcobj = FlowcellRunMetricsDocument(fc_date, fc_name)
+            fcobj["RunInfo"] = parser.parseRunInfo(**fc_kw)
+            fcobj["RunParameters"] = parser.parseRunParameters(**fc_kw)
             fcobj["illumina"] = parser.parse_illumina_metrics(fullRTA=False, **fc_kw)
             fcobj["bc_metrics"] = parser.parse_bc_metrics(**fc_kw)
             fcobj["undemultiplexed_barcodes"] = parser.parse_undemultiplexed_barcode_metrics(**fc_kw)
@@ -261,23 +277,7 @@ class RunMetricsController(AbstractBaseController):
                     obj["project_sample_name"] = project_sample['sample_name']
                 dry("Saving object {}".format(repr(obj)), s_con.save(obj))
 
-def add_qc_options(app):
-    """Add options to qc group.
-    
-    :param app: The application object.
-    """
-    group = app.args.add_argument_group('QC options', 'Options that affect upload and interactions with statusdb.')
-    group.add_argument('flowcell', help="Flowcell directory", nargs="?", default=None)
-    group.add_argument('--runqc', help="Root path to qc data folder", default=None, nargs="?")
-    group.add_argument('--sample', help="Sample id", default=None, action="store", type=str)
-    group.add_argument('--mtime', help="Last modification time of directory (days): skip if older. Defaults to 1 day.", default=1, action="store", type=int)
-    group.add_argument('--sample_prj', help="Sample project name, as in 'J.Doe_00_01'.", default=None, action="store", type=str)
-    group.add_argument('--project_id', help="Project identifier, as in 'J.Doe_00_01'.", default=None, action="store", type=str)
-    group.add_argument('--project_alias', help="True project name as defined in project summary, as in 'J.Doe_00_01'.", default=None, action="store", type=str)
-    group.add_argument('--names', help="Sample name mapping from barcode name to project name as a JSON string, as in \"{'sample_run_name':'project_run_name'}\". Mapping can also be given in a file", default=None, action="store", type=str)
-    group.add_argument('--extensive_matching', help="Perform extensive barcode to project sample name matcing", default=False, action="store_true")
 
 def load():
     """Called by the framework when the extension is 'loaded'."""
-    hook.register('post_setup', add_qc_options)
     handler.register(RunMetricsController)
