@@ -30,10 +30,12 @@ try:
 except:
 	sys.exit('ERROR: problem loading paths fom config file')
 
+project_account	= INBOX.split('/')[2]
+
 if sys.argv[4].lower()=='y':
-	subprocess.call(["casava_data_delivery.py",project_name, flowcell_id, 'a2012043', '-d'])
+	subprocess.call(["casava_data_delivery.py",project_name, flowcell_id, project_account, '-d'])
 elif sys.argv[4].lower()=='n':
-	subprocess.call(["casava_data_delivery.py",project_name, flowcell_id, 'a2012043'])
+	subprocess.call(["casava_data_delivery.py",project_name, flowcell_id, project_account])
 else:
 	sys.exit("Argument <dry_run> is badly formated. Should be 'y' or 'n'")
 
@@ -57,5 +59,5 @@ flist = glob.glob(os.path.join(INBOX,project_name,'*',flowcell_id,'*'))
 
 for file_path in flist:
 	file = file_path.split('/')[-1]
-	os.symlink(file_path , os.path.join(analysis,project_name,'data',flowcell_id,file))
-
+	#os.symlink(file_path , os.path.join(analysis,project_name,'data',flowcell_id,file))
+	os.rename(file_path , os.path.join(analysis,project_name,'data',flowcell_id,file))

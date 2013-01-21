@@ -25,6 +25,7 @@ print >>f, """#! /bin/bash -l
 #SBATCH -e get_stat"""+ name + """.err
 #SBATCH --mail-user """+ mail +"""
 #SBATCH --mail-type=ALL
+#SBATCH --qos=seqver
 
 module add bioinfo-tools
 module load samtools

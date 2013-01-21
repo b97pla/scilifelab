@@ -13,7 +13,7 @@ usage = """
 Generate sbatch files for running an mRNA-seq pipeline.
 Usage:
 
-generate_sbatch.py <Flow cell ID, eg 121113_BD1HG4ACXX> <Bowtie index for reference genome> <gene/transcript annotation GTF file> <project ID>
+generate_sbatch.py <Flow cell ID, eg 121113_BD1HG4ACXX> <project ID> <Bowtie index for reference genome> <gene/transcript annotation GTF file> 
 The four first options are mandatory. There are further flags you can use:
 
 -c, --config: Provide config file (post_process.yaml)
@@ -65,7 +65,7 @@ CONFIG = cl.load_config(CONFIG_FILE)
 URL = CONFIG['couch_db']['maggie_url']
 couch = couchdb.Server("http://" + URL)
 proj_db = couch['projects']
-proj_ID = sys.argv[4]
+proj_ID = sys.argv[2]
 key=find_proj_from_view(proj_db, proj_ID)
 info=proj_db[key]
 
@@ -99,12 +99,13 @@ if phred64 == True: qscale = '--solexa1.3-quals'
 if not fpath:
 	fpath = str('../../data/' + sys.argv[1])
 flist = glob.glob(str(fpath + '/*'))
+print fpath
 test=flist[0].split('.')[-1]
 if not (test=='fastq')|(test=='gz'):
 	sys.exit('Something wrong with the path to the fastqfiles: '+ fpath)	
 
-refpath = sys.argv[2]
-annopath = sys.argv[3]
+refpath = sys.argv[3]
+annopath = sys.argv[4]
 
 sample_names = []
 read1forsample = {}
@@ -122,9 +123,9 @@ for fname in flist:
     print fname.split("_")
     # 2_date_fcid_sample_1.fastq
     if not tag in sample_names: sample_names.append(tag)
-    if (read == "1.Q25.fastq") | (read == "1.fastq") | (read == "1.fastq.gz") | (read == "1.Q25.fastq.gz"): read1forsample[tag]=fname
-    if (read == "2.Q25.fastq") | (read == "2.fastq") | (read == "2.fastq.gz") | (read == "2.Q25.fastq.gz"): read2forsample[tag]=fname
-
+    if (read == "1.Q25.fastq") | (read == "1.fastq") | (read == "1.fastq.gz") | (read == "1.Q25.fastq.gz"): read1forsample[tag]=fname.split('/')[-1]
+    if (read == "2.Q25.fastq") | (read == "2.fastq") | (read == "2.fastq.gz") | (read == "2.Q25.fastq.gz"): read2forsample[tag]=fname.split('/')[-1]
+    print fname.split('/')[-1]
 print "Best guess for sample names: "
 for n in sorted(sample_names):
     print n
@@ -176,7 +177,7 @@ for n in sorted(sample_names):
     innerdist = int(size) - 101 - 101 - 121
     size=str(size)
     if not size.isdigit(): sys.exit(0)
-
+    print fpath
     oF.write("tophat -o tophat_out_" + n + " " + qscale + " -p 8 -r " + str(innerdist) + " " + refpath + " " + fpath + "/" + read1forsample[n] + " " + fpath + "/" + read2forsample[n] + "\n")
     # Samtools -> Picard
 
