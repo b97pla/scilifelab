@@ -217,7 +217,7 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
     sample_count = Counter([x.get("barcode_name") for x in sample_run_list])
 
     # Loop samples and collect information
-    s_param_out = {}
+    s_param_out = []
     for s in sample_run_list:
         s_param = {}
         LOG.debug("working on sample '{}', sample run metrics name '{}', id '{}'".format(s.get("barcode_name", None), s.get("name", None), s.get("_id", None)))
@@ -293,12 +293,12 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
         else:
             outfile = "{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"])
         s_param["outfile"] = outfile
-        s_param_out[s_param["scilifelab_name"]] = s_param
+        s_param_out.append(s_param)
 
     # Write final output to reportlab and rst files
     output_data["debug"].write(json.dumps({'s_param': s_param_out, 'sample_runs':{s["name"]:s["barcode_name"] for s in sample_run_list}}))
-    notes = [make_note(headers=headers, paragraphs=paragraphs, **sp) for sp in s_param_out.itervalues()]
-    rest_notes = make_sample_rest_notes("{}_{}_{}_sample_summary.rst".format(project_id, s.get("date", None), s.get("flowcell", None)), s_param_out.itervalues())
+    notes = [make_note(headers=headers, paragraphs=paragraphs, **sp) for sp in s_param_out]
+    rest_notes = make_sample_rest_notes("{}_{}_{}_sample_summary.rst".format(project_id, s.get("date", None), s.get("flowcell", None)), s_param_out)
     concatenate_notes(notes, "{}_{}_{}_sample_summary.pdf".format(project_id, s.get("date", None), s.get("flowcell", None)))
     return output_data
 
