@@ -136,16 +136,20 @@ class DistributedCommandHandler(command.CommandHandler):
             jt.jobName = job_args['jobname']
             if os.path.isdir(job_args['outputPath']):
                 jt.outputPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.relpath(job_args['outputPath'], os.getenv("HOME")), jt.jobName + "-drmaa.log")
-                jt.errorPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.relpath(job_args['outputPath'], os.getenv("HOME")), jt.jobName + "-drmaa.err")
             else:
                 jt.outputPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.relpath(job_args['outputPath'], os.getenv("HOME")))
-                jt.errorPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.relpath(job_args['outputPath'], os.getenv("HOME")))
-            jt.workingDirectory = drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.relpath(job_args['workingDirectory'], os.getenv("HOME"))
+            if os.path.isdir(job_args['errorPath']):
+                jt.errorPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.relpath(job_args['errorPath'], os.getenv("HOME")), jt.jobName + "-drmaa.err")
+            else:
+                jt.errorPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.relpath(job_args['errorPath'], os.getenv("HOME")))
 
+            jt.workingDirectory = drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.relpath(job_args['workingDirectory'], os.getenv("HOME"))
             jt.nativeSpecification = "-t {time} -p {partition} -A {account} {extra}".format(**job_args)
             if kw.get('email', None):
                 jt.email=[kw.get('email')]
             self.app.log.info("Submitting job with native specification {}".format(jt.nativeSpecification))
+            self.app.log.info("Output logging: {}".format(jt.outputPath))
+            self.app.log.info("Error logging: {}".format(jt.errorPath))
             self._meta.jobid = s.runJob(jt)
             self.app.log.info('Your job has been submitted with id ' + self._meta.jobid)
             if kw.get('saveJobId', False):
@@ -219,9 +223,10 @@ def make_job_template_args(opt_d, **kw):
     job_args['partition'] = kw.get('partition', None) or opt_d.get('-p', None) or  opt_d.get('--partition', None)
     job_args['account'] = kw.get('account', None) or opt_d.get('-A', None) or  opt_d.get('--account', None)
     job_args['outputPath'] = kw.get('outputPath', None) or opt_d.get('-o', os.curdir)
+    job_args['errorPath'] = kw.get('errorPath', None) or opt_d.get('-e', os.curdir)
     job_args['workingDirectory'] = kw.get('workingDirectory', None) or opt_d.get('-D', None) 
     job_args['email'] = kw.get('email', None) or opt_d.get('--mail-user', None) 
-    invalid_keys = ["--mail-user", "--mail-type", "-o", "--output", "-D", "--workdir", "-J", "--job-name", "-p", "--partition", "-t", "--time", "-A", "--account"]
+    invalid_keys = ["--mail-user", "--mail-type", "-o", "--output", "-D", "--workdir", "-J", "--job-name", "-p", "--partition", "-t", "--time", "-A", "--account", "-e", "--error"]
     extra_keys = [x for x in opt_d.keys() if x not in invalid_keys]
     extra_args = ["{}={}".format(x, opt_d[x]) if x.startswith("--") else "{} {}".format(x, opt_d[x]) for x in extra_keys]
     job_args['extra'] = kw.get('extra_args', None) or extra_args
