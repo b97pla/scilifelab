@@ -6,10 +6,10 @@ import glob
 from itertools import chain
 import pandas as pd
 
-from scilifelab.utils.misc import filtered_walk, query_yes_no, opt_to_dict
+from scilifelab.utils.misc import filtered_walk, query_yes_no, prune_option_list
 from scilifelab.utils.dry import dry_write, dry_backup, dry_unlink, dry_rmdir, dry_makedir
 from scilifelab.log import minimal_logger
-from scilifelab.bcbio import sort_sample_config_fastq, update_sample_config, update_pp_platform_args, merge_sample_config, get_sample_analysis
+from scilifelab.bcbio import sort_sample_config_fastq, update_sample_config, update_pp_platform_args, merge_sample_config
 
 LOG = minimal_logger(__name__)
 
@@ -327,14 +327,27 @@ def run_bcbb_command(run_info, post_process=None, **kw):
     
     :returns: command line to run
     """
+    global_post_process = True
+    if run_info.endswith("-bcbb-config.yaml"):
+        run_info_base = run_info.replace("-bcbb-config.yaml", "") 
+    else:
+        run_info_base, _ = os.path.splitext(run_info)
     if not post_process:
-        post_process = run_info.replace("-bcbb-config.yaml", "-post_process.yaml")
+        post_process = run_info_base + "-post_process.yaml"
+        global_post_process = False
     with open(post_process, "r") as fh:
         config = yaml.load(fh)
+    platform_args = config["distributed"]["platform_args"].split()
+    # Reset relevant arguments in platform args if global post process is used
+    if global_post_process:
+        platform_args = prune_option_list(platform_args, ['--job-name', '-J', '--error', '-e', '--output', '-o', '-D', '--workdir'])
+        platform_args.extend(['--job-name', os.path.basename(run_info_base) ])
+        platform_args.extend(['--workdir', os.path.dirname(run_info) ])
+        platform_args.extend(['--output', run_info_base + "-bcbb.log" ])
+        platform_args.extend(['--error', run_info_base + "-bcbb.err" ])
     if str(config["algorithm"]["num_cores"]) == "messaging":
         analysis_script = DISTRIBUTED_ANALYSIS_SCRIPT
     else:
         analysis_script = PARALLELL_ANALYSIS_SCRIPT
-    platform_args = config["distributed"]["platform_args"].split()
     cl = [analysis_script, post_process, os.path.dirname(run_info), run_info]
     return (cl, platform_args)
