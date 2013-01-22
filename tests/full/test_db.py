@@ -5,6 +5,7 @@ from couchdb.design import ViewDefinition
 import unittest
 import logbook
 import xml.etree.cElementTree as ET
+import shutil
 
 from classes import PmFullTest
 from ..classes import has_couchdb_installation
@@ -279,6 +280,20 @@ class TestQCUpload(PmFullTest):
         s = self.s_con.get_entry("4_120924_AC003CCCXX_CGTTAA")
         self.assertIsNone(s["project_sample_name"])
         self.assertEqual(s["project_id"], "P003")
+
+    def test_samplesheet_fallback(self):
+        """Test falling back on SampleSheet.csv when flowcell samples sheet is missing"""
+        fccsv = os.path.join(flowcell_dir, flowcells[0], "C003CCCXX.csv")
+        ssheet = os.path.join(flowcell_dir, flowcells[0], "SampleSheet.csv")
+        fccsvbak = fccsv.replace(".csv", ".csv.bak")
+        shutil.move(fccsv, fccsvbak)
+        shutil.copy(fccsvbak, ssheet)
+        self.app = self.make_app(argv = ['qc', 'upload-qc', flowcells[1], '--mtime',  '100'], extensions=['scilifelab.pm.ext.ext_qc',  'scilifelab.pm.ext.ext_couchdb'])
+        self._run_app()
+        os.unlink(fccsvbak)
+        shutil.move(ssheet, fccsv)
+        s = self.s_con.get_entry("4_120924_AC003CCCXX_CGTTAA")
+        print s
         
     def test_qc_update(self):
         """Test running qc update of a project id"""
@@ -345,5 +360,3 @@ class TestMetricsParser(PmFullTest):
         parser = FlowcellRunMetricsParser(self.fcdir)
         data = parser.parse_demultiplex_stats_htm(**self.fc_kw)
         self.assertEqual(data['Barcode_lane_statistics'][0]['# Reads'], '39,034,396')
-        
-        
