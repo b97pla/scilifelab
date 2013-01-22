@@ -105,7 +105,7 @@ class RunMetricsController(AbstractBaseController):
     ##############################
     ## New structures
     ##############################
-    def _parse_samplesheet(self, runinfo, qc_objects, fc_date, fc_name, fcdir, as_yaml=False):
+    def _parse_samplesheet(self, runinfo, qc_objects, fc_date, fc_name, fcdir, as_yaml=False, demultiplex_stats=None):
         """Parse samplesheet information and populate sample run metrics object"""
         if as_yaml:
             for info in runinfo:
@@ -159,7 +159,7 @@ class RunMetricsController(AbstractBaseController):
                 obj = SampleRunMetricsDocument(**sample_kw)
                 obj["picard_metrics"] = parser.read_picard_metrics(**sample_kw)
                 obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
-                obj["bc_count"] = parser.get_bc_count(**sample_kw)
+                obj["bc_count"] = parser.get_bc_count(demultiplex_stats=demultiplex_stats, **sample_kw)
                 obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
                 qc_objects.append(obj)
         return qc_objects
@@ -232,7 +232,7 @@ class RunMetricsController(AbstractBaseController):
             fcobj["illumina"].update({"Demultiplex_Stats" : parser.parse_demultiplex_stats_htm(**fc_kw)})
             fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(**fc_kw)
             qc_objects.append(fcobj)
-        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir)
+        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, demultiplex_stats=fcobj["illumina"]["Demultiplex_Stats"])
         return qc_objects
 
     @controller.expose(help="Upload run metrics to statusdb")
