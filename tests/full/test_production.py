@@ -219,7 +219,7 @@ class UtilsTest(SciLifeTest):
     def tearDownClass(cls):
         LOG.info("Removing directory tree {}".format(j_doe_00_05))
         os.chdir(filedir)
-        #shutil.rmtree(j_doe_00_05)
+        shutil.rmtree(j_doe_00_05)
 
     def test_find_samples(self):
         """Test finding samples"""

@@ -50,7 +50,7 @@ class DistributedCommandHandler(command.CommandHandler):
         pargs = kw.get('platform_args', [])
         if not self.app.pargs.account and "-A" not in pargs and "--account" not in pargs:
             return False
-        if not self.app.pargs.jobname and "-J" not in pargs and "--jobname" not in pargs:
+        if not self.app.pargs.jobname and "-J" not in pargs and "--job-name" not in pargs:
             return False
         if not self.app.pargs.partition and "-p" not in pargs and "--partition" not in pargs:
             return False

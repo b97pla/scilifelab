@@ -350,4 +350,6 @@ def run_bcbb_command(run_info, post_process=None, **kw):
     else:
         analysis_script = PARALLELL_ANALYSIS_SCRIPT
     cl = [analysis_script, post_process, os.path.dirname(run_info), run_info]
+    LOG.debug("Running command {}".format(cl))
+    LOG.debug("Using platform arguments {}".format(platform_args))
     return (cl, platform_args)
