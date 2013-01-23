@@ -373,16 +373,26 @@ class FlowcellRunMetricsConnection(Couch):
         """Make sure we don't change db from flowcells"""
         pass
 
-    def get_phix_error_rate(self, name, lane, avg=True):
-        """Get phix error rate"""
+    def get_phix_error_rate(self, name, lane):
+        """Get phix error rate. Returns -1 if error rate could not be determined"""
         fc = self.get_entry(name)
-        phix_r1 = float(fc.get('illumina', {}).get('Summary', {}).get('read1',{}).get(lane, {}).get('ErrRatePhiX', -1))
-        phix_r2 = float(fc.get('illumina', {}).get('Summary', {}).get('read3',{}).get(lane, {}).get('ErrRatePhiX', -1))
-        if avg:
-            return (phix_r1 + phix_r2)/2
-        else:
-            return (phix_r1, phix_r2)/2
-
+        phix_r = []
+        
+        # Get the error rate for non-index reads and add them 
+        summary = fc.get("illumina",{}).get("Summary",{})
+        for read in summary.values():
+            if read.get("ReadType","").strip() != "(Index)":
+                r = float(read.get(lane,{}).get("ErrRatePhiX","-1"))
+                # Only use the value if error rate is >0.0
+                if r > 0:
+                    phix_r.append(r)
+        
+        # Return -1 if the error rate could not be determined
+        if len(phix_r) == 0:
+            return -1
+        
+        return sum(phix_r)/len(phix_r)
+    
 class ProjectSummaryConnection(Couch):
     _doc_type = ProjectSummaryDocument
     _update_fn = update_fn
