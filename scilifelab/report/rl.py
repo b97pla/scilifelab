@@ -49,11 +49,11 @@ def sample_note_paragraphs():
 Ordered amount: ${ordered_amount} million paired reads."""))
     
     paragraphs["Method"] = dict(style=h3,
-                                tpl = Template("""Clustered on cBot and sequenced on HiSeq 2000
-according to manufacturer's instructions. Base
-conversion using OLB v1.9, demultiplexed and
-converted to fastq using CASAVA v1.8. The quality scale
-is Sanger / phred33 / Illumina 1.8+."""))
+                                tpl = Template("""Clustered on cBot
+and sequenced on ${instrument} according to manufacturer's
+instructions. Base conversion using ${baseconversion_version}.
+Demultiplexing and conversion using ${casava_version}. The
+quality scale is Sanger / phred33 / Illumina 1.8+."""))
     paragraphs["Results"] = dict(style=h3,
                                  tpl = Template("""${rounded_read_count} million paired reads in lane with PhiX
 error rate ${phix_error_rate}%. Average quality score
@@ -228,6 +228,7 @@ def make_example_project_note(outfile):
     "uppnex_project_id": "b2013444",
     "finished":None,
     }
+
     LOG.debug("Making example project note with parameters {}".format(kw))
     make_note(outfile, headers, paragraphs, **kw)
 
@@ -252,6 +253,9 @@ def make_example_sample_note(outfile):
         "phix_error_rate": "1",
         "avg_quality_score": "1",
         "success": "How should I know if it was successful or not?",
+        "instrument":"HiSeq 2000",
+        "baseconversion_version":"OLB v1.9",
+        "casava_version" : "CASAVA v1.8",
         }
 
     LOG.debug("Making example sample note with parameters {}".format(kw))

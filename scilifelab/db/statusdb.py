@@ -383,6 +383,16 @@ class FlowcellRunMetricsConnection(Couch):
         else:
             return (phix_r1, phix_r2)/2
 
+    def get_instrument(self, name):
+        """Get instrument id"""
+        fc = self.get_entry(name)
+        if not fc:
+            return None
+        instrument = fc.get('RunInfo', {}).get('Instrument', None)
+        if not instrument:
+            instrument = fc.get('runParameters', {}).get('Setup', {}).get('ScannerID', None)
+        return instrument
+
 class ProjectSummaryConnection(Couch):
     _doc_type = ProjectSummaryDocument
     _update_fn = update_fn

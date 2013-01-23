@@ -232,10 +232,11 @@ class TestCouchDB(unittest.TestCase):
         s_con = SampleRunMetricsConnection(dbname="samples-test", username="u", password="p")
         samples = [s_con.get_entry(x) for x in s_con.name_view]
         samples_d = {x["name"]:x for x in samples}
+        print samples_d
         self.assertEqual(samples_d["1_120924_AC003CCCXX_TGACCA"]["date"], "120924")
         self.assertEqual(samples_d["1_121015_BB002BBBXX_TGACCA"]["flowcell"], "BB002BBBXX")
         self.assertEqual(samples_d["2_120924_AC003CCCXX_ACAGTG"]["entity_type"], "sample_run_metrics")
-        self.assertEqual(samples_d["3_120924_AC003CCCXX_TGACCA"]["barcode_name"], "P002_101_index3")
+        self.assertEqual(samples_d["3_120924_AC003CCCXX_ACAGTG"]["barcode_name"], "P002_102_index6")
         self.assertEqual(samples_d["3_120924_AC003CCCXX_ACAGTG"]["lane"], "3")
         self.assertEqual(samples_d["4_120924_AC003CCCXX_CGTTAA"]["sequence"], "CGTTAA")
         self.assertEqual(samples_d["2_121015_BB002BBBXX_TGACCA"]["project_id"], "P002")

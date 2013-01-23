@@ -39,10 +39,11 @@ ${scilifelab_name} / ${customer_name}. Ordered amount: ${ordered_amount} million
 Method
 ^^^^^^
 
-Clustered on cBot and sequenced on HiSeq 2000 according to
-manufacturer's instructions. Base conversion using OLB v1.9,
-demultiplexed and converted to fastq using CASAVA v1.8. The quality
-scale is Sanger / phred33 / Illumina 1.8+. 
+Clustered on cBot and sequenced on ${instrument} according to
+manufacturer's instructions. Base conversion using
+${baseconversion_version}. Demultiplexing and conversion using
+${casava_version}. The quality scale is Sanger / phred33 / Illumina
+1.8+.
 
 Results
 ^^^^^^^
