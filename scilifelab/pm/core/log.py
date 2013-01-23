@@ -144,7 +144,7 @@ class PmLogHandler(log.CementLogHandler):
 
     def _setup_file_log(self):
         """Add a file log handler."""
-        file_path = fs.abspath(self.app.config.get('log', 'file'))
+        file_path = os.path.expandvars(fs.abspath(self.app.config.get('log', 'file')))
         log_dir = os.path.dirname(file_path)
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
