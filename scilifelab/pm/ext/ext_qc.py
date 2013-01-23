@@ -14,6 +14,9 @@ from scilifelab.bcbio.qc import FlowcellRunMetricsParser, SampleRunMetricsParser
 from scilifelab.pm.bcbio.utils import validate_fc_directory_format, fc_id, fc_parts, fc_fullname
 from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectSummaryConnection, SampleRunMetricsDocument, FlowcellRunMetricsDocument
 from scilifelab.utils.dry import dry
+import scilifelab.log
+
+LOG = scilifelab.log.minimal_logger(__name__)
 
 class RunMetricsController(AbstractBaseController):
     """
@@ -34,7 +37,9 @@ class RunMetricsController(AbstractBaseController):
             (['--project_id'], dict(help="Project identifier, as in 'J.Doe_00_01'", default=None, action="store", type=str)),
             (['--names'], dict(help="Sample name mapping from barcode name to project name as a JSON string, as in \"{'sample_run_name':'project_run_name'}\". Mapping can also be given in a file", default=None, action="store", type=str)),
             (['--extensive_matching'], dict(help="Perform extensive barcode to project sample name matcing", default=False, action="store_true")),
+            (['--project_alias'], dict(help="True project name as defined in project summary, as in 'J.Doe_00_01'.", default=None, action="store", type=str)),
             ]
+
 
     def _process_args(self):
         self._meta.root_path = self.app.pargs.runqc if self.app.pargs.runqc else self.app.config.get("runqc", "root")
@@ -88,8 +93,11 @@ class RunMetricsController(AbstractBaseController):
         else:
             self.app.log.info("Trying to use extensive matching...")
             p_con = ProjectSummaryConnection(dbname=self.app.config.get("db", "projects"), **vars(self.app.pargs))
+            project_id = self.pargs.sample_prj
+            if self.pargs.project_alias:
+                project_id = self.pargs.project_alias
             for s in samples:
-                project_sample = p_con.get_project_sample(self.pargs.sample_prj, s["barcode_name"], extensive_matching=True)
+                project_sample = p_con.get_project_sample(project_id, s["barcode_name"], extensive_matching=True)
                 if project_sample:
                     self.app.log.info("using mapping '{} : {}'...".format(s["barcode_name"], project_sample["sample_name"]))
                     s["project_sample_name"] = project_sample["sample_name"]
@@ -503,7 +511,7 @@ class RunMetricsController(AbstractBaseController):
             samples[id][key] = [project]
         
         return samples
-                                                        
+              
 def load():
     """Called by the framework when the extension is 'loaded'."""
     handler.register(RunMetricsController)
