@@ -51,9 +51,8 @@ Ordered amount: ${ordered_amount} million paired reads."""))
     paragraphs["Method"] = dict(style=h3,
                                 tpl = Template("""Clustered on cBot
 and sequenced on ${instrument} according to manufacturer's
-instructions. Base conversion using ${baseconversion_version}.
-Demultiplexing and conversion using ${casava_version}. The
-quality scale is Sanger / phred33 / Illumina 1.8+."""))
+instructions. Demultiplexing and conversion using ${casava_version}.
+The quality scale is Sanger / phred33 / Illumina 1.8+."""))
     paragraphs["Results"] = dict(style=h3,
                                  tpl = Template("""${rounded_read_count} million paired reads in lane with PhiX
 error rate ${phix_error_rate}%. Average quality score

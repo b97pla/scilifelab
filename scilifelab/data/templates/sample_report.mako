@@ -40,8 +40,7 @@ Method
 ^^^^^^
 
 Clustered on cBot and sequenced on ${instrument} according to
-manufacturer's instructions. Base conversion using
-${baseconversion_version}. Demultiplexing and conversion using
+manufacturer's instructions. Demultiplexing and conversion using
 ${casava_version}. The quality scale is Sanger / phred33 / Illumina
 1.8+.
 
