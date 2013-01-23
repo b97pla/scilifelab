@@ -196,7 +196,7 @@ class RunMetricsController(AbstractBaseController):
             fcobj["illumina"] = parser.parse_illumina_metrics(fullRTA=False, **fc_kw)
             fcobj["bc_metrics"] = parser.parse_bc_metrics(**fc_kw)
             fcobj["filter_metrics"] = parser.parse_filter_metrics(**fc_kw)
-            fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(**fc_kw)
+            fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(runinfo_csv=runinfo_csv, **fc_kw)
             fcobj["run_info_yaml"] = parser.parse_run_info_yaml(**fc_kw)
             qc_objects.append(fcobj)
         else:
@@ -230,7 +230,7 @@ class RunMetricsController(AbstractBaseController):
             fcobj["bc_metrics"] = parser.parse_bc_metrics(**fc_kw)
             fcobj["undemultiplexed_barcodes"] = parser.parse_undemultiplexed_barcode_metrics(**fc_kw)
             fcobj["illumina"].update({"Demultiplex_Stats" : parser.parse_demultiplex_stats_htm(**fc_kw)})
-            fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(**fc_kw)
+            fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(runinfo_csv=runinfo_csv, **fc_kw)
             qc_objects.append(fcobj)
         qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, demultiplex_stats=fcobj["illumina"]["Demultiplex_Stats"])
         return qc_objects

@@ -593,8 +593,8 @@ class FlowcellRunMetricsParser(RunMetricsParser):
             self.log.warn("Reading file {} failed".format(os.path.join(os.path.abspath(self.path), fn)))
             return {}
 
-    def parse_samplesheet_csv(self, fc_name, **kw):
-        infile = os.path.join(os.path.abspath(self.path), "{}.csv".format(fc_name[1:]))
+    def parse_samplesheet_csv(self, runinfo_csv="SampleSheet.csv", **kw):
+        infile = os.path.join(os.path.abspath(self.path), runinfo_csv)
         self.log.debug("parse_samplesheet_csv: going to read {}".format(infile))
         if not os.path.exists(infile):
             self.log.warn("No such file {}".format(infile))
