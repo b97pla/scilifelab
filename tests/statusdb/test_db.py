@@ -102,7 +102,7 @@ class TestDbConnection(unittest.TestCase):
         sample_con = SampleRunMetricsConnection(dbname="samples-test", username=self.user, password=self.pw, url=self.url)
         sample_ids = sample_con.get_sample_ids(fc_id=self.examples["flowcell"])
         LOG.info("Number of samples before subsetting: " + str(len(sample_ids)))
-        self.assertEqual(len(sample_ids), 5)
+        self.assertEqual(len(sample_ids), 4)
         sample_ids = sample_con.get_sample_ids(fc_id=self.examples["flowcell"], sample_prj=self.examples["project"])
         LOG.info( "Number of samples after subsetting: " + str(len(sample_ids)))
         self.assertEqual(len(sample_ids), 2)
@@ -113,7 +113,7 @@ class TestDbConnection(unittest.TestCase):
 
         samples = sample_con.get_samples(fc_id=self.examples["flowcell"])
         LOG.info("Selecting on flowcell: " + str(len(samples)))
-        self.assertEqual(len(samples), 5)
+        self.assertEqual(len(samples), 4)
         samples = sample_con.get_samples(fc_id=self.examples["flowcell"], sample_prj=self.examples["project"])
         LOG.info("Selecting on flowcell, subsetting on project: " + str(len(samples)))
         self.assertEqual(len(samples), 2)

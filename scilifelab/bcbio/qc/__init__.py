@@ -8,7 +8,7 @@ import json
 import numpy as np
 import csv
 import collections
-
+import xml.etree.cElementTree as ET
 from bs4 import BeautifulSoup
 
 from cement.core import backend
@@ -186,6 +186,75 @@ class RunInfoParser():
         p.CharacterDataHandler = self._char_data
         p.ParseFile(fp)
 
+
+# Generic XML to dict parsing
+# See http://code.activestate.com/recipes/410469-xml-as-dictionary/
+class XmlToList(list):
+    def __init__(self, aList):
+        for element in aList:
+            if element:
+                # treat like dict
+                if len(element) == 1 or element[0].tag != element[1].tag:
+                    self.append(XmlToDict(element))
+                # treat like list
+                elif element[0].tag == element[1].tag:
+                    self.append(XmlToList(element))
+            elif element.text:
+                text = element.text.strip()
+                if text:
+                    self.append(text)
+            else:
+                # Set dict for attributes
+                self.append({k:v for k,v in element.items()})
+
+class XmlToDict(dict):
+    '''
+    Example usage:
+
+    >>> tree = ET.parse('your_file.xml')
+    >>> root = tree.getroot()
+    >>> xmldict = XmlToDict(root)
+
+    Or, if you want to use an XML string:
+
+    >>> root = ET.XML(xml_string)
+    >>> xmldict = XmlToDict(root)
+
+    And then use xmldict for what it is... a dict.
+    '''
+    def __init__(self, parent_element):
+        if parent_element.items():
+            self.update(dict(parent_element.items()))
+        for element in parent_element:
+            if element:
+                # treat like dict - we assume that if the first two tags
+                # in a series are different, then they are all different.
+                if len(element) == 1 or element[0].tag != element[1].tag:
+                    aDict = XmlToDict(element)
+                # treat like list - we assume that if the first two tags
+                # in a series are the same, then the rest are the same.
+                else:
+                    # here, we put the list in dictionary; the key is the
+                    # tag name the list elements all share in common, and
+                    # the value is the list itself 
+                    aDict = {element[0].tag: XmlToList(element)}
+                # if the tag has attributes, add those to the dict
+                if element.items():
+                    aDict.update(dict(element.items()))
+                self.update({element.tag: aDict})
+            # this assumes that if you've got an attribute in a tag,
+            # you won't be having any text. This may or may not be a 
+            # good idea -- time will tell. It works for the way we are
+            # currently doing XML configuration files...
+            elif element.items():
+                self.update({element.tag: dict(element.items())})
+                # add the following line
+                self[element.tag].update({"__Content__":element.text})
+
+            # finally, if there are no child tags and no attributes, extract
+            # the text
+            else:
+                self.update({element.tag: element.text})
 
 class IlluminaXMLParser():
     """Illumina xml data parser. Parses xml files in flowcell directory."""
@@ -451,9 +520,15 @@ class SampleRunMetricsParser(RunMetricsParser):
             self.log.warn("No filter nophix metrics for lane {}".format(lane))
             return {"reads":None, "reads_aligned":None, "reads_fail_align":None}
 
-    def get_bc_count(self, barcode_name, sample_prj, flowcell, lane, barcode_id, **kw):
+    def get_bc_count(self, barcode_name, sample_prj, flowcell, lane, barcode_id, demultiplex_stats=None, **kw):
         """Parse bc metrics at sample level and get *bc_count* for a sample run!"""
         self.log.debug("get_bc_count for sample {}, project {} in flowcell {}".format(barcode_name, sample_prj, flowcell))
+        # If demultiplex_stats passed use this info instead
+        if demultiplex_stats:
+            demux_stats_dict = {l.get('Sample ID', None):l for l in demultiplex_stats.get('Barcode_lane_statistics', [])}
+            if barcode_name in demux_stats_dict:
+                self.log.debug("sample found in demultiplex_stats - using this information")
+                return demux_stats_dict[barcode_name]["# Reads"].replace(",", "")
         pattern = "{}_[0-9]+_[0-9A-Za-z]+(_nophix)?[\._]bc[\._]metrics".format(lane)
         files = self.filter_files(pattern)
         if len(files) == 0:
@@ -495,8 +570,31 @@ class FlowcellRunMetricsParser(RunMetricsParser):
             self.log.warn("Reading file {} failed".format(os.path.join(os.path.abspath(self.path), fn)))
             return {}
 
-    def parse_samplesheet_csv(self, fc_name, **kw):
-        infile = os.path.join(os.path.abspath(self.path), "{}.csv".format(fc_name[1:]))
+    def parseRunParameters(self, fn="runParameters.xml", **kw):
+        """Parse runParameters.xml from an Illumina run.
+
+        :param fn: filename
+        :param **kw: keyword argument
+
+        :returns: parsed data structure
+        """
+        infile = os.path.join(os.path.abspath(self.path), fn)
+        self.log.debug("parseRunParameters: going to read {}".format(infile))
+        if not os.path.exists(infile):
+            self.log.warn("No such files {}".format(infile))
+            return {}
+        try:
+            with open(infile) as fh:
+                tree = ET.parse(fh)
+            root = tree.getroot()
+            data = XmlToDict(root)
+            return data
+        except:
+            self.log.warn("Reading file {} failed".format(os.path.join(os.path.abspath(self.path), fn)))
+            return {}
+
+    def parse_samplesheet_csv(self, runinfo_csv="SampleSheet.csv", **kw):
+        infile = os.path.join(os.path.abspath(self.path), runinfo_csv)
         self.log.debug("parse_samplesheet_csv: going to read {}".format(infile))
         if not os.path.exists(infile):
             self.log.warn("No such file {}".format(infile))

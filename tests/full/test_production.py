@@ -325,6 +325,19 @@ class UtilsTest(SciLifeTest):
                 cl = fh.read().split()
             (cl, platform_args) = run_bcbb_command(f)
             self.assertIn("distributed_nextgen_pipeline.py",cl)
+
+    def test_global_post_process(self):
+        """Test that when using a "global" post_process, jobname,
+        output, error and output directory are updated.
+        """
+        flist = find_samples(j_doe_00_05)
+        pp = os.path.join(j_doe_00_01, SAMPLES[1], FLOWCELL, "{}-post_process.yaml".format(SAMPLES[1]))
+        with open(pp) as fh:
+            postprocess = yaml.load(fh)
+        for f in flist:
+            (cl, platform_args) = run_bcbb_command(f, pp)
+            self.assertIn("--error", platform_args)
+            self.assertEqual(platform_args[platform_args.index("--error") + 1], f.replace("-bcbb-config.yaml", "-bcbb.err"))
     
     @unittest.skipIf(not os.getenv("DRMAA_LIBRARY_PATH"), "not running UtilsTest.test_platform: no $DRMAA_LIBRARY_PATH")
     def test_platform_args(self):
