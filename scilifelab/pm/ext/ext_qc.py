@@ -515,7 +515,57 @@ class RunMetricsController(AbstractBaseController):
             samples[id][key] = [project]
         
         return samples
-              
+
+    @controller.expose(help="List the projects and corresponding applications on a flowcell")
+    def list_projects(self):
+        if not self._check_pargs(["flowcell"]):
+            return
+        
+        url = self.pargs.url if self.pargs.url else self.app.config.get("db", "url")
+        if not url:
+            self.app.log.warn("Please provide a valid url: got {}".format(url))
+            return
+        if not validate_fc_directory_format(self.pargs.flowcell):
+            self.app.log.warn("Path '{}' does not conform to bcbio flowcell directory format; aborting".format(self.pargs.flowcell))
+            return
+        
+        out_data = [[self.pargs.flowcell]]
+        s = self.pargs.flowcell.split("_")
+        fcid = "_".join([s[0],s[-1]])
+        
+        self.log.debug("Establishing FlowcellRunMetricsConnection")
+        fc_con = FlowcellRunMetricsConnection(dbname=self.app.config.get("db", "flowcells"), **vars(self.app.pargs))
+        self.log.debug("Establishing ProjectSummaryConnection")
+        p_con = ProjectSummaryConnection(dbname=self.app.config.get("db", "projects"), **vars(self.app.pargs))
+    
+        self.log.debug("Fetching flowcell metric document for flowcell {}".format(fcid))
+        fc = fc_con.get_entry(fcid)
+        if fc is None:
+            self.log.warn("No flowcell metric document for flowcell {}".format(fcid))
+            return
+    
+        self.log.debug("Fetching csv samplesheet data for flowcell {}".format(fcid))
+        ssheet_data = self._get_samplesheet_sample_data(fc)
+        if len(ssheet_data) == 0:
+            self.log.warn("No csv samplesheet data for flowcell {}".format(fcid))
+            return
+    
+        # Extract the project names
+        projects = set([proj[0].replace("__",".") for data in ssheet_data.values() for proj in data.values()])
+    
+        # Extract application for each project
+        for project in projects:    
+            self.log.debug("Fetching project data document for project {}".format(project))
+            pdoc = p_con.get_entry(project)
+            if pdoc is None:
+                self.log.warn("No project data document for project {}".format(project))
+                continue
+        
+            application = pdoc.get("application","N/A")
+            out_data.append([project,application])
+        
+        self.app._output_data['stdout'].write("\n".join(["\t".join([str(r) for r in row]) for row in out_data]))
+               
 def load():
     """Called by the framework when the extension is 'loaded'."""
     handler.register(RunMetricsController)
