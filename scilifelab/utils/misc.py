@@ -178,3 +178,17 @@ def opt_to_dict(opts):
     opt_d = {k: True if v.startswith('-') else v
              for k,v in zip(args, args[1:]+["--"]) if k.startswith('-')}
     return opt_d
+
+def prune_option_list(opts, keys):
+    """Remove unwanted options from an option list.
+
+    :param opts: option list
+    :param keys: keys to remove
+    
+    :returns: a reduced option list
+    """
+    opt_d = opt_to_dict(opts)
+    for k in keys:
+        if k in opt_d:
+            del opt_d[k]
+    return [k for item in opt_d.iteritems() for k in item]

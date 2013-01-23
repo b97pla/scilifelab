@@ -39,16 +39,16 @@ ${scilifelab_name} / ${customer_name}. Ordered amount: ${ordered_amount} million
 Method
 ^^^^^^
 
-Clustered on cBot and sequenced on HiSeq 2000 according to
-manufacturer's instructions. Base conversion using OLB v1.9,
-demultiplexed and converted to fastq using CASAVA v1.8. The quality
-scale is Sanger / phred33 / Illumina 1.8+. 
+Clustered on cBot and sequenced on ${instrument} according to
+manufacturer's instructions. Demultiplexing and conversion using
+${casava_version}. The quality scale is Sanger / phred33 / Illumina
+1.8+.
 
 Results
 ^^^^^^^
 
-${rounded_read_count} million reads in lane with PhiX error rate
-${phix_error_rate}. Average quality score ${avg_quality_score}.
+${rounded_read_count} million paired reads in lane with PhiX error
+rate ${phix_error_rate}. Average quality score ${avg_quality_score}.
 
 Comments
 ^^^^^^^^

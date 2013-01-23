@@ -16,6 +16,44 @@ import scilifelab.log
 
 LOG = scilifelab.log.minimal_logger(__name__)
 
+# Instrument configurations for insertion into report
+instrument = {
+    'SN1025': {
+        'instrument_alias':'Smeagol',
+        'instrument' : 'HiSeq 2000',
+        },
+    'sN188': {
+        'instrument_alias':'Eowyn',# ?
+        'instrument' : 'HiSeq 2000',
+        },
+    'SN7001298': {
+        'instrument_alias':'Deagol',
+        'instrument' : 'HiSeq 2000',
+        },
+    'SN7001301': {
+        'instrument_alias':'Eomer',
+        'instrument' : 'HiSeq 2500',
+        },
+    'SN7001301': {
+        'instrument_alias':'Aragorn',
+        'instrument' : 'HiSeq 2500',
+        },
+    'default': {
+        'instrument_alias':'',
+        'instrument' : 'NN',
+        },
+    'M00275' : {
+        'instrument_alias':'Gloin',
+        'instrument' : 'MiSeq 2500',
+        }
+    }
+# Software versions used in data production. Instrument specific?
+software_versions = {
+    'baseconversion_version' : 'OLB v1.9',
+    'casava_version' : 'CASAVA v1.8'
+    }
+
+
 # http://stackoverflow.com/questions/3154460/python-human-readable-large-numbers
 def _round_read_count_in_millions(n):
     """Round absolute read counts to million reads"""
@@ -25,13 +63,13 @@ def _round_read_count_in_millions(n):
     if n == 0:
         return 0
     round_factor = [2,2,1]
-    millidx = max(0, min(len(round_factor) - 1, int(math.floor(math.log10(abs(n))/3.0))))
+    millidx = max(0, min(len(round_factor) - 1, int(math.floor(math.log10(abs(int(n)))/3.0))))
     return round(float(n)/10**(6),round_factor[millidx])
 
 def _get_ordered_million_reads(sample_name, ordered_million_reads):
     """Retrieve ordered million reads for sample
 
-    :param sample_name: sample name
+    :param sample_name: sample name (possibly barcode name)
     :param ordered_million_reads: parsed option passed to application
 
     :returns: ordered number of reads or None"""
@@ -217,13 +255,20 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
     sample_count = Counter([x.get("barcode_name") for x in sample_run_list])
 
     # Loop samples and collect information
-    s_param_out = {}
+    s_param_out = []
     for s in sample_run_list:
         s_param = {}
         LOG.debug("working on sample '{}', sample run metrics name '{}', id '{}'".format(s.get("barcode_name", None), s.get("name", None), s.get("_id", None)))
         s_param.update(parameters)
         s_param.update({key:s[srm_to_parameter[key]] for key in srm_to_parameter.keys()})
         fc = "{}_{}".format(s.get("date"), s.get("flowcell"))
+        # Get instrument
+        try:
+            s_param.update(instrument['fc_con.get_instrument(str(fc))'])
+        except:
+            LOG.warn("Failed to set instrument and software versions for flowcell {}".format(fc))
+            s_param.update(instrument['default'])
+        s_param.update(software_versions)
         s_param["phix_error_rate"] = phix if phix else fc_con.get_phix_error_rate(str(fc), s["lane"])
         s_param['avg_quality_score'] = calc_avg_qv(s)
         if not s_param['avg_quality_score']:
@@ -283,7 +328,7 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
             LOG.info("Please run 'pm qc upload-qc FLOWCELL_ID --extensive-matching' to update project sample names ")
             LOG.info("or 'pm qc update --sample_prj PROJECT_ID --names BARCODE_TO_SAMPLE_MAP to update project sample names.")
             LOG.info("Please refer to the pm documentation for examples.")
-            query_ok(force=self.pargs.force)
+            query_ok(force=kw.get("force", False))
 
         # Finally assess sequencing success, update parameters and set outputs
         s_param['success'] = sequencing_success(s_param, cutoffs)
@@ -293,12 +338,12 @@ def sample_status_note(project_id=None, flowcell=None, username=None, password=N
         else:
             outfile = "{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"])
         s_param["outfile"] = outfile
-        s_param_out[s_param["scilifelab_name"]] = s_param
+        s_param_out.append(s_param)
 
     # Write final output to reportlab and rst files
     output_data["debug"].write(json.dumps({'s_param': s_param_out, 'sample_runs':{s["name"]:s["barcode_name"] for s in sample_run_list}}))
-    notes = [make_note(headers=headers, paragraphs=paragraphs, **sp) for sp in s_param_out.itervalues()]
-    rest_notes = make_sample_rest_notes("{}_{}_{}_sample_summary.rst".format(project_id, s.get("date", None), s.get("flowcell", None)), s_param_out.itervalues())
+    notes = [make_note(headers=headers, paragraphs=paragraphs, **sp) for sp in s_param_out]
+    rest_notes = make_sample_rest_notes("{}_{}_{}_sample_summary.rst".format(project_id, s.get("date", None), s.get("flowcell", None)), s_param_out)
     concatenate_notes(notes, "{}_{}_{}_sample_summary.pdf".format(project_id, s.get("date", None), s.get("flowcell", None)))
     return output_data
 
@@ -341,7 +386,7 @@ def _set_sample_table_values(sample_name, project_sample, barcode_seq, ordered_m
     # Set status
     vals['Status'] = project_sample.get("status", "N/A")
     if ordered_million_reads:
-        param["ordered_amount"] = _get_ordered_million_reads(v['sample'], ordered_million_reads)
+        param["ordered_amount"] = _get_ordered_million_reads(sample_name, ordered_million_reads)
     vals['MOrdered'] = param["ordered_amount"]
     vals['BarcodeSeq'] = barcode_seq
     vals.update({k:"N/A" for k in vals.keys() if vals[k] is None or vals[k] == ""})
@@ -465,12 +510,12 @@ def project_status_note(project_id=None, username=None, password=None, url=None,
         if project_sample_d:
             for k,v in project_sample_d.iteritems():
                 barcode_seq = s_con.get_entry(k, "sequence")
-                vals = _set_sample_table_values(v, project_sample, barcode_seq, ordered_million_reads, param)
+                vals = _set_sample_table_values(sample, project_sample, barcode_seq, ordered_million_reads, param)
                 if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
                 sample_table.append([vals[k] for k in table_keys])
         else:
             barcode_seq = None
-            vals = _set_sample_table_values(v, project_sample, barcode_seq, ordered_million_reads, param)
+            vals = _set_sample_table_values(sample, project_sample, barcode_seq, ordered_million_reads, param)
             if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
             sample_table.append([vals[k] for k in table_keys])
     if all_passed: param["finished"] = 'Project finished.'
