@@ -173,7 +173,7 @@ def _set_project_sample_dict(project_sample_item):
     """
     project_sample_d = {}
     if "library_prep" in project_sample_item.keys():
-        project_sample_d = {x:y for d in [v["sample_run_metrics"] for k,v in project_sample_item["library_prep"].iteritems()] for x,y in d.iteritems()}
+        project_sample_d = {x:y for d in [v.get("sample_run_metrics", {}) for k,v in project_sample_item["library_prep"].iteritems()] for x,y in d.iteritems()}
     else:
         project_sample_d = {x:y for x,y in project_sample_item.get("sample_run_metrics", {}).iteritems()}
         if not project_sample_item.get("sample_run_metrics", {}):
