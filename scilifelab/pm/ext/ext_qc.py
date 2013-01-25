@@ -4,6 +4,7 @@ import csv
 import yaml
 import ast
 import itertools
+from collections import defaultdict
 
 from cement.core import backend, controller, handler, hook
 from scilifelab.utils.misc import query_yes_no
@@ -277,7 +278,244 @@ class RunMetricsController(AbstractBaseController):
                     obj["project_sample_name"] = project_sample['sample_name']
                 dry("Saving object {}".format(repr(obj)), s_con.save(obj))
 
+    @controller.expose(help="Perform a multiplex QC")
+    def multiplex_qc(self):
+        
+        MAX_UNDEMULTIPLEXED_INDEX_COUNT = 1000000
+        EXPECTED_LANE_YIELD = 143000000
+        MAX_PHIX_ERROR_RATE = 2.0
+        MIN_PHIX_ERROR_RATE = 0.0
+        read_pairs = True
+        
+        out_data = []
+        
+        if not self._check_pargs(['flowcell']):
+            return
+        url = self.pargs.url if self.pargs.url else self.app.config.get("db", "url")
+        if not url:
+            self.app.log.warn("Please provide a valid url: got {}".format(url))
+            return
+        
+        # Construct the short form of the fcid
+        sp = os.path.basename(self.pargs.flowcell).split("_")
+        fcid = "_".join([sp[0],sp[-1]])
+        
+        # Get a connection to the flowcell database and fetch the corresponding document
+        self.log.debug("Connecting to flowcell database".format(fcid))
+        fc_con = FlowcellRunMetricsConnection(dbname=self.app.config.get("db", "flowcells"), **vars(self.app.pargs))
+        self.log.debug("Fetching run metrics entry for flowcell {}".format(fcid))
+        fc_doc = fc_con.get_entry(fcid)
+        if not fc_doc:
+            self.log.warn("Could not fetch run metrics entry for flowcell {}".format(fcid))
+            return
+   
+        # Get the yield per sample from the Demultiplex_Stats
+        self.log.debug("Getting yield for flowcell {}".format(fcid))
+        sample_yield = self._get_yield_per_sample(fc_doc, read_pairs)
+        
+        # Get the yield per lane from the Demultiplex_Stats
+        self.log.debug("Getting lane yield for flowcell {}".format(fcid))
+        lane_yield = self._get_yield_per_lane(fc_doc, read_pairs)
+        lanes = lane_yield.keys()
+        
+        # Get the number of samples in the pools from the Demultiplex_Stats
+        self.log.debug("Getting lane pool sizes for flowcell {}".format(fcid))
+        pool_size = self._get_pool_size(fc_doc)
+        
+        # Get the sample information from the csv samplesheet
+        self.log.debug("Getting csv samplesheet data for flowcell {}".format(fcid))
+        ssheet_samples = self._get_samplesheet_sample_data(fc_doc)
+        if len(ssheet_samples) == 0: 
+            self.log.warn("No samplesheet data available for flowcell {}".format(fcid))
+        
+        # Verify that all samples in samplesheet have reported metrics
+        for id in ssheet_samples.keys():
+            for key in ssheet_samples[id].keys():
+                lane, index = key.split("_")
+                project = ssheet_samples[id][key][0]
+                if id not in sample_yield or \
+                key not in sample_yield[id]: 
+                    self.log.warn("Sample {} from project {} is in samplesheet but no yield was reported in " \
+                                  "Demultiplex_Stats.htm for lane {} and index {}".format(id,
+                                                                                          project,
+                                                                                          lane,
+                                                                                          index))
+                    continue
+                sample_yield[id][key].append('verified')
+        
+        # Check that all samples in Demultiplex_Stats have entries in Samplesheet
+        for id in sample_yield.keys():
+            for key in sample_yield[id].keys():
+                lane, index = key.split("_")
+                if "verified" not in sample_yield[id][key] and \
+                index != "Undetermined":
+                    self.log.warn("Sample {} from project {}, with index {} on lane {} is in Demultiplex_Stats " \
+                                  "but no corresponding entry is present in SampleSheet".format(id,
+                                                                                                sample_yield[id][key][1],
+                                                                                                index,
+                                                                                                lane))
+                        
+        # Check the PhiX error rate for each lane
+        self.log.debug("Getting PhiX error rates for flowcell {}".format(fcid))
+        for lane in lanes:
+            status = "N/A"
+            err_rate = fc_con.get_phix_error_rate(fcid,lane)
+            if err_rate < 0:
+                self.log.warn("Could not get PhiX error rate for lane {} on flowcell {}".format(lane,fcid))
+            elif err_rate <= MIN_PHIX_ERROR_RATE or err_rate > MAX_PHIX_ERROR_RATE:
+                status = "FAIL"
+            else:
+                status = "PASS"
+            out_data.append([status,
+                             "PhiX error rate",
+                             lane,
+                             err_rate,
+                             "{} < PhiX e (%) <= {}".format(MIN_PHIX_ERROR_RATE,
+                                                            MAX_PHIX_ERROR_RATE)])
+                
+        # Check that each lane received the minimum amount of reads
+        for lane, reads in lane_yield.items():
+            status = "FAIL"
+            if reads >= EXPECTED_LANE_YIELD:
+                status = "PASS"
+            out_data.append([status,"Lane yield",lane,reads,"[Yield >= {}]".format(EXPECTED_LANE_YIELD)])
+                
+        # Check that all samples in the pool have received a minimum number of reads
+        for id in sample_yield.keys():
+            for key in sample_yield[id].keys():
+                lane, index = key.split("_")
+                if index == "Undetermined":
+                    continue
+                
+                status = "FAIL"
+                mplx_min = int(0.5*EXPECTED_LANE_YIELD/pool_size[lane])
+                if sample_yield[id][key][0] >= mplx_min:
+                    status = "PASS"
+                out_data.append([status,"Sample yield",lane,sample_yield[id][key][1],id,sample_yield[id][key][0],"[Yield >= {}]".format(mplx_min)])
+        
+        # Check that the number of undetermined reads in each lane is below 10% of the total yield for the lane
+        for lane, reads in lane_yield.items():
+            status = "FAIL"
+            key = "_".join([lane,"Undetermined"])
+            undetermined = sum([counts.get(key,[0])[0] for counts in sample_yield.values()])
+            cutoff = 0.1*reads
+            if undetermined < cutoff:
+                status = "PASS"
+            out_data.append([status,"Index read",lane,undetermined,"[Undetermined < {}]".format(cutoff)])
+        
+        # Check that no overrepresented index sequence exists in undemultiplexed output
+        self.log.debug("Fetching undemultiplexed barcode data for flowcell {}".format(fcid))
+        undemux_data = self._get_undetermined_index_counts(fc_doc)
+        if len(undemux_data) == 0:
+            self.log.warn("No undemultiplexed barcode data available for flowcell {}".format(fcid))
+        
+        for lane, counts in undemux_data.items():
+            mplx_min = int(min(MAX_UNDEMULTIPLEXED_INDEX_COUNT,
+                               0.5*EXPECTED_LANE_YIELD/max(1,pool_size[lane])))
+            status = "N/A"
+            if len(counts) > 0:
+                for i in range(len(counts)):
+                    status = "FAIL"
+                    if int(counts[i][0]) < mplx_min:
+                        status = "PASS"
+                    out_data.append([status,"Index",lane,counts[i][1],counts[i][2],counts[i][0],"[Undetermined index < {}]".format(mplx_min)])
+            else:
+                out_data.append([status,"Index",lane,"","",mplx_min,"-"])
+                    
+        self.app._output_data['stdout'].write("\n".join(["\t".join([str(r) for r in row]) for row in out_data]))
 
+    def _get_undetermined_index_counts(self, fc_doc):
+        """Get the top 10 undetermined index counts for each lane"""
+        
+        undetermined_indexes = defaultdict(list)
+        undemux_data = fc_doc.get("undemultiplexed_barcodes",{})
+        
+        for lane, barcodes in undemux_data.items():
+            for key, data in barcodes.items():
+                if key != "undemultiplexed_barcodes":
+                    continue
+                for i in range(len(data["count"])):
+                    undetermined_indexes[lane].append([data["count"][i],
+                                                       data["sequence"][i],
+                                                       data["index_name"][i]])
+        return undetermined_indexes
+        
+    def _get_yield_per_sample(self, fc_doc, read_pairs=True):
+        """
+        Extract the yield per sample, keyed on SampleId and "Lane_Index"
+        Returns a dictionary of dictionaries    
+        """     
+        
+        # Get the yield for each sample, lane, index
+        sample_yield = {}
+        counts = fc_doc.get("illumina",{}).get("Demultiplex_Stats",{}).get("Barcode_lane_statistics",[])
+        for sample in counts:
+            id = sample['Sample ID']
+            lane = sample['Lane']
+            index = sample['Index']
+            reads = int(sample['# Reads'].replace(',',''))
+            if read_pairs:
+                reads /= 2
+            if id not in sample_yield:
+                sample_yield[id] = {}
+            sample_yield[id]["_".join([lane,index])] = [reads,sample['Project']]
+            
+        return sample_yield
+    
+    def _get_yield_per_lane(self, fc_doc, read_pairs=True):
+        """
+        Extract the yield per lane.
+        Returns a dictionary with key-value pairs of lane and yield    
+        """     
+        
+        # Get the yield for each lane
+        lane_yield = defaultdict(int)
+        counts = fc_doc.get("illumina",{}).get("Demultiplex_Stats",{}).get("Barcode_lane_statistics",[])
+        for sample in counts:
+            lane = sample['Lane']
+            reads = int(sample['# Reads'].replace(',',''))
+            if read_pairs:
+                reads /= 2
+            lane_yield[lane] += reads
+            
+        return lane_yield
+    
+    def _get_pool_size(self, fc_doc):
+        """
+        Extract the pool size for each lane.
+        Returns a dictionary with key-value pairs of lane and size    
+        """     
+        
+        pool_size = defaultdict(int)
+        counts = fc_doc.get("illumina",{}).get("Demultiplex_Stats",{}).get("Barcode_lane_statistics",[])
+        for sample in counts:
+            lane = sample['Lane']
+            index = sample['Index']
+            if index != "Undetermined":
+                pool_size[lane] += 1
+                
+        return pool_size
+       
+    def _get_samplesheet_sample_data(self, fc_doc):
+        """
+        Extract the sample data from the csv samplesheet into a dictionary of dictionaries,
+        keyed with SampleId and "Lane_Index"
+        """
+        
+        ssheet_data = fc_doc.get("samplesheet_csv",[])
+        samples = {}
+        for ssheet_entry in ssheet_data:
+            id = ssheet_entry['SampleID']
+            project = ssheet_entry['SampleProject']
+            lane = ssheet_entry['Lane']
+            index = ssheet_entry['Index']
+            key = "_".join([lane,index])
+            if id not in samples:
+                samples[id] = {}
+            samples[id][key] = [project]
+        
+        return samples
+              
 def load():
     """Called by the framework when the extension is 'loaded'."""
     handler.register(RunMetricsController)
