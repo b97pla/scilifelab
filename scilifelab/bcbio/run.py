@@ -179,8 +179,6 @@ def validate_sample_directories(flist, pdir):
             LOG.warning("{} *must* be in a subdirectory of {}".format(run_info, pdir))
             raise Exception
 
-
-
 def find_samples(path, sample=None, pattern = "-bcbb-config.yaml$", only_failed=False, **kw):
     """Find bcbb config files in a path.
 
@@ -227,7 +225,7 @@ def setup_sample(f, analysis, amplicon=False, genome_build="hg19", **kw):
         config = yaml.load(fh)
     ## Check for correctly formatted config
     if not config.get("details", None):
-        LOG.warn("Couldn't find 'details' section in config file: aborting setup!")
+        LOG.warn("Couldn't find 'details' section in config file {}: aborting setup!".format(f))
         return
 
     ## Save file to backup if backup doesn't exist

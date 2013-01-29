@@ -8,7 +8,9 @@ from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.report import sequencing_success
 from scilifelab.report.rl import *
 from scilifelab.report.qc import application_qc, fastq_screen, QC_CUTOFF
+from scilifelab.bcbio.run import find_samples
 from scilifelab.report.delivery_notes import sample_status_note, project_status_note
+from scilifelab.report.best_practice import best_practice_note, SEQCAP_KITS
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection
 
 ## Main delivery controller
@@ -53,7 +55,7 @@ class DeliveryReportController(AbstractBaseController):
         group.add_argument('--bc_count', help="Manually set barcode counts in *millions of reads*. Input is either a string or a JSON file with a key:value mapping, as in '--bc_count \"{'Sample1':100, 'Sample2':200}\"'.", action="store", default={})
         group.add_argument('--sample_aliases', help="Provide sample aliases for cases where project summary has multiple names for a sample. Input is either a string or a JSON file with a key:value mapping, for example '--sample_aliases \"{'sample1':['alias1_1', 'alias1_2'], 'sample2':['alias2_1']}\", where the value is a list of aliases. The key will be used as 'base' information, possibly updated by information from the alias entry.", action="store", default={})
         group.add_argument('--project_alias', help="Provide project aliases for cases where project summary has multiple names for a project. Input is a comma-separated list of names enclosed by brackets, for example '--project_alias \"['alias1']\"", action="store", default=None)
-        group.add_argument('--phix', help="Provide phix error rate for new illumina flowcells where phix error rate is missing.", action="store", default=None, type=float)
+        group.add_argument('--phix', help="Provide phix error rate for new illumina flowcells where phix error rate is missing. Input is either a number, a string or a JSON file with a lane:error mapping, for example '--phix \"{1:0.3, 2:0.4}\".", action="store", default=None)
         group.add_argument('--sphinx', help="Generate editable sphinx template. Installs conf.py and Makefile for subsequent report generation.", action="store", default=None, type=float)
         super(DeliveryReportController, self)._setup(app)
 
@@ -103,3 +105,37 @@ class DeliveryReportController(AbstractBaseController):
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
         self.app._output_data['debug'].write(out_data['debug'].getvalue())
+        
+    @controller.expose(help="Make best practice reports")
+    def best_practice(self):
+        self.log.info("Until best practice results are stored in statusDB, best practice reports are generated via the 'pm project bpreport' subcommand. This requires that best practice analyses have been run in the project folder.")
+        return
+
+class BestPracticeReportController(AbstractBaseController):
+    class Meta:
+        label = 'bpreport'
+        description = 'Functions for generating best practice reports'
+
+    def _setup(self, app):
+        group = app.args.add_argument_group('Best practice report group', 'Options for bpreport')
+        group.add_argument('--application', help="Set application for best practice application note." , action="store", type=str, default="seqcap")
+        group.add_argument('--capture_kit', help="Set capture for seqcap application note. Either a key, one of '{}', or free text description.".format(",".join(SEQCAP_KITS.keys())), action="store", type=str, default="agilent_v4")
+        super(BestPracticeReportController, self)._setup(app)
+
+    @controller.expose(help="Make best practice reports")
+    def bpreport(self):
+        if not self._check_pargs(["project"]):
+            return
+        kw = vars(self.pargs)
+        basedir = os.path.abspath(os.path.join(self.app.controller._meta.root_path, self.app.controller._meta.path_id))
+        flist = find_samples(basedir, **vars(self.pargs))
+        if not len(flist) > 0:
+            self.log.info("No samples/sample configuration files found")
+            return
+        kw.update(flist=flist, basedir=basedir)
+        out_data = best_practice_note(**kw)
+        self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
+        self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
+        self.app._output_data['debug'].write(out_data['debug'].getvalue())
+
+
