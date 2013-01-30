@@ -454,7 +454,9 @@
     table-title:
       parent : heading4
       keepWithNext: false
-      alignment : TA_CENTER
+      alignment : TA_LEFT
+      fontName: stdItalic
+      fontSize: 90%
 
     table-heading:
       parent : heading
@@ -462,9 +464,11 @@
       valign : BOTTOM
       alignment: LEFT
       borderPadding : 0
+      fontSize: 90%
 
     table-body:
       parent : normal
+      fontSize: 90%
 
     dedication:
       parent : normal

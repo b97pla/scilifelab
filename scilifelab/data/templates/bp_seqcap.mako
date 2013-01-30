@@ -14,14 +14,23 @@ sequence DNA enriched for exon sequence. Sequence data was mapped to a
 reference, and variants were called using a publically available
 software pipeline.
 
+Sample summary
+^^^^^^^^^^^^^^
+
+Table 1 lists the samples included in the analysis.
+
+.. table:: **Table 1**. Listing of analyzed samples and corresponding barcode sequences.
+
+${table_sample_summary}
+
 Sequencing summary
 ^^^^^^^^^^^^^^^^^^
 
-Table ${projecttableref} shows a brief summary of sequencing yield and
+Table 2 shows a brief summary of sequencing yield and
 QC.
 
 
-.. table:: Project summary. Columns show the following statistics: 1) Total: total number of reads 2) Aligned: number of aligned reads 3) Pair duplicates: the percentage of pair duplicates in a sample 4) The inferred insert size 
+.. table:: **Table 2**. Sequencing summary. Columns show the following statistics: 1) Total: total number of reads 2) Aligned: number of aligned reads 3) Pair duplicates: the percentage of pair duplicates in a sample 4) The inferred insert size 
 
 
 
@@ -30,14 +39,14 @@ ${project_summary}
 Target summary
 ^^^^^^^^^^^^^^
 
-.. table:: Project target summary. Columns show the following statistics: 1) On target bases: The percentage of bases mapping on target 2) Mean target coverage: the mean coverage in the target region 3) X10x coverage targets: the percentage of targets with at least 10X coverage 4) Zero coverage targets: the percentage of targets with zero coverage
+.. table:: **Table 3**. Target summary. Columns show the following statistics: 1) On target bases: The percentage of bases mapping on target 2) Mean target coverage: the mean coverage in the target region 3) X10x coverage targets: the percentage of targets with at least 10X coverage 4) Zero coverage targets: the percentage of targets with zero coverage
 
 ${project_target_summary}
 
 dbSNP summary
 ^^^^^^^^^^^^^^
 
-.. table:: dbSNP summary.  Columns show the following statistics: 1) Total variations: the number of quality filtered called variants 2) In dbSNP: the fraction of called snps that are in dbSNP 3) Transition transversion all, dbSNP, novel: the transition transversion ratios in snps stratified by all, dbSNP and novel.
+.. table:: **Table 4**. dbSNP summary.  Columns show the following statistics: 1) Total variations: the number of quality filtered called variants 2) In dbSNP: the fraction of called snps that are in dbSNP 3) Transition transversion all, dbSNP, novel: the transition transversion ratios in snps stratified by all, dbSNP and novel.
 
 
 ${project_dbsnp_summary}
@@ -108,7 +117,7 @@ one single line):
 Naming conventions
 ^^^^^^^^^^^^^^^^^^
 
-Table 2 lists the samples included in the analysis. Delivered raw data
+Table 1 lists the samples included in the analysis. Delivered raw data
 files have the prefix LANE DATE - FLOWCELLID, followed by a sample
 identifier. The downstream analysis may induce a renaming of files, in
 particular if the analysis includes data from several flowcells. The
