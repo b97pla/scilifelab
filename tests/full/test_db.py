@@ -53,7 +53,7 @@ def setUpModule():
     p_con = ProjectSummaryConnection(dbname="projects-test", username="u", password="p")
     for p in prj_sum:
         prj = ProjectSummaryDocument(**p)
-        p_con.save(prj, key="project_id")
+        p_con.save(prj, key="project_name")
 
     #
     # def tearDownModule():
@@ -91,7 +91,7 @@ class TestCouchDB(unittest.TestCase):
         self.assertEqual(flowcells_d["120924_AC003CCCXX"]["samplesheet_csv"][2]["SampleID"], "P002_101_index3")        
         p_con = ProjectSummaryConnection(dbname="projects-test", username="u", password="p")
         projects = [p_con.get_entry(x) for x in p_con.name_view]
-        projects_d = {x["project_id"]:x for x in projects}
+        projects_d = {x["project_name"]:x for x in projects}
         self.assertEqual(projects_d["J.Doe_00_01"]["min_m_reads_per_sample_ordered"], 0.1)
         self.assertEqual(projects_d["J.Doe_00_01"]["no_of_samples"], 2)        
         self.assertEqual(set(projects_d["J.Doe_00_01"]["samples"].keys()),set(["P001_101_index3","P001_102","P001_103"]))
