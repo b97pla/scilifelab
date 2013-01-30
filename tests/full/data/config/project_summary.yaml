@@ -2,7 +2,8 @@
   customer_reference: "GnuGenome"
   min_m_reads_per_sample_ordered: .1
   no_of_samples: 2
-  project_id: J.Doe_00_01
+  project_name: J.Doe_00_01
+  project_id: P001
   samples:
     P001_101_index3:
       scilife_name: P001_101_index3
@@ -23,7 +24,8 @@
   customer_reference: "GeneExp"
   min_m_reads_per_sample_ordered: .2
   no_of_samples: 2
-  project_id: J.Doe_00_02
+  project_name: J.Doe_00_02
+  project_id: P002
   samples:
     P002_101_index3:
       scilife_name: P002_101_index3
@@ -42,7 +44,8 @@
   customer_reference: "SeqCap"
   min_m_reads_per_sample_ordered: .5
   no_of_samples: 1
-  project_id: J.Doe_00_03
+  project_name: J.Doe_00_03
+  project_id: P003
   samples:
     3_index6:
       scilife_name: 3_index6

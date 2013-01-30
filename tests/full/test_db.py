@@ -55,6 +55,7 @@ def setUpModule():
         prj = ProjectSummaryDocument(**p)
         p_con.save(prj, key="project_name")
 
+
     #
     # def tearDownModule():
     #     db = couchdb.Server()
@@ -67,14 +68,13 @@ def setUpModule():
 class TestCouchDB(unittest.TestCase):
 
     def test_dbcon(self):
-        """Test database connection and that we get expected values"""
+        """Test database connection and that we get expected values."""
         s_con = SampleRunMetricsConnection(dbname="samples-test", username="u", password="p")
         samples = [s_con.get_entry(x) for x in s_con.name_view]
         samples_d = {x["name"]:x for x in samples}
         self.assertEqual(samples_d["1_120924_AC003CCCXX_TGACCA"]["date"], "120924")
         self.assertEqual(samples_d["1_121015_BB002BBBXX_TGACCA"]["flowcell"], "BB002BBBXX")
         self.assertEqual(samples_d["2_120924_AC003CCCXX_ACAGTG"]["entity_type"], "sample_run_metrics")
-        self.assertEqual(samples_d["3_120924_AC003CCCXX_TGACCA"]["barcode_name"], "P002_101_index3")
         self.assertEqual(samples_d["3_120924_AC003CCCXX_ACAGTG"]["lane"], "3")
         self.assertEqual(samples_d["4_120924_AC003CCCXX_CGTTAA"]["sequence"], "CGTTAA")
         self.assertEqual(samples_d["2_121015_BB002BBBXX_TGACCA"]["project_id"], "P002")
@@ -84,11 +84,6 @@ class TestCouchDB(unittest.TestCase):
         self.assertEqual(flowcells_d["120924_AC003CCCXX"]["name"], "120924_AC003CCCXX")
         self.assertEqual(flowcells_d["121015_BB002BBBXX"]["name"], "121015_BB002BBBXX")
         self.assertEqual(flowcells_d["120924_AC003CCCXX"]["entity_type"], "flowcell_run_metrics")
-        self.assertEqual(flowcells_d["120924_AC003CCCXX"]["samplesheet_csv"][0]["Index"], "TGACCA")
-        self.assertEqual(flowcells_d["120924_AC003CCCXX"]["samplesheet_csv"][0]["Description"], "J__Doe_00_01")
-        self.assertEqual(flowcells_d["120924_AC003CCCXX"]["samplesheet_csv"][0]["FCID"], "C003CCCXX")
-        self.assertEqual(flowcells_d["120924_AC003CCCXX"]["samplesheet_csv"][1]["SampleRef"], "hg19")
-        self.assertEqual(flowcells_d["120924_AC003CCCXX"]["samplesheet_csv"][2]["SampleID"], "P002_101_index3")        
         p_con = ProjectSummaryConnection(dbname="projects-test", username="u", password="p")
         projects = [p_con.get_entry(x) for x in p_con.name_view]
         projects_d = {x["project_name"]:x for x in projects}
@@ -105,13 +100,21 @@ class TestCouchDB(unittest.TestCase):
 @unittest.skipIf(not has_couchdb, "No couchdb server running in http://localhost:5984")
 class TestQCUpload(PmFullTest):
     def setUp(self):
-        self.app = self.make_app(argv = ['qc', 'upload-qc', flowcells[0], '--mtime',  '100'], extensions=['scilifelab.pm.ext.ext_qc', 'scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['qc', 'upload-qc', flowcells[0], '--mtime',  '10000'], extensions=['scilifelab.pm.ext.ext_qc', 'scilifelab.pm.ext.ext_couchdb'])
         self._run_app()
         self.s_con = SampleRunMetricsConnection(dbname="samples-test", username="u", password="p")
         self.p_con = ProjectSummaryConnection(dbname="projects-test", username="u", password="p")
         self.fc_con = FlowcellRunMetricsConnection(dbname="flowcells-test", username="u", password="p")
 
-        
+    def test_samplesheet(self):
+        """Test samplesheet upload"""
+        fc = self.fc_con.get_entry("120924_AC003CCCXX")
+        self.assertEqual(fc["samplesheet_csv"][0]["Index"], "TGACCA")
+        self.assertEqual(fc["samplesheet_csv"][0]["Description"], "J__Doe_00_01")
+        self.assertEqual(fc["samplesheet_csv"][0]["FCID"], "C003CCCXX")
+        self.assertEqual(fc["samplesheet_csv"][1]["SampleRef"], "hg19")
+        self.assertEqual(fc["samplesheet_csv"][2]["SampleID"], "P001_101_index3")        
+
     def test_qc_upload(self):
         """Test running qc upload to server"""
         self.app = self.make_app(argv = ['qc', 'upload-qc', flowcells[1], '--mtime',  '100'], extensions=['scilifelab.pm.ext.ext_qc',  'scilifelab.pm.ext.ext_couchdb'])
