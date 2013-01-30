@@ -58,6 +58,6 @@ if not os.path.isdir(os.path.join(analysis,project_name,'intermediate',flowcell_
 flist = glob.glob(os.path.join(INBOX,project_name,'*',flowcell_id,'*'))
 
 for file_path in flist:
-	file = file_path.split('/')[-1]
-	#os.symlink(file_path , os.path.join(analysis,project_name,'data',flowcell_id,file))
-	os.rename(file_path , os.path.join(analysis,project_name,'data',flowcell_id,file))
+	file_name = file_path.split('/')[-1]
+	#os.symlink(file_path , os.path.join(analysis,project_name,'data',flowcell_id,file_name))
+	os.rename(file_path , os.path.join(analysis,project_name,'data',flowcell_id,file_name))
