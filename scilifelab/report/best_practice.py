@@ -84,26 +84,24 @@ def _get_seqcap_summary(flist):
     df.columns = SEQCAP_TABLE_COLUMNS
     return df, samples_df
 
-def _get_customer_names(samples):
-    """Translate scilifenames to customer names"""
-    return samples
 
-def best_practice_note(project_id=None, samples=None, capture_kit="agilent_v4", application="seqcap", flist=[], **kw):
+def best_practice_note(project_name=None, samples=None, capture_kit="agilent_v4", application="seqcap", flist=[], **kw):
     """Make a best practice application note.
 
     NB: currently only works for seqcap application.
 
-    :param project_id: project id
+    :param project_name: project name
     :param samples: samples to work on. Defaults to all samples.
     :param application: chosen application
     """
+    p_con = ProjectSummaryConnection(dbname=projectdb, username=username, password=password, url=url)
     param = parameters
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
     if application not in BEST_PRACTICE_NOTES:
         LOG.warn("No such application '{}'. Valid choices are: \n\t{}".format(application, "\n\t".join(BEST_PRACTICE_NOTES)))
     if application == "seqcap":
         df, samples_df = _get_seqcap_summary(flist)
-        df[["Sample"]] = _get_customer_names(df[["Sample"]])
+        #df[["Sample"]] = _get_customer_names(df[["Sample"]])
         ttab = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[1:5]]))
         ttab_target = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[6:9]]))
         ttab_dbsnp = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[10:14]]))
