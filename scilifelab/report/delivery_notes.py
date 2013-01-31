@@ -415,7 +415,8 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
                         use_ps_map=True, use_bc_map=False, check_consistency=False,
                         ordered_million_reads=None, uppnex_id=None, customer_reference=None,
                         exclude_sample_ids={}, project_alias=None, sample_aliases={},
-                       projectdb="projects", samplesdb="samples", flowcelldb="flowcells", **kw):
+                        projectdb="projects", samplesdb="samples", flowcelldb="flowcells",
+                        include_all_samples=False, **kw):
     """Make a project status note. Used keywords:
 
     :param project_name: project name
@@ -431,6 +432,10 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
     :param exclude_sample_ids: exclude some sample ids from project note
     :param project_alias: project alias name
     :param sample_aliases: sample alias names
+    :param projectdb: project db name
+    :param samplesdb: samples db name
+    :param flowcelldb: flowcells db name
+    :param include_all_samples: include all samples in report
     """
     # parameters
     parameters = {
@@ -451,6 +456,7 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
     # Set report paragraphs
     paragraphs = project_note_paragraphs()
     headers = project_note_headers()
+    # Set local param variable
     param = parameters
     
     # Get project summary from project database
@@ -501,9 +507,21 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
     sample_table = []
     samples_excluded = []
     all_passed = True
+    last_library_preps = p_con.get_latest_library_prep(project_name)
+    last_library_preps_srm = [x for l in last_library_preps.values() for x in l] 
     LOG.debug("Looping through sample map that maps project sample names to sample run metrics ids")
     for k,v in samples.items():
         LOG.debug("project sample '{}' maps to '{}'".format(k, v))
+        if not include_all_samples:
+            if v['sample'] not in last_library_preps.keys():
+                LOG.info("No library prep information for sample {}; keeping in report".format(v['sample']))
+            else:
+                if k not in last_library_preps_srm:
+                    LOG.info("Sample run {} is not latest library prep ({}) for project sample {}: excluding from report".format(k, last_library_preps[v['sample']].values()[0], v['sample']))
+                    continue
+        else:
+            pass
+                    
         if re.search("Unexpected", k):
             continue
         barcode_seq = s_con.get_entry(k, "sequence")

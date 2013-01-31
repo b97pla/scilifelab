@@ -58,6 +58,7 @@ class DeliveryReportController(AbstractBaseController):
         group.add_argument('--phix', help="Provide phix error rate for new illumina flowcells where phix error rate is missing. Input is either a string, or a dictionary/JSON file with a lane:error mapping, for example '--phix \"{1:0.3, 2:0.4}\".", action="store", default=None)
         group.add_argument('--sphinx', help="Generate editable sphinx template. Installs conf.py and Makefile for subsequent report generation.", action="store", default=None, type=float)
         group.add_argument('--project_id', help="Project identifier, formatted as 'P###'.",  action="store", default=None, type=str)
+        group.add_argument('--include_all_samples', help="Include all samples in project status report. Default is to only use the latest library prep.",  action="store_true", default=False)
         super(DeliveryReportController, self)._setup(app)
 
     def _process_args(self):
