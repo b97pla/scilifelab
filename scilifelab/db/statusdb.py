@@ -475,3 +475,24 @@ class ProjectSummaryConnection(Couch):
             return None
         else:
             return round(amount, dec)
+
+    def get_latest_library_prep(self, project_name):
+        """Get mapping from project name to sample_run_metrics for
+        latest library prep.
+
+        :param project_name: project name
+        """
+        project = self.get_entry(project_name)
+        if not project:
+            return None
+        project_samples = project.get('samples', None)
+        map_d = {}
+        for project_sample_name,sample in project_samples.iteritems():
+            if sample.get('library_prep', None):
+                library_preps = sample.get('library_prep')
+                lkeys = library_preps.keys()
+                lkeys.sort(reverse=True)
+                map_d[project_sample_name] = {k:kk for kk in lkeys[0] for k, v in library_preps[kk].get('sample_run_metrics', {}).items()} if library_preps else None
+            else:
+                self.log.warn("No library_prep information for project sample {}".format(project_sample_name))
+        return map_d
