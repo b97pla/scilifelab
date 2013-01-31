@@ -4,7 +4,6 @@ import re
 import pandas as pd
 from cStringIO import StringIO
 from scilifelab.report.rst import make_rest_note
-from scilifelab.bcbio.run import find_samples
 from texttable import Texttable
 import scilifelab.log
 
@@ -94,7 +93,6 @@ def best_practice_note(project_name=None, samples=None, capture_kit="agilent_v4"
     :param samples: samples to work on. Defaults to all samples.
     :param application: chosen application
     """
-    p_con = ProjectSummaryConnection(dbname=projectdb, username=username, password=password, url=url)
     param = parameters
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
     if application not in BEST_PRACTICE_NOTES:

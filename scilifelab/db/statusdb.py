@@ -433,24 +433,6 @@ class ProjectSummaryConnection(Couch):
         project_samples = project.get('samples', None)
         return _match_barcode_name_to_project_sample(barcode_name, project_samples, extensive_matching)
 
-    def map_srm_to_name(self, project_name, include_all=True, **args):
-        """Map sample run metrics names to project sample names for a
-        project, possibly subset by flowcell id.
-
-        :param project_name: project name
-         :param **kw: keyword arguments to be passed to map_name_to_srm
-        """
-        samples = self.map_name_to_srm(project_name, **args)
-        srm_to_name = {}
-        for k, v in samples.items():
-            if not v:
-                if not include_all:
-                    continue
-                srm_to_name.update({"NOSRM_{}".format(k):{"sample":k, "id":None}})
-            else:
-                srm_to_name.update({x:{"sample":k,"id":y} for x,y in v.items()})
-        return srm_to_name
-
     def _get_sample_run_metrics(self, v):
         if v.get('library_prep', None):
             library_preps = v.get('library_prep')
@@ -473,4 +455,3 @@ class ProjectSummaryConnection(Couch):
             return None
         else:
             return round(amount, dec)
-
