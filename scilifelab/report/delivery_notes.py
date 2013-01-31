@@ -81,6 +81,21 @@ def _get_ordered_million_reads(sample_name, ordered_million_reads):
     else:
         return ordered_million_reads
 
+def _get_phix_error_rate(lane, phix):
+    """Set phix error rate for a sample based on lane
+
+    :param lane: lane
+    :param phix: parsed option passed to application
+
+    :returns: phix error rate or None"""
+    if isinstance(phix, dict):
+        if int(lane) in phix:
+            return phix[int(lane)]
+        else:
+            return -1
+    else:
+        return phix
+
 def _get_bc_count(sample_name, bc_count, sample_run):
     """Retrieve barcode count for a sample
 
@@ -96,6 +111,7 @@ def _get_bc_count(sample_name, bc_count, sample_run):
             return bc_count.get("default", sample_run.get("bc_count", -1))
     else:
         return bc_count
+
 
 def _assert_flowcell_format(flowcell):
     """Assert name of flowcell: "[A-Z0-9]+XX"
@@ -270,7 +286,9 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
             LOG.warn("Failed to set instrument and software versions for flowcell {}".format(fc))
             s_param.update(instrument['default'])
         s_param.update(software_versions)
-        s_param["phix_error_rate"] = phix.get(s["lane"], -1.0) if phix else fc_con.get_phix_error_rate(str(fc), s["lane"])
+        s_param["phix_error_rate"] = fc_con.get_phix_error_rate(str(fc), s["lane"])
+        if phix:
+            s_param["phix_error_rate"] = _get_phix_error_rate(s["lane"], phix)
         s_param['avg_quality_score'] = calc_avg_qv(s)
         if not s_param['avg_quality_score']:
             LOG.warn("Calculation of average quality failed for sample {}, id {}".format(s.get("name"), s.get("_id")))
