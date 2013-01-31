@@ -8,11 +8,11 @@ google docs.
 
 Sources of the fields in project_summary:
 google docs:
-	Document 20132: 
-		project_id, 
+	Document 20132:  
 		scilife_name (samples), 
 		customer_name (samples) 
 	Genomics project list: 
+		project_id,
 		min_m_reads_per_sample_ordered, 
 		application, 
 		customer_reference, 
@@ -59,7 +59,8 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, CREDENTIALS_FILE, config):
              'entity_type': 'project_summary',
              'uppnex_id': '',                 
              'samples': {},
-             'project_id': project_name, 
+             'project_name': project_name, 
+	     'project_id':'',
              '_id': key}
 
 
@@ -79,7 +80,7 @@ def get_proj_inf(project_name_swe, samp_db, proj_db, CREDENTIALS_FILE, config):
                 obj['uppnex_id'] = p.uppnex_id
 		obj['application'] = p.application
 		obj['customer_reference'] = p.customer_reference
-
+		obj['project_id']='P' + p.project_id
 
 	### 20132
 	logger.debug('Trying to find Scilife Sample names from table 20132')
@@ -371,18 +372,18 @@ def comp_obj(obj, dbobj):
 			return False
 	return True
 
-def find_proj_from_view(proj_db, proj_id):
-	view = proj_db.view('project/project_id')
+def find_proj_from_view(proj_db, project_name):
+	view = proj_db.view('project/project_name')
 	for proj in view:
-		if proj.key == proj_id:
+		if proj.key == project_name:
 			return proj.value
 	return None
 
-def find_samp_from_view(samp_db, proj_id):
+def find_samp_from_view(samp_db, proj_name):
         view = samp_db.view('names/id_to_proj')
 	samps = {}
         for doc in view:
-                if (doc.value[0] == proj_id)|(doc.value[0] == proj_id.lower()):
+                if (doc.value[0] == proj_name)|(doc.value[0] == proj_name.lower()):
 			samps[doc.key] = doc.value[1:3]
         return samps
 
@@ -452,7 +453,7 @@ def  main(CREDENTIALS_FILE, CONFIG, URL, proj_ID, all_projects):
 		logger.debug('Argument error')
 	if info:
 		logger.debug('couchdb %s' % info)
-		logger.info('CouchDB: %s %s %s' % (obj['_id'], obj['project_id'], info))
+		logger.info('CouchDB: %s %s %s' % (obj['_id'], obj['project_name'], info))
 
 if __name__ == '__main__':
     	usage = """Usage:	python project_summary_upload.py [options]
