@@ -6,6 +6,7 @@ import sys
 import os
 import glob
 import re
+import grp
 from datetime import datetime
 import argparse
 import stat
@@ -106,6 +107,8 @@ def get_file_copy_list(proj_base_dir, dest_proj_path, fcid, deliver_all_fcs, del
 def rsync_files(to_copy, logfile, dry):
     # Iterate over the files to copy and create directories and copy files as necessary 
     successful = 0
+    uid = os.getuid()
+    gid = grp.getgrnam("uppmax").gr_gid
     for src_file, dst_dir, dst_name in to_copy:
         dst_file = os.path.join(dst_dir, dst_name)
         print "Will copy (rsync) ", src_file, "to ", dst_file
@@ -121,6 +124,7 @@ def rsync_files(to_copy, logfile, dry):
                 try:
                     # Create directory hierarchy with ug+rwX permissions
                     os.makedirs(dst_dir, 0770)
+                    os.chown(dst_dir,uid,gid)
                 except:
                     print("Could not create run-level delivery directory!")
                     clean_exit(1,logfile,dry)
@@ -145,8 +149,8 @@ def rsync_files(to_copy, logfile, dry):
             print("{:d} of {:d} files copied successfully".format(successful,len(to_copy)))
     
             # Modify the permissions to ug+rw
+            os.chown(dst_file,uid,gid)
             os.chmod(dst_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP)
-  
 
 def main():
     parser = argparse.ArgumentParser(description="A script to help doing the deliveries, now using the Casava directory structure. " \
