@@ -20,7 +20,7 @@ class DeliveryController(AbstractBaseController):
         label = 'deliver'
         description = 'Deliver data'
         arguments = [
-            (['project'], dict(help="Project id. Standard format is 'J.Doe_00_00'", default=None, nargs="?")),
+            (['project'], dict(help="Project name, formatted as 'J.Doe_00_00'", default=None, nargs="?")),
             (['flowcell'], dict(help="Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?")),
             (['uppmax_project'], dict(help="Uppmax project.", default=None, nargs="?")),
             (['-i', '--interactive'], dict(help="Interactively select samples to be delivered", default=False, action="store_true")),
@@ -43,7 +43,7 @@ class DeliveryReportController(AbstractBaseController):
 
     def _setup(self, app):
         group = app.args.add_argument_group('Reporting options', 'Options that affect report output')
-        group.add_argument('project_id', help="Project id. Standard format is 'J.Doe_00_00'", default=None, nargs="?")
+        group.add_argument('project_name', help="Project name. Standard format is 'J.Doe_00_00'", default=None, nargs="?")
         group.add_argument('flowcell', help="Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?")
         group.add_argument('-u', '--uppnex_id', help="Manually insert Uppnex project ID into the report.", default=None, action="store", type=str)
         group.add_argument('-o', '--ordered_million_reads', help="Manually insert the ordered number of read pairs (in millions), either as a string to set all samples, or a JSON string or JSON file to set at a sample level.", default=None, action="store", type=str)
@@ -55,6 +55,7 @@ class DeliveryReportController(AbstractBaseController):
         group.add_argument('--project_alias', help="Provide project aliases for cases where project summary has multiple names for a project. Input is a comma-separated list of names enclosed by brackets, for example '--project_alias \"['alias1']\"", action="store", default=None)
         group.add_argument('--phix', help="Provide phix error rate for new illumina flowcells where phix error rate is missing.", action="store", default=None, type=float)
         group.add_argument('--sphinx', help="Generate editable sphinx template. Installs conf.py and Makefile for subsequent report generation.", action="store", default=None, type=float)
+        group.add_argument('--project_id', help="Project identifier, formatted as 'P###'.",  action="store", default=None, type=str)
         super(DeliveryReportController, self)._setup(app)
 
     def _process_args(self):
@@ -66,7 +67,7 @@ class DeliveryReportController(AbstractBaseController):
 
     @controller.expose(help="Print FastQ screen output for a project/flowcell")
     def fqscreen(self):
-        if not self._check_pargs(["project_id"]):
+        if not self._check_pargs(["project_name"]):
             return
         out_data = fastq_screen(**vars(self.pargs))
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
@@ -75,7 +76,7 @@ class DeliveryReportController(AbstractBaseController):
 
     @controller.expose(help="Print summary QC data for a flowcell/project for application QC control")
     def application_qc(self):
-        if not self._check_pargs(["project_id"]):
+        if not self._check_pargs(["project_name"]):
             return
         out_data = application_qc(**vars(self.pargs))
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
@@ -84,7 +85,7 @@ class DeliveryReportController(AbstractBaseController):
 
     @controller.expose(help="Make sample status note")
     def sample_status(self):
-        if not self._check_pargs(["project_id", "flowcell"]):
+        if not self._check_pargs(["project_name", "flowcell"]):
             return
         kw = vars(self.pargs)
         kw.update({"samplesdb":self.app.config.get("db", "samples"), "flowcelldb":self.app.config.get("db", "flowcells"), "projectdb":self.app.config.get("db", "projects")})
@@ -95,7 +96,7 @@ class DeliveryReportController(AbstractBaseController):
 
     @controller.expose(help="Make project status note")
     def project_status(self):
-        if not self._check_pargs(["project_id"]):
+        if not self._check_pargs(["project_name"]):
             return
         kw = vars(self.pargs)
         kw.update({"samplesdb":self.app.config.get("db", "samples"), "flowcelldb":self.app.config.get("db", "flowcells"), "projectdb":self.app.config.get("db", "projects")})
