@@ -265,7 +265,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         fc = "{}_{}".format(s.get("date"), s.get("flowcell"))
         # Get instrument
         try:
-            s_param.update(instrument['fc_con.get_instrument(str(fc))'])
+            s_param.update(instrument[fc_con.get_instrument(str(fc))])
         except:
             LOG.warn("Failed to set instrument and software versions for flowcell {}".format(fc))
             s_param.update(instrument['default'])
