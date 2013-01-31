@@ -52,7 +52,7 @@ def _indent_texttable_for_rst(ttab, indent=4):
 def _split_project_summary_sample_name(samplename):
     """Project summary name consists of description;lane;sequence.
     Description in turn is made up of {sample_prj}_{name}."""
-    info = {'description':None, 'Lane':None, 'Sequence':None, 'sample_prj':None, 'Sample':samplename, 'ScilifeName':samplename}
+    info = {'description':None, 'Lane':None, 'Sequence':None, 'sample_prj':None, 'Sample':samplename, 'ScilifeName':samplename, 'CustomerName':None}
     if samplename.count(";") == 2:
         info['description'] = samplename.split(";")[0]
         info['Lane'] = samplename.split(";")[1]
@@ -83,8 +83,7 @@ def _get_seqcap_summary(flist):
     df.columns = SEQCAP_TABLE_COLUMNS
     return df, samples_df
 
-
-def best_practice_note(project_name=None, samples=None, capture_kit="agilent_v4", application="seqcap", flist=[], **kw):
+def best_practice_note(project_name=None, samples=None, capture_kit="agilent_v4", application="seqcap", flist=[], sample_name_map=None, **kw):
     """Make a best practice application note.
 
     NB: currently only works for seqcap application.
@@ -99,11 +98,12 @@ def best_practice_note(project_name=None, samples=None, capture_kit="agilent_v4"
         LOG.warn("No such application '{}'. Valid choices are: \n\t{}".format(application, "\n\t".join(BEST_PRACTICE_NOTES)))
     if application == "seqcap":
         df, samples_df = _get_seqcap_summary(flist)
-        #df[["Sample"]] = _get_customer_names(df[["Sample"]])
+        if sample_name_map:
+            samples_df.CustomerName = [sample_name_map[s]['customer_name'] for s in samples_df.Sample]
         ttab = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[1:5]]))
         ttab_target = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[6:9]]))
         ttab_dbsnp = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[10:14]]))
-        ttab_samples = _indent_texttable_for_rst(_dataframe_to_texttable(samples_df[["Sample", "Sequence"]]))
+        ttab_samples = _indent_texttable_for_rst(_dataframe_to_texttable(samples_df[["Sample", "CustomerName", "Sequence"]]))
         param.update({'project_summary':ttab, 'project_target_summary':ttab_target, 'project_dbsnp_summary':ttab_dbsnp, 'table_sample_summary':ttab_samples, 'capturekit':SEQCAP_KITS[capture_kit]})
     # Add applications here
     else:

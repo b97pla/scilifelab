@@ -1,9 +1,16 @@
 .. image:: ${sll_logo_small}
    :align: right
 
+.. header:: Document version: 1.0 
+
+.. footer:: ###Page###
+
 ================================
-Analysis report sequence capture
+Best practice analysis report
 ================================
+
+:Project: ${project_name}
+:Application: Sequence capture
 
 
 Project summary
@@ -30,7 +37,7 @@ Table 2 shows a brief summary of sequencing yield and
 QC.
 
 
-.. table:: **Table 2**. Sequencing summary. Columns show the following statistics: 1) Total: total number of reads 2) Aligned: number of aligned reads 3) Pair duplicates: the percentage of pair duplicates in a sample 4) The inferred insert size 
+.. table:: **Table 2**. Sequencing summary. Columns show the following statistics: 1) Total: total number of reads 2) Aligned: percentage of aligned reads 3) Pair duplicates: the percentage of pair duplicates in a sample 4) The inferred insert size 
 
 
 
@@ -39,12 +46,16 @@ ${project_summary}
 Target summary
 ^^^^^^^^^^^^^^
 
+Table 3 summarizes the sequence capture performance. 
+
 .. table:: **Table 3**. Target summary. Columns show the following statistics: 1) On target bases: The percentage of bases mapping on target 2) Mean target coverage: the mean coverage in the target region 3) X10x coverage targets: the percentage of targets with at least 10X coverage 4) Zero coverage targets: the percentage of targets with zero coverage
 
 ${project_target_summary}
 
 dbSNP summary
 ^^^^^^^^^^^^^^
+
+Table 4 summarizes variant calls as compared to known variants in dbSNP.
 
 .. table:: **Table 4**. dbSNP summary.  Columns show the following statistics: 1) Total variations: the number of quality filtered called variants 2) In dbSNP: the fraction of called snps that are in dbSNP 3) Transition transversion all, dbSNP, novel: the transition transversion ratios in snps stratified by all, dbSNP and novel.
 
@@ -161,7 +172,7 @@ are then evaluated with VariantEval, in which the called variants are
 compared and assessed to common variants in dbsnp, hapmap, and
 1000genomes. Variants are also filtered with respect to several
 quality scores, such as variant confidence and strand bias. The end
-result is a number of vcf files [7]_, where the most important are:
+result is a number of vcf files [7]_:
 
 - \*-variants.vcf - raw variants
 - \*-variants-snp.vcf - raw snp calls
@@ -169,10 +180,23 @@ result is a number of vcf files [7]_, where the most important are:
 - \*-variants-indel.vcf - raw indel calls
 - \*-variants-indel-filterINDEL.vcf - filtered indel calls
 
-In addition to variant calling and filtering, the damaging effects of
-the variants are predicted using snpEff [6]_. The results are
-summarized in the files snpEff_genes.txt and snpEff_summary.html.
-project-summary.csv is a text file summary of the found variations.
+
+The filtered calls are combined and annotated with predicted damaging
+effects of the variants using snpEff [6]_. The output from these
+operations is found in the following files:
+
+- \*-variants-combined-phased-annotated.vcf
+- \*-variants-combined-phased-effects.vcf
+- \*-variants-combined-phased-effects.tsv
+
+
+Finally, project-summary.csv is a text file summary containing various
+metrics, such as alignment statistics and data on the found
+variations.
+
+.. raw:: pdf
+
+   PageBreak
 
 References
 ----------

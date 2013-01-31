@@ -302,6 +302,26 @@ def get_qc_data(sample_prj, p_con, s_con, fc_id=None):
             qcdata[s["name"]]["PERCENT_ON_TARGET"] = float(qcdata[s["name"]]["FOLD_ENRICHMENT"]/ (float(qcdata[s["name"]]["GENOME_SIZE"]) / float(target_territory))) * 100
     return qcdata
 
+def get_scilife_to_customer_name(project_name, p_con, s_con):
+    """Get scilife to customer name mapping, represented as a
+    dictionary.
+    
+    :param project_name: project name
+    :param p_con: object of type <ProjectSummaryConnection>
+    :param s_con: object of type <SampleRunMetricsConnection>
+    
+    :returns: dictionary with keys scilife name and values customer name
+    """
+    barcode_names = [s.get("barcode_name", None) for s in s_con.get_samples(sample_prj=project_name)]
+    name_d = {}
+    for bcname in barcode_names:
+        s = p_con.get_project_sample(project_name, bcname)
+        name_d[bcname] = {'scilife_name': s['project_sample'].get('scilife_name', bcname),
+                          'customer_name' : s['project_sample'].get('customer_name', None)
+                          }
+    return name_d
+
+
 ##############################
 # Connections
 ##############################

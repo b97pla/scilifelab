@@ -11,7 +11,7 @@ from scilifelab.report.qc import application_qc, fastq_screen, QC_CUTOFF
 from scilifelab.bcbio.run import find_samples
 from scilifelab.report.delivery_notes import sample_status_note, project_status_note
 from scilifelab.report.best_practice import best_practice_note, SEQCAP_KITS
-from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection
+from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, get_scilife_to_customer_name
 
 ## Main delivery controller
 class DeliveryController(AbstractBaseController):
@@ -121,6 +121,8 @@ class BestPracticeReportController(AbstractBaseController):
         group = app.args.add_argument_group('Best practice report group', 'Options for bpreport')
         group.add_argument('--application', help="Set application for best practice application note." , action="store", type=str, default="seqcap")
         group.add_argument('--capture_kit', help="Set capture for seqcap application note. Either a key, one of '{}', or free text description.".format(",".join(SEQCAP_KITS.keys())), action="store", type=str, default="agilent_v4")
+        group.add_argument('--no_statusdb', help="Don't statusdb to convert scilife names to customer names.", action="store_true", default=False)
+        group.add_argument('--statusdb_project_name', help="Project name in statusdb.", action="store", default=None)
         super(BestPracticeReportController, self)._setup(app)
 
     @controller.expose(help="Make best practice reports")
@@ -133,7 +135,15 @@ class BestPracticeReportController(AbstractBaseController):
         if not len(flist) > 0:
             self.log.info("No samples/sample configuration files found")
             return
-        kw.update(flist=flist, basedir=basedir)
+        if self.app.pargs.no_statusdb:
+            sample_name_map = None
+        else:
+            if not self._check_pargs(["statusdb_project_name"]):
+                return
+            p_con = ProjectSummaryConnection(dbname=self.app.config.get("db", "projects"), **vars(self.app.pargs))
+            s_con = SampleRunMetricsConnection(dbname=self.app.config.get("db", "samples"), **vars(self.app.pargs))
+            sample_name_map = get_scilife_to_customer_name(self.pargs.statusdb_project_name, p_con, s_con)
+        kw.update(flist=flist, basedir=basedir, sample_name_map=sample_name_map)
         out_data = best_practice_note(**kw)
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
