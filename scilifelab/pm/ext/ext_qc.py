@@ -34,7 +34,8 @@ class RunMetricsController(AbstractBaseController):
             (['--sample'], dict(help="Sample id", default=None, action="store", type=str)),
             (['--mtime'], dict(help="Last modification time of directory (days): skip if older. Defaults to 1 day.", default=1, action="store", type=int)),
             (['--sample_prj'], dict(help="Sample project name, as in 'J.Doe_00_01'", default=None, action="store", type=str)),
-            (['--project_id'], dict(help="Project identifier, as in 'J.Doe_00_01'", default=None, action="store", type=str)),
+            (['--project_name'], dict(help="Project name, as in 'J.Doe_00_01'", default=None, action="store", type=str)),
+            (['--project_id'], dict(help="Project id, as in 'P001'", default=None, action="store", type=str)),
             (['--names'], dict(help="Sample name mapping from barcode name to project name as a JSON string, as in \"{'sample_run_name':'project_run_name'}\". Mapping can also be given in a file", default=None, action="store", type=str)),
             (['--extensive_matching'], dict(help="Perform extensive barcode to project sample name matcing", default=False, action="store_true")),
             (['--project_alias'], dict(help="True project name as defined in project summary, as in 'J.Doe_00_01'.", default=None, action="store", type=str)),
@@ -93,11 +94,11 @@ class RunMetricsController(AbstractBaseController):
         else:
             self.app.log.info("Trying to use extensive matching...")
             p_con = ProjectSummaryConnection(dbname=self.app.config.get("db", "projects"), **vars(self.app.pargs))
-            project_id = self.pargs.sample_prj
+            project_name = self.pargs.sample_prj
             if self.pargs.project_alias:
-                project_id = self.pargs.project_alias
+                project_name = self.pargs.project_alias
             for s in samples:
-                project_sample = p_con.get_project_sample(project_id, s["barcode_name"], extensive_matching=True)
+                project_sample = p_con.get_project_sample(project_name, s["barcode_name"], extensive_matching=True)
                 if project_sample:
                     self.app.log.info("using mapping '{} : {}'...".format(s["barcode_name"], project_sample["sample_name"]))
                     s["project_sample_name"] = project_sample["sample_name"]
@@ -131,7 +132,7 @@ class RunMetricsController(AbstractBaseController):
         else:
             for sample in runinfo[1:]:
                 d = dict(zip(runinfo[0], sample))
-                if self.app.pargs.project_id and self.app.pargs.project_id != d['SampleProject']:
+                if self.app.pargs.project_name and self.app.pargs.project_name != d['SampleProject']:
                     continue
                 if self.app.pargs.sample and self.app.pargs.sample != d['SampleID']:
                     continue
@@ -429,12 +430,11 @@ class RunMetricsController(AbstractBaseController):
         
         undetermined_indexes = defaultdict(list)
         undemux_data = fc_doc.get("undemultiplexed_barcodes",{})
-        
         for lane, barcodes in undemux_data.items():
             for key, data in barcodes.items():
                 if key != "undemultiplexed_barcodes":
                     continue
-                for i in range(len(data["count"])):
+                for i in range(len(data.get("count",[]))):
                     undetermined_indexes[lane].append([data["count"][i],
                                                        data["sequence"][i],
                                                        data["index_name"][i]])
@@ -559,7 +559,7 @@ class RunMetricsController(AbstractBaseController):
             pdoc = p_con.get_entry(project)
             if pdoc is None:
                 self.log.warn("No project data document for project {}".format(project))
-                continue
+                pdoc = {}
         
             application = pdoc.get("application","N/A")
             out_data.append([project,application])
