@@ -11,6 +11,7 @@ from test_default import PmTest
 from scilifelab.pm.core.deliver import *
 from scilifelab.db.statusdb import SampleRunMetricsConnection, SampleRunMetricsDocument
 
+
 from ..classes import has_couchdb_installation
 
 filedir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
@@ -80,7 +81,7 @@ class PmProductionTest(PmTest):
 
     # Will currently fail since no PhiX in document
     def test_sample_status(self):
-        self.app = self.make_app(argv = ['report', 'sample-status', self.examples["project"], self.examples["flowcell"], '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['report', 'sample-status', self.examples["project"], self.examples["flowcell"], '--phix', '0.1', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
@@ -99,7 +100,7 @@ class PmProductionTest(PmTest):
         
     def test_sample_status_custom(self):
         """Test sample status note generation with command line customizations"""
-        self.app = self.make_app(argv = ['report', 'sample_status', self.examples["project"], self.examples["flowcell"], '--debug', '--customer_reference', 'MyCustomerReference', '--uppnex_id', 'MyUppnexID', '--ordered_million_reads', '10'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['report', 'sample_status', self.examples["project"], self.examples["flowcell"], '--debug', '--customer_reference', 'MyCustomerReference', '--uppnex_id', 'MyUppnexID', '--ordered_million_reads', '10', '--phix', '0.1'],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
@@ -150,7 +151,7 @@ class PmProductionTest(PmTest):
         self.assertEqual(s_param_map['P001_102_index6']['rounded_read_count'], 0.02)
         self.assertEqual(s_param_map['P001_101_index3']['success'], 'Successful run.')
         self.assertEqual(s_param_map['P001_102_index6']['success'], 'The yield may be lower than expected.')
-
+        
     def test_sample_aliases(self):
         """Test setting sample aliases to different values for different samples"""
         self.app = self.make_app(argv = ['report', 'project_status', 'J.Doe_00_03', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
@@ -178,7 +179,7 @@ class PmProductionTest(PmTest):
         self.assertEqual(len(data['table']), 5)
         self.assertEqual(set(['AGTTGA', 'TGACCA', 'ACAGTG', 'N/A']), set(barcodes))
         
-        self.app = self.make_app(argv = ['report', 'project_status', 'J.Doe_00_01', '--project_alias', '["j-doe_00_01"]', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['report', 'project_status', 'J.Doe_00_01', '--project_alias', '["j-doe_00_01"]', '--phix', '0.1', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
@@ -186,17 +187,17 @@ class PmProductionTest(PmTest):
         self.assertEqual(len(data['table']), 6)
         self.assertIn("CGAACG", barcodes)
 
-        self.app = self.make_app(argv = ['report', 'sample-status', 'J.Doe_00_02', 'AC003CCCXX', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['report', 'sample-status', 'J.Doe_00_02', 'AC003CCCXX', '--phix', '0.1','--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        handler.register(DeliveryReportController)
+        self._run_app()
+        data = ast.literal_eval(self.app._output_data['debug'].getvalue())
+        self.assertEqual(len(data['sample_runs'].keys()), 1)
+        self.assertNotIn("3_120924_AC003CCCXX_GGAAGG", data['sample_runs'].keys())
+
+        self.app = self.make_app(argv = ['report', 'sample-status', 'J.Doe_00_02', 'AC003CCCXX', '--project_alias', '["j-doe_00_02"]', '--phix', '0.1', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
         self.assertEqual(len(data['sample_runs'].keys()), 2)
-        self.assertNotIn("3_120924_AC003CCCXX_GGAAGG", data['sample_runs'].keys())
-
-        self.app = self.make_app(argv = ['report', 'sample-status', 'J.Doe_00_02', 'AC003CCCXX', '--project_alias', '["j-doe_00_02"]', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
-        handler.register(DeliveryReportController)
-        self._run_app()
-        data = ast.literal_eval(self.app._output_data['debug'].getvalue())
-        self.assertEqual(len(data['sample_runs'].keys()), 3)
         self.assertIn("3_120924_AC003CCCXX_GGAAGG", data['sample_runs'].keys())
 

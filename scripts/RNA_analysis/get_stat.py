@@ -1,18 +1,29 @@
 import sys
+from bcbio.pipeline.config_loader import load_config
+
 
 if len(sys.argv) < 3:        
 	print """
 Usage:
 
-get_stat.py  <sample name> <mail>
+get_stat.py  <sample_name> <mail> [config]
 
-        <sample name>           This name: /tophat_out_<sample name>
-        <mail>                  eg: maya.brandi@scilifelab.se
+        sample_name		This name: /tophat_out_<sample name>
+        mail                  	eg: maya.brandi@scilifelab.se
+	config            	config file		
         """
         sys.exit()
 
-name	= sys.argv[1]
-mail	= sys.argv[2]
+name	  = sys.argv[1]
+mail	  = sys.argv[2]
+
+
+try:
+        config    = load_config(sys.argv[3])
+        extra_arg = "#SBATCH "+config['sbatch']['extra_arg']
+except:
+	extra_arg = ""
+	pass
 
 f=open(name+"_get_stat.sh",'w')
 print >>f, """#! /bin/bash -l
@@ -25,6 +36,7 @@ print >>f, """#! /bin/bash -l
 #SBATCH -e get_stat"""+ name + """.err
 #SBATCH --mail-user """+ mail +"""
 #SBATCH --mail-type=ALL
+""" + extra_arg + """
 
 module add bioinfo-tools
 module load samtools

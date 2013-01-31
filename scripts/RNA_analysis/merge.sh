@@ -114,7 +114,7 @@ else
                                 counts_1=(`grep 'reads have been filtered out' $path/${flowcells[$i]}/$samp_dir/logs/prep_reads.log|cut -f 1,4 -d ' '`)
                                 counts=$((${counts_0[1]}+${counts_1[1]}))
                                 sorted=$((${counts_0[0]}+${counts_1[0]}))
-                                sed -e "s/${counts_0[1]}/$counts/g" $path/merged/$samp_dir/logs/prep_reads.log|sed -e "s/${counts_0[0]}/$sorted/g" > $path/merged/$samp_dir/logs/temp_prep_reads.log
+                                sed -e "s/\b${counts_0[1]}\b/$counts/g" $path/merged/$samp_dir/logs/prep_reads.log|sed -e "s/\b${counts_0[0]}\b/$sorted/g" > $path/merged/$samp_dir/logs/temp_prep_reads.log
                                 mv $path/merged/$samp_dir/logs/temp_prep_reads.log $path/merged/$samp_dir/logs/prep_reads.log
                 	else if [ -e ${flowcells[i]}/$samp_dir ];then
                         	## copy reads and counts

@@ -16,6 +16,44 @@ import scilifelab.log
 
 LOG = scilifelab.log.minimal_logger(__name__)
 
+# Instrument configurations for insertion into report
+instrument = {
+    'SN1025': {
+        'instrument_alias':'Smeagol',
+        'instrument' : 'HiSeq 2000',
+        },
+    'sN188': {
+        'instrument_alias':'Eowyn',# ?
+        'instrument' : 'HiSeq 2000',
+        },
+    'SN7001298': {
+        'instrument_alias':'Deagol',
+        'instrument' : 'HiSeq 2000',
+        },
+    'SN7001301': {
+        'instrument_alias':'Eomer',
+        'instrument' : 'HiSeq 2500',
+        },
+    'SN7001301': {
+        'instrument_alias':'Aragorn',
+        'instrument' : 'HiSeq 2500',
+        },
+    'default': {
+        'instrument_alias':'',
+        'instrument' : 'NN',
+        },
+    'M00275' : {
+        'instrument_alias':'Gloin',
+        'instrument' : 'MiSeq 2500',
+        }
+    }
+# Software versions used in data production. Instrument specific?
+software_versions = {
+    'baseconversion_version' : 'OLB v1.9',
+    'casava_version' : 'CASAVA v1.8'
+    }
+
+
 # http://stackoverflow.com/questions/3154460/python-human-readable-large-numbers
 def _round_read_count_in_millions(n):
     """Round absolute read counts to million reads"""
@@ -25,7 +63,7 @@ def _round_read_count_in_millions(n):
     if n == 0:
         return 0
     round_factor = [2,2,1]
-    millidx = max(0, min(len(round_factor) - 1, int(math.floor(math.log10(abs(n))/3.0))))
+    millidx = max(0, min(len(round_factor) - 1, int(math.floor(math.log10(abs(int(n)))/3.0))))
     return round(float(n)/10**(6),round_factor[millidx])
 
 def _get_ordered_million_reads(sample_name, ordered_million_reads):
@@ -224,6 +262,13 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         s_param.update(parameters)
         s_param.update({key:s[srm_to_parameter[key]] for key in srm_to_parameter.keys()})
         fc = "{}_{}".format(s.get("date"), s.get("flowcell"))
+        # Get instrument
+        try:
+            s_param.update(instrument['fc_con.get_instrument(str(fc))'])
+        except:
+            LOG.warn("Failed to set instrument and software versions for flowcell {}".format(fc))
+            s_param.update(instrument['default'])
+        s_param.update(software_versions)
         s_param["phix_error_rate"] = phix if phix else fc_con.get_phix_error_rate(str(fc), s["lane"])
         s_param['avg_quality_score'] = calc_avg_qv(s)
         if not s_param['avg_quality_score']:
