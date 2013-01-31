@@ -517,7 +517,7 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
                 LOG.info("No library prep information for sample {}; keeping in report".format(v['sample']))
             else:
                 if k not in last_library_preps_srm:
-                    LOG.info("Sample run {} is not latest library prep ({}) for project sample {}: excluding from report".format(k, last_library_preps[v['sample']].values()[0], v['sample']))
+                    LOG.info("Sample run {} ('{}') is not latest library prep ({}) for project sample {}: excluding from report".format(k, v["id"], last_library_preps[v['sample']].values()[0], v['sample']))
                     continue
         else:
             pass

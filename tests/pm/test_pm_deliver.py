@@ -159,7 +159,6 @@ class PmProductionTest(PmTest):
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
-        print data
         # # This should fail since P003_101_index6 != 3_index6
         # self.assertEqual(len(data['table']), 2)
 
@@ -172,7 +171,7 @@ class PmProductionTest(PmTest):
         
     def test_project_alias(self):
         """Test setting project alias"""
-        self.app = self.make_app(argv = ['report', 'project_status', 'J.Doe_00_01', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['report', 'project_status', 'J.Doe_00_01', '--include_all_samples', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
@@ -180,7 +179,7 @@ class PmProductionTest(PmTest):
         self.assertEqual(len(data['table']), 5)
         self.assertEqual(set(['AGTTGA', 'TGACCA', 'ACAGTG', 'N/A']), set(barcodes))
         
-        self.app = self.make_app(argv = ['report', 'project_status', 'J.Doe_00_01', '--project_alias', '["j-doe_00_01"]', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['report', 'project_status', 'J.Doe_00_01', '--include_all_samples', '--project_alias', '["j-doe_00_01"]', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
