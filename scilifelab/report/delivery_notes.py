@@ -250,6 +250,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
     # Set options
     ordered_million_reads = _literal_eval_option(ordered_million_reads)
     bc_count = _literal_eval_option(bc_count)
+    phix = _literal_eval_option(phix)
 
     # Count number of times a sample has been run on a flowcell; if several, make lane-specific reports
     sample_count = Counter([x.get("barcode_name") for x in sample_run_list])
@@ -269,7 +270,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
             LOG.warn("Failed to set instrument and software versions for flowcell {}".format(fc))
             s_param.update(instrument['default'])
         s_param.update(software_versions)
-        s_param["phix_error_rate"] = phix if phix else fc_con.get_phix_error_rate(str(fc), s["lane"])
+        s_param["phix_error_rate"] = phix.get(s["lane"], -1.0) if phix else fc_con.get_phix_error_rate(str(fc), s["lane"])
         s_param['avg_quality_score'] = calc_avg_qv(s)
         if not s_param['avg_quality_score']:
             LOG.warn("Calculation of average quality failed for sample {}, id {}".format(s.get("name"), s.get("_id")))
