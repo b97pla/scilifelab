@@ -20,9 +20,10 @@ VIEWS = {'samples' : {'names': {'name' : '''function(doc) {if (!doc["name"].matc
                                 }},
          'flowcells' : {'names' : {'name' : '''function(doc) {emit(doc["name"], null);}''',
                                    'id_to_name' : '''function(doc) {emit(doc["_id"], doc["name"]);}'''}},
-         'projects' : {'project' : {'project_id' : '''function(doc) {emit(doc.project_id, doc._id)}'''},
-                       'names' : {'id_to_name' : '''function(doc) {emit(doc["_id"], doc["project_id"]);}''',
-                                  'name' : '''function(doc) {emit(doc["project_id"], null);}'''}},
+         'projects' : {'project' : {'project_id' : '''function(doc) {emit(doc.project_id, doc._id)}''',
+                                    'project_name' : '''function(doc) {emit(doc.project_name, doc._id)}'''},
+                       'names' : {'id_to_name' : '''function(doc) {emit(doc["_id"], doc["project_name"]);}''',
+                                  'name' : '''function(doc) {emit(doc["project_name"], null);}'''}},
          }
 
 # Regular expressions for general use
@@ -158,13 +159,13 @@ class ProjectSummaryDocument(StatusDocument):
     """project summary document"""
     _entity_type = "project_summary"
     _fields = ["application", "customer_reference", "min_m_reads_per_sample_ordered",
-               "no_of_samples", "project_id"]
+               "no_of_samples", "project_id", "project_name"]
     _dict_fields = ["samples"]
     def __init__(self, **kw):
         StatusDocument.__init__(self, **kw)
 
     def __repr__(self):
-        return "<{} {}>".format(self["entity_type"], self["project_id"])
+        return "<{} {}>".format(self["entity_type"], self["project_name"])
 
 class FlowcellRunMetricsDocument(StatusDocument):
     """Flowcell level class for holding qc data."""
@@ -409,16 +410,16 @@ class ProjectSummaryConnection(Couch):
     def __init__(self, dbname="projects", **kwargs):
         super(ProjectSummaryConnection, self).__init__(**kwargs)
         self.db = self.con[dbname]
-        self.name_view = {k.key:k.id for k in self.db.view("project/project_id", reduce=False)}
+        self.name_view = {k.key:k.id for k in self.db.view("project/project_name", reduce=False)}
 
     def set_db(self, dbname):
         """Make sure we don't change db from projects"""
         pass
 
-    def get_project_sample(self, project_id, barcode_name=None, extensive_matching=False):
+    def get_project_sample(self, project_name, barcode_name=None, extensive_matching=False):
         """Get project sample name for a SampleRunMetrics barcode_name.
         
-        :param project_id: the project id
+        :param project_id: the project name
         :param barcode_name: the barcode name of a sample run
         :param extensive_matching: do extensive matching of barcode names
 
@@ -426,20 +427,20 @@ class ProjectSummaryConnection(Couch):
         """
         if not barcode_name:
             return None
-        project = self.get_entry(project_id)
+        project = self.get_entry(project_name)
         if not project:
             return None
         project_samples = project.get('samples', None)
         return _match_barcode_name_to_project_sample(barcode_name, project_samples, extensive_matching)
 
-    def map_srm_to_name(self, project_id, include_all=True, **args):
+    def map_srm_to_name(self, project_name, include_all=True, **args):
         """Map sample run metrics names to project sample names for a
         project, possibly subset by flowcell id.
 
-        :param project_id: project id
+        :param project_name: project name
          :param **kw: keyword arguments to be passed to map_name_to_srm
         """
-        samples = self.map_name_to_srm(project_id, **args)
+        samples = self.map_name_to_srm(project_name, **args)
         srm_to_name = {}
         for k, v in samples.items():
             if not v:
@@ -457,16 +458,16 @@ class ProjectSummaryConnection(Couch):
         else:
             return v.get('sample_run_metrics', None)
 
-    def get_ordered_amount(self, project_id, rounded=True, dec=1):
+    def get_ordered_amount(self, project_name, rounded=True, dec=1):
         """Get (rounded) ordered amount of reads in millions. 
 
-        :param project_id: project id
+        :param project_name: project name
         :param rounded: <boolean>
         :param dec: <integer>, number of decimal places
 
         :returns: ordered amount of reads if present, None otherwise
         """
-        amount = self.get_entry(project_id, 'min_m_reads_per_sample_ordered')
+        amount = self.get_entry(project_name, 'min_m_reads_per_sample_ordered')
         self.log.debug("got amount {}".format(amount))
         if not amount:
             return None
