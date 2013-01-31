@@ -21,18 +21,23 @@ class TestIlluminaRun(unittest.TestCase):
         self.exp_fcdir = os.path.join(self.rootdir,td.generate_run_id(fc_barcode=self.exp_fcid))
         os.mkdir(self.exp_fcdir)
         
-        # Create a sequence read directory
-        self.exp_seqdir = os.path.join(self.exp_fcdir,"Unaligned")
-        os.mkdir(self.exp_seqdir)
+        # Create multiple sequence read directories
+        self.exp_seqdir = [os.path.join(self.exp_fcdir,"Unaligned"),
+                           os.path.join(self.exp_fcdir,"Unaligned_L6"),
+                           os.path.join(self.exp_fcdir,"Unaligned_L8")]
+        for d in self.exp_seqdir:
+            os.mkdir(d)
         
-        # Create a directory for undetermined indices reads
-        self.exp_unmatched_directory = os.path.join(self.exp_seqdir,"Undetermined_indices")
-        os.mkdir(self.exp_unmatched_directory)
-        
-        # Create a basecall stats directory
-        self.exp_basecall_stats = os.path.join(self.exp_seqdir,"Basecall_Stats_{}".format(self.exp_fcid))
-        os.mkdir(self.exp_basecall_stats)
-        
+        # Create directories for undetermined indices reads
+        self.exp_unmatched_directory = [os.path.join(d,"Undetermined_indices") for d in self.exp_seqdir[:-1]]
+        for d in self.exp_unmatched_directory:
+            os.mkdir(d)
+
+        # Create basecall stats directories
+        self.exp_basecall_stats = [os.path.join(d,"Basecall_Stats_{}".format(self.exp_fcid)) for d in self.exp_seqdir[1:]]
+        for d in self.exp_basecall_stats:
+            os.mkdir(d)
+            
         self.run = IlluminaRun(self.exp_fcdir)
         
     def tearDown(self):
@@ -146,13 +151,6 @@ class TestIlluminaRun(unittest.TestCase):
     def test_get_basecall_stats(self):
         """Get the basecall stats directory
         """
-        # Assert ambiguous matches raises exception
-        d = os.path.join(self.exp_seqdir,"Basecall_Stats_ABC123CXX")
-        os.mkdir(d)
-        with self.assertRaises(ValueError):
-            self.run.get_basecall_stats()
-        os.rmdir(d)
-        
         self.assertEqual(self.run.get_basecall_stats(), self.exp_basecall_stats,
                          "Did not get correct Basecall_Stats directory")
         
@@ -164,7 +162,7 @@ class TestIlluminaRun(unittest.TestCase):
         lanes = [1,3,5,7]
         readfiles = []
         for lane in lanes:
-            fdir = os.path.join(self.exp_unmatched_directory,"Sample_lane{:d}".format(lane))
+            fdir = os.path.join(self.exp_unmatched_directory[0],"Sample_lane{:d}".format(lane))
             readfiles.append([os.path.join(fdir,"lane{l:d}_Undetermined_L00{l:d}_R{r:d}_*.fastq.gz".format(l=lane, r=read)) for read in [1,2]])
             os.makedirs(fdir)
             for readfile in readfiles[-1]:

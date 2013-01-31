@@ -1,9 +1,6 @@
 """Reportlab module for generating pdf documents"""
-
-import sys
 import os
 from datetime import datetime
-
 from pyPdf import PdfFileWriter, PdfFileReader
 from collections import OrderedDict
 from mako.template import Template
@@ -12,10 +9,9 @@ from scilifelab.log import minimal_logger
 
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import cm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, Image
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter, inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Image
+from reportlab.lib.pagesizes import inch
 from reportlab.rl_config import defaultPageSize
 from reportlab.pdfbase.pdfmetrics import stringWidth
 
@@ -33,7 +29,6 @@ h2 = styles['Heading2']
 h3 = styles['Heading3']
 h4 = styles['Heading4']
 
-## FIXME: should mako templates go to data/templates?
 def sample_note_paragraphs():
     """Get paragraphs for sample notes."""
     paragraphs = OrderedDict()
@@ -54,14 +49,12 @@ def sample_note_paragraphs():
 Ordered amount: ${ordered_amount} million paired reads."""))
     
     paragraphs["Method"] = dict(style=h3,
-                                tpl = Template("""Clustered on cBot and sequenced on HiSeq 2000
-according to manufacturer's instructions. Base
-conversion using OLB v1.9, demultiplexed and
-converted to fastq using CASAVA v1.8. The quality scale
-is Sanger / phred33 / Illumina 1.8+."""))
-    
+                                tpl = Template("""Clustered on cBot
+and sequenced on ${instrument} according to manufacturer's
+instructions. Demultiplexing and conversion using ${casava_version}.
+The quality scale is Sanger / phred33 / Illumina 1.8+."""))
     paragraphs["Results"] = dict(style=h3,
-                                 tpl = Template("""${rounded_read_count} million reads in lane with PhiX
+                                 tpl = Template("""${rounded_read_count} million paired reads in lane with PhiX
 error rate ${phix_error_rate}%. Average quality score
 ${avg_quality_score}."""))
     
@@ -234,6 +227,7 @@ def make_example_project_note(outfile):
     "uppnex_project_id": "b2013444",
     "finished":None,
     }
+
     LOG.debug("Making example project note with parameters {}".format(kw))
     make_note(outfile, headers, paragraphs, **kw)
 
@@ -258,6 +252,9 @@ def make_example_sample_note(outfile):
         "phix_error_rate": "1",
         "avg_quality_score": "1",
         "success": "How should I know if it was successful or not?",
+        "instrument":"HiSeq 2000",
+        "baseconversion_version":"OLB v1.9",
+        "casava_version" : "CASAVA v1.8",
         }
 
     LOG.debug("Making example sample note with parameters {}".format(kw))

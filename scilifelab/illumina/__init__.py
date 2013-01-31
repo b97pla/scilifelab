@@ -67,7 +67,7 @@ class IlluminaRun():
         or, optionally, filtering by project
         """
         dirs = []
-        glob_pattern = os.path.join(self.get_sequence_dir(),"Project_*")
+        glob_pattern = os.path.join(self.get_sequence_dir_pattern(),"Project_*")
         for dir in glob.glob(glob_pattern):
             if project is not None:
                 pname = os.path.basename(dir).split("_",1)[1].replace('__','.')
@@ -77,15 +77,33 @@ class IlluminaRun():
         
         return dirs
 
+    def get_sequence_dir_pattern(self):
+        """Return the path pattern to the top directories containing the sequence reads
+        """
+        return os.path.join(self.base,"Unaligned*")
+    
     def get_sequence_dir(self):
-        """Return the path to the top directory containing the sequence reads
+        """Returns a list of the paths to the top directories containing the sequence reads
         """
-        return os.path.join(self.base,"Unaligned")
+        dirs = []
+        for dir in glob.glob(self.get_sequence_dir_pattern()):
+            if os.path.isdir(dir):
+                dirs.append(dir)
+        return dirs
         
-    def get_unmatched_dir(self):
-        """Returns the path to the folder containing undetermined index reads
+    def get_unmatched_dir_pattern(self):
+        """Returns the path pattern to the folder containing undetermined index reads
         """
-        return os.path.join(self.get_sequence_dir(),"Undetermined_indices")
+        return os.path.join(self.get_sequence_dir_pattern(),"Undetermined_indices")
+    
+    def get_unmatched_dir(self):
+        """Returns a list of the paths to the folders containing undetermined index reads
+        """
+        dirs = []
+        for dir in glob.glob(self.get_unmatched_dir_pattern()):
+            if os.path.isdir(dir):
+                dirs.append(dir)
+        return dirs
     
     def get_unmatched_reads(self, lanes=range(1,9)):
         """Return a list of fastq files with unmatched reads for each lane specified
@@ -93,7 +111,7 @@ class IlluminaRun():
         
         reads = []
         for lane in lanes:
-            fq_pattern = os.path.join(self.get_unmatched_dir(),"Sample_lane{:d}".format(lane),"lane{l:d}_Undetermined_L00{l:d}_R[12]_*.fastq.gz".format(l=lane))
+            fq_pattern = os.path.join(self.get_unmatched_dir_pattern(),"Sample_lane{:d}".format(lane),"lane{l:d}_Undetermined_L00{l:d}_R[12]_*.fastq.gz".format(l=lane))
             reads.append(glob.glob(fq_pattern))
         
         return reads
@@ -101,13 +119,8 @@ class IlluminaRun():
     def get_basecall_stats(self):
         """Return the path to the Basecall_stats_FCID directory
         """
-        basecall_stats_dir_pattern = os.path.join(self.get_sequence_dir(),"Basecall_Stats_*")
-        basecall_stats_dir = glob.glob(basecall_stats_dir_pattern)
-        if len(basecall_stats_dir) > 1:
-            raise ValueError("ambiguous Basecall_Stats directories: {}".format("; ".join(basecall_stats_dir)))
-        if len(basecall_stats_dir) == 1:
-            return basecall_stats_dir[0]
-        return None
+        basecall_stats_dir_pattern = os.path.join(self.get_sequence_dir_pattern(),"Basecall_Stats_*")
+        return glob.glob(basecall_stats_dir_pattern)
         
     def parse_directory(self):
         """Traverse a CASAVA 1.8+ generated directory structure and return a dictionary

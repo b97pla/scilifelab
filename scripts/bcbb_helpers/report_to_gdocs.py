@@ -6,6 +6,7 @@ import glob
 import yaml
 import sys
 import tempfile
+from collections import defaultdict
 
 from optparse import OptionParser
 from bcbio.pipeline.config_loader import load_config
@@ -65,7 +66,7 @@ def main(run_id, config_file, run_info_file=None, dryrun=False):
     metric_files = glob.glob(os.path.join(dirs["work"], "*_barcode", "*bc[_.]metrics")) + glob.glob(os.path.join(dirs["work"], "*bc[_.]metrics"))
     if len(metric_files) == 0:
         casava_report = _find_casava_report(dirs["flowcell"])
-        assert casava_report, \
+        assert len(casava_report) > 0, \
         "Could not locate CASAVA demultiplex report in {}, aborting..".format(dirs["flowcell"])
         metric_files = _casava_report_to_metrics(run_info_file, casava_report, dirs)
 
@@ -89,11 +90,8 @@ def _find_casava_report(fc_dir):
     
     fc_name, _ = fc.get_flowcell_info(fc_dir)
     
-    casava_report_glob = os.path.join(fc_dir,"Unaligned","Basecall_Stats_*{}".format(fc_name[1:]),"Demultiplex_Stats.htm")
-    files = glob.glob(casava_report_glob)
-    if len(files) == 1:
-        return files[0]
-    return None
+    casava_report_glob = os.path.join(fc_dir,"Unaligned*","Basecall_Stats_*{}".format(fc_name[1:]),"Demultiplex_Stats.htm")
+    return glob.glob(casava_report_glob)
     
 def _find_samplesheet(fc_dir):
     """Locate the samplesheet in the root directory
@@ -115,7 +113,17 @@ def _casava_report_to_metrics(run_info_file, casava_report, dirs):
     """
     
     metric_files = []
-    metrics = dmx._parse_demultiplex_stats_htm(casava_report)    
+    metrics = defaultdict(dict)
+    for report in casava_report:
+        for lane, data in dmx._parse_demultiplex_stats_htm(report).items():
+            for sequence, metric in data.items():
+                # Assert that we are not overwriting a previously parsed metric
+                assert not (lane in metrics and sequence in metrics[lane]), \
+                "Conflicting demultiplex metrics found for lane {} and index {}. " \
+                "This means that there are multiple demultiplex results for the same sample. " \
+                "Please review and rectify before proceeding!".format(lane,sequence)
+                metrics[lane][sequence] = metric
+                
     with open(run_info_file) as fh:
         info = yaml.load(fh)
 

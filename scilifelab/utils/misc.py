@@ -50,6 +50,26 @@ def query_yes_no(question, default="yes", force=False):
             sys.stdout.write("Please respond with 'yes' or 'no' "\
                                  "(or 'y' or 'n').\n")
 
+def query_ok(statement="", force=False):
+    """Prompt a statement requiring an interactive <enter> from the user.
+
+    :param statement: the displayed statement 
+    :param force: proceed without waiting for input
+
+    :returns: True
+    """
+    prompt = " [press <enter> to continue] "
+    while True:
+        sys.stdout.write(statement + prompt)
+        if not force:
+            ok = raw_input().lower()
+        else:
+            ok = ""
+        if ok == "":
+            return True
+        else:
+            sys.stdout.write("Please respond with <enter>")
+
 def walk(rootdir):
     """
     Perform a directory walk
@@ -158,3 +178,17 @@ def opt_to_dict(opts):
     opt_d = {k: True if v.startswith('-') else v
              for k,v in zip(args, args[1:]+["--"]) if k.startswith('-')}
     return opt_d
+
+def prune_option_list(opts, keys):
+    """Remove unwanted options from an option list.
+
+    :param opts: option list
+    :param keys: keys to remove
+    
+    :returns: a reduced option list
+    """
+    opt_d = opt_to_dict(opts)
+    for k in keys:
+        if k in opt_d:
+            del opt_d[k]
+    return [k for item in opt_d.iteritems() for k in item]

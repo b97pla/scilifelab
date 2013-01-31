@@ -42,7 +42,7 @@ from bcbio.google import bc_metrics
 from bcbio.solexa.flowcell import get_flowcell_info 
 import read_illumina_summary_xml as summ
 from bcbio.pipeline.config_loader import load_config
-from bcbio.scilifelab.google.project_metadata import ProjectMetaData
+from scilifelab.google.project_metadata import ProjectMetaData
 
 
 def fixProjName(pname):

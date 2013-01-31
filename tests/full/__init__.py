@@ -72,6 +72,157 @@ RUNINFO=Template("""<?xml version="1.0"?>
   </Run>
 </RunInfo>
 """)
+RUNPARAMETERS=Template("""<?xml version="1.0"?>
+<RunParameters xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Setup>
+    <ExperimentName>FCA</ExperimentName>
+    <ScanID>-999</ScanID>
+    <FCPosition>A</FCPosition>
+    <WorkFlowType>SINGLEINDEX</WorkFlowType>
+    <PairEndFC>false</PairEndFC>
+    <Read1>101</Read1>
+    <IndexRead1>7</IndexRead1>
+    <IndexRead2>0</IndexRead2>
+    <Read2>101</Read2>
+    <OutputFolder>Z:\</OutputFolder>
+    <PeriodicSave>Save All Thumbnails</PeriodicSave>
+    <Flowcell>HiSeq Flow Cell v3</Flowcell>
+    <FirstBaseConfirmation>true</FirstBaseConfirmation>
+    <ControlLane>0</ControlLane>
+    <KeepIntensityFiles>false</KeepIntensityFiles>
+    <Sbs>TruSeq SBS Kit v3</Sbs>
+    <Pe>TruSeq PE Cluster Kit v3 - cBot - HS</Pe>
+    <Index>TruSeq Multiplex Sequencing Primer Box</Index>
+    <AlignToPhiX>
+      <Lane>1</Lane>
+      <Lane>2</Lane>
+      <Lane>3</Lane>
+      <Lane>4</Lane>
+      <Lane>5</Lane>
+      <Lane>6</Lane>
+      <Lane>7</Lane>
+      <Lane>8</Lane>
+    </AlignToPhiX>
+    <CycleWaitDefinitions />
+    <ApplicationName>HiSeq Control Software</ApplicationName>
+    <ApplicationVersion>1.5.15.1</ApplicationVersion>
+    <RunID>${flowcell}</RunID>
+    <RunStartDate>${date}</RunStartDate>
+    <ScannerID>${instrument}</ScannerID>
+    <ScanNumber>107</ScanNumber>
+    <ComputerName>HWI-ST1025</ComputerName>
+    <FPGAVersion>3.2.06</FPGAVersion>
+    <CPLDVersion>3.0.14</CPLDVersion>
+    <RTAVersion>1.13.48</RTAVersion>
+    <ChemistryVersion>Illumina,Bruno Fluidics Controller,0,v2.0340</ChemistryVersion>
+    <CameraFirmware>3.00-F22</CameraFirmware>
+    <CameraDriver>5.57.4.3277</CameraDriver>
+    <FocusCameraFirmware />
+    <Barcode>${fc_id}</Barcode>
+    <Username>SBSUser</Username>
+    <SelectedSections>
+      <Section Name="A_1" />
+      <Section Name="B_1" />
+      <Section Name="C_1" />
+      <Section Name="D_1" />
+      <Section Name="E_1" />
+      <Section Name="F_1" />
+      <Section Name="G_1" />
+      <Section Name="H_1" />
+    </SelectedSections>
+    <FocusMethod>DynamicITF</FocusMethod>
+    <SelectedSurface>BothLaneSurfaces</SelectedSurface>
+    <SwathScanMode>AutoSwath</SwathScanMode>
+    <EnableLft>true</EnableLft>
+    <AutoTiltOnce>true</AutoTiltOnce>
+    <EnableAutoCenter>true</EnableAutoCenter>
+    <EnableAnalysis>true</EnableAnalysis>
+    <EnableBasecalling>true</EnableBasecalling>
+    <EnableCameraLogging>false</EnableCameraLogging>
+    <AdapterPlate>HiSeq Adapter Plate</AdapterPlate>
+    <SlideHolder>HiSeq Flow Cell Holder</SlideHolder>
+    <TemplateCycleCount>4</TemplateCycleCount>
+    <NumAnalysisThreads>8</NumAnalysisThreads>
+    <FPGADynamicFocusSettings>
+      <MaxInitialZJumpHalfUm>3</MaxInitialZJumpHalfUm>
+      <MaxSubsequentZJumpHalfUm>7</MaxSubsequentZJumpHalfUm>
+      <NumberOfInitialZJumps>0</NumberOfInitialZJumps>
+      <CVGainStart>500</CVGainStart>
+      <CVGainPosLocked>500</CVGainPosLocked>
+      <Offset>250</Offset>
+      <HotPixel>350</HotPixel>
+      <MotorDelayFrames>25</MotorDelayFrames>
+      <DitherSize>100</DitherSize>
+      <IntensityCeiling>65535</IntensityCeiling>
+      <IGain>100</IGain>
+      <IHistory>4</IHistory>
+    </FPGADynamicFocusSettings>
+    <TileWidth>2048</TileWidth>
+    <TileHeight>10000</TileHeight>
+    <ImageWidth>2048</ImageWidth>
+    <ImageHeight>160000</ImageHeight>
+    <LaneLength>60</LaneLength>
+    <NumTilesPerSwath>16</NumTilesPerSwath>
+    <NumSwaths>3</NumSwaths>
+    <UseExistingRecipe>false</UseExistingRecipe>
+    <Reads>
+      <Read Number="1" NumCycles="101" IsIndexedRead="N" />
+      <Read Number="2" NumCycles="7" IsIndexedRead="Y" />
+      <Read Number="3" NumCycles="101" IsIndexedRead="N" />
+    </Reads>
+    <EnableNotifications>false</EnableNotifications>
+    <ReagentKits>
+      <Sbs>
+        <SbsReagentKit>
+          <ID>X</ID>
+          <Prime>false</Prime>
+          <NumberCyclesRemaining>101</NumberCyclesRemaining>
+          <IsNew50Cycle>false</IsNew50Cycle>
+          <IsNew200Cycle>true</IsNew200Cycle>
+        </SbsReagentKit>
+        <SbsReagentKit>
+          <ID>X</ID>
+          <Prime>false</Prime>
+          <NumberCyclesRemaining>209</NumberCyclesRemaining>
+          <IsNew50Cycle>false</IsNew50Cycle>
+          <IsNew200Cycle>true</IsNew200Cycle>
+        </SbsReagentKit>
+        <SbsReagentKit>
+          <ID>x</ID>
+          <Prime>false</Prime>
+          <NumberCyclesRemaining>209</NumberCyclesRemaining>
+          <IsNew50Cycle>false</IsNew50Cycle>
+          <IsNew200Cycle>true</IsNew200Cycle>
+        </SbsReagentKit>
+      </Sbs>
+      <Index>
+        <ReagentKit>
+          <ID>X</ID>
+        </ReagentKit>
+        <ReagentKit>
+          <ID>X</ID>
+        </ReagentKit>
+        <ReagentKit>
+          <ID>x</ID>
+        </ReagentKit>
+      </Index>
+      <Pe>
+        <ReagentKit>
+          <ID>X</ID>
+        </ReagentKit>
+      </Pe>
+    </ReagentKits>
+    <Resume>true</Resume>
+    <ResumeCycle>123</ResumeCycle>
+    <SupportMultipleSurfacesInUI>true</SupportMultipleSurfacesInUI>
+    <TempFolder>D:\Illumina\HiSeqTemp\${flowcell}</TempFolder>
+    <RecipeFragmentVersion>1.3.26</RecipeFragmentVersion>
+    <PromptForPeReagents>true</PromptForPeReagents>
+    <MockRun>false</MockRun>
+  </Setup>
+  <Version>1</Version>
+</RunParameters>
+""")
 
 ## Genome metadata
 genomes = {'hg19':{'species':'Hsapiens', 'label':'Human (hg19)'},
@@ -298,7 +449,10 @@ def _make_casava_archive_files(fc, ssname, prefix, startiter = 1, nseqout=1000):
     with open(os.path.join(fc_dir, "{}.csv".format(ssname)), "w") as fh:
         fh.write(SAMPLESHEETS[ssname])
     with open(os.path.join(fc_dir, "RunInfo.xml"), "w") as fh:
-        fh.write(RUNINFO.render(**{'flowcell':os.path.basename(fc), 'fc_id':fc_id(fc), 'date':fc_parts(fc)[0], 'instrument':split("_", fc)[1]}))
+        fh.write(RUNINFO.render(**{'flowcell':os.path.basename(fc), 'fc_id':fc_id(fc), 'date':fc_parts(fc)[0], 'instrument':fc.split("_")[1]}))
+    with open(os.path.join(fc_dir, "runParameters.xml"), "w") as fh:
+        fh.write(RUNPARAMETERS.render(**{'flowcell':os.path.basename(fc), 'fc_id':fc_id(fc), 'date':fc_parts(fc)[0], 'instrument':fc.split("_")[1]}))
+
     outf1 = []
     outf2 = []
     basecall_stats_dir = os.path.join(fc_dir, "Unaligned", "Basecall_Stats_{}".format(ssname))
@@ -358,9 +512,6 @@ def _write_sample_fastq(fh, outfiles, startiter=0, nseqout=1000):
         if i > totseqout:
             break
     [h.close() for h in outh]
-
-
-
 
 def _download_ucsc_genome_and_index(build="hg19", chr="chr11", start=0, end=2000000):
     """Download chromosome from ucsc, extract a given region and

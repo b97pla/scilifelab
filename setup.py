@@ -26,13 +26,16 @@ setup(name = "scilifelab",
         # packages and not in virtualenv
         #"pandas >= 0.9",
         "biopython",
+        "rst2pdf",
         #"psutil",
         ],
       test_suite = 'nose.collector',
       packages=find_packages(exclude=['tests']),
       package_data = {'scilifelab':[
-            'data/grf/*',
-            ]}
+          'data/grf/*',
+          'data/templates/*.mako',
+          'data/templates/rst/*',
+          ]}
       )
 
 os.system("git rev-parse --short --verify HEAD > ~/.scilifelab_version")
