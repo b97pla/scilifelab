@@ -42,7 +42,7 @@ fi
 
 WP=~/opt/scilifelab/scripts/RNA_analysis
 path=`pwd`
-while getopts ":p:b:g:m:c:" option; do
+while getopts ":p:b:g:m:c:e:" option; do
         case ${option} in
                 p) project_id=${OPTARG};;
                 b) bedfile=${OPTARG};;
@@ -57,7 +57,10 @@ run_dirs=''
 for dir in "$@"; do
         run_dirs=$run_dirs" "$dir
 done
+
 run_dirs=($run_dirs)
+
+
 ## get sample names
 name_list=`for dir in ${run_dirs[*]};do ls -d $dir/tophat_out_*|cut -f 2 -d '/'|sed 's/tophat_out_//g';done|sort|uniq`
 names=`echo $name_list|sed -e 's/ /,/g'`

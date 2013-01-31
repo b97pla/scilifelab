@@ -2,6 +2,7 @@
 import sys
 import os
 import optparse
+import glob
 import yaml
 import couchdb
 import bcbio.google
@@ -12,7 +13,7 @@ usage = """
 Generate sbatch files for running an mRNA-seq pipeline.
 Usage:
 
-generate_sbatch.py <directory of FASTQ files> <Bowtie index for reference genome> <gene/transcript annotation GTF file> <project ID>
+generate_sbatch.py <Flow cell ID, eg 121113_BD1HG4ACXX> <project ID> <Bowtie index for reference genome> <gene/transcript annotation GTF file> 
 The four first options are mandatory. There are further flags you can use:
 
 -c, --config: Provide config file (post_process.yaml)
@@ -22,6 +23,9 @@ The four first options are mandatory. There are further flags you can use:
 -f, --fai: Generate UCSC Genome Browser compatible BigWig tracks, using the specified FASTA index (fai) file
 -m, --mail: Specify a mailing address for SLURM
 -a, --alloc-time: Time to allocate in SLURM. Hours:minutes:seconds or days-hours:minutes:seconds
+-w, --fpath: Path to fastq files. If not given, the script assumes the standars structure of the analysis directory
+
+
 """
 
 if len(sys.argv) < 5:
@@ -40,7 +44,7 @@ def find_proj_from_view(proj_db, proj_id):
 def get_size(n,info):
 	preps = 'BCDE'
 	prep = ''
-	name = n.replace('-', '_').replace(' ', '').split("_index")[0].split("_ss")[0].strip()
+	name = n.replace('-', '_').replace(' ', '').split("_index")[0].split("_ss")[0].strip().strip('F')
         while name[-1] in preps:
         	prep = name[-1] + prep
                	name = name[0: -1]
@@ -61,7 +65,7 @@ CONFIG = cl.load_config(CONFIG_FILE)
 URL = CONFIG['couch_db']['maggie_url']
 couch = couchdb.Server("http://" + URL)
 proj_db = couch['projects']
-proj_ID = sys.argv[4]
+proj_ID = sys.argv[2]
 key=find_proj_from_view(proj_db, proj_ID)
 info=proj_db[key]
 
@@ -75,6 +79,7 @@ parser.add_option('-p', '--phred64', action="store_true", dest="phred64", defaul
 parser.add_option('-f', '--fai', action="store", dest="fai", default="", help="Provide FASTA index file for generating UCSC bigwig tracks")
 parser.add_option('-m', '--mail', action="store", dest="mail", default="mikael.huss@scilifelab.se", help="Specify a mailing address for SLURM mail notifications")
 parser.add_option('-a', '--alloc-time', action="store", dest="hours", default="40:00:00", help="Time to allocate in SLURM. Please specify as hours:minutes:seconds or days-hours:minutes:seconds")
+parser.add_option('-w', '--fpath', dest="fpath", default=False, help="Path to fastq files. If not given, the script assumes the standars structure of the analysis directory'")
 
 (opts, args) = parser.parse_args()
 
@@ -85,17 +90,22 @@ projtag = opts.projtag
 mail = opts.mail
 hours = opts.hours
 conffile = opts.conffile
+fpath = opts.fpath
 
 if not len ( hours.split(':') ) == 3: sys.exit("Please specify the time allocation string as hours:minutes:seconds or days-hours:minutes:seconds") 
 
 qscale = ''
 if phred64 == True: qscale = '--solexa1.3-quals'
+if not fpath:
+	fpath = str('../../data/' + sys.argv[1])
+flist = glob.glob(str(fpath + '/*'))
+print fpath
+test=flist[0].split('.')[-1]
+if not (test=='fastq')|(test=='gz'):
+	sys.exit('Something wrong with the path to the fastqfiles: '+ fpath)	
 
-fpath = sys.argv[1]
-refpath = sys.argv[2]
-annopath = sys.argv[3]
-
-flist = os.listdir(fpath)
+refpath = sys.argv[3]
+annopath = sys.argv[4]
 
 sample_names = []
 read1forsample = {}
@@ -109,13 +119,13 @@ except:
 for fname in flist:
     #if not os.path.splitext(fname)[1]==".fastq": continue
     read = fname.split("_")[-1]
-    tag = "_".join(fname.split("_")[3:-2])
+    tag = "_".join(fname.split("/")[-1].split("_")[3:-2])
     print fname.split("_")
     # 2_date_fcid_sample_1.fastq
     if not tag in sample_names: sample_names.append(tag)
-    if (read == "1.Q25.fastq") | (read == "1.fastq") | (read == "1.fastq.gz") | (read == "1.Q25.fastq.gz"): read1forsample[tag]=fname
-    if (read == "2.Q25.fastq") | (read == "2.fastq") | (read == "2.fastq.gz") | (read == "2.Q25.fastq.gz"): read2forsample[tag]=fname
-
+    if (read == "1.Q25.fastq") | (read == "1.fastq") | (read == "1.fastq.gz") | (read == "1.Q25.fastq.gz"): read1forsample[tag]=fname.split('/')[-1]
+    if (read == "2.Q25.fastq") | (read == "2.fastq") | (read == "2.fastq.gz") | (read == "2.Q25.fastq.gz"): read2forsample[tag]=fname.split('/')[-1]
+    print fname.split('/')[-1]
 print "Best guess for sample names: "
 for n in sorted(sample_names):
     print n
@@ -167,7 +177,7 @@ for n in sorted(sample_names):
     innerdist = int(size) - 101 - 101 - 121
     size=str(size)
     if not size.isdigit(): sys.exit(0)
-
+    print fpath
     oF.write("tophat -o tophat_out_" + n + " " + qscale + " -p 8 -r " + str(innerdist) + " " + refpath + " " + fpath + "/" + read1forsample[n] + " " + fpath + "/" + read2forsample[n] + "\n")
     # Samtools -> Picard
 
