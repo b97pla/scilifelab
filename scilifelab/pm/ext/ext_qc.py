@@ -429,12 +429,11 @@ class RunMetricsController(AbstractBaseController):
         
         undetermined_indexes = defaultdict(list)
         undemux_data = fc_doc.get("undemultiplexed_barcodes",{})
-        
         for lane, barcodes in undemux_data.items():
             for key, data in barcodes.items():
                 if key != "undemultiplexed_barcodes":
                     continue
-                for i in range(len(data["count"])):
+                for i in range(len(data.get("count",[]))):
                     undetermined_indexes[lane].append([data["count"][i],
                                                        data["sequence"][i],
                                                        data["index_name"][i]])
@@ -559,7 +558,7 @@ class RunMetricsController(AbstractBaseController):
             pdoc = p_con.get_entry(project)
             if pdoc is None:
                 self.log.warn("No project data document for project {}".format(project))
-                continue
+                pdoc = {}
         
             application = pdoc.get("application","N/A")
             out_data.append([project,application])
