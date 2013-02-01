@@ -529,7 +529,7 @@ class SampleRunMetricsParser(RunMetricsParser):
             demux_stats_dict = {l.get('Sample ID', None):l for l in demultiplex_stats.get('Barcode_lane_statistics', [])}
             if barcode_name in demux_stats_dict:
                 self.log.debug("sample found in demultiplex_stats - using this information")
-                return demux_stats_dict[barcode_name]["# Reads"].replace(",", "")
+                return demux_stats_dict[barcode_name]["# Reads"].replace(",", "")/2
         pattern = "{}_[0-9]+_[0-9A-Za-z]+(_nophix)?[\._]bc[\._]metrics".format(lane)
         files = self.filter_files(pattern)
         if len(files) == 0:

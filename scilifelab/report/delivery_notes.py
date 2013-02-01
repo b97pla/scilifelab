@@ -283,7 +283,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         try:
             s_param.update(instrument[fc_con.get_instrument(str(fc))])
         except:
-            LOG.warn("Failed to set instrument and software versions for flowcell {}".format(fc))
+            LOG.warn("Failed to set instrument and software versions for flowcell {} in report due to missing RunInfo -> Instrument field in statusdb. Either rerun 'pm qc update-qc' or search-and-replace 'NN' in the sample report.".format(fc))
             s_param.update(instrument['default'])
         s_param.update(software_versions)
         s_param["phix_error_rate"] = fc_con.get_phix_error_rate(str(fc), s["lane"])
