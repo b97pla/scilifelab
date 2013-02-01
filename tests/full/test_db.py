@@ -335,7 +335,7 @@ class TestMetricsParser(PmFullTest):
         fc_parser = FlowcellRunMetricsParser(self.fcdir)
         data = fc_parser.parse_demultiplex_stats_htm(**self.fc_kw)
         bc_count = parser.get_bc_count(demultiplex_stats=data, **self.sample_kw)
-        self.assertEqual(bc_count, str(39034396))
+        self.assertEqual(str(bc_count), str(19517198))
 
     def test_parseRunParameters(self):
         parser = FlowcellRunMetricsParser(self.fcdir)

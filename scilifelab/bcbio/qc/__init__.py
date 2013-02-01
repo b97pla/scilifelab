@@ -526,14 +526,15 @@ class SampleRunMetricsParser(RunMetricsParser):
         self.log.debug("get_bc_count for sample {}, project {} in flowcell {}".format(barcode_name, sample_prj, flowcell))
         # If demultiplex_stats passed use this info instead
         if demultiplex_stats:
-            demux_stats_dict = {l.get('Sample ID', None):l for l in demultiplex_stats.get('Barcode_lane_statistics', [])}
-            if barcode_name in demux_stats_dict:
-                self.log.debug("sample found in demultiplex_stats - using this information")
-                return int(demux_stats_dict[barcode_name]["# Reads"].replace(",", ""))/2
+            demux_stats_dict = {"{}_{}".format(l.get('Sample ID', None), l.get('Lane', None)):l for l in demultiplex_stats.get('Barcode_lane_statistics', [])}
+            sample_lane = "{}_{}".format(barcode_name, lane)
+            if sample_lane in demux_stats_dict:
+                self.log.debug("sample {}, lane {} found in demultiplex_stats - using this information".format(barcode_name, lane))
+                return int(demux_stats_dict[sample_lane]["# Reads"].replace(",", ""))/2
         pattern = "{}_[0-9]+_[0-9A-Za-z]+(_nophix)?[\._]bc[\._]metrics".format(lane)
         files = self.filter_files(pattern)
         if len(files) == 0:
-            self.log.debug("no bc metrics files for sample {}; pattern {}".format(barcode_name, pattern))
+            self.log.debug("no bc metrics files for sample {}, lane {}; pattern {}".format(barcode_name, lane, pattern))
             return None
         self.log.debug("files {}".format(",".join(files)))
         try:
