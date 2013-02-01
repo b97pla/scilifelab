@@ -17,6 +17,7 @@ SEQCAP_KITS={
     'agilent_v4':'Agilent SureSelect XT All Exon V4',
     'agilent_v5':'Agilent SureSelect Human All Exon V5',
     'agilent_v5_utr':'Agilent SureSelect Human All Exon V5 UTRs',
+    'custom':'Custom',
     }
 
 parameters = {
@@ -101,14 +102,14 @@ def best_practice_note(project_name=None, samples=None, capture_kit="agilent_v4"
         if sample_name_map:
             samples_df.CustomerName = [sample_name_map[s]['customer_name'] for s in samples_df.Sample]
         ttab = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[1:5]]))
-        ttab_target = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[6:9]]))
-        ttab_dbsnp = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[10:14]]))
+        ttab_target = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[5:9]]))
+        ttab_dbsnp = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[9:14]]))
         ttab_samples = _indent_texttable_for_rst(_dataframe_to_texttable(samples_df[["Sample", "CustomerName", "Sequence"]]))
         param.update({'project_summary':ttab, 'project_target_summary':ttab_target, 'project_dbsnp_summary':ttab_dbsnp, 'table_sample_summary':ttab_samples, 'capturekit':SEQCAP_KITS[capture_kit]})
+        param['project_name'] = project_name if project_name else kw.get("statusdb_project_name", None)
     # Add applications here
     else:
         pass
-
     # Generic rest call for all templates
     make_rest_note("{}_best_practice.rst".format(kw.get("project", None)), report="bp_seqcap", outdir=kw.get("basedir", os.curdir), **param)
     return output_data

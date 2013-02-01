@@ -136,7 +136,7 @@ class BestPracticeReportController(AbstractBaseController):
         if not len(flist) > 0:
             self.log.info("No samples/sample configuration files found")
             return
-        if self.app.pargs.no_statusdb:
+        if self.pargs.no_statusdb:
             sample_name_map = None
         else:
             if not self._check_pargs(["statusdb_project_name"]):
@@ -144,7 +144,7 @@ class BestPracticeReportController(AbstractBaseController):
             p_con = ProjectSummaryConnection(dbname=self.app.config.get("db", "projects"), **vars(self.app.pargs))
             s_con = SampleRunMetricsConnection(dbname=self.app.config.get("db", "samples"), **vars(self.app.pargs))
             sample_name_map = get_scilife_to_customer_name(self.pargs.statusdb_project_name, p_con, s_con)
-        kw.update(flist=flist, basedir=basedir, sample_name_map=sample_name_map)
+        kw.update(project_name=self.pargs.project, flist=flist, basedir=basedir, sample_name_map=sample_name_map)
         out_data = best_practice_note(**kw)
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
