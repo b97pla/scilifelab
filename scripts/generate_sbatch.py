@@ -35,7 +35,7 @@ if len(sys.argv) < 5:
 
 
 def find_proj_from_view(proj_db, proj_id):
-        view = proj_db.view('project/project_id')
+        view = proj_db.view('project/project_name')
         for proj in view:                
 		if proj.key == proj_id:
                 	return proj.value        
