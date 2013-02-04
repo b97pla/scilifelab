@@ -12,6 +12,9 @@ from scilifelab.bcbio.run import find_samples
 from scilifelab.report.delivery_notes import sample_status_note, project_status_note
 from scilifelab.report.best_practice import best_practice_note, SEQCAP_KITS
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, get_scilife_to_customer_name
+from scilifelab.utils.misc import query_yes_no, filtered_walk
+
+BCBIO_EXCLUDE_DIRS = ['realign-split', 'variants-split', 'tmp', 'tx', 'fastqc', 'fastq_screen', 'alignments', 'nophix']
 
 ## Main delivery controller
 class DeliveryController(AbstractBaseController):
@@ -28,15 +31,18 @@ class DeliveryController(AbstractBaseController):
             (['project'], dict(help="Project name, formatted as 'J.Doe_00_00'", default=None, nargs="?")),
             (['uppmax_project'], dict(help="Uppmax project.", default=None, nargs="?")),
             (['-i', '--interactive'], dict(help="Interactively select samples to be delivered", default=False, action="store_true")),
-            (['-a', '--deliver-all-fcs'], dict(help="rsync samples from all flow cells", default=False, action="store_true")),
+            (['-a', '--deliver_all_fcs'], dict(help="rsync samples from all flow cells", default=False, action="store_true")),
+            (['-S', '--sample'], dict(help="Project sample id. If sample is a file, read file and use sample names within it. Sample names can also be given as full paths to bcbb-config.yaml configuration file.", action="store", default=None, type=str)),
+            (['--no_bam'], dict(help="Don't include bam files in delivery", action="store", default=False)),
+            (['--no_vcf'], dict(help="Don't include vcf files in delivery", action="store", default=False)),
             ]
 
     def _setup(self, base_app):
-        super(AbstractBaseController, self)._setup(base_app)
-        group = base_app.args.add_argument_group('file transfer', 'Options affecting file transfer operations.')
+        super(DeliveryController, self)._setup(base_app)
+        group = base_app.args.add_argument_group('delivery', 'Options affecting data delivery.')
         group.add_argument('--move', help="Transfer file with move", default=False, action="store_true")
-        group.add_argument('--copy', help="Transfer file with copy (default)", default=True, action="store_true")
-        group.add_argument('--rsync', help="Transfer file with rsync", default=False, action="store_true")
+        group.add_argument('--copy', help="Transfer file with copy", default=False, action="store_true")
+        group.add_argument('--rsync', help="Transfer file with rsync (default)", default=True, action="store_true")
         group.add_argument('--intermediate', help="Work on intermediate data", default=False, action="store_true")
         group.add_argument('--data', help="Work on data folder", default=False, action="store_true")
 
@@ -62,24 +68,51 @@ class DeliveryController(AbstractBaseController):
                     self._meta.path_id = os.path.join(self._meta.path_id, "data")
         # Setup transfer options
         if self.pargs.move:
-            self.pargs.copy = False
-        elif self.pargs.rsync:
-            self.pargs.copy = False
-
+            self.pargs.rsync = False
+        elif self.pargs.copy:
+            self.pargs.rsync = False
         super(DeliveryController, self)._process_args()
 
     @controller.expose(hide=True)
     def default(self):
         print self._help_text
 
-
     @controller.expose(help="Deliver best practice results")
     def best_practice(self):
         if not self._check_pargs(["project", "uppmax_project"]):
             return
-        return
+        outpath = os.path.normpath(os.path.abspath(self.pargs.uppmax_project))
+        if not os.path.exists(outpath):
+            self.app.cmd.safe_makedir(outpath)
+        kw = vars(self.pargs)
+        basedir = os.path.abspath(os.path.join(self._meta.root_path, self._meta.path_id))
+        flist = find_samples(basedir, **vars(self.pargs))
+        if not len(flist) > 0:
+            self.log.info("No samples/sample configuration files found")
+            return
+        def filter_fn(f):
+            if not pattern:
+                return
+            return re.search(pattern, f) != None
+        # Setup pattern
+        plist = [".*.yaml$", ".*.metrics$"]
+        if not self.pargs.no_bam:
+            plist.append(".*.bam$")
+        if not self.pargs.no_vcf:
+            plist.append(".*.vcf$")
+        pattern = "|".join(plist)
+        for f in flist:
+            path = os.path.dirname(f)
+            sources = filtered_walk(path, filter_fn=filter_fn, exclude_dirs=BCBIO_EXCLUDE_DIRS)
+            targets = [src.replace(basedir, outpath) for src in sources]
+            self._transfer_files(sources, targets)
 
-        
+    def _transfer_files(self, sources, targets):
+        for src, tgt in zip(sources, targets):
+            if not os.path.exists(os.path.dirname(tgt)):
+                self.app.cmd.safe_makedir(os.path.dirname(tgt))
+            self.app.cmd.transfer_file(src, tgt)
+            
 ## Main delivery controller
 class DeliveryReportController(AbstractBaseController):
     """
