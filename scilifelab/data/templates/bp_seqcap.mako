@@ -17,9 +17,9 @@ Project summary
 ---------------
 
 The ${capturekit} target enrichment kit was used to prepare and
-sequence DNA enriched for exon sequence. Sequence data was mapped to a
-reference, and variants were called using a publically available
-software pipeline. 
+sequence target-enriched DNA. Sequence data was mapped to a reference,
+and variants were called using a publically available software
+pipeline.
 
 The results are summarized in the following sections. Table 1 lists
 the samples included in the analysis, whereas table 2 shows a brief

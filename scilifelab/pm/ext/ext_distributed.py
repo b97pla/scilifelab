@@ -297,6 +297,8 @@ def run_batch_command(app):
 
     :param app: The application object.
     """
+    if not app.pargs.batch:
+        return
     command = ";\n".join(app.cmd._meta.batch_command)
     app.pargs.batch = False
     app.cmd.command([command], **{'platform_args':{}, 'saveJobId':True, 'workingDirectory':os.curdir})
