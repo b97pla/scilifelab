@@ -186,15 +186,6 @@ class AbstractExtendedBaseController(AbstractBaseController):
     def default(self):
         print self._help_text
 
-    ## du
-    @controller.expose(help="Calculate disk usage")
-    def du(self):
-        if not self._check_pargs(["project"]):
-            return
-        out = self.app.cmd.command(["du", "-hs", "{}".format(os.path.join(self._meta.root_path, self._meta.path_id))])
-        if out:
-            self.app._output_data["stdout"].write(out.rstrip())
-
     ## clean
     @controller.expose(help="Remove files")
     def clean(self):

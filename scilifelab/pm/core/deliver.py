@@ -4,7 +4,7 @@ import re
 import shutil
 import itertools
 from cement.core import controller
-from scilifelab.pm.core.controller import AbstractBaseController
+from scilifelab.pm.core.controller import AbstractBaseController, AbstractExtendedBaseController
 from scilifelab.report import sequencing_success
 from scilifelab.report.rl import *
 from scilifelab.report.qc import application_qc, fastq_screen, QC_CUTOFF
@@ -21,19 +21,65 @@ class DeliveryController(AbstractBaseController):
     class Meta:
         label = 'deliver'
         description = 'Deliver data'
+        root_path = None
+        path_id = None
+        project_root = None
         arguments = [
             (['project'], dict(help="Project name, formatted as 'J.Doe_00_00'", default=None, nargs="?")),
-            (['flowcell'], dict(help="Flowcell id, formatted as AA000AAXX (i.e. without date, machine name, and run number).", default=None, nargs="?")),
             (['uppmax_project'], dict(help="Uppmax project.", default=None, nargs="?")),
             (['-i', '--interactive'], dict(help="Interactively select samples to be delivered", default=False, action="store_true")),
             (['-a', '--deliver-all-fcs'], dict(help="rsync samples from all flow cells", default=False, action="store_true")),
             ]
 
+    def _setup(self, base_app):
+        super(AbstractBaseController, self)._setup(base_app)
+        group = base_app.args.add_argument_group('file transfer', 'Options affecting file transfer operations.')
+        group.add_argument('--move', help="Transfer file with move", default=False, action="store_true")
+        group.add_argument('--copy', help="Transfer file with copy (default)", default=True, action="store_true")
+        group.add_argument('--rsync', help="Transfer file with rsync", default=False, action="store_true")
+        group.add_argument('--intermediate', help="Work on intermediate data", default=False, action="store_true")
+        group.add_argument('--data', help="Work on data folder", default=False, action="store_true")
+
+    def _process_args(self):
+        # NB: duplicate of project.ProjectController._process_args
+        # setup project search space
+        self._meta.project_root = self.app.config.get("project", "root")
+        # Set root path for parent class
+        self._meta.root_path = self._meta.project_root
+        assert os.path.exists(self._meta.project_root), "No such directory {}; check your project config".format(self._meta.project_root)
+        if self.pargs.project:
+            self._meta.path_id = self.pargs.project
+            # Add intermediate or data
+            if self.app.pargs.intermediate:
+                if os.path.exists(os.path.join(self._meta.project_root, self._meta.path_id, "nobackup")):
+                    self._meta.path_id = os.path.join(self._meta.path_id, "nobackup", "intermediate")
+                else:
+                    self._meta.path_id = os.path.join(self._meta.path_id, "intermediate")
+            if self.app.pargs.data and not self.app.pargs.intermediate:
+                if os.path.exists(os.path.join(self._meta.project_root, self._meta.path_id, "nobackup")):
+                    self._meta.path_id = os.path.join(self._meta.path_id, "nobackup", "data")
+                else:
+                    self._meta.path_id = os.path.join(self._meta.path_id, "data")
+        # Setup transfer options
+        if self.pargs.move:
+            self.pargs.copy = False
+        elif self.pargs.rsync:
+            self.pargs.copy = False
+
+        super(DeliveryController, self)._process_args()
+
     @controller.expose(hide=True)
     def default(self):
-        if not self._check_pargs(["project", "flowcell", "uppmax_project"]):
-            return
+        print self._help_text
 
+
+    @controller.expose(help="Deliver best practice results")
+    def best_practice(self):
+        if not self._check_pargs(["project", "uppmax_project"]):
+            return
+        return
+
+        
 ## Main delivery controller
 class DeliveryReportController(AbstractBaseController):
     """
