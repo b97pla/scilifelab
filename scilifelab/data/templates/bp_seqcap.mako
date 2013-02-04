@@ -101,9 +101,12 @@ result is a number of vcf files [10]_:
 - \*-variants-indel-filterINDEL.vcf - filtered indel calls
 
 
-The filtered calls are combined and annotated with predicted damaging
-effects of the variants using snpEff [11]_. The output from these
-operations is found in the following files:
+Filtering serves to filter out variants with low credibility and
+quality. Additional filtering based on population-based allele
+frequencies may therefore be required. The filtered calls are combined
+and annotated with predicted damaging effects of the variants using
+snpEff [11]_. The output from these operations is found in the
+following files:
 
 - \*-variants-combined-phased-annotated.vcf
 - \*-variants-combined-phased-effects.vcf
@@ -112,82 +115,8 @@ operations is found in the following files:
 
 Finally, project-summary.csv is a text file summary containing various
 metrics, such as alignment statistics and data on the found
-variations.
-
-
-Data access at UPPMAX
----------------------
-
-Data is delivered to a folder in the INBOX of your UPPMAX project
-account. The delivery folder will typically be named DATE_IDENTIFIER,
-where the identifier relates to the flowcell or analysis that has been
-performed. The data can be accessed via ssh, scp or sftp. The
-following tutorial describes how to access your data (change PRJID to
-your project name).
-
-Connecting to UPPMAX
-^^^^^^^^^^^^^^^^^^^^
-
-First, open an ssh session and change directory to your project folder:
-
-.. code:: bash
-
-    ssh yourUserName@biologin.uppmax.uu.se
-    cd /proj/PRJID
-
-
-We strongly recommend that you move the data from your INBOX to the
-private directory in order to prevent unauthorized access:
-
-.. code:: bash
-
-   mv INBOX/DATE_IDENTIFIER private/
-
-Enter your data directory and list your files:
-
-.. code:: bash
-
-   cd private/DATE_IDENTIFIER/
-   ls
-
-To check the size of your files, try:
-
-.. code:: bash
-
-   ls -lh
-   du -h
-
-Copying data from UPPMAX
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-You can copy some or all of your data from UPPMAX to your local
-computer. BEWARE: the output generated from analysis of
-next-generation sequencing data can easily count in the hundreds of
-gigabytes. In particular the mapping files (file extension .bam) are
-large, and you may want to limit your download to a subset of the
-data. Due to the massive data amounts, also keep in mind that data
-transfer can take quite some time.
-
-For example, if you want to copy only the variant call files (\*.vcf
-files) to your local computer, issue the following command (written on
-one single line):
-
-.. code:: bash
-
-   rsync -avh -progress
-   yourUserName@biologin.uppmax.uu.se:/proj/PRJID/private/DATE_IDENTIFIER/*.vcf .
-
-Naming conventions
-^^^^^^^^^^^^^^^^^^
-
-Table 1 lists the samples included in the analysis. Delivered raw data
-files have the prefix LANE DATE - FLOWCELLID, followed by a sample
-identifier. The downstream analysis may induce a renaming of files, in
-particular if the analysis includes data from several flowcells. The
-naming convention in this case is that each sample is identified by
-the file name prefix LANE SAMPLEID ANALYSISDATE ANALYSISID. Here,
-ANALYSISDATE corresponds to the date of analysis, and ANALYSISID is a
-unique identifier for the analysis.
+variations. For instructions on how to access data at UPPMAX, see our
+FAQ [12]_.
 
 
 .. raw:: pdf
@@ -234,4 +163,4 @@ References
 .. [11] P Cingolani. snpEff: Variant effect prediction. 2012. URL:
    http://snpeff.sourceforge.net.
 
-
+.. [12] URL: http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf
