@@ -39,13 +39,16 @@ class DistributedCommandHandler(command.CommandHandler):
         platform_args = None
         """Platform specific arguments"""
 
+        batch_command = []
+        """Batch command array"""
+
     def command(self, cmd_args, capture=True, ignore_error=False, cwd=None, **kw):
         ## Is there no easier way to get at --drmaa?!?
         if '--drmaa' in self.app._meta.argv:
             self.drmaa(cmd_args, capture, ignore_error, cwd, **kw)
         else:
             pass
-
+        
     def _check_args(self, **kw):
         pargs = kw.get('platform_args', [])
         if not self.app.pargs.account and "-A" not in pargs and "--account" not in pargs:
@@ -158,8 +161,10 @@ class DistributedCommandHandler(command.CommandHandler):
                 self._save_job_id(**job_args)
             s.deleteJobTemplate(jt)
             s.exit()
-            
-        return self.dry(command, runpipe)
+        if self.app.pargs.batch:
+            self._meta.batch_command.append(command)
+        else:
+            return self.dry(command, runpipe)
 
 def opt_to_dict(opts):
     """Transform option list to a dictionary.
@@ -268,6 +273,7 @@ def add_shared_distributed_options(app):
     group.add_argument('--max_node_jobs', type=int, default=10,
                           action='store', help='maximum number of node jobs (default 10)')
     group.add_argument('--email', help="set user email address", action="store", default=None, type=str)
+    group.add_argument('--batch', help="submit jobs as a batch, useful for submitting a number of jobs to the same node", action="store_true", default=False)
 
 def set_distributed_handler(app):
     """
@@ -281,6 +287,20 @@ def set_distributed_handler(app):
         app._meta.cmd_handler = 'distributed'
         app._setup_cmd_handler()
 
+def run_batch_command(app):
+    """
+    If option 'batch' was set, run commands stored in batch_command
+    variable.
+
+    NOTE: currently runs jobs *sequentially*. One could imagine adding
+    a pipe to 'gnus parallel' for single-core jobs.
+
+    :param app: The application object.
+    """
+    command = ";\n".join(app.cmd._meta.batch_command)
+    app.pargs.batch = False
+    app.cmd.command([command], **{'platform_args':{}, 'saveJobId':True, 'workingDirectory':os.curdir})
+
 def load():
     """Called by the framework when the extension is 'loaded'."""
     if not os.getenv("DRMAA_LIBRARY_PATH"):
@@ -289,4 +309,5 @@ def load():
     hook.register('post_setup', add_drmaa_option)
     hook.register('post_setup', add_shared_distributed_options)
     hook.register('pre_run', set_distributed_handler)
+    hook.register('post_run', run_batch_command)
     handler.register(DistributedCommandHandler)
