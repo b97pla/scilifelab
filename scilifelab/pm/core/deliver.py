@@ -33,7 +33,7 @@ class DeliveryController(AbstractBaseController):
     def default(self):
         if not self._check_pargs(["project", "flowcell", "uppmax_project"]):
             return
-        
+
 ## Main delivery controller
 class DeliveryReportController(AbstractBaseController):
     """

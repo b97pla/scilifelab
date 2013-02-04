@@ -165,6 +165,12 @@ class AbstractExtendedBaseController(AbstractBaseController):
         elif self.pargs.pigz:
             self._meta.compress_prog = "pigz"
 
+        # Setup transfer options
+        if self.pargs.move:
+            self.pargs.copy = False
+        elif self.pargs.rsync:
+            self.pargs.copy = False
+
         if self._meta.path_id:
             assert os.path.exists(os.path.join(self._meta.root_path, self._meta.path_id)), "no such folder '{}' in {} directory '{}'".format(self._meta.path_id, self._meta.label, self._meta.root_path)
             
