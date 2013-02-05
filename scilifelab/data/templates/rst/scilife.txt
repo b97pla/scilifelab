@@ -445,7 +445,7 @@
       commands: []
              [VALIGN, [0,0], [-1,-1], BOTTOM]
              [ALIGN,  [1,0], [-1,-1], RIGHT]
-             [ALIGN, [0,0], [0,-1],LEFT]
+             [ALIGN, [0,0], [0,-1], LEFT]
              [FONTSIZE, [0,0], [-1,0], 11]
              [FONTSIZE, [0,1], [-1,-1], 9]
              [LINEABOVE, [0,1], [-1,1], 1, black]

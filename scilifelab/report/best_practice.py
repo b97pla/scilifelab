@@ -5,6 +5,7 @@ import pandas as pd
 from cStringIO import StringIO
 from scilifelab.report.rst import make_rest_note
 from texttable import Texttable
+from itertools import izip
 import scilifelab.log
 
 LOG = scilifelab.log.minimal_logger(__name__)
@@ -25,30 +26,57 @@ parameters = {
     'projecttableref' : None,
     }
 
-def _dataframe_to_texttable(df):
+def _dataframe_to_texttable(df, align=None):
     """Convert data frame to texttable. Sets column widths to the
     widest entry in each column."""
     ttab = Texttable()
+    ttab.set_precision(1)
     h = [[x for x in df]]
-    h.extend([list(x) for x in df.to_records(index=False)])
-    ttab.add_rows(h)
-    colWidths = [len(x) for x in df.columns]
-    for row in df.itertuples(index=False):
+    h.extend([x for x in df.to_records(index=False)])
+    if align:
+        colWidths = [max(len(x), len(".. class:: {}".format(y))) for x,y in izip(df.columns, align)]
+    else:
+        colWidths = [len(x) for x in df.columns]
+    for row in h:
         for i in range(0, len(row)):
+            if type(row[i]) == str:
+                colWidths[i] = max([len(str(x)) for x in row[i].split("\n")] + [colWidths[i]])
             colWidths[i] = max(len(str(row[i])), colWidths[i])
+    table_data = []
+    if align:
+        for row in h:
+            table_row = []
+            i = 0
+            for col, aln in izip(row, align):
+                table_row.append(".. class:: {}".format(aln) + " " * colWidths[i] + "{}".format(col))
+                i = i + 1
+            table_data.append(table_row)
+    else:
+        table_data = h
+    ttab.add_rows(table_data)
     ttab.set_cols_width(colWidths)
+    # Note: this does not affect the final pdf output
     ttab.set_cols_align(["r"] * len(colWidths))
     return ttab    
 
-def _indent_texttable_for_rst(ttab, indent=4):
+def _indent_texttable_for_rst(ttab, indent=4, add_spacing=True):
     """Texttable needs to be indented for rst.
 
     :param ttab: texttable object
     :param indent: indentation (should be 4 *spaces* for rst documents)
+    :param add_spacing_row: add additional empty row below class directives
 
     :returns: reformatted texttable object as string
     """
-    return " " * indent + ttab.draw().replace("\n", "\n" + " " * indent)
+    output = ttab.draw()
+    new_output = []
+    for row in output.split("\n"):
+        new_output.append(" " * indent + row)
+        if re.search('.. class::', row):
+            new_row = [" " if x != "|" else x for x in row]
+            new_output.append(" " * indent + "".join(new_row))
+    return "\n".join(new_output)
+
 
 def _split_project_summary_sample_name(samplename):
     """Project summary name consists of description;lane;sequence.
@@ -101,10 +129,11 @@ def best_practice_note(project_name=None, samples=None, capture_kit="agilent_v4"
         df, samples_df = _get_seqcap_summary(flist)
         if sample_name_map:
             samples_df.CustomerName = [sample_name_map[s]['customer_name'] for s in samples_df.Sample]
-        ttab = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[1:5]]))
-        ttab_target = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[5:9]]))
-        ttab_dbsnp = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[9:14]]))
-        ttab_samples = _indent_texttable_for_rst(_dataframe_to_texttable(samples_df[["Sample", "CustomerName", "Sequence"]]))
+        df.Total = ["{:.1f}G".format(int(x)/1e9) if int(x)>1e9 else "{:.1f}M".format(int(x)/1e6) for x in df.Total]
+        ttab = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[1:5]], align=["left", "right", "right", "right", "right"]))
+        ttab_target = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[5:9]], align=["left", "right", "right", "right", "right"]))
+        ttab_dbsnp = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[9:14]], align=["left", "right", "right", "right", "right", "right"]))
+        ttab_samples = _indent_texttable_for_rst(_dataframe_to_texttable(samples_df[["Sample", "CustomerName", "Sequence"]], align=["left", "right", "right"]))
         param.update({'project_summary':ttab, 'project_target_summary':ttab_target, 'project_dbsnp_summary':ttab_dbsnp, 'table_sample_summary':ttab_samples, 'capturekit':SEQCAP_KITS[capture_kit]})
         param['project_name'] = project_name if project_name else kw.get("statusdb_project_name", None)
     # Add applications here

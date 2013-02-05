@@ -239,6 +239,7 @@ class BestPracticeReportController(AbstractBaseController):
             sample_name_map = get_scilife_to_customer_name(self.pargs.statusdb_project_name, p_con, s_con)
         kw.update(project_name=self.pargs.project, flist=flist, basedir=basedir, sample_name_map=sample_name_map)
         out_data = best_practice_note(**kw)
+        self.log.info("Wrote report to directory {}; use Makefile to generate pdf report".format(basedir))
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
         self.app._output_data['debug'].write(out_data['debug'].getvalue())
