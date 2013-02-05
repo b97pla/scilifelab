@@ -33,8 +33,10 @@ class DeliveryController(AbstractBaseController):
             (['-i', '--interactive'], dict(help="Interactively select samples to be delivered", default=False, action="store_true")),
             (['-a', '--deliver_all_fcs'], dict(help="rsync samples from all flow cells", default=False, action="store_true")),
             (['-S', '--sample'], dict(help="Project sample id. If sample is a file, read file and use sample names within it. Sample names can also be given as full paths to bcbb-config.yaml configuration file.", action="store", default=None, type=str)),
-            (['--no_bam'], dict(help="Don't include bam files in delivery", action="store", default=False)),
-            (['--no_vcf'], dict(help="Don't include vcf files in delivery", action="store", default=False)),
+            (['--no_bam'], dict(help="Don't include bam files in delivery", action="store_true", default=False)),
+            (['--no_vcf'], dict(help="Don't include vcf files in delivery", action="store_true", default=False)),
+            (['-z', '--size'], dict(help="Estimate size of delivery.", action="store_true", default=False)),
+            (['--statusdb_project_name'], dict(help="Project name in statusdb.", action="store", default=None)),
             ]
 
     def _setup(self, base_app):
@@ -81,7 +83,13 @@ class DeliveryController(AbstractBaseController):
     def best_practice(self):
         if not self._check_pargs(["project", "uppmax_project"]):
             return
-        outpath = os.path.normpath(os.path.abspath(self.pargs.uppmax_project))
+        project_path = os.path.normpath(os.path.join("/proj", self.pargs.uppmax_project))
+        if not os.path.exists(project_path):
+            self.log.warn("No such project {}; skipping".format(self.pargs.uppmax_project))
+            return
+        outpath = os.path.join(project_path, "INBOX", self.pargs.statusdb_project_name) if self.pargs.statusdb_project_name else os.path.join(project_path, "INBOX", self.pargs.project)
+        if not query_yes_no("Going to deliver data to {}; continue?".format(outpath)):
+            return
         if not os.path.exists(outpath):
             self.app.cmd.safe_makedir(outpath)
         kw = vars(self.pargs)
@@ -101,11 +109,17 @@ class DeliveryController(AbstractBaseController):
         if not self.pargs.no_vcf:
             plist.append(".*.vcf$")
         pattern = "|".join(plist)
+        size = 0
         for f in flist:
             path = os.path.dirname(f)
             sources = filtered_walk(path, filter_fn=filter_fn, exclude_dirs=BCBIO_EXCLUDE_DIRS)
             targets = [src.replace(basedir, outpath) for src in sources]
             self._transfer_files(sources, targets)
+            if self.pargs.size:
+                statinfo = [os.stat(src).st_size for src in sources]
+                size = size + sum(statinfo)
+        self.app._output_data['stderr'].write("\n********************************\nEstimated delivery size: {:.1f}G\n********************************".format(size/1e9))
+
 
     def _transfer_files(self, sources, targets):
         for src, tgt in zip(sources, targets):

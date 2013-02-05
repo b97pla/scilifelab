@@ -122,10 +122,10 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
             self.app.cmd.write(pp, yaml.safe_dump(newconf, default_flow_style=False, allow_unicode=True, width=1000))
             
         # Write transfer summary
-        self.app._output_data["stdout"].write("Transfer summary\n")
-        self.app._output_data["stdout"].write("{:<18}{:>18}{:>18}\n".format("Sample","Transferred files", "Results"))
+        self.app._output_data["stderr"].write("Transfer summary\n")
+        self.app._output_data["stderr"].write("{:<18}{:>18}{:>18}\n".format("Sample","Transferred files", "Results"))
         for k, v in transfer_status.iteritems():
-            self.app._output_data["stdout"].write("{:<18}{:>18}{:>18}\n".format(k, v['files'], v['results']))
+            self.app._output_data["stderr"].write("{:<18}{:>18}{:>18}\n".format(k, v['files'], v['results']))
 
     def _to_pre_casava_structure(self, fc):
         dirs = {"data":os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data", fc.fc_id())),
