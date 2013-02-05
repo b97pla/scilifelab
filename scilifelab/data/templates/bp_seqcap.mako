@@ -119,6 +119,11 @@ variations. For instructions on how to access data at UPPMAX, see our
 FAQ [12]_.
 
 
+Software versions
+-----------------
+
+${software_versions_table}
+
 .. raw:: pdf
 
    PageBreak

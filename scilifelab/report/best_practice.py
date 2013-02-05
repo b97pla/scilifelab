@@ -112,6 +112,21 @@ def _get_seqcap_summary(flist):
     df.columns = SEQCAP_TABLE_COLUMNS
     return df, samples_df
 
+def _get_software_table(flist):
+    df_list = []
+    for run_info in flist:
+        software_versions = os.path.join(os.path.dirname(run_info), "bcbb_software_versions.txt")
+        if not os.path.exists(software_versions):
+            LOG.warn("No software versions file for {}: skipping".format(os.path.basename(run_info)))
+            continue
+        with open(software_versions) as fh:
+            LOG.debug("Reading file {}".format(software_versions))
+            df_list.append(pd.io.parsers.read_table(fh, sep="\t", skiprows=1, header=None))
+    ret_df = df_list[0]
+    ret_df.columns = ["Software", "Version"]
+    return ret_df
+    
+
 def best_practice_note(project_name=None, samples=None, capture_kit="agilent_v4", application="seqcap", flist=[], sample_name_map=None, **kw):
     """Make a best practice application note.
 
@@ -127,6 +142,7 @@ def best_practice_note(project_name=None, samples=None, capture_kit="agilent_v4"
         LOG.warn("No such application '{}'. Valid choices are: \n\t{}".format(application, "\n\t".join(BEST_PRACTICE_NOTES)))
     if application == "seqcap":
         df, samples_df = _get_seqcap_summary(flist)
+        software_df = _get_software_table(flist)
         if sample_name_map:
             samples_df.CustomerName = [sample_name_map[s]['customer_name'] for s in samples_df.Sample]
         df.Total = ["{:.1f}G".format(int(x)/1e9) if int(x)>1e9 else "{:.1f}M".format(int(x)/1e6) for x in df.Total]
@@ -134,7 +150,9 @@ def best_practice_note(project_name=None, samples=None, capture_kit="agilent_v4"
         ttab_target = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[5:9]], align=["left", "right", "right", "right", "right"]))
         ttab_dbsnp = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[9:14]], align=["left", "right", "right", "right", "right", "right"]))
         ttab_samples = _indent_texttable_for_rst(_dataframe_to_texttable(samples_df[["Sample", "CustomerName", "Sequence"]], align=["left", "right", "right"]))
-        param.update({'project_summary':ttab, 'project_target_summary':ttab_target, 'project_dbsnp_summary':ttab_dbsnp, 'table_sample_summary':ttab_samples, 'capturekit':SEQCAP_KITS[capture_kit]})
+        ttab_software = _indent_texttable_for_rst(_dataframe_to_texttable(software_df, align=["left", "right"]))
+        param.update({'project_summary':ttab, 'project_target_summary':ttab_target, 'project_dbsnp_summary':ttab_dbsnp, 'table_sample_summary':ttab_samples, 'capturekit':SEQCAP_KITS[capture_kit],
+                      'software_versions_table':ttab_software})
         param['project_name'] = project_name if project_name else kw.get("statusdb_project_name", None)
     # Add applications here
     else:
