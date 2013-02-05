@@ -421,8 +421,16 @@ class FlowcellRunMetricsConnection(Couch):
             return None
         instrument = fc.get('RunInfo', {}).get('Instrument', None)
         if not instrument:
-            instrument = fc.get('runParameters', {}).get('Setup', {}).get('ScannerID', None)
+            instrument = fc.get('RunParameters', {}).get('Setup', {}).get('ScannerID', None)
         return instrument
+
+    def get_run_mode(self, name):
+        """Get run mode"""
+        fc = self.get_entry(name)
+        if not fc:
+            return None
+        run_mode = fc.get('RunParameters', {}).get('Setup', {}).get('RunMode', None)
+        return run_mode
 
 class ProjectSummaryConnection(Couch):
     _doc_type = ProjectSummaryDocument

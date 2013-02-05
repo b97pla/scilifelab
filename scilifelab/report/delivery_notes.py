@@ -34,7 +34,7 @@ instrument = {
         'instrument_alias':'Eomer',
         'instrument' : 'HiSeq 2500',
         },
-    'SN7001301': {
+    'SN7001362': {
         'instrument_alias':'Aragorn',
         'instrument' : 'HiSeq 2500',
         },
@@ -50,7 +50,7 @@ instrument = {
 # Software versions used in data production. Instrument specific?
 software_versions = {
     'baseconversion_version' : 'OLB v1.9',
-    'casava_version' : 'CASAVA v1.8'
+    'casava_version' : 'CASAVA v1.8.2'
     }
 
 
@@ -230,6 +230,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         "phix_error_rate" : None,
         "avg_quality_score" : None,
         "success" : None,
+        "run_mode":None,
         }
     # key mapping from sample_run_metrics to parameter keys
     srm_to_parameter = {"project_name":"sample_prj", "FC_id":"flowcell", 
@@ -285,6 +286,8 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         except:
             LOG.warn("Failed to set instrument and software versions for flowcell {} in report due to missing RunInfo -> Instrument field in statusdb. Either rerun 'pm qc update-qc' or search-and-replace 'NN' in the sample report.".format(fc))
             s_param.update(instrument['default'])
+        # Get run mode
+        s_param["run_mode"] = fc_con.get_run_mode(str(fc))
         s_param.update(software_versions)
         s_param["phix_error_rate"] = fc_con.get_phix_error_rate(str(fc), s["lane"])
         if phix:
