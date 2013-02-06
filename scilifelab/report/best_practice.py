@@ -126,6 +126,18 @@ def _get_software_table(flist):
     ret_df.columns = ["Software", "Version"]
     return ret_df
     
+def _format_num_reads(reads):
+    """Format number of reads as k, M, or G"""
+    fmt_reads = []
+    for x in reads:
+        if int(x) < 1e6:
+            fmt_reads.append("{:.1f}k".format(int(x)/1e3))
+        elif int(x) > 1e9:
+            fmt_reads.append("{:.1f}G".format(int(x)/1e9))
+        else:
+            fmt_reads.append("{:.1f}M".format(int(x)/1e6))
+    return fmt_reads
+    
 
 def best_practice_note(project_name=None, samples=None, capture_kit="agilent_v4", application="seqcap", flist=[], sample_name_map=None, **kw):
     """Make a best practice application note.
@@ -145,7 +157,7 @@ def best_practice_note(project_name=None, samples=None, capture_kit="agilent_v4"
         software_df = _get_software_table(flist)
         if sample_name_map:
             samples_df.CustomerName = [sample_name_map[s]['customer_name'] for s in samples_df.Sample]
-        df.Total = ["{:.1f}G".format(int(x)/1e9) if int(x)>1e9 else "{:.1f}M".format(int(x)/1e6) for x in df.Total]
+        df.Total = _format_num_reads(df.Total)
         ttab = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[1:5]], align=["left", "right", "right", "right", "right"]))
         ttab_target = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[5:9]], align=["left", "right", "right", "right", "right"]))
         ttab_dbsnp = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[9:14]], align=["left", "right", "right", "right", "right", "right"]))

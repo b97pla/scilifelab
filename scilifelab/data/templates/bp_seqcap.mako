@@ -1,7 +1,7 @@
 .. image:: ${sll_logo_small}
    :align: right
 
-.. header:: Document version: 1.0 
+.. header:: Document version: 1.0
 
 .. footer:: ###Page###
 
@@ -37,7 +37,7 @@ ${table_sample_summary}
 Sequencing summary
 ^^^^^^^^^^^^^^^^^^
 
-.. table:: **Table 2**. Sequencing summary. Columns show the following statistics: 1) Total: total number of reads 2) Aligned: percentage of aligned reads 3) Pair duplicates: the percentage of pair duplicates in a sample 4) The inferred insert size 
+.. table:: **Table 2**. Sequencing summary. Columns show the following statistics: 1) Total: total number of reads, expressed with SI prefixes 2) Aligned: percentage of aligned reads 3) Pair duplicates: the percentage of pair duplicates in a sample 4) The inferred insert size 
 
 ${project_summary}
 
@@ -118,15 +118,15 @@ metrics, such as alignment statistics and data on the found
 variations. For instructions on how to access data at UPPMAX, see our
 FAQ [12]_.
 
+.. raw:: pdf
+
+   PageBreak
 
 Software versions
 -----------------
 
 ${software_versions_table}
 
-.. raw:: pdf
-
-   PageBreak
 
 References
 ----------
