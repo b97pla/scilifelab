@@ -131,6 +131,7 @@ class RunMetricsController(AbstractBaseController):
                     qc_objects.append(obj)
         else:
             for sample in runinfo[1:]:
+                LOG.debug("Getting information for sample defined by {}".format(sample))
                 d = dict(zip(runinfo[0], sample))
                 if self.app.pargs.project_name and self.app.pargs.project_name != d['SampleProject']:
                     continue

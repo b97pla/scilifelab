@@ -234,6 +234,7 @@
 
     bullet-list:
       parent: bodytext
+      spaceAfter: 6
       commands: []
              [VALIGN, [ 0, 0 ], [ -1, -1 ], TOP ]
              [RIGHTPADDING, [ 0, 0 ], [ 1, -1 ], 0 ]
@@ -444,7 +445,7 @@
       commands: []
              [VALIGN, [0,0], [-1,-1], BOTTOM]
              [ALIGN,  [1,0], [-1,-1], RIGHT]
-             [ALIGN, [0,0], [0,-1],LEFT]
+             [ALIGN, [0,0], [0,-1], LEFT]
              [FONTSIZE, [0,0], [-1,0], 11]
              [FONTSIZE, [0,1], [-1,-1], 9]
              [LINEABOVE, [0,1], [-1,1], 1, black]
@@ -454,7 +455,9 @@
     table-title:
       parent : heading4
       keepWithNext: false
-      alignment : TA_CENTER
+      alignment : TA_LEFT
+      fontName: stdItalic
+      fontSize: 90%
 
     table-heading:
       parent : heading
@@ -462,9 +465,11 @@
       valign : BOTTOM
       alignment: LEFT
       borderPadding : 0
+      fontSize: 90%
 
     table-body:
       parent : normal
+      fontSize: 90%
 
     dedication:
       parent : normal
