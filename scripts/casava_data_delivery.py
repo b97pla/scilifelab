@@ -104,11 +104,13 @@ def get_file_copy_list(proj_base_dir, dest_proj_path, fcid, deliver_all_fcs, del
                         dest_file_name])
     return to_copy
 
-def rsync_files(to_copy, logfile, dry):
+def rsync_files(to_copy, logfile, group, dry):
     # Iterate over the files to copy and create directories and copy files as necessary 
     successful = 0
     uid = os.getuid()
-    gid = grp.getgrnam("uppmax").gr_gid
+    gid = os.getgid()
+    if group is not None and len(group) > 0:
+        gid = grp.getgrnam(group).gr_gid
     for src_file, dst_dir, dst_name in to_copy:
         dst_file = os.path.join(dst_dir, dst_name)
         print "Will copy (rsync) ", src_file, "to ", dst_file
@@ -168,6 +170,8 @@ def main():
                         help="rsync samples from all flow cells. Default is to only deliver from specified flowcell")
     parser.add_argument('-p', '--nophix', action="store_true", dest="deliver_nophix", default=False, 
                         help="Deliver fastq files from nophix subdirectory. Default is to deliver from run directory")
+    parser.add_argument('-g', '--group', action="store", dest="group", default="uppmax",
+                        help="Group membership to set on copied files")
     parser.add_argument('project_name', action='store', help="Project name to deliver, e.g. J.Doe_10_01")
     parser.add_argument('flowcell_id', action='store', help="Flowcell id to deliver, e.g. 120824_BD1915ACXX")
     parser.add_argument('uppmax_id', action='store', help="UPPMAX project id to deliver to, e.g. b2012001")
@@ -234,6 +238,7 @@ def main():
             
     rsync_files(to_copy,
                 logfile,
+                args.group,
                 args.dry)
         
     clean_exit(0,logfile,args.dry)
@@ -292,12 +297,8 @@ class TestDataDelivery(unittest.TestCase):
                              exp_result,
                              "Did not get expected result ({:s}) for file name {:s}".format(str(exp_result),test_fname))
     
-    def test_rsync_files(self):
-        """Test the rsync functionality
-        """
-        root = tempfile.mkdtemp(prefix="rsync_test_")
+    def _create_test_files(self, root):
         
-        # Create some files to move
         to_copy = []
         for n in xrange(10):
             fd, sfile = tempfile.mkstemp(suffix=".tmp", prefix="rsync_test_", dir=root)
@@ -308,10 +309,23 @@ class TestDataDelivery(unittest.TestCase):
                 ddir = os.path.join(ddir,str(uuid.uuid4()))
             to_copy.append([sfile,ddir,"{:s}.tmp".format(str(uuid.uuid4()))])
         
+        return to_copy
+    
+    def test_rsync_files(self):
+        """Test the rsync functionality
+        """
+        root = tempfile.mkdtemp(prefix="rsync_test_")
+        
+        # Create some files to move
+        to_copy = self._create_test_files(root)
+        
         # Run rsync
         with open(os.devnull, 'w') as f:
+            old_stdout = sys.stdout
             sys.stdout = f
-            rsync_files(to_copy,sys.stdout,False)
+            rsync_files(to_copy,sys.stdout,None,False)
+            sys.stdout = old_stdout
+            
         
         # Verify the copy process
         for src, ddir, dname in to_copy:
@@ -329,6 +343,44 @@ class TestDataDelivery(unittest.TestCase):
                             "The mode of the created file is not as expected")
             
         shutil.rmtree(root)
+        
+    def test_rsync_set_group(self):
+        """Test setting the group membership on rsync'd files
+        """
+        
+        root = tempfile.mkdtemp(prefix="rsync_test_set_group_")
+        avail_groups = os.getgroups()
+        exp_group = grp.getgrgid(avail_groups[random.randint(1,len(avail_groups))-1])[0]
+        
+        # Create some files to move
+        to_copy = self._create_test_files(root)
+        
+        # Run rsync
+        with open(os.devnull, 'w') as f:
+            old_stdout = sys.stdout
+            sys.stdout = f
+            rsync_files(to_copy,sys.stdout,exp_group,False)
+            sys.stdout = old_stdout
+            
+        # Verify the copy process set the correct group on created directories
+        for ddir in set([d[1] for d in to_copy]):
+            gid = os.stat(ddir).st_gid
+            obs_group = grp.getgrgid(gid)[0]
+            self.assertEqual(obs_group,
+                             exp_group,
+                             "Failed to set group '{}' on directory. Group is {}".format(exp_group,
+                                                                                    obs_group))
+        
+        # Verify the copy process set the correct group
+        for src, ddir, dname in to_copy:
+            dfile = os.path.join(ddir,dname)
+            gid = os.stat(dfile).st_gid
+            obs_group = grp.getgrgid(gid)[0]
+            self.assertEqual(obs_group,
+                             exp_group,
+                             "Failed to set group '{}' on file. Group is {}".format(exp_group,
+                                                                                    obs_group))
+        
         
     def test_create_final_name(self):
         """Create the destination file name
