@@ -69,7 +69,8 @@ for variant calling. Briefly, the steps include:
 3. calculation of mapping and enrichment statistics with picard and gatk [4]_
 4. variant calling with gatk
 
-See the appendix for details on software and database versions used.
+See the following section for details on software and database
+versions used.
 
 Alignment
 ^^^^^^^^^
