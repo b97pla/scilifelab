@@ -154,7 +154,6 @@ def setup_merged_samples(flist, sample_group_fn=_group_samples, **kw):
             with open(pp) as fh:
                 conf = yaml.load(fh)
             conf = update_pp_platform_args(conf, **{'jobname': "{}_total".format(k), 'workdir': out_d, 'output': "{}_total-bcbb.log".format(k) })
-            conf["algorithm"]["save_diskspace"] = False
             pp_new = os.path.join(out_d, os.path.basename(pp))
             dry_unlink(pp_new, dry_run=kw.get('dry_run', True))
             dry_write(pp_new, yaml.safe_dump(conf, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw.get('dry_run', True))
