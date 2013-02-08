@@ -124,6 +124,21 @@ class CommandHandler(handler.CementBaseHandler):
             return dname
         return self.dry("Make directory %s" % dname, runpipe)
 
+    def _rsync(self, src, tgt):
+        """Wrapper for running rsync.
+
+        :param src: source destination
+        :param tgt: target destination
+        """
+        opts = "-av"
+        if os.path.isdir(src):
+            src = os.path.join(src) + os.sep
+        if os.path.isdir(tgt):
+            tgt = os.path.join(tgt) + os.sep
+        cl = ["rsync {} {} {}".format(opts, src, tgt)]
+        out = self.app.cmd.command(cl, **{'shell':True})
+        
+
     def transfer_file(self, src, tgt):
         """Wrapper for transferring files with move or copy operation.
 
@@ -132,12 +147,16 @@ class CommandHandler(handler.CementBaseHandler):
         """
         if self.app.pargs.move:
             deliver_fn = shutil.move
-        else:
+        elif self.app.pargs.copy:
             deliver_fn = shutil.copyfile
+        elif self.app.pargs.rsync:
+            deliver_fn = self._rsync
+        else:
+            pass
         def runpipe():
             if src is None:
                 return
-            if os.path.exists(tgt):
+            if not self.app.pargs.rsync and os.path.exists(tgt):
                 self.app.log.warn("{} already exists: not doing anything!".format(tgt))
                 return
             deliver_fn(src, tgt)

@@ -81,13 +81,14 @@ class PmProductionTest(PmTest):
 
     # Will currently fail since no PhiX in document
     def test_sample_status(self):
-        self.app = self.make_app(argv = ['report', 'sample-status', self.examples["project"], self.examples["flowcell"], '--phix', '0.1', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['report', 'sample-status', self.examples["project"], self.examples["flowcell"], '--phix', '{1:0.1, 2:0.2}', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
         s_param_map = {x["scilifelab_name"]:x for x in data["s_param"]}
         self.assertEqual(s_param_map['P001_101_index3']['scilifelab_name'], 'P001_101_index3')
         self.assertEqual(s_param_map['P001_101_index3']['customer_reference'], 'GnuGenome')
+        self.assertEqual(s_param_map['P001_101_index3']['phix_error_rate'], 0.1)
         self.assertEqual(len(data['sample_runs'].keys()), 2)
 
     def test_project_status(self):
@@ -100,7 +101,7 @@ class PmProductionTest(PmTest):
         
     def test_sample_status_custom(self):
         """Test sample status note generation with command line customizations"""
-        self.app = self.make_app(argv = ['report', 'sample_status', self.examples["project"], self.examples["flowcell"], '--debug', '--customer_reference', 'MyCustomerReference', '--uppnex_id', 'MyUppnexID', '--ordered_million_reads', '10', '--phix', '0.1'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['report', 'sample_status', self.examples["project"], self.examples["flowcell"], '--debug', '--customer_reference', 'MyCustomerReference', '--uppnex_id', 'MyUppnexID', '--ordered_million_reads', '10', '--phix', '{1:0.1, 2:0.2}'],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
@@ -140,7 +141,7 @@ class PmProductionTest(PmTest):
 
     def test_bc_count(self):
         """Test setting ordered amount to different values for different samples"""
-        self.app = self.make_app(argv = ['report', 'sample_status', self.examples["project"], self.examples["flowcell"],  '--debug',  '--phix', '0.1', '--bc_count', "{'P001_101_index3':1300000, 'P001_102_index6':20000}"],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['report', 'sample_status', self.examples["project"], self.examples["flowcell"],  '--debug',  '--phix', '{1:0.1, 2:0.2}', '--bc_count', "{'P001_101_index3':1300000, 'P001_102_index6':20000}"],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
@@ -158,7 +159,6 @@ class PmProductionTest(PmTest):
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
-        print data
         # # This should fail since P003_101_index6 != 3_index6
         # self.assertEqual(len(data['table']), 2)
 
@@ -171,7 +171,7 @@ class PmProductionTest(PmTest):
         
     def test_project_alias(self):
         """Test setting project alias"""
-        self.app = self.make_app(argv = ['report', 'project_status', 'J.Doe_00_01', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['report', 'project_status', 'J.Doe_00_01', '--include_all_samples', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
@@ -179,7 +179,7 @@ class PmProductionTest(PmTest):
         self.assertEqual(len(data['table']), 5)
         self.assertEqual(set(['AGTTGA', 'TGACCA', 'ACAGTG', 'N/A']), set(barcodes))
         
-        self.app = self.make_app(argv = ['report', 'project_status', 'J.Doe_00_01', '--project_alias', '["j-doe_00_01"]', '--phix', '0.1', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['report', 'project_status', 'J.Doe_00_01', '--include_all_samples', '--project_alias', '["j-doe_00_01"]', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
@@ -187,14 +187,14 @@ class PmProductionTest(PmTest):
         self.assertEqual(len(data['table']), 6)
         self.assertIn("CGAACG", barcodes)
 
-        self.app = self.make_app(argv = ['report', 'sample-status', 'J.Doe_00_02', 'AC003CCCXX', '--phix', '0.1','--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['report', 'sample-status', 'J.Doe_00_02', 'AC003CCCXX', '--phix', '{1:0.1, 2:0.2, 3:0.3}','--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())
         self.assertEqual(len(data['sample_runs'].keys()), 1)
         self.assertNotIn("3_120924_AC003CCCXX_GGAAGG", data['sample_runs'].keys())
 
-        self.app = self.make_app(argv = ['report', 'sample-status', 'J.Doe_00_02', 'AC003CCCXX', '--project_alias', '["j-doe_00_02"]', '--phix', '0.1', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
+        self.app = self.make_app(argv = ['report', 'sample-status', 'J.Doe_00_02', 'AC003CCCXX', '--project_alias', '["j-doe_00_02"]', '--phix', '0.3', '--debug'],extensions=['scilifelab.pm.ext.ext_couchdb'])
         handler.register(DeliveryReportController)
         self._run_app()
         data = ast.literal_eval(self.app._output_data['debug'].getvalue())

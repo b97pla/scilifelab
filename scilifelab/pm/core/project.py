@@ -10,9 +10,10 @@ from scilifelab.utils.misc import query_yes_no, filtered_walk, walk
 from scilifelab.pm.lib.clean import purge_alignments
 from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command
 from scilifelab.pm.core.bcbio import BcbioRunController
+from scilifelab.pm.core.deliver import BestPracticeReportController
 
 ## Main project controller
-class ProjectController(AbstractExtendedBaseController, BcbioRunController):
+class ProjectController(AbstractExtendedBaseController, BcbioRunController, BestPracticeReportController):
     """
     Functionality for project management.
     """

@@ -5,11 +5,13 @@ import yaml
 import glob
 from itertools import chain
 import pandas as pd
+import datetime
 
 from scilifelab.utils.misc import filtered_walk, query_yes_no, prune_option_list
 from scilifelab.utils.dry import dry_write, dry_backup, dry_unlink, dry_rmdir, dry_makedir
 from scilifelab.log import minimal_logger
 from scilifelab.bcbio import sort_sample_config_fastq, update_sample_config, update_pp_platform_args, merge_sample_config
+from scilifelab.bcbio.flowcell import Flowcell
 
 LOG = minimal_logger(__name__)
 
@@ -155,9 +157,10 @@ def setup_merged_samples(flist, sample_group_fn=_group_samples, **kw):
             pp_new = os.path.join(out_d, os.path.basename(pp))
             dry_unlink(pp_new, dry_run=kw.get('dry_run', True))
             dry_write(pp_new, yaml.safe_dump(conf, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw.get('dry_run', True))
-            ## Setup merged bcbb-config file
-            bcbb_config = merge_sample_config(v.values(), sample=k)
+            # Setup merged bcbb-config file
+            bcbb_config = merge_sample_config(v.values(), sample=k, out_d=out_d, dry_run=kw.get('dry_run', True))
             bcbb_config_file = os.path.join(out_d, os.path.basename(v.values()[0]))
+            bcbb_config = sort_sample_config_fastq(bcbb_config)
             if not os.path.exists(bcbb_config_file) or kw.get('new_config', False):
                 dry_unlink(bcbb_config_file, dry_run=kw.get('dry_run', True))
                 dry_write(bcbb_config_file, yaml.safe_dump(bcbb_config, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw.get('dry_run', True))
@@ -165,7 +168,32 @@ def setup_merged_samples(flist, sample_group_fn=_group_samples, **kw):
             new_flist.extend([bcbb_config_file])
     return new_flist
 
+def samplesheet_csv_to_yaml(fn):
+    """Convert SampleSheet.csv to bcbb-config.yaml file.
 
+    :param fn: input file
+    """
+    fc = Flowcell(infile=fn)
+    bc_id = 1
+    for s in fc.samples:
+        sequence = fc.get_entry(s, "sequence")
+        name = fc.get_entry(s, "name")
+        # Currently only look for casava-based pattern
+        pat = os.path.join(os.path.dirname(fn), "{}_{}*fastq*".format(name, sequence))
+        seqfiles = glob.glob(pat)
+        if seqfiles:
+            seqfiles.sort()
+            fc.set_entry(s, "files", seqfiles)
+        fc.set_entry(s, "barcode_id", bc_id)
+        if bc_id == 1:
+            flowcell_id = fc.get_entry(s, "flowcell_id").split("-")[1]
+        bc_id = bc_id + 1
+    fc.fc_date = datetime.datetime.now().strftime("%y%m%d")
+    fc.fc_name = flowcell_id
+    outfile = os.path.join(os.path.dirname(fn), "{}-bcbb-config.yaml".format(name))
+    with open(outfile, "w") as fh:
+        fh.write(fc.as_yaml())
+            
 def validate_sample_directories(flist, pdir):
     """Validate that config files in flist are indeed in subdirectories of pdir.
 
@@ -178,8 +206,6 @@ def validate_sample_directories(flist, pdir):
         if not os.path.abspath(run_info).startswith(os.path.abspath(pdir)) or os.path.abspath(run_info) == os.path.abspath(pdir):
             LOG.warning("{} *must* be in a subdirectory of {}".format(run_info, pdir))
             raise Exception
-
-
 
 def find_samples(path, sample=None, pattern = "-bcbb-config.yaml$", only_failed=False, **kw):
     """Find bcbb config files in a path.
@@ -227,7 +253,7 @@ def setup_sample(f, analysis, amplicon=False, genome_build="hg19", **kw):
         config = yaml.load(fh)
     ## Check for correctly formatted config
     if not config.get("details", None):
-        LOG.warn("Couldn't find 'details' section in config file: aborting setup!")
+        LOG.warn("Couldn't find 'details' section in config file {}: aborting setup!".format(f))
         return
 
     ## Save file to backup if backup doesn't exist
