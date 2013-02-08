@@ -1,13 +1,12 @@
-"""
-A module for handling HiSeq-specificfiles and folders
+""" A module for handling HiSeq-specific files and folders
 """
 import os
 import glob
 import csv
 import scilifelab.illumina as illumina
 
+
 class HiSeqRun(illumina.IlluminaRun):
-    
     def __init__(self, base, samplesheet=None):
         self.base = base
         if samplesheet is None:
