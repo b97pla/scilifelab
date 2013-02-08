@@ -1,0 +1,6 @@
+*.pyc
+build
+dist
+data
+.panfs*
+*.egg*
