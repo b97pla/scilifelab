@@ -39,10 +39,9 @@ ${scilifelab_name} / ${customer_name}. Ordered amount: ${ordered_amount} million
 Method
 ^^^^^^
 
-Clustered on cBot and sequenced on ${instrument} according to
-manufacturer's instructions. Demultiplexing and conversion using
-${casava_version}. The quality scale is Sanger / phred33 / Illumina
-1.8+.
+Clustered on cBot and sequenced on ${instrument}${', {} run mode,'.format(run_mode) if run_mode not in ['', 'N/A'] else ''} 
+according to manufacturer's instructions. Demultiplexing and conversion using
+${casava_version}. The quality scale is Sanger / phred33 / Illumina 1.8+.
 
 Results
 ^^^^^^^

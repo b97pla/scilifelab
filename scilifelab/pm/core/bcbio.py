@@ -7,7 +7,7 @@ import shutil
 from cement.core import backend, controller, handler, hook
 from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.utils.misc import query_yes_no, filtered_walk
-from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command, setup_merged_samples, get_vcf_files, validate_sample_directories
+from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command, setup_merged_samples, get_vcf_files, validate_sample_directories, samplesheet_csv_to_yaml
 from scilifelab.report.qc import compile_qc 
 import scilifelab.log
 
@@ -37,6 +37,7 @@ class BcbioRunController(AbstractBaseController):
         group.add_argument('--merged', help="do merged sample analysis for samples with multiple sample runs", action="store_true", default=False)
         group.add_argument('--new_config', help="make new config file", action="store_true", default=False)
         group.add_argument('--hs_file_type', help="File type glob", default="sort-dup")
+        group.add_argument('--from_ssheet', help="setup analysis from SampleSheet.csv file", default=False, action="store_true")
         super(BcbioRunController, self)._setup(app)
 
     def _sample_status(self, x):
@@ -55,6 +56,8 @@ class BcbioRunController(AbstractBaseController):
         if self.pargs.post_process:
             self.pargs.post_process = os.path.abspath(self.pargs.post_process)
         basedir = os.path.abspath(os.path.join(self.app.controller._meta.root_path, self.app.controller._meta.path_id))
+        if self.pargs.from_ssheet:
+            [samplesheet_csv_to_yaml(fn) for fn in find_samples(basedir, pattern="SampleSheet.csv$", **vars(self.pargs))]
         flist = find_samples(basedir, **vars(self.pargs))
         # Add filtering on flowcell if necessary
         self._meta.pattern = ".*"
