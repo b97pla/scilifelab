@@ -157,9 +157,10 @@ def setup_merged_samples(flist, sample_group_fn=_group_samples, **kw):
             pp_new = os.path.join(out_d, os.path.basename(pp))
             dry_unlink(pp_new, dry_run=kw.get('dry_run', True))
             dry_write(pp_new, yaml.safe_dump(conf, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw.get('dry_run', True))
-            ## Setup merged bcbb-config file
-            bcbb_config = merge_sample_config(v.values(), sample=k)
+            # Setup merged bcbb-config file
+            bcbb_config = merge_sample_config(v.values(), sample=k, out_d=out_d, dry_run=kw.get('dry_run', True))
             bcbb_config_file = os.path.join(out_d, os.path.basename(v.values()[0]))
+            bcbb_config = sort_sample_config_fastq(bcbb_config)
             if not os.path.exists(bcbb_config_file) or kw.get('new_config', False):
                 dry_unlink(bcbb_config_file, dry_run=kw.get('dry_run', True))
                 dry_write(bcbb_config_file, yaml.safe_dump(bcbb_config, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw.get('dry_run', True))
