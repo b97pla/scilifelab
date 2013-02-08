@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import drmaa
 import os
 import sys
 import glob
@@ -9,11 +8,9 @@ import subprocess
 import copy
 import tempfile
 import argparse
-
 import bcbio.solexa.flowcell
 import bcbio.solexa.samplesheet
 from bcbio.pipeline.config_loader import load_config
-import scilifelab.scripts.bcbb_helpers.report_to_gdocs as report
 
 # The directory where CASAVA has written the demuxed output
 CASAVA_OUTPUT_DIR = "Unaligned"
@@ -142,7 +139,7 @@ def setup_analysis(post_process_config, archive_dir, run_info_file):
         with open(post_process_config,"w") as fh:
             fh.write(yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, width=1000)) 
             
-    return [[os.getcwd(),post_process_config,archive_dir,run_info_file]]
+    return [[os.getcwd(),post_process_config,archive_dir,run_info_file]]   
         
 def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_config_file):
     """Parse the CASAVA 1.8+ generated flowcell directory and create a 
@@ -164,8 +161,9 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
     [fc_date, fc_name] = [fc_dir_structure['fc_date'],fc_dir_structure['fc_name']]
     fc_run_id = "%s_%s" % (fc_date,fc_name)
     
-    # Copy the basecall stats directory 
-    _copy_basecall_stats(os.path.join(fc_dir_structure['fc_dir'],fc_dir_structure['basecall_stats_dir']), analysis_dir)
+    # Copy the basecall stats directory. This will be causing an issue when multiple directories are present...
+    # syncing should be done from archive, preserving the Unaligned* structures
+    _copy_basecall_stats([os.path.join(fc_dir_structure['fc_dir'],d) for d in fc_dir_structure['basecall_stats_dir']], analysis_dir)
     
     # Parse the custom_config_file
     custom_config = []
@@ -176,7 +174,7 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
     # Iterate over the projects in the flowcell directory
     for project in fc_dir_structure.get('projects',[]):
         # Create a project directory if it doesn't already exist
-        project_name = project['project_name'].replace('__','.')
+        project_name = project['project_name']
         project_dir = os.path.join(analysis_dir,project_name)
         if not os.path.exists(project_dir):
             os.mkdir(project_dir,0770)
@@ -195,7 +193,7 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
                 os.mkdir(dst_sample_dir,0770)
             
             # rsync the source files to the sample directory
-            src_sample_dir = os.path.join(fc_dir_structure['fc_dir'],fc_dir_structure['data_dir'],project['project_dir'],sample['sample_dir'])
+            src_sample_dir = os.path.join(fc_dir_structure['fc_dir'],project['data_dir'],project['project_dir'],sample['sample_dir'])
             sample_files = do_rsync([os.path.join(src_sample_dir,f) for f in sample.get('files',[])],dst_sample_dir)
             
             # Generate a sample-specific configuration yaml structure
@@ -206,9 +204,9 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
             for lane in sample_config:
                 if 'multiplex' in lane:
                     for sample in lane['multiplex']:
-                        sample['files'] = [os.path.basename(f) for f in sample_files if f.find("_%s_L00%d_" % (sample['sequence'],int(lane['lane']))) >= 0]
+                        sample['files'] = sorted([os.path.basename(f) for f in sample_files if f.find("_%s_L00%d_" % (sample['sequence'],int(lane['lane']))) >= 0])
                 else:
-                    lane['files'] = [os.path.basename(f) for f in sample_files if f.find("_L00%d_" % int(lane['lane'])) >= 0]
+                    lane['files'] = sorted([os.path.basename(f) for f in sample_files if f.find("_L00%d_" % int(lane['lane'])) >= 0])
                     
             sample_config = override_with_custom_config(sample_config,custom_config)
             
@@ -217,25 +215,74 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
         
     return sample_run_arguments
 
-def _copy_basecall_stats(source_dir, destination_dir):
+def _copy_basecall_stats(source_dirs, destination_dir):
     """Copy relevant files from the Basecall_Stats_FCID directory
        to the analysis directory
     """
     
-    # First create the directory in the destination
-    dirname = os.path.join(destination_dir,os.path.basename(source_dir))
-    try:
-        os.mkdir(dirname)
-    except:
-        pass
+    for source_dir in source_dirs:
+        # First create the directory in the destination
+        dirname = os.path.join(destination_dir,os.path.basename(source_dir))
+        try:
+            os.mkdir(dirname)
+        except:
+            pass
     
-    # List the files/directories to copy
-    files = glob.glob(os.path.join(source_dir,"*.htm"))
-    files += glob.glob(os.path.join(source_dir,"*.xml"))
-    files += glob.glob(os.path.join(source_dir,"*.xsl"))
-    files += [os.path.join(source_dir,"Plots")]
-    files += [os.path.join(source_dir,"css")]
-    do_rsync(files,dirname)
+        # List the files/directories to copy
+        files = glob.glob(os.path.join(source_dir,"*.htm"))
+        files += glob.glob(os.path.join(source_dir,"*.metrics"))
+        files += glob.glob(os.path.join(source_dir,"*.xml"))
+        files += glob.glob(os.path.join(source_dir,"*.xsl"))
+        for dir in ["Plots","css"]:
+            d = os.path.join(source_dir,dir)
+            if os.path.exists(d):
+                files += [d]
+        do_rsync(files,dirname)
+    
+def copy_undetermined_index_files(casava_data_dir, dst_dir):
+    """Copy the fastq files with undetermined index reads to the destination directory
+    """
+    
+    # List of files to copy
+    copy_list = []
+    # List the directories containing the fastq files
+    fastq_dir_pattern = os.path.join(casava_data_dir,"Undetermined_indices","Sample_lane*")
+    # Pattern matching the fastq_files
+    fastq_file_pattern = "*.fastq.gz"
+    # Samplesheet name
+    samplesheet_pattern = "SampleSheet.csv"
+    samplesheets = []
+    for dir in glob.glob(fastq_dir_pattern):
+        copy_list += glob.glob(os.path.join(dir,fastq_file_pattern))
+        samplesheet = os.path.join(dir,samplesheet_pattern)
+        if os.path.exists(samplesheet):
+            samplesheets.append(samplesheet)
+    
+    # Merge the samplesheets into one
+    new_samplesheet = os.path.join(dst_dir,samplesheet_pattern)
+    new_samplesheet = _merge_samplesheets(samplesheets,new_samplesheet)
+    
+    # Rsync the fastq files to the destination directory
+    do_rsync(copy_list,dst_dir)
+
+def _merge_samplesheets(samplesheets, merged_samplesheet):
+    """Merge several .csv samplesheets into one
+    """
+    data = []
+    header = []
+    for samplesheet in samplesheets:
+        with open(samplesheet) as fh:
+            csvread = csv.DictReader(fh, dialect='excel')
+            header = csvread.fieldnames
+            for row in csvread:
+                data.append(row)
+                
+    with open(merged_samplesheet,"w") as outh:
+        csvwrite = csv.DictWriter(outh,header)
+        csvwrite.writeheader()
+        csvwrite.writerows(sorted(data, key=lambda d: (d['Lane'],d['Index'])))
+        
+    return merged_samplesheet
  
 def override_with_custom_config(org_config, custom_config):
     """Override the default configuration from the .csv samplesheets
@@ -290,7 +337,6 @@ def _setup_config_files(dst_dir,configs,post_process_config_file,fc_dir,sample_n
     if 'distributed' in local_post_process and 'platform_args' in local_post_process['distributed']:
         slurm_out = "%s-bcbb.log" % sample_name
         local_post_process['distributed']['platform_args'] = "%s -J %s -o %s -D %s" % (local_post_process['distributed']['platform_args'], sample_name, slurm_out, dst_dir)
-            
     local_post_process_file = os.path.join(dst_dir,"%s-post_process.yaml" % sample_name)
     with open(local_post_process_file,'w') as fh:
         fh.write(yaml.safe_dump(local_post_process, default_flow_style=False, allow_unicode=True, width=1000))
@@ -325,6 +371,7 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet):
             else:
                 plex['analysis'] = 'Align_standard'
                 
+
     # Remove the yaml file, we will write a new one later
     os.remove(yaml_file)
     
@@ -349,15 +396,11 @@ def parse_casava_directory(fc_dir):
     
     fc_dir = os.path.abspath(fc_dir)
     fc_name, fc_date = bcbio.solexa.flowcell.get_flowcell_info(fc_dir)
-    unaligned_dir = os.path.join(fc_dir,CASAVA_OUTPUT_DIR)
-    basecall_stats_dir_pattern = os.path.join(unaligned_dir,"Basecall_Stats_*")
-    basecall_stats_dir = None
-    try:
-        basecall_stats_dir = os.path.relpath(glob.glob(basecall_stats_dir_pattern)[0],fc_dir)
-    except:
-        print "WARNING: Could not locate basecall stats directory under %s" % unaligned_dir
-        
-    project_dir_pattern = os.path.join(unaligned_dir,"Project_*")
+    unaligned_dir_pattern = os.path.join(fc_dir,"{}*".format(CASAVA_OUTPUT_DIR))
+    basecall_stats_dir_pattern = os.path.join(unaligned_dir_pattern,"Basecall_Stats_*")
+    basecall_stats_dir = [os.path.relpath(d,fc_dir) for d in glob.glob(basecall_stats_dir_pattern)]
+    
+    project_dir_pattern = os.path.join(unaligned_dir_pattern,"Project_*")
     for project_dir in glob.glob(project_dir_pattern):
         project_samples = []
         sample_dir_pattern = os.path.join(project_dir,"Sample_*")
@@ -367,12 +410,18 @@ def parse_casava_directory(fc_dir):
             fastq_files = [os.path.basename(file) for file in glob.glob(fastq_file_pattern)]
             samplesheet = glob.glob(samplesheet_pattern)
             assert len(samplesheet) == 1, "ERROR: Could not unambiguously locate samplesheet in %s" % sample_dir
-            sample_name = sample_dir.replace(sample_dir_pattern[0:-1],'')
-            project_samples.append({'sample_dir': os.path.relpath(sample_dir,project_dir), 'sample_name': sample_name, 'files': fastq_files, 'samplesheet': os.path.basename(samplesheet[0])})
-        project_name = project_dir.replace(project_dir_pattern[0:-1],'')
-        projects.append({'project_dir': os.path.relpath(project_dir,unaligned_dir), 'project_name': project_name, 'samples': project_samples})
+            sample_name = os.path.basename(sample_dir).replace("Sample_","").replace('__','.')
+            project_samples.append({'sample_dir': os.path.basename(sample_dir), 
+                                    'sample_name': sample_name, 
+                                    'files': fastq_files, 
+                                    'samplesheet': os.path.basename(samplesheet[0])})
+        project_name = os.path.basename(project_dir).replace("Project_","").replace('__','.')
+        projects.append({'data_dir': os.path.relpath(os.path.dirname(project_dir),fc_dir), 
+                         'project_dir': os.path.basename(project_dir), 
+                         'project_name': project_name, 
+                         'samples': project_samples})
     
-    return {'fc_dir': fc_dir, 'fc_name': fc_name, 'fc_date': fc_date, 'data_dir': os.path.relpath(unaligned_dir,fc_dir), 'basecall_stats_dir': basecall_stats_dir, 'projects': projects}
+    return {'fc_dir': fc_dir, 'fc_name': fc_name, 'fc_date': fc_date, 'basecall_stats_dir': basecall_stats_dir, 'projects': projects}
     
 def has_casava_output(fc_dir):
     try:
@@ -388,7 +437,11 @@ def report_to_gdocs(fc_dir, post_process_config_file):
     run_info = os.path.join(fc_dir, "run_info.yaml")
     if os.path.exists(run_info):
         os.rename(run_info, "{}.bak".format(run_info))
-    report.main(os.path.basename(os.path.abspath(fc_dir)), post_process_config_file)
+    # Call the report_to_gdocs script
+    cmd = ["report_to_gdocs.py",
+            os.path.basename(os.path.abspath(fc_dir)),
+            post_process_config_file]
+    subprocess.check_call(cmd)
 
 if __name__ == "__main__":
 
@@ -411,3 +464,4 @@ if __name__ == "__main__":
     main(args.config,args.fcdir,args.custom_config,args.only_run,args.only_setup,args.ignore_casava)
     if not args.no_google_report:
         report_to_gdocs(args.fcdir, args.config)
+

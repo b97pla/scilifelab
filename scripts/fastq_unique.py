@@ -10,7 +10,7 @@ import collections
 import sys
 
 # Slight modification to read from input file instead of stdin
-from miseq_data import (FastQParser,FastQWriter)
+from scilifelab.utils.fastq_utils import (FastQParser, FastQWriter)
 
 __doc__ %= sys.argv[0]
 if len(sys.argv) > 2:
