@@ -18,7 +18,8 @@ from classes import PmFullTest
 from cement.core import handler
 from scilifelab.pm.core.production import ProductionController
 from scilifelab.utils.misc import filtered_walk, opt_to_dict
-from scilifelab.bcbio.run import find_samples, setup_sample, run_bcbb_command, setup_merged_samples, sample_table, get_vcf_files, validate_sample_directories
+from scilifelab.bcbio.run import find_samples, setup_sample, run_bcbb_command, setup_merged_samples, sample_table, get_vcf_files, validate_sample_directories, _group_samples
+from scilifelab.bcbio import merge_sample_config
 
 LOG = logbook.Logger(__name__)
 
@@ -256,6 +257,20 @@ class UtilsTest(SciLifeTest):
         """Test setting up merged samples"""
         flist = find_samples(j_doe_00_05)
         setup_merged_samples(flist, **{'dry_run':False})
+        with open(os.path.join(j_doe_00_05, "P001_101_index3", "TOTAL", "P001_101_index3-bcbb-config.yaml")) as fh:
+            conf = yaml.load(fh)
+        self.assertEqual(conf["details"][0]["files"][0], os.path.join(j_doe_00_05, "P001_101_index3", "TOTAL", "P001_101_index3_B002BBBXX_TGACCA_L001_R1_001.fastq.gz"))
+        
+    def test_merge_sample_config(self):
+        """Test merging sample configuration files"""
+        flist = find_samples(j_doe_00_05)
+        fdict = _group_samples(flist)
+        out_d = os.path.join(j_doe_00_05, "P001_101_index3", "TOTAL")
+        if not os.path.exists(out_d):
+            os.makedirs(out_d)
+        newconf = merge_sample_config(fdict["P001_101_index3"].values(), "P001_101_index3", out_d=out_d, dry_run=False)
+        self.assertTrue(os.path.exists(os.path.join(j_doe_00_05, "P001_101_index3", "TOTAL", "P001_101_index3_B002BBBXX_TGACCA_L001_R1_001.fastq.gz" )))
+        self.assertTrue(os.path.exists(os.path.join(j_doe_00_05, "P001_101_index3", "TOTAL", "P001_101_index3_C003CCCXX_TGACCA_L001_R1_001.fastq.gz" )))
 
     def test_setup_samples(self):
         """Test setting up samples, changing genome to rn4"""

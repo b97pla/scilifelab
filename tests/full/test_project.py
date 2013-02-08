@@ -47,7 +47,7 @@ class ProjectTest(PmFullTest):
 
     def test_project_merge_run(self):
         """Test running an merged sample in project folder"""
-        self.app = self.make_app(argv = ['project', 'run', 'j_doe_00_04', '--email', os.getenv("MAILTO"), '-t', '00:15:00', '--partition', 'core', '--sample', "P001_101_index3", '--debug', '--force', '--quiet', '--num_cores', '1'], extensions=['scilifelab.pm.ext.ext_distributed'])
+        self.app = self.make_app(argv = ['project', 'run', 'j_doe_00_04', '--email', os.getenv("MAILTO"), '-t', '00:15:00', '--partition', 'core', '--sample', "P001_101_index3", '--debug', '--force', '--quiet', '--num_cores', '1', '--merged'], extensions=['scilifelab.pm.ext.ext_distributed'])
         handler.register(ProjectController)
         self._run_app()
         os.chdir(filedir)
@@ -74,7 +74,7 @@ class ProjectTest(PmFullTest):
     def test_project_monitor_job_fake_jobid(self):
         """Add fake JOBID and make sure command doesn't fail"""
         s = "P001_102_index6"
-        jobidfile = os.path.join(j_doe_00_04, s, "121015_BB002BBBXX", "JOBID")
+        jobidfile = os.path.join(j_doe_00_04, s, "120924_AC003CCCXX", "JOBID")
         LOG.info("Writing to jobid file {}".format(jobidfile))
         with open(jobidfile, "w") as fh:
             fh.write("1")
