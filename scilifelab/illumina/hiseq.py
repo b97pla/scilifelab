@@ -38,7 +38,8 @@ class HiSeqRun(illumina.IlluminaRun):
         entries = []
         with open(samplesheet) as fh:
             csvr = csv.DictReader(fh, dialect='excel')
-            entries = [row for row in csvr if (lane is None or row["Lane"] == lane) \
+            entries = [row for row in csvr \
+                       if (lane is None or row["Lane"] == lane) \
                        and (sample_project is None or row["SampleProject"] == sample_project) \
                        and (index is None or row["Index"] == index)]
         
@@ -52,6 +53,7 @@ class HiSeqRun(illumina.IlluminaRun):
             csvw = csv.writer(outh)
             csvw.writerow(HiSeqRun._samplesheet_header())
             csvw.writerows(sdata)
+
         return samplesheet
     
     @staticmethod

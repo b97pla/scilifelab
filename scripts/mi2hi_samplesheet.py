@@ -5,8 +5,10 @@ import argparse
 from scilifelab.illumina.miseq import MiSeqSampleSheet
 
 
-def main():
-	pass
+def main(miseq_samplesheet):
+	samplesheet = MiSeqSampleSheet(miseq_samplesheet)
+	print(samplesheet.samples)
+	print(samplesheet.to_hiseq())
 
 
 if __name__ == '__main__':

@@ -77,8 +77,10 @@ class MiSeqRun:
 
 class MiSeqSampleSheet:
     def __init__(self, ss_file):
-        assert os.path.exists(ss_file), "Samplesheet %s does not exist" % ss_file
-        setattr(self,"samplesheet",ss_file)
+        assert os.path.exists(ss_file), \
+        	"Samplesheet %s does not exist" % ss_file
+
+        setattr(self, "samplesheet", ss_file)
         self._parse_sample_sheet()
         
     def _parse_sample_sheet(self):
@@ -92,13 +94,15 @@ class MiSeqSampleSheet:
                 if line.startswith("["):
                     current = line.strip("[], ")
                     data[current] = {}
+
                 else:
-                    [opt,val] = line.split(",",1)
+                    [opt, val] = line.split(",",1)
                     data[current][opt] = val
     
         # Assign the parsed attributes to class attributes
         for option, value in data.get("Header",{}).items():
-            setattr(self, option, value)
+            setattr(self, option.replace(" ", ""), value)
+
         for option, value in data.get("Settings",{}).items():
             setattr(self, option, value)
         
@@ -108,9 +112,12 @@ class MiSeqSampleSheet:
             data_header = data["Data"][first_data_col].split(",")
             samples = {}
             for sample_id, sample_data in data["Data"].items():
-                if sample_id == first_data_col: continue
+                if sample_id == first_data_col:
+                	continue
+
                 samples[sample_id] = dict(zip(data_header,sample_data.split(",")))
                 samples[sample_id][first_data_col] = sample_id
+
             setattr(self, "samples", samples)
 
     def sample_names(self):
@@ -128,8 +135,10 @@ class MiSeqSampleSheet:
                             data = line.split(",")
                             if len(data) == 0 or data[0].startswith("["):
                                 break
+
                             if data[0] in samples:
                                 sample_names.append(data[0])
+
             self._sample_names = sample_names
         
         return self._sample_names
@@ -137,9 +146,39 @@ class MiSeqSampleSheet:
         
     def sample_field(self, sample_id, sample_field=None):
         samples = getattr(self,"samples",{})
-        assert sample_id in samples, "The sample '%s' was not found in samplesheet %s" % (sample_id,self.samplesheet)
+        assert sample_id in samples, \
+        	"The sample '%s' was not found in samplesheet %s" % (sample_id,self.samplesheet)
         if sample_field is None:
             return samples[sample_id]
-        assert sample_field in samples[sample_id], "The sample field '%s' was not found in samplesheet %s" % (sample_field,self.samplesheet)
-        return samples[sample_id][sample_field] 
 
+        assert sample_field in samples[sample_id], \
+        	"The sample field '%s' was not found in samplesheet %s" % (sample_field,self.samplesheet)
+        return samples[sample_id][sample_field]
+
+    def to_hiseq(self):
+    	"""Convert Miseq SampleSheet to HiSeq formatted Samplesheet.
+    	"""
+    	FCID = "NA"
+    	Lane = 1
+    	SampleRef = "NA"
+    	Description = self.Description
+    	Control = "NA"
+    	Recipe = "NA"
+    	Operator = self.InvestigatorName
+
+    	rows = []
+    	for sampleID, info in self.samples.iteritems():
+    		row = [FCID]
+    		row.append(Lane)
+    		row.append(sampleID)
+    		row.append(SampleRef)
+    		row.append(info['index'])
+    		row.append(Description)
+    		row.append(Control)
+    		row.append(Recipe)
+    		row.append(Operator)
+    		row.append(info['Sample_Name'])
+
+    		rows.append(row)
+
+    	return rows
