@@ -142,6 +142,17 @@ class ProductionTest(PmFullTest):
         self._run_app()
         os.chdir(filedir)
 
+    def test_batch_submission(self):
+        """Test that adding --batch groups commands into a batch submission"""
+        pp = os.path.join(j_doe_00_04, SAMPLES[1], FLOWCELL, "{}-post_process.yaml".format(SAMPLES[1]))
+        with open(pp) as fh:
+            config = yaml.load(fh)
+        platform_args = config["distributed"]["platform_args"].split()
+        account =  platform_args[platform_args.index("-A")+1]
+        self.app = self.make_app(argv = ['production', 'compress', 'J.Doe_00_04', '--debug', '--force', '--jobname', 'batchsubmission', '--drmaa', '--batch', '--partition', 'devel', '--time', '01:00:00', '-A', account], extensions=['scilifelab.pm.ext.ext_distributed'])
+        handler.register(ProductionController)
+        self._run_app()
+        
     def test_change_platform_args(self):
         """Test that passing --time actually changes platform
         arguments. These arguments should have precedence over
@@ -199,8 +210,6 @@ class ProductionTest(PmFullTest):
         self.app = self.make_app(argv = ['production', 'remove-finished', 'J.Doe_00_04', '--debug', '--force', '-n'], extensions=[])
         handler.register(ProductionController)
         self._run_app()
-
-
 
 class UtilsTest(SciLifeTest):
     @classmethod

@@ -34,7 +34,7 @@ instrument = {
         'instrument_alias':'Eomer',
         'instrument' : 'HiSeq 2500',
         },
-    'SN7001301': {
+    'SN7001362': {
         'instrument_alias':'Aragorn',
         'instrument' : 'HiSeq 2500',
         },
@@ -50,7 +50,7 @@ instrument = {
 # Software versions used in data production. Instrument specific?
 software_versions = {
     'baseconversion_version' : 'OLB v1.9',
-    'casava_version' : 'CASAVA v1.8'
+    'casava_version' : 'CASAVA v1.8.2'
     }
 
 
@@ -81,6 +81,21 @@ def _get_ordered_million_reads(sample_name, ordered_million_reads):
     else:
         return ordered_million_reads
 
+def _get_phix_error_rate(lane, phix):
+    """Set phix error rate for a sample based on lane
+
+    :param lane: lane
+    :param phix: parsed option passed to application
+
+    :returns: phix error rate or None"""
+    if isinstance(phix, dict):
+        if int(lane) in phix:
+            return phix[int(lane)]
+        else:
+            return -1
+    else:
+        return phix
+
 def _get_bc_count(sample_name, bc_count, sample_run):
     """Retrieve barcode count for a sample
 
@@ -96,6 +111,7 @@ def _get_bc_count(sample_name, bc_count, sample_run):
             return bc_count.get("default", sample_run.get("bc_count", -1))
     else:
         return bc_count
+
 
 def _assert_flowcell_format(flowcell):
     """Assert name of flowcell: "[A-Z0-9]+XX"
@@ -214,6 +230,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         "phix_error_rate" : None,
         "avg_quality_score" : None,
         "success" : None,
+        "run_mode":None,
         }
     # key mapping from sample_run_metrics to parameter keys
     srm_to_parameter = {"project_name":"sample_prj", "FC_id":"flowcell", 
@@ -250,6 +267,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
     # Set options
     ordered_million_reads = _literal_eval_option(ordered_million_reads)
     bc_count = _literal_eval_option(bc_count)
+    phix = _literal_eval_option(phix)
 
     # Count number of times a sample has been run on a flowcell; if several, make lane-specific reports
     sample_count = Counter([x.get("barcode_name") for x in sample_run_list])
@@ -264,12 +282,16 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         fc = "{}_{}".format(s.get("date"), s.get("flowcell"))
         # Get instrument
         try:
-            s_param.update(instrument['fc_con.get_instrument(str(fc))'])
+            s_param.update(instrument[fc_con.get_instrument(str(fc))])
         except:
             LOG.warn("Failed to set instrument and software versions for flowcell {} in report due to missing RunInfo -> Instrument field in statusdb. Either rerun 'pm qc update-qc' or search-and-replace 'NN' in the sample report.".format(fc))
             s_param.update(instrument['default'])
+        # Get run mode
+        s_param["run_mode"] = fc_con.get_run_mode(str(fc))
         s_param.update(software_versions)
-        s_param["phix_error_rate"] = phix if phix else fc_con.get_phix_error_rate(str(fc), s["lane"])
+        s_param["phix_error_rate"] = fc_con.get_phix_error_rate(str(fc), s["lane"])
+        if phix:
+            s_param["phix_error_rate"] = _get_phix_error_rate(s["lane"], phix)
         s_param['avg_quality_score'] = calc_avg_qv(s)
         if not s_param['avg_quality_score']:
             LOG.warn("Calculation of average quality failed for sample {}, id {}".format(s.get("name"), s.get("_id")))
@@ -396,7 +418,8 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
                         use_ps_map=True, use_bc_map=False, check_consistency=False,
                         ordered_million_reads=None, uppnex_id=None, customer_reference=None,
                         exclude_sample_ids={}, project_alias=None, sample_aliases={},
-                       projectdb="projects", samplesdb="samples", flowcelldb="flowcells", **kw):
+                        projectdb="projects", samplesdb="samples", flowcelldb="flowcells",
+                        include_all_samples=False, **kw):
     """Make a project status note. Used keywords:
 
     :param project_name: project name
@@ -412,6 +435,10 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
     :param exclude_sample_ids: exclude some sample ids from project note
     :param project_alias: project alias name
     :param sample_aliases: sample alias names
+    :param projectdb: project db name
+    :param samplesdb: samples db name
+    :param flowcelldb: flowcells db name
+    :param include_all_samples: include all samples in report
     """
     # parameters
     parameters = {
@@ -432,6 +459,7 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
     # Set report paragraphs
     paragraphs = project_note_paragraphs()
     headers = project_note_headers()
+    # Set local param variable
     param = parameters
     
     # Get project summary from project database
@@ -482,9 +510,21 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
     sample_table = []
     samples_excluded = []
     all_passed = True
+    last_library_preps = p_con.get_latest_library_prep(project_name)
+    last_library_preps_srm = [x for l in last_library_preps.values() for x in l] 
     LOG.debug("Looping through sample map that maps project sample names to sample run metrics ids")
     for k,v in samples.items():
         LOG.debug("project sample '{}' maps to '{}'".format(k, v))
+        if not include_all_samples:
+            if v['sample'] not in last_library_preps.keys():
+                LOG.info("No library prep information for sample {}; keeping in report".format(v['sample']))
+            else:
+                if k not in last_library_preps_srm:
+                    LOG.info("Sample run {} ('{}') is not latest library prep ({}) for project sample {}: excluding from report".format(k, v["id"], last_library_preps[v['sample']].values()[0], v['sample']))
+                    continue
+        else:
+            pass
+                    
         if re.search("Unexpected", k):
             continue
         barcode_seq = s_con.get_entry(k, "sequence")

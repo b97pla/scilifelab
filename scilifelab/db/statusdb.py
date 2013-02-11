@@ -302,6 +302,26 @@ def get_qc_data(sample_prj, p_con, s_con, fc_id=None):
             qcdata[s["name"]]["PERCENT_ON_TARGET"] = float(qcdata[s["name"]]["FOLD_ENRICHMENT"]/ (float(qcdata[s["name"]]["GENOME_SIZE"]) / float(target_territory))) * 100
     return qcdata
 
+def get_scilife_to_customer_name(project_name, p_con, s_con):
+    """Get scilife to customer name mapping, represented as a
+    dictionary.
+    
+    :param project_name: project name
+    :param p_con: object of type <ProjectSummaryConnection>
+    :param s_con: object of type <SampleRunMetricsConnection>
+    
+    :returns: dictionary with keys scilife name and values customer name
+    """
+    barcode_names = [s.get("barcode_name", None) for s in s_con.get_samples(sample_prj=project_name)]
+    name_d = {}
+    for bcname in barcode_names:
+        s = p_con.get_project_sample(project_name, bcname)
+        name_d[bcname] = {'scilife_name': s['project_sample'].get('scilife_name', bcname),
+                          'customer_name' : s['project_sample'].get('customer_name', None)
+                          }
+    return name_d
+
+
 ##############################
 # Connections
 ##############################
@@ -401,8 +421,16 @@ class FlowcellRunMetricsConnection(Couch):
             return None
         instrument = fc.get('RunInfo', {}).get('Instrument', None)
         if not instrument:
-            instrument = fc.get('runParameters', {}).get('Setup', {}).get('ScannerID', None)
+            instrument = fc.get('RunParameters', {}).get('Setup', {}).get('ScannerID', None)
         return instrument
+
+    def get_run_mode(self, name):
+        """Get run mode"""
+        fc = self.get_entry(name)
+        if not fc:
+            return None
+        run_mode = fc.get('RunParameters', {}).get('Setup', {}).get('RunMode', None)
+        return run_mode
 
 class ProjectSummaryConnection(Couch):
     _doc_type = ProjectSummaryDocument
@@ -433,24 +461,6 @@ class ProjectSummaryConnection(Couch):
         project_samples = project.get('samples', None)
         return _match_barcode_name_to_project_sample(barcode_name, project_samples, extensive_matching)
 
-    def map_srm_to_name(self, project_name, include_all=True, **args):
-        """Map sample run metrics names to project sample names for a
-        project, possibly subset by flowcell id.
-
-        :param project_name: project name
-         :param **kw: keyword arguments to be passed to map_name_to_srm
-        """
-        samples = self.map_name_to_srm(project_name, **args)
-        srm_to_name = {}
-        for k, v in samples.items():
-            if not v:
-                if not include_all:
-                    continue
-                srm_to_name.update({"NOSRM_{}".format(k):{"sample":k, "id":None}})
-            else:
-                srm_to_name.update({x:{"sample":k,"id":y} for x,y in v.items()})
-        return srm_to_name
-
     def _get_sample_run_metrics(self, v):
         if v.get('library_prep', None):
             library_preps = v.get('library_prep')
@@ -474,3 +484,23 @@ class ProjectSummaryConnection(Couch):
         else:
             return round(amount, dec)
 
+    def get_latest_library_prep(self, project_name):
+        """Get mapping from project name to sample_run_metrics for
+        latest library prep.
+
+        :param project_name: project name
+        """
+        project = self.get_entry(project_name)
+        if not project:
+            return None
+        project_samples = project.get('samples', None)
+        map_d = {}
+        for project_sample_name,sample in project_samples.iteritems():
+            if sample.get('library_prep', None):
+                library_preps = sample.get('library_prep')
+                lkeys = library_preps.keys()
+                lkeys.sort(reverse=True)
+                map_d[project_sample_name] = {k:kk for kk in lkeys[0] for k, v in library_preps[kk].get('sample_run_metrics', {}).items()} if library_preps else None
+            else:
+                self.log.warn("No library_prep information for project sample {}".format(project_sample_name))
+        return map_d
