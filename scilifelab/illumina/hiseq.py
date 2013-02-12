@@ -61,7 +61,7 @@ class HiSeqRun(illumina.IlluminaRun):
     def get_project_names(samplesheet):
         """List the projects available in the samplesheet. Optionally filter by project name.
         """ 
-        return sorted(list(set([e['SampleProject'].replace("__",".") for e in HiSeqRun.parse_samplesheet(samplesheet)])))
+        return sorted(list(set([e['SampleProject'].replace("__", ".") for e in HiSeqRun.parse_samplesheet(samplesheet)])))
     
     @staticmethod
     def get_project_sample_ids(samplesheet, project):
@@ -75,9 +75,14 @@ class HiSeqRun(illumina.IlluminaRun):
 
 
 class HiSeqSampleSheet(list):
-    def __init__(self, ss_file, lane=None, sample_project=None, index=None):
-        self.samplesheet = ss_file
-        self._parse_sample_sheet(lane=None, sample_project=None, index=None)
+    def __init__(self, samplesheet, lane=None, sample_project=None, index=None):
+        if isinstance(samplesheet, list):
+            self.extend(samplesheet)
+
+        else:
+            self.samplesheet = samplesheet
+            self._parse_sample_sheet(lane=None, sample_project=None, index=None)
+
 
     def _parse_sample_sheet(self, lane=None, sample_project=None, index=None):
         """Parse a .csv samplesheet and return a list of dictionaries with

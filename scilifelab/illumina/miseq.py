@@ -22,7 +22,6 @@ def group_fastq_files(fastq_files):
     return batches.values()
 
 
-
 class MiSeqRun:
     def __init__(self, run_dir):
         self._run_dir = os.path.normpath(run_dir)
@@ -75,10 +74,11 @@ class MiSeqRun:
         import split_demultiplexed 
         split_demultiplexed._split_fastq_batches(self._fastq,out_dir,sample_names)
 
+
 class MiSeqSampleSheet:
     def __init__(self, ss_file):
         assert os.path.exists(ss_file), \
-        	"Samplesheet %s does not exist" % ss_file
+            "Samplesheet %s does not exist" % ss_file
 
         setattr(self, "samplesheet", ss_file)
         self._parse_sample_sheet()
@@ -113,7 +113,7 @@ class MiSeqSampleSheet:
             samples = {}
             for sample_id, sample_data in data["Data"].items():
                 if sample_id == first_data_col:
-                	continue
+                    continue
 
                 samples[sample_id] = dict(zip(data_header,sample_data.split(",")))
                 samples[sample_id][first_data_col] = sample_id
@@ -147,38 +147,39 @@ class MiSeqSampleSheet:
     def sample_field(self, sample_id, sample_field=None):
         samples = getattr(self,"samples",{})
         assert sample_id in samples, \
-        	"The sample '%s' was not found in samplesheet %s" % (sample_id,self.samplesheet)
+            "The sample '%s' was not found in samplesheet %s" % (sample_id,self.samplesheet)
         if sample_field is None:
             return samples[sample_id]
 
         assert sample_field in samples[sample_id], \
-        	"The sample field '%s' was not found in samplesheet %s" % (sample_field,self.samplesheet)
+            "The sample field '%s' was not found in samplesheet %s" % (sample_field,self.samplesheet)
         return samples[sample_id][sample_field]
 
     def to_hiseq(self):
-    	"""Convert Miseq SampleSheet to HiSeq formatted Samplesheet.
-    	"""
-    	FCID = "NA"
-    	Lane = 1
-    	SampleRef = "NA"
-    	Description = self.Description
-    	Control = "NA"
-    	Recipe = "NA"
-    	Operator = self.InvestigatorName
+        """Convert Miseq SampleSheet to HiSeq formatted Samplesheet.
+        """
+        FCID = "NA"
+        Lane = 1
+        SampleRef = "NA"
+        Description = self.Description
+        Control = "NA"
+        Recipe = "NA"
+        Operator = self.InvestigatorName
 
-    	rows = []
-    	for sampleID, info in self.samples.iteritems():
-    		row = [FCID]
-    		row.append(Lane)
-    		row.append(sampleID)
-    		row.append(SampleRef)
-    		row.append(info['index'])
-    		row.append(Description)
-    		row.append(Control)
-    		row.append(Recipe)
-    		row.append(Operator)
-    		row.append(info['Sample_Name'])
+        rows = []
+        for sampleID, info in self.samples.iteritems():
+            row = {}
+            row["FCID"] = FCID
+            row["Lane"] = Lane
+            row["SampleID"] = sampleID
+            row["SampleRef"] = SampleRef
+            row["Index"] = info['index']
+            row["Description"] = Description
+            row["Control"] = Control
+            row["Recipe"] = Recipe
+            row["Operator"] = Operator
+            row["SampleProject"] = info['Sample_Name']
 
-    		rows.append(row)
+            rows.append(row)
 
-    	return rows
+        return rows

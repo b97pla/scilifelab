@@ -16,10 +16,12 @@ def main(miseq_samplesheet):
     pp.pprint(m_samplesheet.to_hiseq())
 
     h_samplesheet = HiSeqSampleSheet("scripts/C1DLBACXX.csv")
+    h_style_ss = HiSeqSampleSheet(m_samplesheet.to_hiseq())
 
     print
     pp.pprint(h_samplesheet[:2])
-
+    print
+    pp.pprint(h_style_ss)
 
 
 if __name__ == '__main__':
