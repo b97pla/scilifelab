@@ -76,6 +76,17 @@ class HiSeqRun(illumina.IlluminaRun):
 
 class HiSeqSampleSheet(list):
     def __init__(self, samplesheet, lane=None, sample_project=None, index=None):
+        self.header = ["FCID",
+                       "Lane",
+                       "SampleID",
+                       "SampleRef",
+                       "Index",
+                       "Description",
+                       "Control",
+                       "Recipe",
+                       "Operator",
+                       "SampleProject"] 
+
         if isinstance(samplesheet, list):
             self.extend(samplesheet)
 
@@ -97,3 +108,11 @@ class HiSeqSampleSheet(list):
                 and (sample_project is None or row["SampleProject"] == sample_project) \
                 and (index is None or row["Index"] == index):
                     self.append(row)
+
+    def write(self, samplesheet):
+        """Write samplesheet to .csv file
+        """
+        with open(samplesheet, "w") as outh:
+            csvw = csv.writer(outh)
+            csvw.writerow(self[0].keys())
+            csvw.writerows([row.values() for row in self])

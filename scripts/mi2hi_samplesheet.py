@@ -23,6 +23,8 @@ def main(miseq_samplesheet):
     print
     pp.pprint(h_style_ss)
 
+    h_style_ss.write("hiseqstyle.csv")
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

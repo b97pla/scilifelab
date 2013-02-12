@@ -2,6 +2,7 @@
 """
 import os
 import re
+from collections import OrderedDict
     
 def group_fastq_files(fastq_files):
     """Divide the input fastq files into batches based on lane and read, ignoring set"""
@@ -153,6 +154,7 @@ class MiSeqSampleSheet:
 
         assert sample_field in samples[sample_id], \
             "The sample field '%s' was not found in samplesheet %s" % (sample_field,self.samplesheet)
+
         return samples[sample_id][sample_field]
 
     def to_hiseq(self):
@@ -168,7 +170,7 @@ class MiSeqSampleSheet:
 
         rows = []
         for sampleID, info in self.samples.iteritems():
-            row = {}
+            row = OrderedDict()
             row["FCID"] = FCID
             row["Lane"] = Lane
             row["SampleID"] = sampleID
