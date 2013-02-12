@@ -11,6 +11,7 @@ class HiSeqRun(illumina.IlluminaRun):
         self.base = base
         if samplesheet is None:
             samplesheet = illumina.IlluminaRun.get_samplesheet(self.base)
+
         self.samplesheet = samplesheet
 
     @staticmethod
@@ -31,9 +32,9 @@ class HiSeqRun(illumina.IlluminaRun):
     @staticmethod
     def parse_samplesheet(samplesheet, lane=None, sample_project=None, index=None):
         """Parse a .csv samplesheet and return a list of dictionaries with
-        elements corresponding to rows of the samplesheet and keys corresponding
-        to the columns in the header. Optionally filter by lane and/or sample_project
-        and/or index
+        elements corresponding to rows of the samplesheet and keys
+        corresponding to the columns in the header. Optionally filter by lane 
+        and/or sample_project and/or index.
         """
         entries = []
         with open(samplesheet) as fh:
@@ -71,5 +72,23 @@ class HiSeqRun(illumina.IlluminaRun):
             if e['SampleProject'].replace('__','.') == project:
                 ids.append(e['SampleID'])
         return ids
-    
-             
+
+
+class HiSeqSampleSheet(list):
+    def __init__(self, ss_file, lane=None, sample_project=None, index=None):
+        self.samplesheet = ss_file
+        self._parse_sample_sheet(lane=None, sample_project=None, index=None)
+
+    def _parse_sample_sheet(self, lane=None, sample_project=None, index=None):
+        """Parse a .csv samplesheet and return a list of dictionaries with
+        elements corresponding to rows of the samplesheet and keys
+        corresponding to the columns in the header. Optionally filter by lane 
+        and/or sample_project and/or index.
+        """
+        with open(self.samplesheet) as fh:
+            csvr = csv.DictReader(fh, dialect='excel')
+            for row in csvr:
+                if (lane is None or row["Lane"] == lane) \
+                and (sample_project is None or row["SampleProject"] == sample_project) \
+                and (index is None or row["Index"] == index):
+                    self.append(row)
