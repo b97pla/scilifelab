@@ -5,25 +5,15 @@ import argparse
 from scilifelab.illumina.miseq import MiSeqSampleSheet
 from scilifelab.illumina.hiseq import HiSeqSampleSheet
 
-import pprint
-pp = pprint.PrettyPrinter(indent=2)
 
-def main(miseq_samplesheet):
+def main(miseq_samplesheet, hiseq_samplesheet):
     m_samplesheet = MiSeqSampleSheet(miseq_samplesheet)
+    h_samplesheet = HiSeqSampleSheet(m_samplesheet.to_hiseq())
 
-    pp.pprint(m_samplesheet.samples)
-    print
-    pp.pprint(m_samplesheet.to_hiseq())
+    if hiseq_samplesheet is None:
+        hiseq_samplesheet = miseq_samplesheet + ".out"
 
-    h_samplesheet = HiSeqSampleSheet("scripts/C1DLBACXX.csv")
-    h_style_ss = HiSeqSampleSheet(m_samplesheet.to_hiseq())
-
-    print
-    pp.pprint(h_samplesheet[:2])
-    print
-    pp.pprint(h_style_ss)
-
-    h_style_ss.write("hiseqstyle.csv")
+    h_samplesheet.write(hiseq_samplesheet)
 
 
 if __name__ == '__main__':
@@ -31,7 +21,10 @@ if __name__ == '__main__':
 
     parser.add_argument("miseq_samplesheet", \
         help="Samplesheet in MiSeq Samplesheet format")
+    parser.add_argument("-o", "--out", \
+        default=None, \
+        help="Output Samplesheet in HiSeq format")
 
     args = parser.parse_args()
 
-    main(args.miseq_samplesheet)
+    main(args.miseq_samplesheet, args.out)
