@@ -82,7 +82,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
             
     def _to_casava_structure(self, fc):
         transfer_status = {}
-        outdir_pfx = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data"))
+        outdir_pfx = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project, "data"))
         if self.pargs.transfer_dir:
            outdir_pfx = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.transfer_dir, "data"))
         for sample in fc:
@@ -128,8 +128,8 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
             self.app._output_data["stderr"].write("{:<18}{:>18}{:>18}\n".format(k, v['files'], v['results']))
 
     def _to_pre_casava_structure(self, fc):
-        dirs = {"data":os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data", fc.fc_id())),
-                "intermediate":os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "intermediate", fc.fc_id()))}
+        dirs = {"data":os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project, "data", fc.fc_id())),
+                "intermediate":os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project, "intermediate", fc.fc_id()))}
         if self.pargs.transfer_dir:
            dirs["data"] = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.transfer_dir, "data", fc.fc_id()))
            dirs["intermediate"] = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.transfer_dir, "intermediate", fc.fc_id()))
