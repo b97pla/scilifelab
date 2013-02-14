@@ -1,6 +1,7 @@
 """Module best_practice - code for generating best practice reports and notes"""
 import os
 import re
+import yaml
 import pandas as pd
 from cStringIO import StringIO
 from scilifelab.report.rst import make_rest_note
@@ -125,6 +126,32 @@ def _get_software_table(flist):
     ret_df = df_list[0]
     ret_df.columns = ["Software", "Version"]
     return ret_df
+
+def _get_database_table(flist, post_process=None):
+    """Get database versions"""
+    if post_process:
+        with open(post_process) as fh:
+            conf = yaml.load(fh)
+    df_list = []
+    for run_info in flist:
+        with open(run_info) as fh:
+            bcbb_conf = yaml.load(fh)
+        analyses = list(set([x.get("analysis", None) for x in bcbb_conf.get("details", {})]))
+        if len(analyses) > 1:
+            LOG.warn("More than one defined analysis: {}\nArbitrarily using the first.".format(analyses)
+)
+        if not post_process:
+            with open(run_info.replace("bcbb-config.yaml", "post_process.yaml")) as fh:
+                conf = yaml.load(fh)
+        tab = conf.get("custom_algorithms", {}).get(analyses.pop(), {})
+        df_list.append(pd.DataFrame({'Database':tab.keys(), 'Version':tab.values()}))
+
+    ret_df = df_list[0]
+    ret_df.index = ret_df["Database"]
+    i = [x in ["dbsnp", "train_hapmap", "train_indels", "train_1000g_omni"] for x in ret_df.index]
+    ret_df = ret_df[i]
+    ret_df["Version"] = [os.path.basename(x) for x in ret_df["Version"]]
+    return ret_df
     
 def _format_num_reads(reads):
     """Format number of reads as k, M, or G"""
@@ -155,6 +182,7 @@ def best_practice_note(project_name=None, samples=None, capture_kit="agilent_v4"
     if application == "seqcap":
         df, samples_df = _get_seqcap_summary(flist)
         software_df = _get_software_table(flist)
+        database_df = _get_database_table(flist, post_process=kw.get("post_process", None))
         if sample_name_map:
             samples_df.CustomerName = [sample_name_map[s]['customer_name'] for s in samples_df.Sample]
         df.Total = _format_num_reads(df.Total)
@@ -163,8 +191,9 @@ def best_practice_note(project_name=None, samples=None, capture_kit="agilent_v4"
         ttab_dbsnp = _indent_texttable_for_rst(_dataframe_to_texttable(df[["Sample"] + SEQCAP_TABLE_COLUMNS[9:14]], align=["left", "right", "right", "right", "right", "right"]))
         ttab_samples = _indent_texttable_for_rst(_dataframe_to_texttable(samples_df[["Sample", "CustomerName", "Sequence"]], align=["left", "right", "right"]))
         ttab_software = _indent_texttable_for_rst(_dataframe_to_texttable(software_df, align=["left", "right"]))
+        ttab_database = _indent_texttable_for_rst(_dataframe_to_texttable(database_df, align=["left", "right"]))
         param.update({'project_summary':ttab, 'project_target_summary':ttab_target, 'project_dbsnp_summary':ttab_dbsnp, 'table_sample_summary':ttab_samples, 'capturekit':SEQCAP_KITS[capture_kit],
-                      'software_versions_table':ttab_software})
+                      'software_versions_table':ttab_software, 'database_versions_table': ttab_database})
         param['project_name'] = project_name if project_name else kw.get("statusdb_project_name", None)
     # Add applications here
     else:
