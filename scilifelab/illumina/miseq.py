@@ -2,7 +2,10 @@
 """
 import os
 import re
+import glob
 from collections import OrderedDict
+from scilifelab.bcbio.qc import FlowcellRunMetricsParser
+from scilifelab.illumina.hiseq import HiSeqSampleSheet
     
 def group_fastq_files(fastq_files):
     """Divide the input fastq files into batches based on lane and read, ignoring set"""
@@ -32,8 +35,15 @@ class MiSeqRun:
             samplesheet = MiSeqSampleSheet(ss_file)
             self.samplesheet = samplesheet
         
-        self._run_config = IlluminaConfiguration(run_dir)
+        parser = FlowcellRunMetricsParser(self._run_dir)
+        self.run_config = parser.parseRunParameters()
         self._fastq = self._fastq_files()
+        
+    def write_hiseq_samplesheet(self, samplesheet):
+        """Export the metadata for this run in a HiSeq samplesheet format
+        """
+        hs_ssheet = HiSeqSampleSheet(self.samplesheet.to_hiseq(self.run_config))
+        hs_ssheet.write(samplesheet)
         
     def _data_dir(self):
         return os.path.join(self._run_dir,"Data")
@@ -45,6 +55,8 @@ class MiSeqRun:
         return os.path.join(self._basecalls_dir(),"Multiplex")
     def _alignment_dir(self):
         return os.path.join(self._basecalls_dir(),"Alignment")
+    def _runParameters(self):
+        return os.path.join(self._run_dir,"runParameters.xml")
     
     def _fastq_files(self, fastq_dir=None):
         if fastq_dir is None:
@@ -157,16 +169,16 @@ class MiSeqSampleSheet:
 
         return samples[sample_id][sample_field]
 
-    def to_hiseq(self):
+    def to_hiseq(self, run_config={}):
         """Convert Miseq SampleSheet to HiSeq formatted Samplesheet.
         """
-        FCID = "NA"
-        Lane = 1
+        FCID = run_config.get('Barcode','NA')
+        Lane = "1"
         SampleRef = "NA"
-        Description = self.Description
-        Control = "NA"
+        Description = "NA"
+        Control = "N"
         Recipe = "NA"
-        Operator = self.InvestigatorName
+        Operator = "NA"
 
         rows = []
         for sampleID, info in self.samples.iteritems():
@@ -174,14 +186,29 @@ class MiSeqSampleSheet:
             row["FCID"] = FCID
             row["Lane"] = Lane
             row["SampleID"] = sampleID
-            row["SampleRef"] = SampleRef
+            row["SampleRef"] = self._extract_reference_from_path(info['GenomeFolder'])
             row["Index"] = info['index']
-            row["Description"] = Description
+            row["Description"] = info['Description']
             row["Control"] = Control
             row["Recipe"] = Recipe
             row["Operator"] = Operator
-            row["SampleProject"] = info['Sample_Name']
+            row["SampleProject"] = info['Sample_Project']
 
             rows.append(row)
 
         return rows
+    
+    def _extract_reference_from_path(self, path):
+        """Attempts to extract a name of a reference assembly from a path
+        """
+    
+        head = path
+        regexp = r'[a-zA-Z]+[0-9\.]+$'
+        while head is not None and len(head) > 0:
+            head, tail = os.path.split(head.replace('\\','/'))
+            if re.match(regexp, tail) is not None:
+                return tail
+            
+        return path
+    
+    
