@@ -25,9 +25,8 @@ PROCESS_YAML = True
 # If True, will assign the distributed master process and workers to a separate RabbitMQ queue for each flowcell 
 FC_SPECIFIC_AMPQ = True
 
-
 def main(post_process_config_file, fc_dir, run_info_file=None, only_run=False, only_setup=False, ignore_casava=False):
- 
+    
     run_arguments = [[os.getcwd(),post_process_config_file,fc_dir,run_info_file]]
     if has_casava_output(fc_dir) and not ignore_casava:
         if not only_run:
@@ -140,7 +139,7 @@ def setup_analysis(post_process_config, archive_dir, run_info_file):
         with open(post_process_config,"w") as fh:
             fh.write(yaml.safe_dump(config, default_flow_style=False, allow_unicode=True, width=1000)) 
             
-    return [[os.getcwd(),post_process_config,archive_dir,run_info_file]]
+    return [[os.getcwd(),post_process_config,archive_dir,run_info_file]]   
         
 def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_config_file):
     """Parse the CASAVA 1.8+ generated flowcell directory and create a 
