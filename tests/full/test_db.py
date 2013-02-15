@@ -233,7 +233,6 @@ class TestCouchDB(unittest.TestCase):
         s_con = SampleRunMetricsConnection(dbname="samples-test", username="u", password="p")
         samples = [s_con.get_entry(x) for x in s_con.name_view]
         samples_d = {x["name"]:x for x in samples}
-        print samples_d
         self.assertEqual(samples_d["1_120924_AC003CCCXX_TGACCA"]["date"], "120924")
         self.assertEqual(samples_d["1_121015_BB002BBBXX_TGACCA"]["flowcell"], "BB002BBBXX")
         self.assertEqual(samples_d["2_120924_AC003CCCXX_ACAGTG"]["entity_type"], "sample_run_metrics")
@@ -336,7 +335,7 @@ class TestMetricsParser(PmFullTest):
         fc_parser = FlowcellRunMetricsParser(self.fcdir)
         data = fc_parser.parse_demultiplex_stats_htm(**self.fc_kw)
         bc_count = parser.get_bc_count(demultiplex_stats=data, **self.sample_kw)
-        self.assertEqual(bc_count, str(39034396))
+        self.assertEqual(str(bc_count), str(19517198))
 
     def test_parseRunParameters(self):
         parser = FlowcellRunMetricsParser(self.fcdir)
@@ -350,3 +349,86 @@ class TestMetricsParser(PmFullTest):
         parser = FlowcellRunMetricsParser(self.fcdir)
         data = parser.parse_demultiplex_stats_htm(**self.fc_kw)
         self.assertEqual(data['Barcode_lane_statistics'][0]['# Reads'], '39,034,396')
+
+@unittest.skipIf(not has_couchdb, "No couchdb server running in http://localhost:5984")
+class TestDbConnection(unittest.TestCase):
+    def setUp(self):
+        self.user = "user"
+        self.pw = "pw"
+        self.url = "localhost"
+        self.examples = {"sample":"1_120924_AC003CCCXX_TGACCA",
+                         "flowcell":"AC003CCCXX",
+                         "project":"J.Doe_00_01"}
+        self.p_con = ProjectSummaryConnection(dbname="projects-test", username=self.user, password=self.pw, url=self.url)
+
+    def test_connection(self):
+        """Test database connection"""
+        sample_con = SampleRunMetricsConnection(dbname="samples-test", username=self.user, password=self.pw, url=self.url)
+        self.assertEqual(sample_con.url_string, "http://{}:5984".format(self.url))
+
+    def test_get_flowcell(self):
+        """Test getting a flowcell for a given sample"""
+        sample_con = SampleRunMetricsConnection(dbname="samples-test", username=self.user, password=self.pw, url=self.url)
+        fc = sample_con.get_entry(self.examples["sample"], "flowcell")
+        self.assertEqual(str(fc), self.examples["flowcell"])
+
+    def test_get_sample_ids(self):
+        """Test getting sample ids given flowcell and sample_prj"""
+        sample_con = SampleRunMetricsConnection(dbname="samples-test", username=self.user, password=self.pw, url=self.url)
+        sample_ids = sample_con.get_sample_ids(fc_id=self.examples["flowcell"])
+        LOG.info("Number of samples before subsetting: " + str(len(sample_ids)))
+        self.assertEqual(len(sample_ids), 4)
+        sample_ids = sample_con.get_sample_ids(fc_id=self.examples["flowcell"], sample_prj=self.examples["project"])
+        LOG.info( "Number of samples after subsetting: " + str(len(sample_ids)))
+        self.assertEqual(len(sample_ids), 2)
+
+    def test_get_samples(self):
+        """Test getting samples given flowcell and sample_prj."""
+        sample_con = SampleRunMetricsConnection(dbname="samples-test", username=self.user, password=self.pw, url=self.url)
+
+        samples = sample_con.get_samples(fc_id=self.examples["flowcell"])
+        LOG.info("Selecting on flowcell: " + str(len(samples)))
+        self.assertEqual(len(samples), 4)
+        samples = sample_con.get_samples(fc_id=self.examples["flowcell"], sample_prj=self.examples["project"])
+        LOG.info("Selecting on flowcell, subsetting on project: " + str(len(samples)))
+        self.assertEqual(len(samples), 2)
+
+        samples = sample_con.get_samples(sample_prj=self.examples["project"])
+        LOG.info("Selecting on project: " + str(len(samples)))
+        self.assertEqual(len(samples), 3)
+        samples = sample_con.get_samples(sample_prj=self.examples["project"], fc_id=self.examples["flowcell"])
+        LOG.info("Selecting on project, subsetting on flowcell: " + str(len(samples)))
+        self.assertEqual(len(samples), 2)
+
+    def test_get_samples_wrong_info(self):
+        """Test getting samples when either flowcell or project id information is wrong"""
+        sample_con = SampleRunMetricsConnection(dbname="samples-test", username=self.user, password=self.pw, url=self.url)
+
+        samples = sample_con.get_samples(sample_prj="bogusproject", fc_id=self.examples["flowcell"])
+        LOG.info("Selecting on bogus project, subsetting on flowcell: " + str(len(samples)))
+        self.assertEqual(len(samples), 0)
+        
+                
+    def test_get_project_sample_ids(self):
+        """Test getting project sample ids"""
+        sample_con = SampleRunMetricsConnection(dbname="samples-test", username=self.user, password=self.pw, url=self.url)
+        sample_ids = sample_con.get_sample_ids(sample_prj=self.examples["project"])
+        sample_names = [sample_con.db.get(x)["name"] for x in sample_ids]
+        self.assertEqual(set(sample_names) , set(['1_120924_AC003CCCXX_TGACCA', '2_120924_AC003CCCXX_ACAGTG', '1_121015_BB002BBBXX_TGACCA']))
+        
+    def test_get_latest_library_prep(self):
+        """Test getting latest library prep"""
+        prj = self.p_con.get_entry("J.Doe_00_01")
+        prj['samples']['P001_102']['library_prep']['B'] = {'sample_run_metrics': {'2_120924_AC003CCCXX_TTGGAA': None}}
+        self.p_con.save(prj)
+        preps = self.p_con.get_latest_library_prep(project_name=self.examples["project"])
+        srm = [x for l in preps.values() for x in l]
+        # Make sure A prep not in list
+        self.assertNotIn('2_120924_AC003CCCXX_ACAGTG', srm)
+        # Make sure B prep in list
+        self.assertIn('2_120924_AC003CCCXX_TTGGAA', srm)
+        # Reset data
+        prj = self.p_con.get_entry("J.Doe_00_01")
+        del prj['samples']['P001_102']['library_prep']['B']
+        self.p_con.save(prj)
+
