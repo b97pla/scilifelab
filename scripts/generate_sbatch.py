@@ -117,11 +117,6 @@ except:
     sys.exit("Could not open configuration file " + conffile)
 
 for fname in flist:
-<<<<<<< HEAD
-    #if not (os.path.splitext(fname)[1]==".fastq") & (os.path.splitext(fname)[1]==".gz"): continue
-=======
-    #if not os.path.splitext(fname)[1]==".fastq": continue
->>>>>>> efc04a5fff72c702d45fb300fbffbc65022d6b6b
     read = fname.split("_")[-1]
     tag = "_".join(fname.split("/")[-1].split("_")[3:-2])
     print fname.split("_")
