@@ -3,6 +3,8 @@
 import os
 import re
 from collections import OrderedDict
+
+from bcbio.solexa.run_configuration import IlluminaConfiguration
     
 def group_fastq_files(fastq_files):
     """Divide the input fastq files into batches based on lane and read, ignoring set"""
