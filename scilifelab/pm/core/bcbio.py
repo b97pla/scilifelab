@@ -164,9 +164,6 @@ class BcbioRunController(AbstractBaseController):
                 self.app.log.info("Running bgzip on {}".format(v))
                 cl = ["bgzip", v]
                 self.app.cmd.command(cl)
-            tgt = os.path.join(outdir, os.path.basename(v).replace("TOTAL", "TOTAL_{}".format(k)))
-            v = v.replace(".gz", "")
-            tgt = tgt.replace(".gz", "")
             # tabix
             self.app.log.info("Running tabix on {}.gz".format(v))
             cl = ["tabix", "-f", "-p", "vcf", "{}.gz".format(v)]
