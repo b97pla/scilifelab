@@ -103,7 +103,7 @@ def sample_table(flist):
                 samples.append([sample, lane, barcode_id, fc_name, fc_date, path])
     return pd.DataFrame(samples, columns=["sample", "lane", "barcode_id", "fc_name", "fc_date", "path"])
                                   
-def get_vcf_files(flist, vcfext="sort-gatkrecal-realign-variants-combined"):
+def get_vcf_files(flist, vcfext="sort-gatkrecal-realign-variants-combined-phased-annotated", **kw):
     """Get dictionary of vcf files.
 
     :param flist: yaml sample config file list

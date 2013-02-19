@@ -223,6 +223,7 @@ class RunMetricsController(AbstractBaseController):
         fcdir = os.path.join(os.path.abspath(self._meta.root_path), self.pargs.flowcell)
         (fc_date, fc_name) = fc_parts(self.pargs.flowcell)
         ## Check modification time
+        demux_stats = None
         if modified_within_days(fcdir, self.pargs.mtime):
             fc_kw = dict(fc_date = fc_date, fc_name=fc_name)
             parser = FlowcellRunMetricsParser(fcdir)
@@ -234,8 +235,9 @@ class RunMetricsController(AbstractBaseController):
             fcobj["undemultiplexed_barcodes"] = parser.parse_undemultiplexed_barcode_metrics(**fc_kw)
             fcobj["illumina"].update({"Demultiplex_Stats" : parser.parse_demultiplex_stats_htm(**fc_kw)})
             fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(runinfo_csv=runinfo_csv, **fc_kw)
+            demux_stats = fcobj["illumina"]["Demultiplex_Stats"]
             qc_objects.append(fcobj)
-        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, demultiplex_stats=fcobj["illumina"]["Demultiplex_Stats"])
+        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, demultiplex_stats=demux_stats)
         return qc_objects
 
     @controller.expose(help="Upload run metrics to statusdb")
