@@ -111,7 +111,7 @@ def _get_seqcap_summary(flist):
     samples_df = pd.DataFrame([_split_project_summary_sample_name(x) for x in df["Sample"]])
     df["Sample"] = [_split_project_summary_sample_name(x)['Sample'] for x in df["Sample"]]
     df.columns = SEQCAP_TABLE_COLUMNS
-    return df, samples_df
+    return df.sort(["Sample"]), samples_df.sort(["Sample"])
 
 def _get_software_table(flist):
     df_list = []
@@ -125,7 +125,7 @@ def _get_software_table(flist):
             df_list.append(pd.io.parsers.read_table(fh, sep="\t", skiprows=1, header=None))
     ret_df = df_list[0]
     ret_df.columns = ["Software", "Version"]
-    return ret_df
+    return ret_df.sort(["Software"])
 
 def _get_database_table(flist, post_process=None):
     """Get database versions"""
@@ -151,7 +151,7 @@ def _get_database_table(flist, post_process=None):
     i = [x in ["dbsnp", "train_hapmap", "train_indels", "train_1000g_omni"] for x in ret_df.index]
     ret_df = ret_df[i]
     ret_df["Version"] = [os.path.basename(x) for x in ret_df["Version"]]
-    return ret_df
+    return ret_df.sort(["Database"])
     
 def _format_num_reads(reads):
     """Format number of reads as k, M, or G"""
