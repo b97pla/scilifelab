@@ -2,9 +2,12 @@
 import os
 import re
 import yaml
+import glob
 import pandas as pd
 from cStringIO import StringIO
 from scilifelab.report.rst import make_rest_note
+from scilifelab.io.pandas.picard import read_metrics
+from bcbio.broad.metrics import _add_commas
 from texttable import Texttable
 from itertools import izip
 import scilifelab.log
@@ -14,6 +17,7 @@ LOG = scilifelab.log.minimal_logger(__name__)
 BEST_PRACTICE_NOTES=["seqcap"]
 
 SEQCAP_TABLE_COLUMNS = ["Sample", "Total", "Aligned", "Pair duplicates", "Insert size", "On target", "Mean coverage", "10X coverage", "0X coverage", "Variations", "In dbSNP", "Ts/Tv (all)", "Ts/Tv (dbSNP)", "Ts/Tv (novel)"]
+
 
 SEQCAP_KITS={
     'agilent_v4':'Agilent SureSelect XT All Exon V4',
@@ -26,6 +30,24 @@ parameters = {
     'projectsummarytable' : None,
     'projecttableref' : None,
     }
+
+# From bcbio.broad.metrics (taken from class PicardMetricsParser)
+def _count_percent(count, total):
+    if float(total) > 0:
+        percent = "{:4.1f}%".format( (float(count) / float(total) * 100.0))
+    else:
+        percent = ""
+    return percent
+
+# From bcbio.broad.metrics.PicardMetricsParser
+def _try_float_format(in_string, float_format, multiplier=1.):
+    in_string = in_string.replace(",", ".")
+    try:
+        out_string = float_format % (float(in_string) * multiplier)
+    except ValueError:
+        out_string = in_string
+    return out_string
+
 
 def _dataframe_to_texttable(df, align=None):
     """Convert data frame to texttable. Sets column widths to the
@@ -95,8 +117,16 @@ def _split_project_summary_sample_name(samplename):
             info['ScilifeName'] = m.groups()[1]
     return info
 
-def _get_seqcap_summary(flist):
-    """Gather relevant information for sequence capture."""
+def _get_seqcap_summary(flist, amplicon=False):
+    """Gather relevant information for sequence capture.  
+
+    If amplicon=true, make sure that hs_metrics results are *not* based on
+    MarkDuplicate-marked bams. This is currently done by scanning for
+    label 'dup' in file name.
+
+    :param flist: list of run info files
+    :param amplicon: boolean to indicate amplicon run
+    """
     df_list = []
     for run_info in flist:
         prj_summary = os.path.join(os.path.dirname(run_info), "project-summary.csv")
@@ -105,13 +135,45 @@ def _get_seqcap_summary(flist):
             continue
         with open(prj_summary) as fh:
             LOG.debug("Reading file {}".format(prj_summary))
-            df_list.append(pd.io.parsers.read_csv(fh, sep=","))
+            tmp_df = pd.io.parsers.read_csv(fh, sep=",")
+            if amplicon:
+                tmp_df = _update_project_summary_hs_metrics(run_info, tmp_df)
+            df_list.append(tmp_df)
+            
     df = pd.concat(df_list)
     samples_list = [_split_project_summary_sample_name(x) for x in df["Sample"]]
     samples_df = pd.DataFrame([_split_project_summary_sample_name(x) for x in df["Sample"]])
     df["Sample"] = [_split_project_summary_sample_name(x)['Sample'] for x in df["Sample"]]
     df.columns = SEQCAP_TABLE_COLUMNS
     return df.sort(["Sample"]), samples_df.sort(["Sample"])
+
+def _update_project_summary_hs_metrics(run_info, tmp_df):
+    """Gather relevant information for sequence capture. Skip
+    project-summary files and use metrics files directly instead.
+
+    :param run_info: runinfo file
+    :param tmp_df: temporary DataFrame
+
+    :return: updated data frame
+    """
+    def lencmp(x,y):
+        return cmp(len(y), len(x))
+    hs_metrics_flist = sorted(glob.glob(os.path.join(os.path.dirname(run_info), "*hs_metrics")), cmp=lencmp)
+    if len(hs_metrics_flist) > 0:
+        dup_marked = ["-dup" in x for x in hs_metrics_flist]
+        if all(dup_marked):
+            LOG.warn("hs metrics calculation for {} based on data processed with MarkDuplicates! Rerun Picard's CalculateHsMetrics on bam file without duplicate marked data".format(os.path.basename(run_info)))
+            return tmp_df
+        else:
+            LOG.debug("Reading non-marked duplicate file {} for hs_metrics statistics".format(hs_metrics_flist[dup_marked.index(False)]))
+            hs_metrics = read_metrics(hs_metrics_flist[dup_marked.index(False)])[0]
+        tmp_df["On target bases"] = _count_percent(hs_metrics.ON_TARGET_BASES, hs_metrics.PF_UQ_BASES_ALIGNED)
+        tmp_df["Mean target coverage"] = "{}x".format(_try_float_format(str(hs_metrics.MEAN_TARGET_COVERAGE.values[0]), "%d"))
+        tmp_df["10x coverage targets"] = "{}%".format(_try_float_format(str(hs_metrics.PCT_TARGET_BASES_10X.values[0]), "%.1f", 100.0))
+        tmp_df["Zero coverage targets"] = "{}%".format(_try_float_format(str(hs_metrics.ZERO_CVG_TARGETS_PCT.values[0]), "%.1f", 100.0))
+    else:
+        LOG.warn("Couldn't find any hs_metrics files for {} despite there being a project_summary.csv file present!".format(os.path.basename(run_info)))
+    return tmp_df
 
 def _get_software_table(flist):
     df_list = []
@@ -180,7 +242,7 @@ def best_practice_note(project_name=None, samples=None, capture_kit="agilent_v4"
     if application not in BEST_PRACTICE_NOTES:
         LOG.warn("No such application '{}'. Valid choices are: \n\t{}".format(application, "\n\t".join(BEST_PRACTICE_NOTES)))
     if application == "seqcap":
-        df, samples_df = _get_seqcap_summary(flist)
+        df, samples_df = _get_seqcap_summary(flist, kw.get("amplicon", False))
         software_df = _get_software_table(flist)
         database_df = _get_database_table(flist, post_process=kw.get("post_process", None))
         if sample_name_map:
