@@ -370,24 +370,28 @@ echo -e $(date) $command
 echo -e $command | $PARALLEL
 
 # 10. Base recalibration
-RECALIBRATOR_OPTS="-T BaseRecalibrator -L $TARGET_REGION --knownSites $DBSNP --knownSites $MILLS --knownSites $THOUSANDG_OMNI  -nt $N_CORES"
+# NB: currently BaseRecalibrator does *not* support multiple threads
+RECALIBRATOR_OPTS="-T BaseRecalibrator -R $REF -L $TARGET_REGION --knownSites $DBSNP --knownSites $MILLS --knownSites $THOUSANDG_OMNI"
 echo -e $(date) 10. Base recalibration
 command=""
 for f in $sample_pfx; do
     input=$f.sort.realign.bam
-    #up_to_date ${input%.bam}.recal_data.grp $input
-    #if [ $? = 1 ]; then continue; fi
+    up_to_date ${input%.bam}.recal_data.grp $input
+    if [ $? = 1 ]; then continue; fi
     echo $(date) realigning $input
-    java -jar $GATK $INDEL_REALIGNER_OPTS -I $input --targetIntervals ${input%.realign.bam}.intervals -o ${input%.bam}.recal_data.grp
+    cmd="java -jar $GATK $RECALIBRATOR_OPTS -I $input -o ${input%.bam}.recal_data.grp"
+    command="$command\n$cmd"
 done
+echo -e $(date) $command
+echo -e $command | $PARALLEL
 
 # 11. Recalculate base quality score
 PRINT_READS_OPTS="-T PrintReads -R $REF"
 command=""
 for f in $sample_pfx; do
     input=$f.sort.realign.bam
-    #up_to_date ${input%.bam}.recal.bam $input
-    #if [ $? = 1 ]; then continue; fi
+    up_to_date ${input%.bam}.recal.bam $input
+    if [ $? = 1 ]; then continue; fi
     cmd="java -jar $GATK $PRINT_READS_OPTS -I $input -BQSR ${input%.bam}.recal_data.grp -o ${input%.bam}.recal.bam"
     #cmd="java -jar $GATK $PRINT_READS_OPTS -I $input -o ${input%.bam}.recal.bam"
     command="$command\n$cmd"
