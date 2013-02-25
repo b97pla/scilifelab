@@ -233,6 +233,8 @@ class BestPracticeReportController(AbstractBaseController):
     def bpreport(self):
         if not self._check_pargs(["project"]):
             return
+        if not self.pargs.statusdb_project_name:
+            self.statusdb_project_name = self.pargs.project
         kw = vars(self.pargs)
         basedir = os.path.abspath(os.path.join(self.app.controller._meta.root_path, self.app.controller._meta.path_id))
         flist = find_samples(basedir, **vars(self.pargs))
@@ -242,11 +244,14 @@ class BestPracticeReportController(AbstractBaseController):
         if self.pargs.no_statusdb:
             sample_name_map = None
         else:
-            if not self._check_pargs(["statusdb_project_name"]):
-                return
             p_con = ProjectSummaryConnection(dbname=self.app.config.get("db", "projects"), **vars(self.app.pargs))
             s_con = SampleRunMetricsConnection(dbname=self.app.config.get("db", "samples"), **vars(self.app.pargs))
-            sample_name_map = get_scilife_to_customer_name(self.pargs.statusdb_project_name, p_con, s_con)
+            try:
+                sample_name_map = get_scilife_to_customer_name(self.pargs.statusdb_project_name, p_con, s_con)
+            except ValueError as e:
+                self.app.log.warn(str(e))
+                self.app.log.warn("No such project {} defined in statusdb; try using option --statusdb_project_name".format(self.app.pargs.project))
+                sample_name_map = None
         kw.update(project_name=self.pargs.project, flist=flist, basedir=basedir, sample_name_map=sample_name_map)
         out_data = best_practice_note(**kw)
         self.log.info("Wrote report to directory {}; use Makefile to generate pdf report".format(basedir))
