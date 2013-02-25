@@ -35,8 +35,10 @@ class DeliveryController(AbstractBaseController):
             (['-S', '--sample'], dict(help="Project sample id. If sample is a file, read file and use sample names within it. Sample names can also be given as full paths to bcbb-config.yaml configuration file.", action="store", default=None, type=str)),
             (['--no_bam'], dict(help="Don't include bam files in delivery", action="store_true", default=False)),
             (['--no_vcf'], dict(help="Don't include vcf files in delivery", action="store_true", default=False)),
+            (['--bam_file_type'], dict(help="bam file type to deliver. Default sort-dup-gatkrecal-realign", action="store", default="sort-dup-gatkrecal-realign")),
             (['-z', '--size'], dict(help="Estimate size of delivery.", action="store_true", default=False)),
             (['--statusdb_project_name'], dict(help="Project name in statusdb.", action="store", default=None)),
+            (['--outdir'], dict(help="Deliver to this (sub)directory instead. Added for cases where the delivery directory already exists and there is no write permission.", action="store", default=None)),
             ]
 
     def _setup(self, base_app):
@@ -87,7 +89,10 @@ class DeliveryController(AbstractBaseController):
         if not os.path.exists(project_path):
             self.log.warn("No such project {}; skipping".format(self.pargs.uppmax_project))
             return
-        outpath = os.path.join(project_path, "INBOX", self.pargs.statusdb_project_name) if self.pargs.statusdb_project_name else os.path.join(project_path, "INBOX", self.pargs.project)
+        if self.pargs.outdir:
+            outpath = os.path.join(project_path, "INBOX", self.pargs.outdir)
+        else:
+            outpath = os.path.join(project_path, "INBOX", self.pargs.statusdb_project_name) if self.pargs.statusdb_project_name else os.path.join(project_path, "INBOX", self.pargs.project)
         if not query_yes_no("Going to deliver data to {}; continue?".format(outpath)):
             return
         if not os.path.exists(outpath):
@@ -105,10 +110,13 @@ class DeliveryController(AbstractBaseController):
         # Setup pattern
         plist = [".*.yaml$", ".*.metrics$"]
         if not self.pargs.no_bam:
-            plist.append(".*.bam$")
-            plist.append(".*.bai$")
+            plist.append(".*-{}.bam$".format(self.pargs.bam_file_type))
+            plist.append(".*-{}.bam.bai$".format(self.pargs.bam_file_type))
         if not self.pargs.no_vcf:
             plist.append(".*.vcf$")
+            plist.append(".*.vcf.gz$")
+            plist.append(".*.tbi$")
+            plist.append(".*.tsv$")
         pattern = "|".join(plist)
         size = 0
         for f in flist:
@@ -119,7 +127,8 @@ class DeliveryController(AbstractBaseController):
             if self.pargs.size:
                 statinfo = [os.stat(src).st_size for src in sources]
                 size = size + sum(statinfo)
-        self.app._output_data['stderr'].write("\n********************************\nEstimated delivery size: {:.1f}G\n********************************".format(size/1e9))
+        if self.pargs.size:
+            self.app._output_data['stderr'].write("\n********************************\nEstimated delivery size: {:.1f}G\n********************************".format(size/1e9))
 
 
     def _transfer_files(self, sources, targets):
