@@ -35,6 +35,7 @@ class DeliveryController(AbstractBaseController):
             (['-S', '--sample'], dict(help="Project sample id. If sample is a file, read file and use sample names within it. Sample names can also be given as full paths to bcbb-config.yaml configuration file.", action="store", default=None, type=str)),
             (['--no_bam'], dict(help="Don't include bam files in delivery", action="store_true", default=False)),
             (['--no_vcf'], dict(help="Don't include vcf files in delivery", action="store_true", default=False)),
+            (['--bam_file_type'], dict(help="bam file type to deliver. Default sort-dup-gatkrecal-realign", action="store", default="sort-dup-gatkrecal-realign")),
             (['-z', '--size'], dict(help="Estimate size of delivery.", action="store_true", default=False)),
             (['--statusdb_project_name'], dict(help="Project name in statusdb.", action="store", default=None)),
             (['--outdir'], dict(help="Deliver to this (sub)directory instead. Added for cases where the delivery directory already exists and there is no write permission.", action="store", default=None)),
@@ -109,12 +110,13 @@ class DeliveryController(AbstractBaseController):
         # Setup pattern
         plist = [".*.yaml$", ".*.metrics$"]
         if not self.pargs.no_bam:
-            plist.append(".*.bam$")
-            plist.append(".*.bai$")
+            plist.append(".*-{}.bam$".format(self.pargs.bam_file_type))
+            plist.append(".*-{}.bam.bai$".format(self.pargs.bam_file_type))
         if not self.pargs.no_vcf:
             plist.append(".*.vcf$")
             plist.append(".*.vcf.gz$")
             plist.append(".*.tbi$")
+            plist.append(".*.tsv$")
         pattern = "|".join(plist)
         size = 0
         for f in flist:
