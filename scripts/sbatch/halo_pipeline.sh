@@ -1,11 +1,11 @@
 #!/bin/bash
 
-USAGE="Usage: $0 [-n] indir samples"
+USAGE="Usage: $0 [-nfh] indir samples"
 
 # Parameters that govern general behaviour
 READ1_REGEXP="R1_001"    # Regexp used for 1st reads
 READ2_REGEXP="R2_001"    # Regexp used for paired sequences
-N_CORES=5
+N_CORES=7
 LOGFILE="halo_pipeline.out"
 ERRFILE="halo_pipeline.err"
 
@@ -19,10 +19,14 @@ PIGZ=/usr/bin/pigz
 FASTQC=fastqc
 CUTADAPT=cutadapt
 CUTADAPT_OPTS="-m 50"
-RESYNCMATES=/home/peru/opt/scilifelab.git/scripts/sbatch/resyncMates.pl
-# Picard and GATK
-PICARD_HOME=$HOME/local/bioinfo/ngs/picard-tools-1.59
-GATK_HOME=$HOME/local/bioinfo/ngs/GenomeAnalysisTK-2.3-9-ge5ebf34
+# Getting the path to the current script
+# http://stackoverflow.com/questions/59895/can-a-bash-script-tell-what-directory-its-stored-in
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+RESYNCMATES=$DIR/resyncMates.pl
+# Picard and GATK require that GATK_HOME and PICARD_HOME be set
+# http://stackoverflow.com/questions/307503/whats-the-best-way-to-check-that-environment-variables-are-set-in-unix-shellscr
+: ${GATK_HOME:?"Please set GATK_HOME environment variable!"}
+: ${PICARD_HOME:?"Please set PICARD_HOME environment variable!"}
 GATK=$GATK_HOME/GenomeAnalysisTK.jar
 
 # Alignment options and database locations
@@ -61,7 +65,7 @@ P_RUN=true            # Run command
 P_NORUN=false         # Skip command
 
 # Check user input
-while getopts n:f flag; do
+while getopts n:f:h flag; do
   case $flag in
     n)
       dry_run=true;
@@ -69,8 +73,12 @@ while getopts n:f flag; do
     f)
       force=true;
       ;;
+    h)
+      echo $USAGE;
+      exit;
+      ;;
     ?)
-      echo $usage
+      echo $USAGE;
       exit;
       ;;
   esac
@@ -79,7 +87,7 @@ shift $(( OPTIND - 1 ));
 
 # Exit if no input
 if [ $# -eq 0 ]; then
-    echo $usage
+    echo $USAGE
     exit;
 fi
 
@@ -270,21 +278,25 @@ for f in $sample_pfx; do
 done
 echo -e $(date) 4. Pair reads
 echo -e $(date) $command
-echo -e $command | $PARALLEL
+echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
 
 # 5. Generate bam file
+# FIXME: remove sam files
+SORTSAM_OPTS="SO=coordinate"
 command=""
 for f in $sample_pfx; do
-    up_to_date $f.sort.bam $f.sam
+    up_to_date $f.sort.bam $f.bam
     if [ $? = 1 ]; then continue; fi
     echo $(date) generating bam file for $f
-    echo "$SAMTOOLS view -bS $f.sam | $SAMTOOLS sort - $f.sort; $SAMTOOLS index $f.sort.bam "
-    cmd="$SAMTOOLS view -bS $f.sam | $SAMTOOLS sort - $f.sort; $SAMTOOLS index $f.sort.bam;"
+    #echo "$SAMTOOLS view -bS $f.sam | $SAMTOOLS sort - $f.sort; $SAMTOOLS index $f.sort.bam "
+    #cmd="$SAMTOOLS view -bS $f.sam | $SAMTOOLS sort - $f.sort; $SAMTOOLS index $f.sort.bam;" # if [ -e $f.sort.bam ]; then echo \"$f.sam removed to save space; see $f.sort.bam\" > $f.sam; fi"
+    echo "$SAMTOOLS view -bS $f.sam > $f.bam; java -jar $PICARD_HOME/SortSam.jar $SORTSAM_OPTS INPUT=$f.bam OUTPUT=$f.sort.bam; if [ -e $f.bam ]; then echo \"$f.sam removed to save space; see $f.sort.bam\" > $f.sam; fi"
+    cmd="$SAMTOOLS view -bS $f.sam > $f.bam; java -jar $PICARD_HOME/SortSam.jar $SORTSAM_OPTS INPUT=$f.bam OUTPUT=$f.sort.bam; $SAMTOOLS index $f.sort.bam; " # if [ -e $f.bam ]; then echo \"$f.sam removed to save space; see $f.sort.bam\" > $f.sam; fi"
     command="$command\n$cmd"
 done
 echo -e $(date) 5. Generate sorted bam file
 echo -e $(date) $command
-echo -e $command | $PARALLEL
+echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
 
 # 6. Generate various metrics for the bamfiles
 command=""
@@ -301,14 +313,21 @@ for f in $sample_pfx; do
     up_to_date ${input%.bam}.insert_metrics $input
     if [ $? = 0 ]; then 
 	echo $(date) generating insert size metrics for $input
-	cmd="java -jar $PICARD_HOME/CollectInsertSizeMetrics.jar INPUT=$input OUTPUT=${input%.bam}.insert_metrics HISTOGRAM_FILE=${input%.bam}.insert_metrics REFERENCE_SEQUENCE=$REF"
+	cmd="java -jar $PICARD_HOME/CollectInsertSizeMetrics.jar INPUT=$input OUTPUT=${input%.bam}.insert_metrics HISTOGRAM_FILE=${input%.bam}.insert_hist REFERENCE_SEQUENCE=$REF"
 	command="$command\n$cmd"
     fi
-    # Hybrid selectien metrics
+    # Duplication statistics
+    up_to_date ${input%.bam}.dup_metrics $input
+    if [ $? = 0 ]; then
+	echo $(date) generating duplication metrics for $input
+	cmd="java -jar $PICARD_HOME/MarkDuplicates.jar INPUT=$input METRICS_FILE=${input%.bam}.dup_metrics OUTPUT=${input%.bam}.dup.bam"
+	command="$command\n$cmd"
+    fi
+    # Hybrid selection metrics
     up_to_date ${input%.bam}.hs_metrics
     if [ $? = 0 ]; then 
 	if [ ! $BAIT_INTERVALS_FILE ] || [ ! $TARGET_INTERVALS_FILE ]; then
-	    echo $(date) "Bait/target file missing; skipping hybrid metrics calculation"
+	    echo $(date) "Bait/target file missing; skipping hybrid metrics calculation for $f"
 	else 
 	    echo $(date) generating hybrid selection metrics for $input
 	    cmd="java -jar $PICARD_HOME/CalculateHsMetrics.jar INPUT=$input OUTPUT=${input%.bam}.hs_metrics BAIT_INTERVALS=$BAIT_INTERVALS_FILE TARGET_INTERVALS=$TARGET_INTERVALS_FILE REFERENCE_SEQUENCE=$REF"
@@ -325,7 +344,7 @@ for f in $sample_pfx; do
 done
 echo -e $(date) 6. Calculate metrics
 echo -e $(date) $command
-echo -e $command | $PARALLEL
+echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
 
 ##############################
 # Variant calling, tertiary analysis
@@ -340,7 +359,7 @@ for f in $sample_pfx; do
     up_to_date ${input%.bam}.BOTH.raw.vcf $input
     if [ $? = 1 ]; then continue; fi
     echo $(date) generating raw variant calls for $f
-    java -jar $GATK $UNIFIED_GENOTYPER_OPTS -I $input -o ${input%.bam}.BOTH.raw.vcf
+    java -jar $GATK $UNIFIED_GENOTYPER_OPTS -I $input -o ${input%.bam}.BOTH.raw.vcf >> $LOGFILE 2>> $ERRFILE
 done
     
 
@@ -352,7 +371,7 @@ for f in $sample_pfx; do
     up_to_date ${input%.bam}.intervals $input
     if [ $? = 1 ]; then continue; fi
     echo $(date) generating realignment intervals for $input
-    java -jar $GATK $REALIGNMENT_TARGET_CREATOR_OPTS -I $input -known ${input%.bam}.BOTH.raw.vcf -o ${input%.bam}.intervals 
+    java -jar $GATK $REALIGNMENT_TARGET_CREATOR_OPTS -I $input -known ${input%.bam}.BOTH.raw.vcf -o ${input%.bam}.intervals  >> $LOGFILE 2>> $ERRFILE
 done
 
 # 9. Indel realignment
@@ -367,7 +386,7 @@ for f in $sample_pfx; do
 done
 echo -e $(date) 9. Indel realignment
 echo -e $(date) $command
-echo -e $command | $PARALLEL
+echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
 
 # 10. Base recalibration
 # NB: currently BaseRecalibrator does *not* support multiple threads
@@ -383,7 +402,7 @@ for f in $sample_pfx; do
     command="$command\n$cmd"
 done
 echo -e $(date) $command
-echo -e $command | $PARALLEL
+echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
 
 # 11. Recalculate base quality score
 PRINT_READS_OPTS="-T PrintReads -R $REF"
@@ -393,10 +412,72 @@ for f in $sample_pfx; do
     up_to_date ${input%.bam}.recal.bam $input
     if [ $? = 1 ]; then continue; fi
     cmd="java -jar $GATK $PRINT_READS_OPTS -I $input -BQSR ${input%.bam}.recal_data.grp -o ${input%.bam}.recal.bam"
-    #cmd="java -jar $GATK $PRINT_READS_OPTS -I $input -o ${input%.bam}.recal.bam"
     command="$command\n$cmd"
 done
 echo -e $(date) 11. Recalculate base quality score
 echo -e $(date) $command
-echo -e $command | $PARALLEL
+echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
 
+# 12. Clip 5 bp in 5' on all reads. These bases are reference bias due to the restriction enzyme site.
+CLIP_READS_OPTS="-T ClipReads --cyclesToTrim 1-5 --clipRepresentation WRITE_NS -R $REF"
+command=""
+for f in $sample_pfx; do
+    input=$f.sort.realign.recal.bam
+    up_to_date ${input%.bam}.clip.bam $input
+    if [ $? = 1 ]; then continue; fi
+    cmd="java -jar $GATK $CLIP_READS_OPTS -I $input -o ${input%.bam}.clip.bam"
+    command="$command\n$cmd"
+done
+echo -e $(date) 12. Clip 5 bp from 5 prime end of reads
+echo -e $(date) $command
+echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
+
+# 13. Make final calls with GATK UnifiedGenotyper
+#     FIXME: change to HaplotypeCaller when appropriate
+UNIFIEDGENOTYPER_OPTS="-T UnifiedGenotyper --dbsnp $DBSNP -filterMBQ -A AlleleBalance -stand_call_conf 30.0 -stand_emit_conf 10.0 -dt NONE --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $N_CORES -L $TARGET_REGION"
+echo -e $(date) 13. Final variant calling with UnifiedGenotyper
+for f in $sample_pfx; do
+    input=$f.sort.realign.recal.clip.bam
+    up_to_date ${input%.bam}.BOTH.final.vcf $input
+    if [ $? = 1 ]; then continue; fi
+    echo $(date) generating final variant calls for $f with UnifiedGenotyper
+    java -jar $GATK $UNIFIED_GENOTYPER_OPTS -I $input -o ${input%.bam}.BOTH.final.vcf >> $LOGFILE 2>> $ERRFILE
+done
+
+# 14. Making final calls with samtools
+SAMTOOLS_OPTS="-A -u -f $REF"
+BCFTOOLS_OPTS="-v -c"
+command=""
+for f in $sample_pfx; do
+    input=$f.sort.realign.recal.clip.bam
+    up_to_date ${input%.bam}.BOTH.final.samtools.vcf $input
+    if [ $? = 1 ]; then continue; fi
+    echo $(date) generating final variant calls for $f with samtools
+    cmd="samtools mpileup $SAMTOOLS_OPTS $input > ${input%.bam}.BOTH.final.samtools.mpileup; bcftools view $BCFTOOLS_OPTS -g ${input%.bam}.BOTH.final.samtools.mpileup > ${input%.bam}.BOTH.final.samtools.vcf"
+    command="$command\n$cmd"
+done
+echo -e $(date) 14. Final variant calling with samtools 
+echo -e $(date) $command
+echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
+
+# 15. Run final variant filtration
+#
+# MQ Root mean square of the mapping quality of reads covering (measure of varying quantity).
+# MQ0 Number of reads overlapping with zero quality.
+# DP Total (unfiltered) depth for called position.
+# QUAL The Phred scale probability of being REF if ALT is called (and ALT if REF is called).
+# QD QUAL / DP (variant confidence divided by unfiltered depth. Low scores are indications of false positives).
+
+VARIANTFILTRATION_OPTS="-T VariantFiltration --clusterWindowSize 10 --clusterSize 3 --filterExpression \"MQ0 >= 4 && ((MQ0 / (1.0 * DP)) > 0.1)\" --filterName \"HARD_TO_VALIDATE\" --filterExpression \"DP < 10\" --filterName \"LowCoverage\" --filterExpression \"QUAL < 30.0\" --filterName \"VeryLowQual\" --filterExpression \"QUAL > 30.0 && QUAL < 50.0\" --filterName \"LowQual\" --filterExpression \"QD < 1.5\" --filterName \"LowQD\" -R $REF "
+
+command=""
+for f in $sample_pfx; do
+    input=$f.sort.realign.recal.clip.BOTH.final.vcf
+    up_to_date ${input%.vcf}.filtered.vcf $input
+    if [ $? = 1 ]; then continue; fi
+    cmd="java -jar $GATK $VARIANTFILTRATION_OPTS --variant $input -o ${input%.vcf}.filtered.vcf"
+    command="$command\n$cmd"
+done
+echo -e $(date) 15. Perform last variant filtration
+echo -e $(date) "$command"
+echo -e "$command" | $PARALLEL  >> $LOGFILE 2>> $ERRFILE
