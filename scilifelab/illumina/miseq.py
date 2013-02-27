@@ -109,8 +109,9 @@ class MiSeqSampleSheet:
                     data[current] = {}
 
                 else:
-                    [opt, val] = line.split(",",1)
-                    data[current][opt] = val
+                    s = line.split(",",1)
+                    if len(s) > 1: 
+                        data[current][s[0]] = s[1]
     
         # Assign the parsed attributes to class attributes
         for option, value in data.get("Header",{}).items():
