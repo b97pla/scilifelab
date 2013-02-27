@@ -208,7 +208,7 @@ class MiSeqSampleSheet:
             row["Lane"] = Lane
             row["SampleID"] = sampleID
             row["SampleRef"] = self._extract_reference_from_path(info.get('genomefolder',''))
-            row["Index"] = info.get('index','NoIndex')
+            row["Index"] = info.get('index','')
             row["Description"] = info.get('description','')
             row["Control"] = Control
             row["Recipe"] = Recipe
