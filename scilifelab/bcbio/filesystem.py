@@ -10,7 +10,7 @@ from  dateutil  import  parser
 def fastq_screen_finished(fastq_screen_dir):
     """Determine if the finished output from fastq_screen exists
     """
-    pattern = os.path.join(fastq_screen_dir,"*_fastq_screen.txt")
+    pattern = os.path.join(fastq_screen_dir,"*_screen.txt")
     tfiles = glob.glob(pattern)
     if len(tfiles) == 0:
         return False

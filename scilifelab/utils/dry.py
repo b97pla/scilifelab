@@ -102,3 +102,4 @@ def dry_makedir(dname, dry_run=True):
             LOG.warn("Directory %s already exists" % dname)
         return dname
     return dry("Make directory %s" % dname, runpipe, dry_run)
+

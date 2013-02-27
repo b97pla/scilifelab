@@ -18,7 +18,7 @@ from classes import PmFullTest
 from cement.core import handler
 from scilifelab.pm.core.production import ProductionController
 from scilifelab.utils.misc import filtered_walk, opt_to_dict
-from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command, setup_merged_samples, sample_table, get_vcf_files
+from scilifelab.bcbio.run import find_samples, setup_sample, run_bcbb_command, setup_merged_samples, sample_table, get_vcf_files, validate_sample_directories
 
 LOG = logbook.Logger(__name__)
 
@@ -142,6 +142,17 @@ class ProductionTest(PmFullTest):
         self._run_app()
         os.chdir(filedir)
 
+    def test_batch_submission(self):
+        """Test that adding --batch groups commands into a batch submission"""
+        pp = os.path.join(j_doe_00_04, SAMPLES[1], FLOWCELL, "{}-post_process.yaml".format(SAMPLES[1]))
+        with open(pp) as fh:
+            config = yaml.load(fh)
+        platform_args = config["distributed"]["platform_args"].split()
+        account =  platform_args[platform_args.index("-A")+1]
+        self.app = self.make_app(argv = ['production', 'compress', 'J.Doe_00_04', '--debug', '--force', '--jobname', 'batchsubmission', '--drmaa', '--batch', '--partition', 'devel', '--time', '01:00:00', '-A', account], extensions=['scilifelab.pm.ext.ext_distributed'])
+        handler.register(ProductionController)
+        self._run_app()
+        
     def test_change_platform_args(self):
         """Test that passing --time actually changes platform
         arguments. These arguments should have precedence over
@@ -200,8 +211,6 @@ class ProductionTest(PmFullTest):
         handler.register(ProductionController)
         self._run_app()
 
-
-
 class UtilsTest(SciLifeTest):
     @classmethod
     def setUpClass(cls):
@@ -210,6 +219,10 @@ class UtilsTest(SciLifeTest):
         LOG.info("Copy tree {} to {}".format(j_doe_00_01, j_doe_00_05))
         if not os.path.exists(j_doe_00_05):
             shutil.copytree(j_doe_00_01, j_doe_00_05)
+            with open(os.path.join(j_doe_00_05, "samples.txt"), "w") as fh:
+                fh.write("\n\nP001_101_index3\nP001_104_index3")
+            with open(os.path.join(j_doe_00_05, "samples2.txt"), "w") as fh:
+                fh.write("\n\nP001_101_index3-bcbb-config.yaml")
 
     @classmethod
     def tearDownClass(cls):
@@ -224,6 +237,21 @@ class UtilsTest(SciLifeTest):
         flist = find_samples(j_doe_00_05, **{'only_failed':True})
         self.assertIn(len(flist), [0,1])
 
+    def test_find_samples_from_file(self):
+        """Find samples defined in file with empty lines and erroneous names"""
+        with open(os.path.join(j_doe_00_05, "P001_101_index3-bcbb-config.yaml"), "w") as fh:
+            fh.write("\n")
+        flist = find_samples(j_doe_00_05, sample=os.path.join(j_doe_00_05, "samples.txt"))
+        validate_sample_directories(flist, j_doe_00_05)
+        self.assertEqual(len(flist),2)
+        os.unlink(os.path.join(j_doe_00_05, "P001_101_index3-bcbb-config.yaml"))
+
+    def test_find_samples_from_file_with_yaml(self):
+        """Find samples defined in file with empty lines and a bcbb-config.yaml file lying directly under root directory"""
+        flist = find_samples(j_doe_00_05, sample=os.path.join(j_doe_00_05, "samples2.txt"))
+        args = [flist, j_doe_00_05]
+        self.assertRaises(Exception, validate_sample_directories, *args)
+
     def test_setup_merged_samples(self):
         """Test setting up merged samples"""
         flist = find_samples(j_doe_00_05)
@@ -232,7 +260,6 @@ class UtilsTest(SciLifeTest):
     def test_setup_samples(self):
         """Test setting up samples, changing genome to rn4"""
         flist = find_samples(j_doe_00_05)
-        
         for f in flist:
             setup_sample(f, **{'analysis':'Align_standard_seqcap', 'genome_build':'rn4', 'dry_run':False, 'baits':'rat_baits.interval_list', 'targets':'rat_targets.interval_list', 'num_cores':8, 'distributed':False})
         for f in flist:
@@ -307,6 +334,19 @@ class UtilsTest(SciLifeTest):
                 cl = fh.read().split()
             (cl, platform_args) = run_bcbb_command(f)
             self.assertIn("distributed_nextgen_pipeline.py",cl)
+
+    def test_global_post_process(self):
+        """Test that when using a "global" post_process, jobname,
+        output, error and output directory are updated.
+        """
+        flist = find_samples(j_doe_00_05)
+        pp = os.path.join(j_doe_00_01, SAMPLES[1], FLOWCELL, "{}-post_process.yaml".format(SAMPLES[1]))
+        with open(pp) as fh:
+            postprocess = yaml.load(fh)
+        for f in flist:
+            (cl, platform_args) = run_bcbb_command(f, pp)
+            self.assertIn("--error", platform_args)
+            self.assertEqual(platform_args[platform_args.index("--error") + 1], f.replace("-bcbb-config.yaml", "-bcbb.err"))
     
     @unittest.skipIf(not os.getenv("DRMAA_LIBRARY_PATH"), "not running UtilsTest.test_platform: no $DRMAA_LIBRARY_PATH")
     def test_platform_args(self):

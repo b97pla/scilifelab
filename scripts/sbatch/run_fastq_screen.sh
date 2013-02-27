@@ -4,7 +4,6 @@
 #SBATCH -A a2010002
 #SBATCH -p node
 #SBATCH -t 6:00:00
-#SBATCH --qos=seqver
 
 F1=$1
 F2=${F1/1_fastq.txt/2_fastq.txt}

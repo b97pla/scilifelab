@@ -3,13 +3,15 @@ import os
 import re
 import yaml
 import glob
-
+from itertools import chain
 import pandas as pd
+import datetime
 
-from scilifelab.utils.misc import filtered_walk, query_yes_no, opt_to_dict
+from scilifelab.utils.misc import filtered_walk, query_yes_no, prune_option_list
 from scilifelab.utils.dry import dry_write, dry_backup, dry_unlink, dry_rmdir, dry_makedir
 from scilifelab.log import minimal_logger
-from scilifelab.bcbio import sort_sample_config_fastq, update_sample_config, update_pp_platform_args, merge_sample_config, get_sample_analysis
+from scilifelab.bcbio import sort_sample_config_fastq, update_sample_config, update_pp_platform_args, merge_sample_config
+from scilifelab.bcbio.flowcell import Flowcell
 
 LOG = minimal_logger(__name__)
 
@@ -165,6 +167,44 @@ def setup_merged_samples(flist, sample_group_fn=_group_samples, **kw):
             new_flist.extend([bcbb_config_file])
     return new_flist
 
+def samplesheet_csv_to_yaml(fn):
+    """Convert SampleSheet.csv to bcbb-config.yaml file.
+
+    :param fn: input file
+    """
+    fc = Flowcell(infile=fn)
+    bc_id = 1
+    for s in fc.samples:
+        sequence = fc.get_entry(s, "sequence")
+        name = fc.get_entry(s, "name")
+        # Currently only look for casava-based pattern
+        pat = os.path.join(os.path.dirname(fn), "{}_{}*fastq*".format(name, sequence))
+        seqfiles = glob.glob(pat)
+        if seqfiles:
+            seqfiles.sort()
+            fc.set_entry(s, "files", seqfiles)
+        fc.set_entry(s, "barcode_id", bc_id)
+        if bc_id == 1:
+            flowcell_id = fc.get_entry(s, "flowcell_id").split("-")[1]
+        bc_id = bc_id + 1
+    fc.fc_date = datetime.datetime.now().strftime("%y%m%d")
+    fc.fc_name = flowcell_id
+    outfile = os.path.join(os.path.dirname(fn), "{}-bcbb-config.yaml".format(name))
+    with open(outfile, "w") as fh:
+        fh.write(fc.as_yaml())
+            
+def validate_sample_directories(flist, pdir):
+    """Validate that config files in flist are indeed in subdirectories of pdir.
+
+    :param flist: list of config files
+    :param pdir: project/production directory
+
+    :raises: Exception if item in flist not in subdirectory of pdir
+    """
+    for run_info in flist:
+        if not os.path.abspath(run_info).startswith(os.path.abspath(pdir)) or os.path.abspath(run_info) == os.path.abspath(pdir):
+            LOG.warning("{} *must* be in a subdirectory of {}".format(run_info, pdir))
+            raise Exception
 
 def find_samples(path, sample=None, pattern = "-bcbb-config.yaml$", only_failed=False, **kw):
     """Find bcbb config files in a path.
@@ -175,15 +215,22 @@ def find_samples(path, sample=None, pattern = "-bcbb-config.yaml$", only_failed=
 
     :returns: list of file names
     """
+    def bcbb_yaml_filter(f):
+        return re.search(pattern, f) != None
     flist = []
     if sample:
         if os.path.exists(sample):
             with open(sample) as fh:
-                flist = [x.rstrip() for x in fh.readlines()]
+                samplelist = fh.readlines()
+            flist = [x.rstrip() for x in samplelist if re.search(pattern, x)]
+            if len(flist) == 0:
+                flist = [os.path.join(path, x.rstrip()) for x in samplelist if len(x) > 1]
+                # Make sure there actually is a config file in path
+                flist = list(chain.from_iterable([filtered_walk(x, bcbb_yaml_filter, exclude_dirs=kw.get("exclude_dirs", None), include_dirs=kw.get("include_dirs", None)) for x in flist]))
+            if len(flist) == 0:
+                return flist
         else:
             pattern = "{}{}".format(sample, pattern)
-    def bcbb_yaml_filter(f):
-        return re.search(pattern, f) != None
     if not flist:
         flist = filtered_walk(path, bcbb_yaml_filter, exclude_dirs=kw.get("exclude_dirs", None), include_dirs=kw.get("include_dirs", None))
     if only_failed:
@@ -205,7 +252,7 @@ def setup_sample(f, analysis, amplicon=False, genome_build="hg19", **kw):
         config = yaml.load(fh)
     ## Check for correctly formatted config
     if not config.get("details", None):
-        LOG.warn("Couldn't find 'details' section in config file: aborting setup!")
+        LOG.warn("Couldn't find 'details' section in config file {}: aborting setup!".format(f))
         return
 
     ## Save file to backup if backup doesn't exist
@@ -280,7 +327,7 @@ def setup_sample(f, analysis, amplicon=False, genome_build="hg19", **kw):
 
 def remove_files(f, **kw):
     ## Remove old files if requested
-    keep_files = ["-post_process.yaml$", "-post_process.yaml.bak$", "-bcbb-config.yaml$", "-bcbb-config.yaml.bak$",  "-bcbb-command.txt$", "-bcbb-command.txt.bak$", "_[0-9]+.fastq$", "_[0-9]+.fastq.gz$",
+    keep_files = ["-post_process.yaml$", "-post_process.yaml.bak$", "-bcbb-config.yaml$", "-bcbb-config.yaml.bak$",  "-bcbb-command.txt$", "-bcbb-command.txt.bak$", "_[0-9]+.fastq$", "_[0-9]+.fastq.gz$", "_[0-9]+_fastq.txt.gz$", "_[0-9]+_fastq.txt$",
                   "^[0-9][0-9]_.*.txt$", "JOBID", "PID"]
     pattern = "|".join(keep_files)
     def remove_filter_fn(f):
@@ -305,14 +352,29 @@ def run_bcbb_command(run_info, post_process=None, **kw):
     
     :returns: command line to run
     """
+    global_post_process = True
+    if run_info.endswith("-bcbb-config.yaml"):
+        run_info_base = run_info.replace("-bcbb-config.yaml", "") 
+    else:
+        run_info_base, _ = os.path.splitext(run_info)
     if not post_process:
-        post_process = run_info.replace("-bcbb-config.yaml", "-post_process.yaml")
+        post_process = run_info_base + "-post_process.yaml"
+        global_post_process = False
     with open(post_process, "r") as fh:
         config = yaml.load(fh)
+    platform_args = config["distributed"]["platform_args"].split()
+    # Reset relevant arguments in platform args if global post process is used
+    if global_post_process:
+        platform_args = prune_option_list(platform_args, ['--job-name', '-J', '--error', '-e', '--output', '-o', '-D', '--workdir'])
+        platform_args.extend(['--job-name', os.path.basename(run_info_base) ])
+        platform_args.extend(['--workdir', os.path.dirname(run_info) ])
+        platform_args.extend(['--output', run_info_base + "-bcbb.log" ])
+        platform_args.extend(['--error', run_info_base + "-bcbb.err" ])
     if str(config["algorithm"]["num_cores"]) == "messaging":
         analysis_script = DISTRIBUTED_ANALYSIS_SCRIPT
     else:
         analysis_script = PARALLELL_ANALYSIS_SCRIPT
-    platform_args = config["distributed"]["platform_args"].split()
     cl = [analysis_script, post_process, os.path.dirname(run_info), run_info]
+    LOG.debug("Running command {}".format(cl))
+    LOG.debug("Using platform arguments {}".format(platform_args))
     return (cl, platform_args)

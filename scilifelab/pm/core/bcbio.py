@@ -7,7 +7,7 @@ import shutil
 from cement.core import backend, controller, handler, hook
 from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.utils.misc import query_yes_no, filtered_walk
-from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command, setup_merged_samples, get_vcf_files
+from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command, setup_merged_samples, get_vcf_files, validate_sample_directories, samplesheet_csv_to_yaml
 from scilifelab.report.qc import compile_qc 
 import scilifelab.log
 
@@ -37,6 +37,7 @@ class BcbioRunController(AbstractBaseController):
         group.add_argument('--merged', help="do merged sample analysis for samples with multiple sample runs", action="store_true", default=False)
         group.add_argument('--new_config', help="make new config file", action="store_true", default=False)
         group.add_argument('--hs_file_type', help="File type glob", default="sort-dup")
+        group.add_argument('--from_ssheet', help="setup analysis from SampleSheet.csv file", default=False, action="store_true")
         super(BcbioRunController, self)._setup(app)
 
     def _sample_status(self, x):
@@ -54,16 +55,25 @@ class BcbioRunController(AbstractBaseController):
             return
         if self.pargs.post_process:
             self.pargs.post_process = os.path.abspath(self.pargs.post_process)
-        flist = find_samples(os.path.abspath(os.path.join(self.app.controller._meta.root_path, self.app.controller._meta.path_id)), **vars(self.pargs))
+        basedir = os.path.abspath(os.path.join(self.app.controller._meta.root_path, self.app.controller._meta.path_id))
+        if self.pargs.from_ssheet:
+            [samplesheet_csv_to_yaml(fn) for fn in find_samples(basedir, pattern="SampleSheet.csv$", **vars(self.pargs))]
+        flist = find_samples(basedir, **vars(self.pargs))
         # Add filtering on flowcell if necessary
         self._meta.pattern = ".*"
         flist = [x for x in flist if self._filter_fn(x)]
         if self.pargs.merged:
             ##  Setup merged samples and append to flist if new list longer
             flist = setup_merged_samples(flist, **vars(self.pargs))
+        if not len(flist) > 0:
+            self.log.info("No sample configuration files found")
+            return
         if len(flist) > 0 and not query_yes_no("Going to start {} jobs... Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
             return
+        # Make absolutely sure analysis directory is a *subdirectory* of the working directory
+        validate_sample_directories(flist, basedir)
         orig_dir = os.path.abspath(os.getcwd())
+
         for run_info in flist:
             os.chdir(os.path.abspath(os.path.dirname(run_info)))
             setup_sample(run_info, **vars(self.pargs))

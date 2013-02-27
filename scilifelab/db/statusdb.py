@@ -20,9 +20,10 @@ VIEWS = {'samples' : {'names': {'name' : '''function(doc) {if (!doc["name"].matc
                                 }},
          'flowcells' : {'names' : {'name' : '''function(doc) {emit(doc["name"], null);}''',
                                    'id_to_name' : '''function(doc) {emit(doc["_id"], doc["name"]);}'''}},
-         'projects' : {'project' : {'project_id' : '''function(doc) {emit(doc.project_id, doc._id)}'''},
-                       'names' : {'id_to_name' : '''function(doc) {emit(doc["_id"], doc["project_id"]);}''',
-                                  'name' : '''function(doc) {emit(doc["project_id"], null);}'''}},
+         'projects' : {'project' : {'project_id' : '''function(doc) {emit(doc.project_id, doc._id)}''',
+                                    'project_name' : '''function(doc) {emit(doc.project_name, doc._id)}'''},
+                       'names' : {'id_to_name' : '''function(doc) {emit(doc["_id"], doc["project_name"]);}''',
+                                  'name' : '''function(doc) {emit(doc["project_name"], null);}'''}},
          }
 
 # Regular expressions for general use
@@ -158,13 +159,13 @@ class ProjectSummaryDocument(StatusDocument):
     """project summary document"""
     _entity_type = "project_summary"
     _fields = ["application", "customer_reference", "min_m_reads_per_sample_ordered",
-               "no_of_samples", "project_id"]
+               "no_of_samples", "project_id", "project_name"]
     _dict_fields = ["samples"]
     def __init__(self, **kw):
         StatusDocument.__init__(self, **kw)
 
     def __repr__(self):
-        return "<{} {}>".format(self["entity_type"], self["project_id"])
+        return "<{} {}>".format(self["entity_type"], self["project_name"])
 
 class FlowcellRunMetricsDocument(StatusDocument):
     """Flowcell level class for holding qc data."""
@@ -301,6 +302,26 @@ def get_qc_data(sample_prj, p_con, s_con, fc_id=None):
             qcdata[s["name"]]["PERCENT_ON_TARGET"] = float(qcdata[s["name"]]["FOLD_ENRICHMENT"]/ (float(qcdata[s["name"]]["GENOME_SIZE"]) / float(target_territory))) * 100
     return qcdata
 
+def get_scilife_to_customer_name(project_name, p_con, s_con):
+    """Get scilife to customer name mapping, represented as a
+    dictionary.
+    
+    :param project_name: project name
+    :param p_con: object of type <ProjectSummaryConnection>
+    :param s_con: object of type <SampleRunMetricsConnection>
+    
+    :returns: dictionary with keys scilife name and values customer name
+    """
+    barcode_names = [s.get("barcode_name", None) for s in s_con.get_samples(sample_prj=project_name)]
+    name_d = {}
+    for bcname in barcode_names:
+        s = p_con.get_project_sample(project_name, bcname)
+        name_d[bcname] = {'scilife_name': s['project_sample'].get('scilife_name', bcname),
+                          'customer_name' : s['project_sample'].get('customer_name', None)
+                          }
+    return name_d
+
+
 ##############################
 # Connections
 ##############################
@@ -373,15 +394,43 @@ class FlowcellRunMetricsConnection(Couch):
         """Make sure we don't change db from flowcells"""
         pass
 
-    def get_phix_error_rate(self, name, lane, avg=True):
-        """Get phix error rate"""
+    def get_phix_error_rate(self, name, lane):
+        """Get phix error rate. Returns -1 if error rate could not be determined"""
         fc = self.get_entry(name)
-        phix_r1 = float(fc.get('illumina', {}).get('Summary', {}).get('read1',{}).get(lane, {}).get('ErrRatePhiX', -1))
-        phix_r2 = float(fc.get('illumina', {}).get('Summary', {}).get('read3',{}).get(lane, {}).get('ErrRatePhiX', -1))
-        if avg:
-            return (phix_r1 + phix_r2)/2
-        else:
-            return (phix_r1, phix_r2)/2
+        phix_r = []
+        
+        # Get the error rate for non-index reads and add them 
+        summary = fc.get("illumina",{}).get("Summary",{})
+        for read in summary.values():
+            if read.get("ReadType","").strip() != "(Index)":
+                r = float(read.get(lane,{}).get("ErrRatePhiX","-1"))
+                # Only use the value if error rate is >0.0
+                if r > 0:
+                    phix_r.append(r)
+        
+        # Return -1 if the error rate could not be determined
+        if len(phix_r) == 0:
+            return -1
+        
+        return sum(phix_r)/len(phix_r)
+    
+    def get_instrument(self, name):
+        """Get instrument id"""
+        fc = self.get_entry(name)
+        if not fc:
+            return None
+        instrument = fc.get('RunInfo', {}).get('Instrument', None)
+        if not instrument:
+            instrument = fc.get('RunParameters', {}).get('Setup', {}).get('ScannerID', None)
+        return instrument
+
+    def get_run_mode(self, name):
+        """Get run mode"""
+        fc = self.get_entry(name)
+        if not fc:
+            return None
+        run_mode = fc.get('RunParameters', {}).get('Setup', {}).get('RunMode', None)
+        return run_mode
 
 class ProjectSummaryConnection(Couch):
     _doc_type = ProjectSummaryDocument
@@ -389,16 +438,16 @@ class ProjectSummaryConnection(Couch):
     def __init__(self, dbname="projects", **kwargs):
         super(ProjectSummaryConnection, self).__init__(**kwargs)
         self.db = self.con[dbname]
-        self.name_view = {k.key:k.id for k in self.db.view("project/project_id", reduce=False)}
+        self.name_view = {k.key:k.id for k in self.db.view("project/project_name", reduce=False)}
 
     def set_db(self, dbname):
         """Make sure we don't change db from projects"""
         pass
 
-    def get_project_sample(self, project_id, barcode_name=None, extensive_matching=False):
+    def get_project_sample(self, project_name, barcode_name=None, extensive_matching=False):
         """Get project sample name for a SampleRunMetrics barcode_name.
         
-        :param project_id: the project id
+        :param project_id: the project name
         :param barcode_name: the barcode name of a sample run
         :param extensive_matching: do extensive matching of barcode names
 
@@ -406,29 +455,11 @@ class ProjectSummaryConnection(Couch):
         """
         if not barcode_name:
             return None
-        project = self.get_entry(project_id)
+        project = self.get_entry(project_name)
         if not project:
             return None
         project_samples = project.get('samples', None)
         return _match_barcode_name_to_project_sample(barcode_name, project_samples, extensive_matching)
-
-    def map_srm_to_name(self, project_id, include_all=True, **args):
-        """Map sample run metrics names to project sample names for a
-        project, possibly subset by flowcell id.
-
-        :param project_id: project id
-         :param **kw: keyword arguments to be passed to map_name_to_srm
-        """
-        samples = self.map_name_to_srm(project_id, **args)
-        srm_to_name = {}
-        for k, v in samples.items():
-            if not v:
-                if not include_all:
-                    continue
-                srm_to_name.update({"NOSRM_{}".format(k):{"sample":k, "id":None}})
-            else:
-                srm_to_name.update({x:{"sample":k,"id":y} for x,y in v.items()})
-        return srm_to_name
 
     def _get_sample_run_metrics(self, v):
         if v.get('library_prep', None):
@@ -437,19 +468,39 @@ class ProjectSummaryConnection(Couch):
         else:
             return v.get('sample_run_metrics', None)
 
-    def get_ordered_amount(self, project_id, rounded=True, dec=1):
+    def get_ordered_amount(self, project_name, rounded=True, dec=1):
         """Get (rounded) ordered amount of reads in millions. 
 
-        :param project_id: project id
+        :param project_name: project name
         :param rounded: <boolean>
         :param dec: <integer>, number of decimal places
 
         :returns: ordered amount of reads if present, None otherwise
         """
-        amount = self.get_entry(project_id, 'min_m_reads_per_sample_ordered')
+        amount = self.get_entry(project_name, 'min_m_reads_per_sample_ordered')
         self.log.debug("got amount {}".format(amount))
         if not amount:
             return None
         else:
             return round(amount, dec)
 
+    def get_latest_library_prep(self, project_name):
+        """Get mapping from project name to sample_run_metrics for
+        latest library prep.
+
+        :param project_name: project name
+        """
+        project = self.get_entry(project_name)
+        if not project:
+            return None
+        project_samples = project.get('samples', None)
+        map_d = {}
+        for project_sample_name,sample in project_samples.iteritems():
+            if sample.get('library_prep', None):
+                library_preps = sample.get('library_prep')
+                lkeys = library_preps.keys()
+                lkeys.sort(reverse=True)
+                map_d[project_sample_name] = {k:kk for kk in lkeys[0] for k, v in library_preps[kk].get('sample_run_metrics', {}).items()} if library_preps else None
+            else:
+                self.log.warn("No library_prep information for project sample {}".format(project_sample_name))
+        return map_d

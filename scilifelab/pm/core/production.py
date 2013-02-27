@@ -1,10 +1,8 @@
 """Pm production module"""
 
-import sys
 import os
 import re
 import yaml
-import subprocess
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractExtendedBaseController
 from scilifelab.utils.misc import query_yes_no, filtered_walk
@@ -83,6 +81,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
         return fc_list
             
     def _to_casava_structure(self, fc):
+        transfer_status = {}
         outdir_pfx = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data"))
         if self.pargs.transfer_dir:
            outdir_pfx = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.transfer_dir, "data"))
@@ -103,6 +102,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
             ## Copy sample files - currently not doing lane files
             self._transfer_files(sources, targets)
             self.app.cmd.write(os.path.join(dirs["data"], "{}-bcbb-pm-config.yaml".format(sample['name'])), fc_new.as_yaml())
+            transfer_status[sample['name']] = {'files':len(sources['files']), 'results':len(sources['results'])}
         ## Rewrite platform_args; only keep time, workdir, account, partition, outpath and jobname
         pattern = "-post_process.yaml$"
         def pp_yaml_filter(f):
@@ -120,6 +120,12 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                 continue
             self.app.cmd.safe_unlink(pp)
             self.app.cmd.write(pp, yaml.safe_dump(newconf, default_flow_style=False, allow_unicode=True, width=1000))
+            
+        # Write transfer summary
+        self.app._output_data["stderr"].write("Transfer summary\n")
+        self.app._output_data["stderr"].write("{:<18}{:>18}{:>18}\n".format("Sample","Transferred files", "Results"))
+        for k, v in transfer_status.iteritems():
+            self.app._output_data["stderr"].write("{:<18}{:>18}{:>18}\n".format(k, v['files'], v['results']))
 
     def _to_pre_casava_structure(self, fc):
         dirs = {"data":os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project.replace(".", "_").lower(), "data", fc.fc_id())),

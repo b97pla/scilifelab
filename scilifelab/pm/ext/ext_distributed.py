@@ -39,18 +39,21 @@ class DistributedCommandHandler(command.CommandHandler):
         platform_args = None
         """Platform specific arguments"""
 
+        batch_command = []
+        """Batch command array"""
+
     def command(self, cmd_args, capture=True, ignore_error=False, cwd=None, **kw):
         ## Is there no easier way to get at --drmaa?!?
         if '--drmaa' in self.app._meta.argv:
             self.drmaa(cmd_args, capture, ignore_error, cwd, **kw)
         else:
             pass
-
+        
     def _check_args(self, **kw):
         pargs = kw.get('platform_args', [])
         if not self.app.pargs.account and "-A" not in pargs and "--account" not in pargs:
             return False
-        if not self.app.pargs.jobname and "-J" not in pargs and "--jobname" not in pargs:
+        if not self.app.pargs.jobname and "-J" not in pargs and "--job-name" not in pargs:
             return False
         if not self.app.pargs.partition and "-p" not in pargs and "--partition" not in pargs:
             return False
@@ -112,15 +115,16 @@ class DistributedCommandHandler(command.CommandHandler):
             self.app.log.info("number of submitted jobs larger than maximum number of allowed node jobs; not submitting job")
             return
         self._meta.n_submitted_jobs = self._meta.n_submitted_jobs + 1
-        if not self._check_args(**kw):
-            self.app.log.warn("missing argument; cannot proceed with drmaa command. Make sure you provide time, account, partition, and jobname")
-            return
         if kw.get('platform_args', None):
             platform_args = opt_to_dict(kw['platform_args'])
         else:
             platform_args = opt_to_dict([])
         kw.update(**vars(self.app.pargs))
         job_args = make_job_template_args(platform_args, **kw)
+        if not self._check_args(**kw):
+            self.app.log.warn("missing argument; cannot proceed with drmaa command. Make sure you provide time, account, partition, and jobname")
+            return
+
         if kw.get('monitorJob', False):
             if self._monitor_job(**job_args):
                 self.app.log.info("exiting from {}".format(__name__) )
@@ -137,21 +141,30 @@ class DistributedCommandHandler(command.CommandHandler):
             if os.path.isdir(job_args['outputPath']):
                 jt.outputPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.relpath(job_args['outputPath'], os.getenv("HOME")), jt.jobName + "-drmaa.log")
             else:
-             jt.outputPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.relpath(job_args['outputPath'], os.getenv("HOME")))
-            jt.workingDirectory = drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.relpath(job_args['workingDirectory'], os.getenv("HOME"))
+                jt.outputPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.relpath(job_args['outputPath'], os.getenv("HOME")))
+            if os.path.isdir(job_args['errorPath']):
+                jt.errorPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.relpath(job_args['errorPath'], os.getenv("HOME")), jt.jobName + "-drmaa.err")
+            else:
+                jt.errorPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.relpath(job_args['errorPath'], os.getenv("HOME")))
 
+            jt.workingDirectory = drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.relpath(job_args['workingDirectory'], os.getenv("HOME"))
             jt.nativeSpecification = "-t {time} -p {partition} -A {account} {extra}".format(**job_args)
             if kw.get('email', None):
                 jt.email=[kw.get('email')]
             self.app.log.info("Submitting job with native specification {}".format(jt.nativeSpecification))
+            self.app.log.info("Working directory: {}".format(jt.workingDirectory))
+            self.app.log.info("Output logging: {}".format(jt.outputPath))
+            self.app.log.info("Error logging: {}".format(jt.errorPath))
             self._meta.jobid = s.runJob(jt)
             self.app.log.info('Your job has been submitted with id ' + self._meta.jobid)
             if kw.get('saveJobId', False):
                 self._save_job_id(**job_args)
             s.deleteJobTemplate(jt)
             s.exit()
-            
-        return self.dry(command, runpipe)
+        if self.app.pargs.batch:
+            self._meta.batch_command.append(command)
+        else:
+            return self.dry(command, runpipe)
 
 def opt_to_dict(opts):
     """Transform option list to a dictionary.
@@ -179,6 +192,8 @@ def convert_to_drmaa_time(t):
     :returns: converted time string formatted as hh:mm:ss or None if
     time string is malformatted
     """
+    if not t:
+        return None
     m = re.search("(^[0-9]+\-)?([0-9]+:)?([0-9]+):([0-9]+)", t)
     if not m:
         return None
@@ -216,10 +231,11 @@ def make_job_template_args(opt_d, **kw):
     job_args['time'] = convert_to_drmaa_time(job_args['time'])
     job_args['partition'] = kw.get('partition', None) or opt_d.get('-p', None) or  opt_d.get('--partition', None)
     job_args['account'] = kw.get('account', None) or opt_d.get('-A', None) or  opt_d.get('--account', None)
-    job_args['outputPath'] = kw.get('outputPath', None) or opt_d.get('-o', os.curdir)
+    job_args['outputPath'] = kw.get('outputPath', None) or opt_d.get('--output', None) or opt_d.get('-o', os.curdir)
+    job_args['errorPath'] = kw.get('errorPath', None) or opt_d.get('--error', None) or opt_d.get('-e', os.curdir)
     job_args['workingDirectory'] = kw.get('workingDirectory', None) or opt_d.get('-D', None) 
     job_args['email'] = kw.get('email', None) or opt_d.get('--mail-user', None) 
-    invalid_keys = ["--mail-user", "--mail-type", "-o", "--output", "-D", "--workdir", "-J", "--job-name", "-p", "--partition", "-t", "--time", "-A", "--account"]
+    invalid_keys = ["--mail-user", "--mail-type", "-o", "--output", "-D", "--workdir", "-J", "--job-name", "-p", "--partition", "-t", "--time", "-A", "--account", "-e", "--error"]
     extra_keys = [x for x in opt_d.keys() if x not in invalid_keys]
     extra_args = ["{}={}".format(x, opt_d[x]) if x.startswith("--") else "{} {}".format(x, opt_d[x]) for x in extra_keys]
     job_args['extra'] = kw.get('extra_args', None) or extra_args
@@ -257,6 +273,7 @@ def add_shared_distributed_options(app):
     group.add_argument('--max_node_jobs', type=int, default=10,
                           action='store', help='maximum number of node jobs (default 10)')
     group.add_argument('--email', help="set user email address", action="store", default=None, type=str)
+    group.add_argument('--batch', help="submit jobs as a batch, useful for submitting a number of jobs to the same node", action="store_true", default=False)
 
 def set_distributed_handler(app):
     """
@@ -270,6 +287,22 @@ def set_distributed_handler(app):
         app._meta.cmd_handler = 'distributed'
         app._setup_cmd_handler()
 
+def run_batch_command(app):
+    """
+    If option 'batch' was set, run commands stored in batch_command
+    variable.
+
+    NOTE: currently runs jobs *sequentially*. One could imagine adding
+    a pipe to 'gnus parallel' for single-core jobs.
+
+    :param app: The application object.
+    """
+    if not app.pargs.batch:
+        return
+    command = ";\n".join(app.cmd._meta.batch_command)
+    app.pargs.batch = False
+    app.cmd.command([command], **{'platform_args':{}, 'saveJobId':True, 'workingDirectory':os.curdir})
+
 def load():
     """Called by the framework when the extension is 'loaded'."""
     if not os.getenv("DRMAA_LIBRARY_PATH"):
@@ -278,4 +311,5 @@ def load():
     hook.register('post_setup', add_drmaa_option)
     hook.register('post_setup', add_shared_distributed_options)
     hook.register('pre_run', set_distributed_handler)
+    hook.register('post_run', run_batch_command)
     handler.register(DistributedCommandHandler)

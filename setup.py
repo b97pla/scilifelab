@@ -5,12 +5,12 @@ import os
 import glob
 
 setup(name = "scilifelab",
-      version = "0.2.2",
+      version = "0.3.0",
       author = "Science for Life Laboratory",
       author_email = "genomics_support@scilifelab.se",
       description = "Useful scripts for use at SciLifeLab",
       license = "MIT",
-      scripts = glob.glob('scripts/*.py') + glob.glob('scripts/bcbb_helpers/*.py') + ['scripts/pm'],
+      scripts = glob.glob('scripts/*.py') + glob.glob('scripts/RNA_analysis/*.py') + glob.glob('scripts/bcbb_helpers/*.py') + ['scripts/pm'],
       install_requires = [
         "bcbio-nextgen >= 0.2",
         "drmaa >= 0.5",
@@ -33,7 +33,8 @@ setup(name = "scilifelab",
       packages=find_packages(exclude=['tests']),
       package_data = {'scilifelab':[
           'data/grf/*',
-          'data/templates/*',
+          'data/templates/*.mako',
+          'data/templates/rst/*',
           ]}
       )
 
