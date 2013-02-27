@@ -1,60 +1,25 @@
 #!/bin/bash
 
-USAGE="Usage: $0 [-nfh] indir samples"
+USAGE=" 
 
-# Parameters that govern general behaviour
-READ1_REGEXP="R1_001"    # Regexp used for 1st reads
-READ2_REGEXP="R2_001"    # Regexp used for paired sequences
-N_CORES=7
-LOGFILE="halo_pipeline.out"
-ERRFILE="halo_pipeline.err"
+Usage: $0 [-nfh] [-c halorc] projectrc
 
-echo $(date) > $LOGFILE
-echo $(date) > $ERRFILE
+Positional arguments
+  
+  projectrc  - project configuration file
 
-# Software config
-# Modify for specific versions
-PARALLEL=/usr/bin/parallel
-PIGZ=/usr/bin/pigz
-FASTQC=fastqc
-CUTADAPT=cutadapt
-CUTADAPT_OPTS="-m 50"
+Options
+
+  -n         - dry run
+  -f         - force execution of all steps
+  -c         - halo runtime configuration. Default: ~/.halorc
+
+"
+
 # Getting the path to the current script
 # http://stackoverflow.com/questions/59895/can-a-bash-script-tell-what-directory-its-stored-in
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 RESYNCMATES=$DIR/resyncMates.pl
-# Picard and GATK require that GATK_HOME and PICARD_HOME be set
-# http://stackoverflow.com/questions/307503/whats-the-best-way-to-check-that-environment-variables-are-set-in-unix-shellscr
-: ${GATK_HOME:?"Please set GATK_HOME environment variable!"}
-: ${PICARD_HOME:?"Please set PICARD_HOME environment variable!"}
-GATK=$GATK_HOME/GenomeAnalysisTK.jar
-
-# Alignment options and database locations
-BAIT_INTERVALS_FILE=""
-TARGET_INTERVALS_FILE=""
-TARGET_BED_FILE=/home/peru/opt/scilifelab.git/scripts/sbatch/test/regions.bed
-TARGET_REGION="chr11:1-2000000"
-BWA=bwa
-BWA_HG19=/datad/biodata/genomes/Hsapiens/hg19/bwa/hg19.fa
-BWA_REF=$BWA_HG19
-REF=/datad/biodata/genomes/Hsapiens/hg19/seq/hg19.fa
-
-# Samtools
-SAMTOOLS=samtools
-SAMSTAT=samstat
-
-# Variant databases
-VARIANTDBHOME=/datad/biodata/genomes/Hsapiens/hg19/variation
-DBSNP=$VARIANTDBHOME/dbsnp_132.vcf
-THOUSANDG_OMNI=$VARIANTDBHOME/1000G_omni2.5.vcf
-MILLS=$VARIANTDBHOME/Mills_Devine_2hit.indels.vcf
-HAPMAP=$VARIANTDBHOME/hapmap_3.3.vcf
-
-# Adapter sequences. These correspond to TruSeq adapter sequence.
-# THREEPRIME is found in the three-prime end of read 1, FIVEPRIME
-# revcomp in the end of read 2
-THREEPRIME="AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC"
-FIVEPRIME="AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT"
 
 # Setup environment
 DRY_RUN=false
@@ -64,8 +29,9 @@ E_PARAM_ERR=250    # If less than 2 params passed to function.
 P_RUN=true            # Run command
 P_NORUN=false         # Skip command
 
+halorc=~/.halorc
 # Check user input
-while getopts n:f:h flag; do
+while getopts :nfhc: flag; do
   case $flag in
     n)
       dry_run=true;
@@ -73,12 +39,16 @@ while getopts n:f:h flag; do
     f)
       force=true;
       ;;
+    c) 
+      halorc=$OPTARG;
+      ;;
     h)
-      echo $USAGE;
+      echo "$USAGE";
       exit;
       ;;
-    ?)
-      echo $USAGE;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      echo "$USAGE";
       exit;
       ;;
   esac
@@ -86,8 +56,9 @@ done
 shift $(( OPTIND - 1 ));
 
 # Exit if no input
-if [ $# -eq 0 ]; then
-    echo $USAGE
+if [ $# -ne 1 ]; then
+    echo "ERROR: Wrong number of arguments"
+    echo "$USAGE"
     exit;
 fi
 
@@ -129,10 +100,10 @@ up_to_date () {
     fi
     output=$1
     if [ ! -e $output ]; then
+	echo "up_to_date: No such file $output"
 	return 0
     fi
-    if [ ! -z "$2" ]
-    then
+    if [ ! -z "$2" ]; then
 	pre_output=$2
 	if [ -e "$pre_output" ]; then
 	    output_time=`stat -c %Y $output`
@@ -151,18 +122,36 @@ up_to_date () {
 ##################################################
 # Start processing samples
 ##################################################
-indir=$1
-samples="${@:2}"
-if [ ! -d "$indir" ]; then
-    echo  $(date) "$indir not a directory"
-    echo $USAGE
+# Source the project runtime configuration. 
+projectrc=$1
+if [ ! -e $projectrc ]; then
+    echo $(date) "no project configuration file found; no such file $projectrc"
     exit
 fi
+source $projectrc
+
+# Source the halo runtime configuration.
+if [ ! -e $halorc ]; then
+    echo $(date) "no halo configuration file found; no such file $halorc"
+    exit
+fi
+source $halorc
+
 if [ ! "$samples" ]; then
-    echo  $(date) "No samples provided; please provide either sample names or a file listing sample names"
-    echo $USAGE
+    echo  $(date) "No samples provided; please provide either sample names or a file name listing sample names in the project configuration file"
+    echo "$USAGE"
     exit
 fi
+
+if [ ! "$indir" ]; then
+    echo  $(date) "No indir provided; please provide indir in the project configuration file"
+    echo "$USAGE"
+    exit
+fi
+# Init logging
+echo $(date) > $LOGFILE
+echo $(date) > $ERRFILE
+
 # Make sure indir is absolute path
 if [ "`echo $indir | cut -c1`" != "/" ]; then
     echo  $(date) "$indir is not an absolute path; please use absolute path names for input directory"
@@ -171,7 +160,7 @@ fi
 
 # Set input directories
 if [ -f "$samples" ]; then
-    echo  $(date) "Reading input directories from file $args"
+    echo  $(date) "Reading input directories from file $samples"
     samples=`cat $samples`
 else
     echo $(date) "Assuming input directories passed as argument list"
@@ -180,8 +169,9 @@ sample_regexp=`echo $samples | sed -e s"/ /\|/"g`
 
 # Find input files based on regular expressions that include sample names
 # Here assuming casava-based file names
-echo $(date) Finding files with command "'find $indir -regextype posix-extended -regex \".*(${sample_regexp}).*${READ1_REGEXP}.fastq.gz?\"'"
-infiles=`find $indir -regextype posix-extended -regex ".*(${sample_regexp}).*${READ1_REGEXP}.fastq.gz?"`
+
+echo $(date) Finding files with command "'find $indir -regextype posix-extended -regex \".*(${sample_regexp}).*${READ1_REGEXP}.fastq.gz\"'"
+infiles=`find $indir -regextype posix-extended -regex ".*(${sample_regexp}).*${READ1_REGEXP}.fastq.gz"`
 
 echo $(date) "Going to run pipeline on " 
 for f in $infiles; do 
@@ -203,8 +193,11 @@ read2=`echo $infiles | sed -e "s/${READ1_REGEXP}/${READ2_REGEXP}/g"`
 command=""
 for f in $read1 $read2; do
     outdir=`dirname $f`/fastqc
-    up_to_date  $outdir/`basename ${f%.fastq.gz}`_fastqc/summary.txt $f
+    outfile=$outdir/`basename ${f%.fastq*}`_fastqc/summary.txt
+    up_to_date  $outfile $f
     if [ $? = 1 ]; then continue; fi
+    echo "running fastqc"
+    exit
     mkdir -p $outdir
     cmd="$FASTQC $f -o ${outdir}"
     command="$command\n$cmd"
@@ -345,7 +338,6 @@ done
 echo -e $(date) 6. Calculate metrics
 echo -e $(date) $command
 echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
-
 ##############################
 # Variant calling, tertiary analysis
 ##############################
@@ -479,5 +471,20 @@ for f in $sample_pfx; do
     command="$command\n$cmd"
 done
 echo -e $(date) 15. Perform last variant filtration
+echo -e $(date) "$command"
+echo -e "$command" | $PARALLEL  >> $LOGFILE 2>> $ERRFILE
+
+# 16. Run variant evaluation
+VARIANTEVAL_OPTS=
+
+command=""
+for f in $sample_pfx; do
+    input=$f.sort.realign.recal.clip.BOTH.final.filtered.vcf
+    up_to_date ${input%.vcf}.eval_metrics $input
+    if [ $? = 1 ]; then continue; fi
+    cmd=""
+    command="$command\n$cmd"
+done
+echo -e $(date) 16. Run variant evaluation
 echo -e $(date) "$command"
 echo -e "$command" | $PARALLEL  >> $LOGFILE 2>> $ERRFILE
