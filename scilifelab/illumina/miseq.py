@@ -94,6 +94,18 @@ class MiSeqSampleSheet:
             "Samplesheet %s does not exist" % ss_file
 
         setattr(self, "samplesheet", ss_file)
+        self.data_header = ["Sample_ID",
+                            "Sample_Name",
+                            "Sample_Plate",
+                            "Sample_Well",
+                            "Sample_Project",
+                            "index",
+                            "I7_Index_ID",
+                            "index2",
+                            "I5_Index_ID",
+                            "Description",
+                            "Manifest",
+                            "GenomeFolder"]
         self._parse_sample_sheet()
         
     def _parse_sample_sheet(self):
@@ -107,11 +119,14 @@ class MiSeqSampleSheet:
                 if line.startswith("["):
                     current = line.strip("[], ")
                     data[current] = {}
-
                 else:
+                    if current is None:
+                        current = "NoSection"
                     s = line.split(",",1)
                     if len(s) > 1: 
                         data[current][s[0]] = s[1]
+                    else:
+                        data[current][line] = ''
     
         # Assign the parsed attributes to class attributes
         for option, value in data.get("Header",{}).items():
@@ -119,19 +134,24 @@ class MiSeqSampleSheet:
 
         for option, value in data.get("Settings",{}).items():
             setattr(self, option, value)
-        
+        if "Data" not in data:
+            data["Data"] = {}
+            data["Data"][self.data_header[0]] = ",".join(self.data_header[1:])
+            for option, value in data.get("NoSection",{}).items():
+                data["Data"][option] = value
+            
         # Parse sample data
         first_data_col = "Sample_ID"
         if "Data" in data and first_data_col in data["Data"]:
-            data_header = data["Data"][first_data_col].split(",")
+            self.data_header = [s.lower() for s in data["Data"][first_data_col].split(",")]
             samples = {}
             for sample_id, sample_data in data["Data"].items():
                 if sample_id == first_data_col:
                     continue
 
-                samples[sample_id] = dict(zip(data_header,sample_data.split(",")))
-                samples[sample_id][first_data_col] = sample_id
-
+                samples[sample_id] = dict(zip(self.data_header,sample_data.split(",")))
+                samples[sample_id][first_data_col.lower()] = sample_id
+                
             setattr(self, "samples", samples)
 
     def sample_names(self):
@@ -187,13 +207,13 @@ class MiSeqSampleSheet:
             row["FCID"] = FCID
             row["Lane"] = Lane
             row["SampleID"] = sampleID
-            row["SampleRef"] = self._extract_reference_from_path(info['GenomeFolder'])
-            row["Index"] = info['index']
-            row["Description"] = info['Description']
+            row["SampleRef"] = self._extract_reference_from_path(info.get('genomefolder',''))
+            row["Index"] = info.get('index','NoIndex')
+            row["Description"] = info.get('description','')
             row["Control"] = Control
             row["Recipe"] = Recipe
             row["Operator"] = Operator
-            row["SampleProject"] = info['Sample_Project']
+            row["SampleProject"] = info.get('sample_project','Unknown')
 
             rows.append(row)
 

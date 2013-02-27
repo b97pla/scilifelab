@@ -114,5 +114,8 @@ class HiSeqSampleSheet(list):
         """
         with open(samplesheet, "w") as outh:
             csvw = csv.writer(outh)
-            csvw.writerow(self[0].keys())
+            if len(self) > 0:
+                csvw.writerow(self[0].keys())
+            else:
+                csvw.writerow(self.header)
             csvw.writerows([row.values() for row in self])
