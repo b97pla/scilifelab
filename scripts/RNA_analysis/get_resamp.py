@@ -14,6 +14,9 @@ get_resamp.py <M reads ordered>
 
 ordered=sys.argv[1]
 
+n_passed=0
+n_notpassed=0
+
 dict = eval(open('stat.json').read())
 samps=dict.keys()
 print 'sample    M_reads       M_reads_(dup_rem)         Status'
@@ -24,9 +27,13 @@ for sample in samps:
 	M_reads_aft_dup_rem=(float(R2)+float(R1))/2000000
 	if M_reads_aft_dup_rem<float(ordered)/2:
 		status='NP'
+		n_notpassed=n_notpassed+1
 	else:
 		status='P'
+		n_passed=n_passed+1
 	print sample+'	'+str(round(Total_M_read,2))+'	'+str(round(M_reads_aft_dup_rem,2))+'	'+status
 
+print 'Number of P samples:	'+ str(n_passed)
+print 'Number of NP samples:	'+ str(n_notpassed)
 
 
