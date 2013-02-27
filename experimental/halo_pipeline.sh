@@ -93,6 +93,10 @@ run_command () {
 # pre_output file given, compare time stamps and return 0 if output
 # older than pre_output (emulates make).
 up_to_date () {
+    if [ $force ]; then
+	echo "Force flag set; running analysis"
+	return 0
+    fi
     if [ -z "$1" ]
     then
 	echo "No parameter passed to up_to_date"
@@ -197,14 +201,13 @@ for f in $read1 $read2; do
     up_to_date  $outfile $f
     if [ $? = 1 ]; then continue; fi
     echo "running fastqc"
-    exit
     mkdir -p $outdir
     cmd="$FASTQC $f -o ${outdir}"
     command="$command\n$cmd"
 done
 echo -e $(date) 1. QC section 
 echo -e $(date) $command
-echo -e $command | $PARALLEL
+echo -e "$command" | $PARALLEL  >> $LOGFILE 2>> $ERRFILE
 
 # 2a. Trim adapter sequence
 command=""
@@ -225,7 +228,8 @@ for f in $read2; do
 done
 echo -e $(date) 2a. Adapter trimming
 echo -e $(date) $command
-echo -e $command | $PARALLEL
+echo -e "$command" | $PARALLEL  >> $LOGFILE 2>> $ERRFILE
+
 
 # 2b. Resync mates - sometimes cutadapt cuts reads down to 0, so there
 # are some reads without mates
@@ -242,7 +246,7 @@ for f in $sample_pfx; do
 done
 echo -e $(date) 2b. Resync mates
 echo -e $(date) $command
-echo -e $command | $PARALLEL
+echo -e "$command" | $PARALLEL  >> $LOGFILE 2>> $ERRFILE
 
 ##############################
 # Mapping - secondary analysis
@@ -255,6 +259,7 @@ for f in $syncfiles; do
     up_to_date ${f%.fastq.gz}.sai $f
     if [ $? = 1 ]; then continue; fi
     echo $(date) aligning reads $f
+    echo $(date) "$BWA aln -t $N_CORES $BWA_REF $f > ${f%.fastq.gz}.sai"
     $BWA aln -t $N_CORES $BWA_REF $f > ${f%.fastq.gz}.sai 2>> $ERRFILE
 done
 
@@ -475,16 +480,13 @@ echo -e $(date) "$command"
 echo -e "$command" | $PARALLEL  >> $LOGFILE 2>> $ERRFILE
 
 # 16. Run variant evaluation
-VARIANTEVAL_OPTS=
-
-command=""
+# FIXME: should add  target_intervals
+VARIANTEVAL_OPTS="-T VariantEval -R $REF --dbsnp $DBSNP -ST Filter -l INFO --doNotUseAllStandardModules --evalModule CompOverlap --evalModule CountVariants --evalModule GenotypeConcordance --evalModule TiTvVariantEvaluator --evalModule ValidationReport --stratificationModule Filter "
+echo -e $(date) 16. Run variant evaluation
 for f in $sample_pfx; do
     input=$f.sort.realign.recal.clip.BOTH.final.filtered.vcf
     up_to_date ${input%.vcf}.eval_metrics $input
     if [ $? = 1 ]; then continue; fi
-    cmd=""
-    command="$command\n$cmd"
+    echo $(date) "java -jar $GATK $VARIANTEVAL_OPTS --eval $input -o ${input%.vcf}.eval_metrics"
+    java -jar $GATK $VARIANTEVAL_OPTS --eval $input -o ${input%.vcf}.eval_metrics  >> $LOGFILE 2>> $ERRFILE
 done
-echo -e $(date) 16. Run variant evaluation
-echo -e $(date) "$command"
-echo -e "$command" | $PARALLEL  >> $LOGFILE 2>> $ERRFILE
