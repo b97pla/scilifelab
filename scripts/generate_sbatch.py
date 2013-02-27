@@ -109,7 +109,6 @@ if not fpath:
 	p = os.getcwd()
 	fpath = p.split('intermediate')[0] + 'data/' + sys.argv[1]
 print fpath
-
 p=os.getcwd()
 
 if not os.path.exists(fpath):
