@@ -375,10 +375,6 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
   # Replace the default analysis
     ## TODO: This is an ugly hack, should be replaced by a custom config 
     for lane in config:
-        if lane.get('genome_build','') == 'hg19':
-            lane['analysis'] = 'Align_standard_seqcap'
-        else:
-            lane['analysis'] = 'Align_standard'
         for plex in lane.get('multiplex',[]):
             if p_con is not None:
                 try:
@@ -391,12 +387,16 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
                 plex['analysis'] = 'RNA-seq'
             elif application.startswith("de novo"):
                 plex['genome_build'] = 'unknown'
+                plex['analysis'] = 'Align_standard'
             elif application.startswith("Finished library").lower():
                 plex['genome_build'] = 'unknown'
+                plex['analysis'] = 'Align_standard'
             elif application.startswith("Mate-pair").lower():
                 plex['genome_build'] = 'unknown'
+                plex['analysis'] = 'Align_standard'
             elif application.startswith("Metagenome").lower():
                 plex['genome_build'] = 'unknown'
+                plex['analysis'] = 'Align_standard'
             elif application.startswith("Custom capture").lower():
                 plex['analysis'] = 'Align_standard_seqcap'
             elif application.startswith("Exome capture").lower():
@@ -407,6 +407,7 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
                 plex['analysis'] = 'Align_standard'
             else:
                 plex['genome_build'] = 'unknown'
+                plex['analysis'] = 'Align_standard'
                 
     # Remove the yaml file, we will write a new one later
     os.remove(yaml_file)

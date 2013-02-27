@@ -518,6 +518,23 @@ class RunMetricsController(AbstractBaseController):
             samples[id][key] = [project]
         
         return samples
+    
+    def _get_run_parameter_data(self, fc_doc):
+        """
+        Extract instrument type and run mode from runParameter data
+        """
+        
+        runParameters = fc_doc.get("RunParameters",{}).get("Setup",{})
+        run_data = {}
+        if "ApplicationVersion" in runParameters:
+            if int(runParameters['ApplicationVersion'][0]) > 1:
+                run_data["InstrumentType"] = "HiSeq2500"
+            else:
+                run_data["InstrumentType"] = "HiSeq2000"
+        if "RunMode" in runParameters:
+            run_data["RunMode"] = runParameters["RunMode"]
+            
+        return run_data
 
     @controller.expose(help="List the projects and corresponding applications on a flowcell")
     def list_projects(self):
@@ -552,7 +569,16 @@ class RunMetricsController(AbstractBaseController):
         if len(ssheet_data) == 0:
             self.log.warn("No csv samplesheet data for flowcell {}".format(fcid))
             return
-    
+        
+        self.log.debug("Fetch runParameter data for flowcell {}".format(fcid))
+        run_data = self._get_run_parameter_data(fc)
+        if len(run_data) == 0:
+            self.log.warn("No runParameter data for flowcell {}".format(fcid))
+        
+        out_data = [[self.pargs.flowcell,
+                     run_data.get("InstrumentType","HiSeq2000"),
+                     run_data.get("RunMode","High Output")]]
+        
         # Extract the project names
         projects = set([proj[0].replace("__",".") for data in ssheet_data.values() for proj in data.values()])
     
