@@ -12,8 +12,6 @@ usage = """
 Generate sbatch files for running an mRNA-seq pipeline.
 Usage:
 
-STAND IN INTERMEDIATE!
-
 generate_sbatch.py <Flow cell ID, eg 121113_BD1HG4ACXX> <project ID> <Bowtie index for reference genome> <gene/transcript annotation GTF file> 
 The four first options are mandatory. There are further flags you can use:
 
@@ -24,13 +22,12 @@ The four first options are mandatory. There are further flags you can use:
 -f, --fai: Generate UCSC Genome Browser compatible BigWig tracks, using the specified FASTA index (fai) file
 -m, --mail: Specify a mailing address for SLURM
 -a, --alloc-time: Time to allocate in SLURM. Hours:minutes:seconds or days-hours:minutes:seconds
--w, --fpath: Path to fastq files. If not given, the script assumes the standars structure of the analysis directory
+-w, --fpath: Path to fastq files. If not given, the script assumes the standars structure of the analysis directory. And that you run the script from the intermediate directory.
 
 """
 
 if len(sys.argv) < 5:
-    print usage
-    sys.exit(0)
+    sys.exit(usage)
 
 ##	Couchdb functions
 def find_proj_from_view(proj_db, proj_id):
@@ -43,7 +40,7 @@ def find_proj_from_view(proj_db, proj_id):
 def get_size(n,info):
 	preps = 'BCDE'
 	prep = ''
-	name = n.replace('-', '_').replace(' ', '').split("_index")[0].split("_ss")[0].strip().strip('F')
+	name = n.replace('-', '_').replace(' ', '').split("_index")[0].split("_ss")[0].split("_dual")[0].strip().strip('F')
         while name[-1] in preps:
         	prep = name[-1] + prep
                	name = name[0: -1]
@@ -59,19 +56,9 @@ def get_size(n,info):
 				size=info['samples'][samp]['library_prep'][prep]['average_size_bp']	
 	return int(float(size))
 
-CONFIG_FILE	= os.path.join(os.environ['HOME'], 'opt/config/post_process.yaml')
-CONFIG 		= cl.load_config(CONFIG_FILE)
-URL 		= CONFIG['couch_db']['maggie_url']
-print URL
-couch 		= couchdb.Server("http://" + URL)
-proj_db 	= couch['projects']
-proj_ID 	= sys.argv[2]
-key		= find_proj_from_view(proj_db, proj_ID)
-info		= proj_db[key]
-refpath 	= sys.argv[3]
-annopath 	= sys.argv[4]
+
 parser = optparse.OptionParser()
-parser.add_option('-c', '--config', action="store", dest="conffile", default=os.path.expanduser("~/config/post_process.yaml"), help="Specify config file (post_process.yaml)")
+parser.add_option('-c', '--config', action="store", dest="conffile", default=os.path.expanduser("~/opt/config/post_process.yaml"), help="Specify config file (post_process.yaml)")
 parser.add_option('-o', '--old', action="store_true", dest="old", default="False", help="Run old TopHat (1.0.14) instead - mainly to reproduce old runs")
 parser.add_option('-t', '--projtag', action="store", dest="projtag", default="", help="Provide a project tag that will be shown in the queuing system to distinguish from other TopHat runs")
 parser.add_option('-p', '--phred64', action="store_true", dest="phred64", default="False", help="Use phred64 quality scale")
@@ -89,6 +76,27 @@ hours 		= opts.hours
 conffile	= opts.conffile
 fpath 		= opts.fpath
 
+
+proj_ID         = sys.argv[2]
+refpath         = sys.argv[3]
+annopath        = sys.argv[4]
+
+conf            = cl.load_config(conffile)
+
+quantifyer_version      = conf['custom_algorithms']['RNA-seq analysis']['quantifyer_version']
+counts_version          = conf['custom_algorithms']['RNA-seq analysis']['counts_version']
+dup_remover_version     = conf['custom_algorithms']['RNA-seq analysis']['dup_remover_version']
+picard_version		= conf['custom_algorithms']['RNA-seq analysis']['picard_version']
+picard_tools		= conf['custom_algorithms']['RNA-seq analysis']['picard_tools']
+BEDTools_version	= conf['custom_algorithms']['RNA-seq analysis']['BEDTools_version']
+bedGraphToBigWig	= conf['custom_algorithms']['RNA-seq analysis']['bedGraphToBigWig']
+URL             	= conf['couch_db']['maggie_url']
+couch           	= couchdb.Server("http://" + URL)
+proj_db         	= couch['projects']
+key             	= find_proj_from_view(proj_db, proj_ID)
+info            	= proj_db[key]
+
+
 if not len ( hours.split(':') ) == 3: 
 	sys.exit("Please specify the time allocation string as hours:minutes:seconds or days-hours:minutes:seconds") 
 
@@ -96,15 +104,14 @@ if phred64 == True:
 	qscale = '--solexa1.3-quals'
 else:
 	qscale = ''
-try:
-    	conf = yaml.load(open(conffile))
-except:
-    	sys.exit("Could not open configuration file " + conffile)
+
 if not fpath:
 	p = os.getcwd()
 	fpath = p.split('intermediate')[0] + 'data/' + sys.argv[1]
 print fpath
+
 p=os.getcwd()
+
 if not os.path.exists(fpath):
 	sys.exit('no such dir '+fpath)
 		
@@ -134,10 +141,6 @@ r = raw_input("Press n to exit")
 if r.upper() == "N": sys.exit(0)
 
 
-quantifyer_version 	= conf['custom_algorithms']['RNA-seq analysis']['quantifyer_version']
-counts_version		= conf['custom_algorithms']['RNA-seq analysis']['counts_version']
-dup_remover_version	= conf['custom_algorithms']['RNA-seq analysis']['dup_remover_version']
-
 
 for lane in file_info:
     an_path = p+'/'+lane
@@ -154,8 +157,8 @@ for lane in file_info:
         	aligner_version = conf['custom_algorithms']['RNA-seq analysis']['aligner_version']
         	sam_bam="mv accepted_hits.bam accepted_hits_"+samp+".bam"
 	if fai != '':
-        	make_fai="""/bubo/home/h9/mikaelh/software/BEDTools-Version-2.10.1/bin/genomeCoverageBed -bga -split -ibam accepted_hits_sorted_dupRemoved_"""+samp+""".bam -g """+fai+""" > sample_"""+samp+""".bga
-/bubo/home/h9/mikaelh/bin/bedGraphToBigWig sample_"""+samp+""".bga"""+fai+""" sample_"""+samp+""".bw"""
+        	make_fai="""genomeCoverageBed -bga -split -ibam accepted_hits_sorted_dupRemoved_"""+samp+""".bam -g """+fai+""" > sample_"""+samp+""".bga
+"""+ bedGraphToBigWig +""" sample_"""+samp+""".bga"""+fai+""" sample_"""+samp+""".bw"""
 	else:
 		make_fai=''
 
@@ -175,7 +178,7 @@ for lane in file_info:
 	f = open(an_path+"/map_tophat_"+samp+".sh", "w")
 	print >>f, """#! /bin/bash -l
 
-#SBATCH -A a2010002
+#SBATCH -A a2012034
 #SBATCH -p node
 #SBATCH -t {0}
 #SBATCH -J tophat_{1}
@@ -185,21 +188,25 @@ for lane in file_info:
 #SBATCH --mail-type=ALL
 
 module unload bioinfo-tools
+module unload bowtie
 module unload tophat
 module unload cufflinks
 module unload htseq
+module unload picard
 
 module load bioinfo-tools
 module load samtools/0.1.9
 module load tophat/{3}
 module load cufflinks/{4}
 module load htseq/{5}
+module load picard/{16}
+module load BEDTools/{18}
 
 tophat -o tophat_out_{1} {15} -p 8 -r {6} {7} {8}/{9} {8}/{10}
 cd tophat_out_{1}
 {13}
-java -Xmx2g -jar /home/lilia/glob/src/picard-tools-{11}/SortSam.jar INPUT=accepted_hits_{1}.bam OUTPUT=accepted_hits_sorted_{1}.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT
-java -Xmx2g -jar /home/lilia/glob/src/picard-tools-{11}/MarkDuplicates.jar INPUT=accepted_hits_sorted_{1}.bam OUTPUT=accepted_hits_sorted_dupRemoved_{1}.bam ASSUME_SORTED=true REMOVE_DUPLICATES=true METRICS_FILE={1}_picardDup_metrics VALIDATION_STRINGENCY=LENIENT
+java -Xmx2g -jar {17}/SortSam.jar INPUT=accepted_hits_{1}.bam OUTPUT=accepted_hits_sorted_{1}.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT
+java -Xmx2g -jar {17}/MarkDuplicates.jar INPUT=accepted_hits_sorted_{1}.bam OUTPUT=accepted_hits_sorted_dupRemoved_{1}.bam ASSUME_SORTED=true REMOVE_DUPLICATES=true METRICS_FILE={1}_picardDup_metrics VALIDATION_STRINGENCY=LENIENT
 samtools view accepted_hits_sorted_dupRemoved_{1}.bam |sort > accepted_hits_sorted_dupRemoved_prehtseq_{1}.sam
 python -m HTSeq.scripts.count -s no -q accepted_hits_sorted_dupRemoved_prehtseq_{1}.sam {12}  > {1}.counts
 samtools index accepted_hits_sorted_dupRemoved_{1}.bam
@@ -208,6 +215,6 @@ cufflinks -p 8 -G {12} -o cufflinks_out_{1} accepted_hits_sorted_dupRemoved_{1}.
 {14}
 
 rm accepted_hits_sorted_{1}.bam
-rm accepted_hits_sorted_dupRemoved_prehtseq_{1}.sam""".format(hours ,samp ,mail ,aligner_version,quantifyer_version,counts_version,str(innerdist),refpath,fpath,file_info[lane][samp][0],file_info[lane][samp][1],dup_remover_version,annopath,sam_bam,make_fai, qscale)
+rm accepted_hits_sorted_dupRemoved_prehtseq_{1}.sam""".format(hours ,samp ,mail ,aligner_version,quantifyer_version,counts_version,str(innerdist),refpath,fpath,file_info[lane][samp][0],file_info[lane][samp][1],dup_remover_version,annopath,sam_bam,make_fai, qscale,picard_version,picard_tools,BEDTools_version)
     	f.close()
 
