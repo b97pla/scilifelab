@@ -12,7 +12,7 @@ usage = """
 Generate sbatch files for running an mRNA-seq pipeline.
 Usage:
 
-generate_sbatch.py <Flow cell ID, eg 121113_BD1HG4ACXX> <project ID> <Bowtie index for reference genome> <gene/transcript annotation GTF file>
+generate_sbatch.py <Flow cell ID, eg 121113_BD1HG4ACXX> <project ID> <Bowtie index for reference genome> <gene/transcript annotation GTF file> 
 The four first options are mandatory. There are further flags you can use:
 
 -c, --config: Provide config file (post_process.yaml)
@@ -32,9 +32,9 @@ if len(sys.argv) < 5:
 ##	Couchdb functions
 def find_proj_from_view(proj_db, proj_id):
         view = proj_db.view('project/project_name')
-        for proj in view:
+        for proj in view:                
 		if proj.key == proj_id:
-                	return proj.value
+                	return proj.value        
 	return None
 
 def get_size(n,info):
@@ -53,7 +53,7 @@ def get_size(n,info):
 			print "Best gues for sample found on statusDB corresponding to sample name ",n ," is ",samp
 			r = raw_input("If this seems to be correct press y	")
 			if r.upper() == "Y":
-				size=info['samples'][samp]['library_prep'][prep]['average_size_bp']
+				size=info['samples'][samp]['library_prep'][prep]['average_size_bp']	
 	return int(float(size))
 
 
@@ -97,10 +97,10 @@ key             	= find_proj_from_view(proj_db, proj_ID)
 info            	= proj_db[key]
 
 
-if not len ( hours.split(':') ) == 3:
-	sys.exit("Please specify the time allocation string as hours:minutes:seconds or days-hours:minutes:seconds")
+if not len ( hours.split(':') ) == 3: 
+	sys.exit("Please specify the time allocation string as hours:minutes:seconds or days-hours:minutes:seconds") 
 
-if phred64 == True:
+if phred64 == True: 
 	qscale = '--solexa1.3-quals'
 else:
 	qscale = ''
@@ -109,113 +109,11 @@ if not fpath:
 	p = os.getcwd()
 	fpath = p.split('intermediate')[0] + 'data/' + sys.argv[1]
 print fpath
-
-test=flist[0].split('.')[-1]
-if not (test=='fastq')|(test=='gz'):
-	sys.exit('Something wrong with the path to the fastqfiles: '+ fpath)
-
-refpath = sys.argv[3]
-annopath = sys.argv[4]
-
-sample_names = []
-read1forsample = {}
-read2forsample = {}
-
-try:
-    conf = yaml.load(open(conffile))
-except:
-    sys.exit("Could not open configuration file " + conffile)
-
-for fname in flist:
-    read = fname.split("_")[-1]
-    tag = "_".join(fname.split("/")[-1].split("_")[3:-2])
-    print fname.split("_")
-    # 2_date_fcid_sample_1.fastq
-    if not tag in sample_names: sample_names.append(tag)
-    if (read == "1.Q25.fastq") | (read == "1.fastq") | (read == "1.fastq.gz") | (read == "1.Q25.fastq.gz"): read1forsample[tag]=fname.split('/')[-1]
-    if (read == "2.Q25.fastq") | (read == "2.fastq") | (read == "2.fastq.gz") | (read == "2.Q25.fastq.gz"): read2forsample[tag]=fname.split('/')[-1]
-    print fname.split('/')[-1]
-print "Best guess for sample names: "
-for n in sorted(sample_names):
-    print n
-print read2forsample.keys()
-r = raw_input("Press n to exit")
-if r.upper() == "N": sys.exit(0)
-
-#sFile = open("sample_names.txt", "w")
-#for n in sorted(sample_names):
-#    sFile.write(n + "\n")
-
-for n in sorted(sample_names):
-    print "Generating sbatch files for sample ",n
-    oF = open("map_tophat_" + n + ".sh", "w")
-    oF.write("#! /bin/bash -l\n")
-    oF.write("#SBATCH -A a2012043\n")
-    oF.write("#SBATCH -p node\n")
-    oF.write("#SBATCH -t " + hours + "\n")
-    oF.write("#SBATCH -J tophat_" + n + projtag + "\n")
-    oF.write("#SBATCH -e tophat_" + n + projtag + ".err\n")
-    oF.write("#SBATCH -o tophat_" + n + projtag + ".out\n")
-    oF.write("#SBATCH --mail-user=" + mail + "\n")
-    oF.write("#SBATCH --mail-type=ALL\n")
-    oF.write("module unload bioinfo-tools\n")
-    #oF.write("module unload samtools\n")
-    oF.write("module unload tophat\n")
-    oF.write("module unload cufflinks\n")
-    oF.write("module unload htseq\n")
-
-    oF.write("module load bioinfo-tools\n")
-    # oF.write("module load samtools/0.1.9\n")
-
-    tool_versions = conf['custom_algorithms']['RNA-seq analysis']
-
-    if old == True: oF.write("module load tophat/1.0.14\n")
-    else: oF.write("module load tophat/" + tool_versions['aligner_version'] + "\n")
-    oF.write("module load cufflinks/" + tool_versions['quantifyer_version'] + "\n")
-    oF.write("module load htseq/" + tool_versions['counts_version'] + "\n")
-
-    # TopHat
-    try:
-	# trying to get average fragemnt length from couchDB
-	size=get_size(n,info)
-	print "Average fragment length ",str(size)
-    except:
-	print ""
-    	size = raw_input("Could not find information on statusDB. Enter manualy fragment size including adapters for sample " + n + ": ")
-	pass
-    innerdist = int(size) - 101 - 101 - 121
-    size=str(size)
-    if not size.isdigit(): sys.exit(0)
-    print fpath
-    oF.write("tophat -o tophat_out_" + n + " " + qscale + " -p 8 -r " + str(innerdist) + " " + refpath + " " + fpath + "/" + read1forsample[n] + " " + fpath + "/" + read2forsample[n] + "\n")
-    # Samtools -> Picard
-
-    oF.write("cd tophat_out_" + n + "\n")
-    if old == True: oF.write("samtools view -bT concat.fa.fa -o accepted_hits_" + n + ".bam " + "accepted_hits.sam\n")
-    else: oF.write("mv accepted_hits.bam accepted_hits_" + n + ".bam\n")
-    oF.write("java -Xmx2g -jar /home/lilia/glob/src/picard-tools-" + tool_versions['dup_remover_version'] + "/SortSam.jar INPUT=accepted_hits_" + n + ".bam OUTPUT=accepted_hits_sorted_" + n + ".bam SORT\
-_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT\n")
-    oF.write("java -Xmx2g -jar /home/lilia/glob/src/picard-tools-" + tool_versions['dup_remover_version'] + "/MarkDuplicates.jar INPUT=accepted_hits_sorted_" + n + ".bam OUTPUT=accepted_hits_sorted_dup\
-Removed_" + n + ".bam ASSUME_SORTED=true REMOVE_DUPLICATES=true METRICS_FILE=" + n + "_picardDup_metrics VALIDATION_STRINGENCY=LENIENT\n")
-
-    # HTSeq
-    oF.write("samtools view accepted_hits_sorted_dupRemoved_" + n + ".bam |sort > accepted_hits_sorted_dupRemoved_prehtseq_" + n + ".sam\n")
-    oF.write("python -m HTSeq.scripts.count -s no -q accepted_hits_sorted_dupRemoved_prehtseq_" + n + ".sam " + annopath + " > " + n + ".counts\n")
-
-    # Cufflinks
-
-    # To use indexed BAM file in Cufflinks
-
-    oF.write("samtools index accepted_hits_sorted_dupRemoved_" + n + ".bam\n")
-    oF.write("cufflinks -p 8 -G " + annopath + " -o cufflinks_out_" + n + " accepted_hits_sorted_dupRemoved_" + n + ".bam\n")
-
-    # To use col 3-4 sorted SAM file in Cufflinks
-
 p=os.getcwd()
 
 if not os.path.exists(fpath):
 	sys.exit('no such dir '+fpath)
-
+		
 
 flist = glob.glob(str(fpath + '/*'))
 file_info={}
@@ -245,9 +143,9 @@ if r.upper() == "N": sys.exit(0)
 
 for lane in file_info:
     an_path = p+'/'+lane
-    if not os.path.exists(an_path):
+    if not os.path.exists(an_path): 
 	os.mkdir(an_path)
-
+    
     print an_path
     for samp in sorted(file_info[lane]):
 	## Handeling some anoying options in a ugly way
