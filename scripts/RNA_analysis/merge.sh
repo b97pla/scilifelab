@@ -1,5 +1,5 @@
 #!/bin/bash -l
-#SBATCH -A a2012043
+#SBATCH -A a2010002
 #SBATCH -p core
 #SBATCH -t 40:00:00
 #SBATCH -J merge

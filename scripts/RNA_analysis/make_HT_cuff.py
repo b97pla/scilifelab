@@ -40,7 +40,7 @@ except:
 tophat_out_path = "{0}/tophat_out_{1}".format(path,name) 
 f=open("HT_cuff_"+name+".sh",'w')
 print >>f, """#!/bin/bash -l
-#SBATCH -A a2012043
+#SBATCH -A a2010002
 #SBATCH -p node
 #SBATCH -t 10:00:00
 #SBATCH -e HT_cuff_{0}.err
