@@ -15,6 +15,7 @@ import bcbio.solexa.flowcell as fc
 import bcbio.solexa.samplesheet as ssheet
 from bcbio.google.sequencing_report import create_report_on_gdocs
 
+
 def main(run_id, config_file, run_info_file=None, dryrun=False):
     
     assert run_id, \

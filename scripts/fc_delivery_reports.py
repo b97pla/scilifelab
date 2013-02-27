@@ -243,12 +243,12 @@ def main(flowcell_id, qual_scale, archive_dir, analysis_dir, config_file):
         mylookup = TemplateLookup(directories=['./'])
         tmpl = Template(filename=projectfile, lookup=mylookup)
         proj_conf = {
-            'id' : k,
-            'lanes' : project_ids[k],
-            'archive_dir' : archive_dir, 
-            'analysis_dir' : analysis_dir,
-            'flowcell' : flowcell_id,
-            'config' : config,
+            'id': k,
+            'lanes': project_ids[k],
+            'archive_dir': archive_dir,
+            'analysis_dir': analysis_dir,
+            'flowcell': flowcell_id,
+            'config': config,
             'qual_scale': qual_scale,
             }
         d = generate_report(proj_conf)
@@ -416,7 +416,7 @@ def generate_report(proj_conf):
 
     if len(proj_id) > 30: 
         print "Project ID + customer reference too long: ", proj_id
-    tab.add_rows([["Project id:", proj_id], 
+    tab.add_rows([["Project id:", proj_id],
                   ["Date:", fc_date],
                   ["Instrument ID:", instr_id],
                   ["Flow cell ID:", fc_name],
@@ -676,10 +676,6 @@ def generate_report(proj_conf):
             else:
                 if int(k) in sample_name:
                     samp_count[sample_name[int(k)]] = bc_count[k]
-
-        print "DEBUG: Target yield per sample = ", target_yield_per_sample
-        print "DEBUG: Min reads per sample = ", min_reads_per_sample
-        print "DEBUG: No samples: ", no_samples
 
         for k in sorted(samp_count.keys()):
             comment = ''

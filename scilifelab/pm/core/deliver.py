@@ -106,6 +106,7 @@ class DeliveryController(AbstractBaseController):
         plist = [".*.yaml$", ".*.metrics$"]
         if not self.pargs.no_bam:
             plist.append(".*.bam$")
+            plist.append(".*.bai$")
         if not self.pargs.no_vcf:
             plist.append(".*.vcf$")
         pattern = "|".join(plist)
