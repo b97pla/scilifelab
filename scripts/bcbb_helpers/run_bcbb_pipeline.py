@@ -369,7 +369,7 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
                          'Amplicon': {'analysis': 'Align_standard'},
                          'ChIP-seq': {'analysis': 'RNA-seq'},
                          'Custom capture': {'analysis': 'Align_standard_seqcap'},
-                         'De novo': {'analysis': 'Align_standard',
+                         'de novo': {'analysis': 'Align_standard',
                                      'genome_build': 'unknown'},
                          'Exome capture': {'analysis': 'Align_standard_seqcap'},
                          'Finished library': {'analysis': 'Align_standard',
