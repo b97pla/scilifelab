@@ -425,7 +425,7 @@ def  main(client, CONFIG, URL, proj_ID, all_projects):
         				if obj['samples'].keys() != []:
                 				info = save_couchdb_obj(proj_db, obj)
 						if info:
-							logger.debug('couchdb %s' % info)
+							logger.info('CouchDB: %s %s %s' % (obj['_id'], obj['project_name'], info))
 			except:
 				pass		
 	elif proj_ID is not None:
@@ -454,7 +454,8 @@ Options (Only one option is acceptab):
 	CONFIG_FILE = os.path.join(os.environ['HOME'], 'opt/config/post_process.yaml')
 	CONFIG = cl.load_config(CONFIG_FILE)
 	log_path = CONFIG['analysis']['log']
-	URL = CONFIG['couch_db']['maggie_url']
+	URL = CONFIG['couch_db']['maggie_url'] + ':' + str(CONFIG['couch_db']['maggie_port'])
+
 	logger = my_logging(log_path+'/proj_coucdb.log')
 
 	if (options.project_ID is None) and (options.all_projects is False):
