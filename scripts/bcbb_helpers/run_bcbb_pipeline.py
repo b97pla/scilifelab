@@ -406,7 +406,8 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
                         application = project.get("application", 'default').strip()
                 except:
                     application='default'
-            for key, val in application_setup.get(application,application_setup['default']):
+            setup = application_setup.get(application,application_setup['default'])
+            for key, val in setup.items():
                 plex[key] = val
             
     # Remove the yaml file, we will write a new one later
