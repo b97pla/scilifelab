@@ -205,7 +205,7 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
             
             # Generate a sample-specific configuration yaml structure
             samplesheet = os.path.join(src_sample_dir,sample['samplesheet'])
-            sample_config = bcbb_configuration_from_samplesheet(samplesheet, **couch_credentials)
+            sample_config = bcbb_configuration_from_samplesheet(samplesheet, couch_credentials)
              
             # Append the sequence files to the config
             for lane in sample_config:
