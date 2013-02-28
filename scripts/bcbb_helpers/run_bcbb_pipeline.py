@@ -364,7 +364,7 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
     yaml_file = bcbio.solexa.samplesheet.csv2yaml(csv_samplesheet,yaml_file)
     with open(yaml_file) as fh:
         config = yaml.load(fh)
-    
+
     #Connect to maggie to get project application 
     try:
         p_con = ProjectSummaryConnection(**couch_credentials)
@@ -382,30 +382,30 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
                     Proj=plex.get('sample_prj','')
                     project = p_con.get_entry(Proj)
                     if project is not None:
-                        application = project.get("application", '').trim().lower()
+                        application = project.get("application", '').strip().lower()
                 except:
                     application=''
-            if application.startswith("RNA-seq".lower()):
+            if application.startswith("rna-seq"):
                 plex['analysis'] = 'RNA-seq'
             elif application.startswith("de novo"):
                 plex['genome_build'] = 'unknown'
                 plex['analysis'] = 'Align_standard'
-            elif application.startswith("Finished library").lower():
+            elif application.startswith("finished library"):
                 plex['genome_build'] = 'unknown'
                 plex['analysis'] = 'Align_standard'
-            elif application.startswith("Mate-pair").lower():
+            elif application.startswith("mate-pair"):
                 plex['genome_build'] = 'unknown'
                 plex['analysis'] = 'Align_standard'
-            elif application.startswith("Metagenome").lower():
+            elif application.startswith("metagenome"):
                 plex['genome_build'] = 'unknown'
                 plex['analysis'] = 'Align_standard'
-            elif application.startswith("Custom capture").lower():
+            elif application.startswith("custom capture"):
                 plex['analysis'] = 'Align_standard_seqcap'
-            elif application.startswith("Exome capture").lower():
+            elif application.startswith("exome capture"):
                 plex['analysis'] = 'Align_standard_seqcap'
-            elif application.startswith("WG re-seq").lower():
+            elif application.startswith("wg re-seq"):
                 plex['analysis'] = 'Align_standard'
-            elif application.startswith("Amplicon").lower():
+            elif application.startswith("amplicon"):
                 plex['analysis'] = 'Align_standard'
             else:
                 plex['analysis'] = 'Align_standard'
