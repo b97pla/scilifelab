@@ -49,9 +49,9 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
 		obj['customer_reference'] = p.customer_reference
 		obj['project_id']='P' + p.project_id
 
-	info = get_20132_info(client,project_name_swe)
 	### 20132
 	try:
+		info = get_20132_info(client,project_name_swe)
                 scilife_names,preps = strip_scilife_name(info.keys())
                 for key in scilife_names:
                         scilife_name = scilife_names[key]
@@ -68,8 +68,8 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
                 pass
 
 	### 20158
-	info = get_20158_info(client, project_name_swe)
 	try:
+		info = get_20158_info(client, project_name_swe)
 		scilife_names, preps = strip_scilife_name(info.keys())
 		duplicates = find_duplicates(scilife_names.values())
 		for key in scilife_names:
@@ -88,8 +88,6 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
                                                                		'incoming_QC_status': incoming_QC_status}
         except:
                 pass
-
-
         ### Get _id for sample_run_metrics 
         info = find_samp_from_view(samp_db, project_name)
         if len(info.keys()) > 0:
@@ -104,12 +102,13 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
 
                 if obj['samples'].has_key(scilife_name):
                         if obj['samples'][scilife_name].has_key("library_prep"):
-				if obj['samples'][scilife_name]["library_prep"].has_key(prep):
-					obj['samples'][scilife_name]["library_prep"][prep]["sample_run_metrics"][info[key][0]]=key
-				else:
-					obj['samples'][scilife_name]["library_prep"][prep]={"sample_run_metrics":{info[key][0]:key}}
-			else:
-				obj['samples'][scilife_name]["library_prep"]={prep:{"sample_run_metrics":{info[key][0]:key}}}
+                                if obj['samples'][scilife_name]["library_prep"].has_key(prep):
+                                        obj['samples'][scilife_name]["library_prep"][prep]["sample_run_metrics"][info[key][0]]=key
+                                else:
+                                        obj['samples'][scilife_name]["library_prep"][prep]={"sample_run_metrics":{info[key][0]:key}}
+                        else:
+                                obj['samples'][scilife_name]["library_prep"]={prep:{"sample_run_metrics":{info[key][0]:key}}}
+
 
 	### 20135
 	if WS_projects.has_key(project_name):
@@ -133,8 +132,8 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
 					obj['samples'][striped_scilife_name]["library_prep"]={prep:{"average_size_bp":Av_sice,"prep_status":prep_status}}
         		except:
 	               		pass
-                 
-	return obj
+
+      	return obj
 
 
 
@@ -436,7 +435,6 @@ def  main(client, CONFIG, URL, proj_ID, all_projects):
 	else:
 		logger.debug('Argument error')
 	if info:
-		logger.debug('couchdb %s' % info)
 		logger.info('CouchDB: %s %s %s' % (obj['_id'], obj['project_name'], info))
 
 if __name__ == '__main__':
