@@ -366,8 +366,8 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
         config = yaml.load(fh)
     
     #Connect to maggie to get project application 
-	try:
-        p_con = ProjectSummaryConnection(dbname='projects', **couch_credentials)
+    try:
+        p_con = ProjectSummaryConnection(**couch_credentials)
     except:
         print "Can't connect to maggie to get application"
         p_con = None
@@ -376,11 +376,13 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
     ## TODO: This is an ugly hack, should be replaced by a custom config 
     for lane in config:
         for plex in lane.get('multiplex',[]):
+            application=''
             if p_con is not None:
                 try:
                     Proj=plex.get('sample_prj','')
                     project = p_con.get_entry(Proj)
-                    application = project.get("application", '').trim().lower() if project else ''
+                    if project is not None:
+                        application = project.get("application", '').trim().lower()
                 except:
                     application=''
             if application.startswith("RNA-seq".lower()):
@@ -406,7 +408,6 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
             elif application.startswith("Amplicon").lower():
                 plex['analysis'] = 'Align_standard'
             else:
-                plex['genome_build'] = 'unknown'
                 plex['analysis'] = 'Align_standard'
                 
     # Remove the yaml file, we will write a new one later
