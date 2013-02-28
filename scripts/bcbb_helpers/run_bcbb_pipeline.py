@@ -365,6 +365,27 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
     with open(yaml_file) as fh:
         config = yaml.load(fh)
 
+    application_setup = {
+                         'Amplicon': {'analysis': 'Align_standard'},
+                         'ChIP-seq': {'analysis': 'RNA-seq'},
+                         'Custom capture': {'analysis': 'Align_standard_seqcap'},
+                         'De novo': {'analysis': 'Align_standard',
+                                     'genome_build': 'unknown'},
+                         'Exome capture': {'analysis': 'Align_standard_seqcap'},
+                         'Finished library': {'analysis': 'Align_standard',
+                                              'genome_build': 'unknown'},
+                         'Mate-pair': {'analysis': 'Align_standard',
+                                       'genome_build': 'unknown'},
+                         'Metagenome': {'analysis': 'Align_standard',
+                                        'genome_build': 'unknown'},
+                         'miRNA-seq': {'analysis': 'Align_standard',
+                                       'genome_build': 'unknown'},
+                         'RNA-seq (mRNA)': {'analysis': 'RNA-seq'},
+                         'RNA-seq (total RNA)': {'analysis': 'RNA-seq'},
+                         'WG re-seq': {'analysis': 'Align_standard'},
+                         'default': {'analysis': 'Align_standard'},
+                         }
+
     #Connect to maggie to get project application 
     try:
         p_con = ProjectSummaryConnection(**couch_credentials)
@@ -376,40 +397,18 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
     ## TODO: This is an ugly hack, should be replaced by a custom config 
     for lane in config:
         for plex in lane.get('multiplex',[]):
-            application=''
+            application='default'
             if p_con is not None:
                 try:
                     Proj=plex.get('sample_prj','')
                     project = p_con.get_entry(Proj)
                     if project is not None:
-                        application = project.get("application", '').strip().lower()
+                        application = project.get("application", 'default').strip()
                 except:
-                    application=''
-            if application.startswith("rna-seq"):
-                plex['analysis'] = 'RNA-seq'
-            elif application.startswith("de novo"):
-                plex['genome_build'] = 'unknown'
-                plex['analysis'] = 'Align_standard'
-            elif application.startswith("finished library"):
-                plex['genome_build'] = 'unknown'
-                plex['analysis'] = 'Align_standard'
-            elif application.startswith("mate-pair"):
-                plex['genome_build'] = 'unknown'
-                plex['analysis'] = 'Align_standard'
-            elif application.startswith("metagenome"):
-                plex['genome_build'] = 'unknown'
-                plex['analysis'] = 'Align_standard'
-            elif application.startswith("custom capture"):
-                plex['analysis'] = 'Align_standard_seqcap'
-            elif application.startswith("exome capture"):
-                plex['analysis'] = 'Align_standard_seqcap'
-            elif application.startswith("wg re-seq"):
-                plex['analysis'] = 'Align_standard'
-            elif application.startswith("amplicon"):
-                plex['analysis'] = 'Align_standard'
-            else:
-                plex['analysis'] = 'Align_standard'
-                
+                    application='default'
+            for key, val in application_setup.get(application,application_setup['default']):
+                plex[key] = val
+            
     # Remove the yaml file, we will write a new one later
     os.remove(yaml_file)
     
