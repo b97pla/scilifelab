@@ -7,12 +7,10 @@ import scilifelab.illumina as illumina
 
 
 class HiSeqRun(illumina.IlluminaRun):
-    def __init__(self, base, samplesheet=None):
-        self.base = base
-        if samplesheet is None:
-            samplesheet = illumina.IlluminaRun.get_samplesheet(self.base)
-
-        self.samplesheet = samplesheet
+    def __init__(self, run_dir, samplesheet=None):
+        illumina.IlluminaRun.__init__(self, run_dir, samplesheet)
+        if self.samplesheet_file is not None:
+            self.samplesheet = HiSeqSampleSheet(self.samplesheet_file)
 
     @staticmethod
     def _samplesheet_header():

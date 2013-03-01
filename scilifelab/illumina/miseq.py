@@ -3,8 +3,8 @@
 import os
 import re
 import glob
-from collections import OrderedDict
-from scilifelab.bcbio.qc import FlowcellRunMetricsParser
+from collections import OrderedDict, defaultdict
+import scilifelab.illumina as illumina
 from scilifelab.illumina.hiseq import HiSeqSampleSheet
     
 def group_fastq_files(fastq_files):
@@ -26,17 +26,13 @@ def group_fastq_files(fastq_files):
     return batches.values()
 
 
-class MiSeqRun:
-    def __init__(self, run_dir):
-        self._run_dir = os.path.normpath(run_dir)
-        assert os.path.exists(self._run_dir), "The path %s is invalid" % self._run_dir
-        ss_file = self._find_samplesheet()
-        if ss_file is not None:
-            samplesheet = MiSeqSampleSheet(ss_file)
-            self.samplesheet = samplesheet
-        
-        parser = FlowcellRunMetricsParser(self._run_dir)
-        self.run_config = parser.parseRunParameters()
+class MiSeqRun(illumina.IlluminaRun):
+    def __init__(self, run_dir, samplesheet=None):
+        illumina.IlluminaRun.__init__(self, run_dir, samplesheet)
+        if self.samplesheet_file is None:
+            self.samplesheet_file = illumina.IlluminaRun.get_samplesheet(self._basecalls_dir())
+        if self.samplesheet_file is not None:
+            self.samplesheet = MiSeqSampleSheet(self.samplesheet_file)
         self._fastq = self._fastq_files()
         
     def write_hiseq_samplesheet(self, samplesheet):
@@ -57,6 +53,8 @@ class MiSeqRun:
         return os.path.join(self._basecalls_dir(),"Alignment")
     def _runParameters(self):
         return os.path.join(self._run_dir,"runParameters.xml")
+    def _runInfo(self):
+        return os.path.join(self._run_dir,"RunInfo.xml")
     
     def _fastq_files(self, fastq_dir=None):
         if fastq_dir is None:
@@ -111,14 +109,13 @@ class MiSeqSampleSheet:
     def _parse_sample_sheet(self):
         
         # Parse the samplesheet file into a data structure
-        data = {}
+        data = defaultdict(dict)
         with open(self.samplesheet,"r") as fh:
             current = None
             for line in fh:
                 line = line.strip()
                 if line.startswith("["):
                     current = line.strip("[], ")
-                    data[current] = {}
                 else:
                     if current is None:
                         current = "NoSection"
@@ -209,6 +206,8 @@ class MiSeqSampleSheet:
             row["SampleID"] = sampleID
             row["SampleRef"] = self._extract_reference_from_path(info.get('genomefolder',''))
             row["Index"] = info.get('index','')
+            if 'index2' in info and len(info['index2']) > 0:
+                row["Index"] = "{}-{}".format(row["Index"],info["index2"])
             row["Description"] = info.get('description','')
             row["Control"] = Control
             row["Recipe"] = Recipe
