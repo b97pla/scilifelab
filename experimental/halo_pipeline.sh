@@ -21,14 +21,25 @@ Options
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 RESYNCMATES=$DIR/resyncMates.pl
 
+# Force move operations
+MV="mv -f"
+
 # Setup environment
 DRY_RUN=false
 FORCE=false
 
-E_PARAM_ERR=250    # If less than 2 params passed to function.
+E_PARAM_ERR=250       # If less than 2 params passed to function.
 P_RUN=true            # Run command
 P_NORUN=false         # Skip command
+STAGING_DIR=tx        # Staging directory in which to generate temporary files
+JAVA_OPTS=-Xmx2g
+# Initialize stdout and stderr variables; can be overloaded in config
+# file. These variables set where *program output* logging goes;
+# pipeline status commands will still be printed to console
+LOGFILE=/dev/stdout
+ERRFILE=/dev/stderr
 
+# Halo configuration file
 halorc=~/.halorc
 # Check user input
 while getopts :nfhc: flag; do
@@ -73,15 +84,14 @@ run_command () {
     fi
     command=$1
     output=$2
-    echo $output
     if [ "$dry_run" ]; then
-	echo $(date) "Command: " $command
+	echo $(date) "Command: " $command >> $LOGFILE
     else
 	up_to_date $output
 	retval=$?
 	if [ ! "$retval" ]; then
 	    echo $(date) "command up to date; skipping"
-	    echo -e "\t" $command
+	    echo -e "\t" $command >> $LOGFILE
 	else
 	    $command
 	fi
@@ -94,25 +104,25 @@ run_command () {
 # older than pre_output (emulates make).
 up_to_date () {
     if [ $force ]; then
-	echo "Force flag set; running analysis"
+	echo "Force flag set; running analysis" >> $LOGFILE
 	return 0
     fi
     if [ -z "$1" ]
     then
-	echo "No parameter passed to up_to_date"
+	echo "No parameter passed to up_to_date" >> $ERRFILE
 	exit
     fi
-    output=$1
-    if [ ! -e $output ]; then
-	echo "up_to_date: No such file $output"
+    up_to_date_output=$1
+    if [ ! -e $up_to_date_output ]; then
+	echo "up_to_date: No such file $up_to_date_output; running analysis" >> $ERRFILE
 	return 0
     fi
     if [ ! -z "$2" ]; then
-	pre_output=$2
-	if [ -e "$pre_output" ]; then
-	    output_time=`stat -c %Y $output`
-	    pre_output_time=`stat -c %Y $pre_output`
-	    if [ $output_time -gt $pre_output_time ];
+	up_to_date_pre_output=$2
+	if [ -e "$up_to_date_pre_output" ]; then
+	    up_to_date_output_time=`stat -c %Y $up_to_date_output`
+	    up_to_date_pre_output_time=`stat -c %Y $up_to_date_pre_output`
+	    if [ $up_to_date_output_time -gt $up_to_date_pre_output_time ];
 	    then
 		return 1
 	    else
@@ -129,27 +139,27 @@ up_to_date () {
 # Source the project runtime configuration. 
 projectrc=$1
 if [ ! -e $projectrc ]; then
-    echo $(date) "no project configuration file found; no such file $projectrc"
+    echo $(date) "no project configuration file found; no such file $projectrc" >> $ERRFILE
     exit
 fi
 source $projectrc
 
 # Source the halo runtime configuration.
 if [ ! -e $halorc ]; then
-    echo $(date) "no halo configuration file found; no such file $halorc"
+    echo $(date) "no halo configuration file found; no such file $halorc" >> $ERRFILE
     exit
 fi
 source $halorc
 
 if [ ! "$samples" ]; then
-    echo  $(date) "No samples provided; please provide either sample names or a file name listing sample names in the project configuration file"
-    echo "$USAGE"
+    echo  $(date) "No samples provided; please provide either sample names or a file name listing sample names in the project configuration file" >> $ERRFILE
+    echo "$USAGE" >> $ERRFILE
     exit
 fi
 
 if [ ! "$indir" ]; then
-    echo  $(date) "No indir provided; please provide indir in the project configuration file"
-    echo "$USAGE"
+    echo  $(date) "No indir provided; please provide indir in the project configuration file" >> $ERRFILE
+    echo "$USAGE" >> $ERRFILE
     exit
 fi
 # Init logging
@@ -158,7 +168,7 @@ echo $(date) > $ERRFILE
 
 # Make sure indir is absolute path
 if [ "`echo $indir | cut -c1`" != "/" ]; then
-    echo  $(date) "$indir is not an absolute path; please use absolute path names for input directory"
+    echo  $(date) "$indir is not an absolute path; please use absolute path names for input directory" >> $ERRFILE
     exit
 fi
 
@@ -174,15 +184,21 @@ sample_regexp=`echo $samples | sed -e s"/ /\|/"g`
 # Find input files based on regular expressions that include sample names
 # Here assuming casava-based file names
 
-echo $(date) Finding files with command "'find $indir -regextype posix-extended -regex \".*(${sample_regexp}).*${READ1_REGEXP}.fastq.gz\"'"
+echo "$(date) Finding files with command 'find $indir -regextype posix-extended -regex \".*(${sample_regexp}).*${READ1_REGEXP}.fastq.gz\"'"
 infiles=`find $indir -regextype posix-extended -regex ".*(${sample_regexp}).*${READ1_REGEXP}.fastq.gz"`
 
-echo $(date) "Going to run pipeline on " 
+echo $(date) "Going to run pipeline on "
 for f in $infiles; do 
-    echo -e "\t" ${f%.fastq.gz}
+    echo -e "\t" ${f%.fastq.gz} 
 done
 read1=$infiles
 read2=`echo $infiles | sed -e "s/${READ1_REGEXP}/${READ2_REGEXP}/g"`
+
+# Setup staging directories
+for f in $read1 $read2; do
+    TMPDIR=`dirname $f`/tx
+    mkdir -p $TMPDIR
+done
 
 ##################################################
 # Pipeline code
@@ -200,7 +216,7 @@ for f in $read1 $read2; do
     outfile=$outdir/`basename ${f%.fastq*}`_fastqc/summary.txt
     up_to_date  $outfile $f
     if [ $? = 1 ]; then continue; fi
-    echo "running fastqc"
+    echo "running fastqc"  >> $LOGFILE
     mkdir -p $outdir
     cmd="$FASTQC $f -o ${outdir}"
     command="$command\n$cmd"
@@ -214,22 +230,23 @@ command=""
 trimfiles=""
 for f in $read1; do
     trimfiles="$trimfiles ${f%.fastq.gz}.trimmed.fastq.gz"
+    TMP=`dirname $f`/$STAGING_DIR/`basename $f`
     up_to_date ${f%.fastq.gz}.trimmed.fastq.gz $f
     if [ $? = 1 ]; then continue; fi
-    cmd="$CUTADAPT $CUTADAPT_OPTS -a $THREEPRIME $f -o ${f%.fastq.gz}.trimmed.fastq.gz > ${f%.fastq.gz}.trimmed.fastq.cutadapt_metrics"
+    cmd="$CUTADAPT $CUTADAPT_OPTS -a $THREEPRIME $f -o ${TMP%.fastq.gz}.trimmed.fastq.gz > ${f%.fastq.gz}.trimmed.fastq.cutadapt_metrics && $MV ${TMP%.fastq.gz}.trimmed.fastq.gz ${f%.fastq.gz}.trimmed.fastq.gz"
     command="$command\n$cmd"
 done
 for f in $read2; do
     trimfiles="$trimfiles ${f%.fastq.gz}.trimmed.fastq.gz"
+    TMP=`dirname $f`/$STAGING_DIR/`basename $f`
     up_to_date ${f%.fastq.gz}.trimmed.fastq.gz $f
     if [ $? = 1 ]; then continue; fi
-    cmd="$CUTADAPT $CUTADAPT_OPTS -a $FIVEPRIME $f -o ${f%.fastq.gz}.trimmed.fastq.gz > ${f%.fastq.gz}.trimmed.fastq.cutadapt_metrics"
+    cmd="$CUTADAPT $CUTADAPT_OPTS -a $FIVEPRIME $f -o ${TMP%.fastq.gz}.trimmed.fastq.gz > ${f%.fastq.gz}.trimmed.fastq.cutadapt_metrics && $MV ${TMP%.fastq.gz}.trimmed.fastq.gz ${f%.fastq.gz}.trimmed.fastq.gz"
     command="$command\n$cmd"
 done
 echo -e $(date) 2a. Adapter trimming
 echo -e $(date) $command
 echo -e "$command" | $PARALLEL  >> $LOGFILE 2>> $ERRFILE
-
 
 # 2b. Resync mates - sometimes cutadapt cuts reads down to 0, so there
 # are some reads without mates
@@ -237,11 +254,13 @@ sample_pfx=`for f in $read1; do echo ${f%_${READ1_REGEXP}.fastq.gz}; done`
 command=""
 syncfiles=""
 for f in $sample_pfx; do
-    syncfiles="$syncfiles ${f}_${READ1_REGEXP}.trimmed.sync.fastq.gz ${f}_${READ2_REGEXP}.trimmed.sync.fastq.gz"
+    OUTDIR=`dirname $f`
+    TMP=$OUTDIR/$STAGING_DIR/`basename $f`
+    syncfiles="$syncfiles ${TMP}_${READ1_REGEXP}.trimmed.sync.fastq.gz ${TMP}_${READ2_REGEXP}.trimmed.sync.fastq.gz"
     up_to_date ${f}_${READ1_REGEXP}.trimmed.sync.fastq.gz ${f}_${READ1_REGEXP}.trimmed.fastq.gz
     if [ $? = 1 ]; then continue; fi
     echo $(date) resyncing reads for ${f}_${READ1_REGEXP}.trimmed.fastq.gz, ${f}_${READ2_REGEXP}.trimmed.fastq.gz
-    cmd="$RESYNCMATES -i ${f}_${READ1_REGEXP}.trimmed.fastq.gz -j ${f}_${READ2_REGEXP}.trimmed.fastq.gz -o ${f}_${READ1_REGEXP}.trimmed.sync.fastq.gz -p ${f}_${READ2_REGEXP}.trimmed.sync.fastq.gz"
+    cmd="$RESYNCMATES -i ${f}_${READ1_REGEXP}.trimmed.fastq.gz -j ${f}_${READ2_REGEXP}.trimmed.fastq.gz -o ${TMP}_${READ1_REGEXP}.trimmed.sync.fastq.gz -p ${TMP}_${READ2_REGEXP}.trimmed.sync.fastq.gz && $MV ${TMP}_${READ1_REGEXP}.trimmed.sync.fastq.gz $OUTDIR && $MV ${TMP}_${READ2_REGEXP}.trimmed.sync.fastq.gz $OUTDIR"
     command="$command\n$cmd"
 done
 echo -e $(date) 2b. Resync mates
@@ -254,24 +273,31 @@ echo -e "$command" | $PARALLEL  >> $LOGFILE 2>> $ERRFILE
 
 # 3. Align sequences with bwa. Here we run command sequentially since
 # bwa takes care of parallelization. From now on we run at sample level.
+# Remove staging directory from syncfiles
+syncfiles=`echo $syncfiles | sed -e "s/$STAGING_DIR\///g;"`
 echo -e $(date) 3. Alignment
 for f in $syncfiles; do
+    OUTDIR=`dirname $f`
+    TMP=$OUTDIR/$STAGING_DIR/`basename $f`
     up_to_date ${f%.fastq.gz}.sai $f
     if [ $? = 1 ]; then continue; fi
     echo $(date) aligning reads $f
-    echo $(date) "$BWA aln -t $N_CORES $BWA_REF $f > ${f%.fastq.gz}.sai"
-    $BWA aln -t $N_CORES $BWA_REF $f > ${f%.fastq.gz}.sai 2>> $ERRFILE
+    echo $(date) "$BWA aln -t $N_CORES $BWA_REF $f > ${TMP%.fastq.gz}.sai"
+    $BWA aln -t $N_CORES $BWA_REF $f > ${TMP%.fastq.gz}.sai 2>> $ERRFILE && $MV ${TMP%.fastq.gz}.sai $OUTDIR
 done
 
 # 4. Pair reads
+# NB: sam file is kept in staging directory for following step (is this really necessary?)
 command=""
 for f in $sample_pfx; do
+    OUTDIR=`dirname $f`
+    TMP=$OUTDIR/$STAGING_DIR/`basename $f`
     label=`basename $f`
     extension="trimmed.sync"
     up_to_date $f.sam ${f}_${READ1_REGEXP}.${extension}.sai
     if [ $? = 1 ]; then continue; fi
     echo $(date) pairing reads for sample $f
-    cmd="$BWA sampe -A -P -r \"@RG\tID:${label}\tSM:${label}\tPL:Illumina\tCN:Agilent\" $BWA_REF ${f}_${READ1_REGEXP}.${extension}.sai ${f}_${READ2_REGEXP}.${extension}.sai ${f}_${READ1_REGEXP}.${extension}.fastq.gz ${f}_${READ2_REGEXP}.${extension}.fastq.gz > $f.sam"
+    cmd="$BWA sampe -A -P -r \"@RG\tID:${label}\tSM:${label}\tPL:Illumina\tCN:Agilent\" $BWA_REF ${f}_${READ1_REGEXP}.${extension}.sai ${f}_${READ2_REGEXP}.${extension}.sai ${f}_${READ1_REGEXP}.${extension}.fastq.gz ${f}_${READ2_REGEXP}.${extension}.fastq.gz > ${TMP}.sam && $MV ${TMP}.sam $OUTDIR"
     command="$command\n$cmd"
 done
 echo -e $(date) 4. Pair reads
@@ -279,17 +305,16 @@ echo -e $(date) $command
 echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
 
 # 5. Generate bam file
-# FIXME: remove sam files
 SORTSAM_OPTS="SO=coordinate"
 command=""
 for f in $sample_pfx; do
+    OUTDIR=`dirname $f`
+    TMP=$OUTDIR/$STAGING_DIR/`basename $f`
     up_to_date $f.sort.bam $f.bam
     if [ $? = 1 ]; then continue; fi
     echo $(date) generating bam file for $f
-    #echo "$SAMTOOLS view -bS $f.sam | $SAMTOOLS sort - $f.sort; $SAMTOOLS index $f.sort.bam "
-    #cmd="$SAMTOOLS view -bS $f.sam | $SAMTOOLS sort - $f.sort; $SAMTOOLS index $f.sort.bam;" # if [ -e $f.sort.bam ]; then echo \"$f.sam removed to save space; see $f.sort.bam\" > $f.sam; fi"
-    echo "$SAMTOOLS view -bS $f.sam > $f.bam; java -jar $PICARD_HOME/SortSam.jar $SORTSAM_OPTS INPUT=$f.bam OUTPUT=$f.sort.bam; if [ -e $f.bam ]; then echo \"$f.sam removed to save space; see $f.sort.bam\" > $f.sam; fi"
-    cmd="$SAMTOOLS view -bS $f.sam > $f.bam; java -jar $PICARD_HOME/SortSam.jar $SORTSAM_OPTS INPUT=$f.bam OUTPUT=$f.sort.bam; $SAMTOOLS index $f.sort.bam; " # if [ -e $f.bam ]; then echo \"$f.sam removed to save space; see $f.sort.bam\" > $f.sam; fi"
+    echo "$SAMTOOLS view -bS $f.sam > ${TMP}.bam && java -jar $PICARD_HOME/SortSam.jar $SORTSAM_OPTS INPUT=${TMP}.bam OUTPUT=${TMP}.sort.bam && echo \"$f.bam removed to save space; see $f.sort.bam\" > ${TMP}.bam && $MV ${TMP}.*.ba[mi] $OUTDIR && echo \"$f.sam removed to save space; see $f.sort.bam\" > $f.sam"
+    cmd="$SAMTOOLS view -bS $f.sam > ${TMP}.bam && java -jar $PICARD_HOME/SortSam.jar $SORTSAM_OPTS INPUT=${TMP}.bam OUTPUT=${TMP}.sort.bam && echo \"$f.bam removed to save space; see $f.sort.bam\" > ${TMP}.bam && $MV ${TMP}*.ba[mi] $OUTDIR && echo \"$f.sam removed to save space; see $f.sort.bam\" > $f.sam"
     command="$command\n$cmd"
 done
 echo -e $(date) 5. Generate sorted bam file
@@ -297,6 +322,7 @@ echo -e $(date) $command
 echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
 
 # 6. Generate various metrics for the bamfiles
+# No staging directory is used here
 command=""
 for f in $sample_pfx; do
     input=$f.sort.bam
@@ -352,38 +378,55 @@ echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
 UNIFIED_GENOTYPER_OPTS="-T UnifiedGenotyper --dbsnp $DBSNP -stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 30 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $N_CORES -R $REF -L $TARGET_REGION"
 echo -e $(date) 7. Raw variant calling
 for f in $sample_pfx; do
+    OUTDIR=`dirname $f`
     input=$f.sort.bam
+    TMP=$OUTDIR/$STAGING_DIR/`basename $input`
+    output=${TMP%.bam}.BOTH.raw.vcf
     up_to_date ${input%.bam}.BOTH.raw.vcf $input
     if [ $? = 1 ]; then continue; fi
     echo $(date) generating raw variant calls for $f
-    java -jar $GATK $UNIFIED_GENOTYPER_OPTS -I $input -o ${input%.bam}.BOTH.raw.vcf >> $LOGFILE 2>> $ERRFILE
+    java -jar $GATK $UNIFIED_GENOTYPER_OPTS -I $input -o $output && $MV $output* $OUTDIR >> $LOGFILE 2>> $ERRFILE
 done
-    
 
-# 8. Realignment
-REALIGNMENT_TARGET_CREATOR_OPTS="-T RealignerTargetCreator -L $TARGET_REGION -known $MILLS -known $THOUSANDG_OMNI -nt $N_CORES -R $REF"
+# 8. Generate realignment intervals 
+DEEP_COVERAGE_OPTS="--mismatchFraction 0.30 --maxIntervalSize 650"
+REALIGNMENT_TARGET_CREATOR_OPTS="-T RealignerTargetCreator -L $TARGET_REGION -known $MILLS -known $THOUSANDG_OMNI -nt $N_CORES -R $REF $DEEP_COVERAGE_OPTS"
 echo -e $(date) 8. Realignment - generate realign target intervals
 for f in $sample_pfx; do
+    OUTDIR=`dirname $f`
     input=$f.sort.bam
+    output=$OUTDIR/$STAGING_DIR/`basename $input`
     up_to_date ${input%.bam}.intervals $input
     if [ $? = 1 ]; then continue; fi
     echo $(date) generating realignment intervals for $input
-    java -jar $GATK $REALIGNMENT_TARGET_CREATOR_OPTS -I $input -known ${input%.bam}.BOTH.raw.vcf -o ${input%.bam}.intervals  >> $LOGFILE 2>> $ERRFILE
+    java -jar $GATK $REALIGNMENT_TARGET_CREATOR_OPTS -I $input -known ${input%.bam}.BOTH.raw.vcf -o ${output%.bam}.intervals && $MV ${output%.bam}.intervals $OUTDIR >> $LOGFILE 2>> $ERRFILE
 done
 
-# 9. Indel realignment
+# 9. Indel realignment 
+#
+# According to the documentation, IndelRealigner does *not* support
+# option -nt (number of threads). Nevertheless, this process cranks up
+# the CPU to as many cores as are available. I am missing some option
+# here.
+
+# One or several of DEEP_COVERAGE_OPTS seems to screw up the output
+DEEP_COVERAGE_OPTS="--maxReadsInMemory 300000 --maxReadsForRealignment 500000 --maxReadsForConsensuses 500 --maxConsensuses 100"
 INDEL_REALIGNER_OPTS="-T IndelRealigner -known $MILLS -known $THOUSANDG_OMNI  -R $REF"
 command=""
+echo -e $(date) 9. Indel realignment
 for f in $sample_pfx; do
+    OUTDIR=`dirname $f`
     input=$f.sort.bam
+    output=$OUTDIR/$STAGING_DIR/`basename $input`
     up_to_date ${input%.bam}.realign.bam $input
     if [ $? = 1 ]; then continue; fi
-    cmd="java -jar $GATK $INDEL_REALIGNER_OPTS -I $input --targetIntervals ${input%.bam}.intervals -known ${input%.bam}.BOTH.raw.vcf -o ${input%.bam}.realign.bam"
-    command="$command\n$cmd"
+    echo -e $(date) Realigning round indels for $f
+    java -jar $GATK $INDEL_REALIGNER_OPTS -I $input --targetIntervals ${input%.bam}.intervals -known ${input%.bam}.BOTH.raw.vcf -o ${output%.bam}.realign.bam && $MV ${output%.bam}.realign.ba[mi] $OUTDIR >> $LOGFILE 2>> $ERRFILE
+    # command="$command\n$cmd"
 done
-echo -e $(date) 9. Indel realignment
-echo -e $(date) $command
-echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
+
+# echo -e $(date) $command
+# echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
 
 # 10. Base recalibration
 # NB: currently BaseRecalibrator does *not* support multiple threads
@@ -391,11 +434,13 @@ RECALIBRATOR_OPTS="-T BaseRecalibrator -R $REF -L $TARGET_REGION --knownSites $D
 echo -e $(date) 10. Base recalibration
 command=""
 for f in $sample_pfx; do
+    OUTDIR=`dirname $f`
     input=$f.sort.realign.bam
+    output=$OUTDIR/$STAGING_DIR/`basename $input`
     up_to_date ${input%.bam}.recal_data.grp $input
     if [ $? = 1 ]; then continue; fi
     echo $(date) realigning $input
-    cmd="java -jar $GATK $RECALIBRATOR_OPTS -I $input -o ${input%.bam}.recal_data.grp"
+    cmd="java -jar $GATK $RECALIBRATOR_OPTS -I $input -o ${output%.bam}.recal_data.grp && $MV ${output%.bam}.recal_data.grp $OUTDIR"
     command="$command\n$cmd"
 done
 echo -e $(date) $command
@@ -405,27 +450,33 @@ echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
 PRINT_READS_OPTS="-T PrintReads -R $REF"
 command=""
 for f in $sample_pfx; do
+    OUTDIR=`dirname $f`
     input=$f.sort.realign.bam
+    output=$OUTDIR/$STAGING_DIR/`basename $input`
     up_to_date ${input%.bam}.recal.bam $input
     if [ $? = 1 ]; then continue; fi
-    cmd="java -jar $GATK $PRINT_READS_OPTS -I $input -BQSR ${input%.bam}.recal_data.grp -o ${input%.bam}.recal.bam"
+    cmd="java -jar $GATK $PRINT_READS_OPTS -I $input -BQSR ${input%.bam}.recal_data.grp -o ${output%.bam}.recal.bam && $MV ${output%.bam}.recal.ba[im] $OUTDIR"
     command="$command\n$cmd"
 done
 echo -e $(date) 11. Recalculate base quality score
 echo -e $(date) $command
 echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
 
-# 12. Clip 5 bp in 5' on all reads. These bases are reference bias due to the restriction enzyme site.
+
+# 12. Clip 5 bp in 5' on all reads. These bases are reference bias due
+# to the restriction enzyme site. 
 CLIP_READS_OPTS="-T ClipReads --cyclesToTrim 1-5 --clipRepresentation WRITE_NS -R $REF"
 command=""
+echo -e $(date) 12. Clip 5 bp from 5 prime end of reads
 for f in $sample_pfx; do
+    OUTDIR=`dirname $f`
     input=$f.sort.realign.recal.bam
+    output=$OUTDIR/$STAGING_DIR/`basename $input`
     up_to_date ${input%.bam}.clip.bam $input
     if [ $? = 1 ]; then continue; fi
-    cmd="java -jar $GATK $CLIP_READS_OPTS -I $input -o ${input%.bam}.clip.bam"
+    cmd="java -jar $GATK $CLIP_READS_OPTS -I $input -o ${output%.bam}.clip.bam && $MV ${output%.bam}.clip.ba[mi] $OUTDIR"
     command="$command\n$cmd"
 done
-echo -e $(date) 12. Clip 5 bp from 5 prime end of reads
 echo -e $(date) $command
 echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
 
@@ -434,11 +485,13 @@ echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
 UNIFIEDGENOTYPER_OPTS="-T UnifiedGenotyper --dbsnp $DBSNP -filterMBQ -A AlleleBalance -stand_call_conf 30.0 -stand_emit_conf 10.0 -dt NONE --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $N_CORES -L $TARGET_REGION"
 echo -e $(date) 13. Final variant calling with UnifiedGenotyper
 for f in $sample_pfx; do
+    OUTDIR=`dirname $f`
     input=$f.sort.realign.recal.clip.bam
+    output=$OUTDIR/$STAGING_DIR/`basename $input`
     up_to_date ${input%.bam}.BOTH.final.vcf $input
     if [ $? = 1 ]; then continue; fi
     echo $(date) generating final variant calls for $f with UnifiedGenotyper
-    java -jar $GATK $UNIFIED_GENOTYPER_OPTS -I $input -o ${input%.bam}.BOTH.final.vcf >> $LOGFILE 2>> $ERRFILE
+    java -jar $GATK $UNIFIED_GENOTYPER_OPTS -I $input -o ${output%.bam}.BOTH.final.vcf && $MV ${output%.bam}.BOTH.final.vcf* $OUTDIR >> $LOGFILE 2>> $ERRFILE
 done
 
 # 14. Making final calls with samtools
@@ -446,11 +499,13 @@ SAMTOOLS_OPTS="-A -u -f $REF"
 BCFTOOLS_OPTS="-v -c"
 command=""
 for f in $sample_pfx; do
+    OUTDIR=`dirname $f`
     input=$f.sort.realign.recal.clip.bam
+    output=$OUTDIR/$STAGING_DIR/`basename $input`
     up_to_date ${input%.bam}.BOTH.final.samtools.vcf $input
     if [ $? = 1 ]; then continue; fi
     echo $(date) generating final variant calls for $f with samtools
-    cmd="samtools mpileup $SAMTOOLS_OPTS $input > ${input%.bam}.BOTH.final.samtools.mpileup; bcftools view $BCFTOOLS_OPTS -g ${input%.bam}.BOTH.final.samtools.mpileup > ${input%.bam}.BOTH.final.samtools.vcf"
+    cmd="samtools mpileup $SAMTOOLS_OPTS $input > ${output%.bam}.BOTH.final.samtools.mpileup && bcftools view $BCFTOOLS_OPTS -g ${output%.bam}.BOTH.final.samtools.mpileup > ${output%.bam}.BOTH.final.samtools.vcf && $MV ${output%.bam}.BOTH.final.samtools.vcf $OUTDIR"
     command="$command\n$cmd"
 done
 echo -e $(date) 14. Final variant calling with samtools 
@@ -469,10 +524,12 @@ VARIANTFILTRATION_OPTS="-T VariantFiltration --clusterWindowSize 10 --clusterSiz
 
 command=""
 for f in $sample_pfx; do
+    OUTDIR=`dirname $f`
     input=$f.sort.realign.recal.clip.BOTH.final.vcf
+    output=$OUTDIR/$STAGING_DIR/`basename $input`
     up_to_date ${input%.vcf}.filtered.vcf $input
     if [ $? = 1 ]; then continue; fi
-    cmd="java -jar $GATK $VARIANTFILTRATION_OPTS --variant $input -o ${input%.vcf}.filtered.vcf"
+    cmd="java -jar $GATK $VARIANTFILTRATION_OPTS --variant $input -o ${output%.vcf}.filtered.vcf && $MV ${output%.vcf}.filtered.vcf* $OUTDIR"
     command="$command\n$cmd"
 done
 echo -e $(date) 15. Perform last variant filtration
@@ -483,10 +540,16 @@ echo -e "$command" | $PARALLEL  >> $LOGFILE 2>> $ERRFILE
 # FIXME: should add  target_intervals
 VARIANTEVAL_OPTS="-T VariantEval -R $REF --dbsnp $DBSNP -ST Filter -l INFO --doNotUseAllStandardModules --evalModule CompOverlap --evalModule CountVariants --evalModule GenotypeConcordance --evalModule TiTvVariantEvaluator --evalModule ValidationReport --stratificationModule Filter "
 echo -e $(date) 16. Run variant evaluation
+command=""
 for f in $sample_pfx; do
+    OUTDIR=`dirname $f`
     input=$f.sort.realign.recal.clip.BOTH.final.filtered.vcf
+    output=$OUTDIR/$STAGING_DIR/`basename $input`
     up_to_date ${input%.vcf}.eval_metrics $input
     if [ $? = 1 ]; then continue; fi
-    echo $(date) "java -jar $GATK $VARIANTEVAL_OPTS --eval $input -o ${input%.vcf}.eval_metrics"
-    java -jar $GATK $VARIANTEVAL_OPTS --eval $input -o ${input%.vcf}.eval_metrics  >> $LOGFILE 2>> $ERRFILE
+    echo $(date) "Evaluate variants for $f"
+    cmd="java -jar $GATK $VARIANTEVAL_OPTS --eval $input -o ${output%.vcf}.eval_metrics && $MV ${output%.vcf}.eval_metrics $OUTDIR"
+    command="$command\n$cmd"
 done
+echo -e $(date) "$command"
+echo -e "$command" | $PARALLEL  >> $LOGFILE 2>> $ERRFILE
