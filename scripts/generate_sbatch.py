@@ -35,7 +35,7 @@ if len(sys.argv) < 5:
 
 
 def find_proj_from_view(proj_db, proj_id):
-        view = proj_db.view('project/project_id')
+        view = proj_db.view('project/project_name')
         for proj in view:                
 		if proj.key == proj_id:
                 	return proj.value        
@@ -117,7 +117,6 @@ except:
     sys.exit("Could not open configuration file " + conffile)
 
 for fname in flist:
-    #if not os.path.splitext(fname)[1]==".fastq": continue
     read = fname.split("_")[-1]
     tag = "_".join(fname.split("/")[-1].split("_")[3:-2])
     print fname.split("_")

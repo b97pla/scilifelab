@@ -1,7 +1,7 @@
 .. image:: ${sll_logo_small}
    :align: right
 
-.. header:: Document version: 1.0
+.. header:: Document version: 1.0.2
 
 .. footer:: ###Page###
 
@@ -11,7 +11,7 @@ Best practice analysis report
 
 :Project: ${project_name}
 :Application: Sequence capture
-
+:Date: ${date}
 
 Project summary
 ---------------
@@ -69,6 +69,9 @@ for variant calling. Briefly, the steps include:
 3. calculation of mapping and enrichment statistics with picard and gatk [4]_
 4. variant calling with gatk
 
+See the following section for details on software and database
+versions used.
+
 Alignment
 ^^^^^^^^^
 
@@ -78,7 +81,7 @@ files), allowing for rapid visualization with e.g. the Integrative
 genomics viewer [6]_. The \*.bigwig files display coverages and can be
 viewed as tracks in the IGV or a genome browser (UCSC genome browser
 [7]_ or Ensembl [8]_). The \*metrics files contain picard summary
-metrics.
+metrics. 
 
 
 Variant calling
@@ -118,19 +121,31 @@ metrics, such as alignment statistics and data on the found
 variations. For instructions on how to access data at UPPMAX, see our
 FAQ [12]_.
 
-.. raw:: pdf
+Analysis settings
+-----------------
 
-   PageBreak
+Database versions
+^^^^^^^^^^^^^^^^^
+
+.. table:: **Table 6**. Database files used for variant calling. The 'train' databases are used by GATK to recalibrate and assign a well-calibrated probability to each variant call in a call set.
+
+${database_versions_table}
 
 Software versions
------------------
+^^^^^^^^^^^^^^^^^
+
+.. table:: **Table 7**. Software versions used by the pipeline.
 
 ${software_versions_table}
 
 
+.. raw:: pdf
+
+   PageBreak
+
+
 References
 ----------
-
 
 .. [1] URL: https://github.com/chapmanb/bcbb.
 
@@ -169,3 +184,4 @@ References
    http://snpeff.sourceforge.net.
 
 .. [12] URL: http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf
+
