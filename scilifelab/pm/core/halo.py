@@ -40,6 +40,9 @@ class HaloController(AbstractBaseController):
         basedir = os.path.abspath(os.path.join(self.app.controller._meta.root_path, self.app.controller._meta.path_id))
         self.app.log.info("Going to look for samples in {}".format(basedir))
         param_list = run_halo(path=basedir, **vars(self.pargs))
+        if self.app.pargs.setup:
+            self.app.log.info("Setup configuration files. Rerun command without '--setup' option to run analysis")
+            return
         for param in param_list:
             self.app.cmd.command(param['cl'], **param)
 

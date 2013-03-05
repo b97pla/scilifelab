@@ -36,7 +36,7 @@ def run_halo(path=None, project=None, batch_size=8, **kw):
              'target_region' : kw.get('target_region', "")
              }
         outfile = os.path.join(path, "{}_{}_halo.projectrc".format(project, i))
-        if not kw.get("setup", False):
+        if kw.get("setup", False):
             dry_write(outfile, PROJECTTEMPLATE.render(**d), dry_run=kw.get("dry_run", False))
         if not os.path.exists(outfile):
             LOG.warn("No such configuration file {}; rerun command with '--setup' option")
