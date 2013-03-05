@@ -11,9 +11,10 @@ from scilifelab.pm.lib.clean import purge_alignments
 from scilifelab.bcbio.run import find_samples, setup_sample, remove_files, run_bcbb_command
 from scilifelab.pm.core.bcbio import BcbioRunController
 from scilifelab.pm.core.deliver import BestPracticeReportController
+from scilifelab.pm.core.halo import HaloController
 
 ## Main project controller
-class ProjectController(AbstractExtendedBaseController, BcbioRunController, BestPracticeReportController):
+class ProjectController(AbstractExtendedBaseController, BcbioRunController, BestPracticeReportController, HaloController):
     """
     Functionality for project management.
     """
