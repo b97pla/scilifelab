@@ -437,7 +437,7 @@ for f in $sample_pfx; do
     up_to_date ${input%.bam}.realign.bam $input
     if [ $? = 1 ]; then continue; fi
     echo -e $(date) Realigning round indels for $f
-    java -jar $GATK $INDEL_REALIGNER_OPTS -I $input --targetIntervals ${input%.bam}.intervals -known ${input%.bam}.BOTH.raw.vcf -o ${output%.bam}.realign.bam && $MV ${output%.bam}.realign.ba* $OUTDIR >> $LOGFILE 2>> $ERRFILE
+    java -jar $GATK $INDEL_REALIGNER_OPTS -I $input --targetIntervals ${input%.bam}.intervals -known ${input%.bam}.BOTH.raw.vcf -o ${output%.bam}.realign.bam && $MV "${output%.bam}.realign.ba*" $OUTDIR >> $LOGFILE 2>> $ERRFILE
     # command="$command\n$cmd"
 done
 
@@ -471,7 +471,7 @@ for f in $sample_pfx; do
     output=$OUTDIR/$STAGING_DIR/`basename $input`
     up_to_date ${input%.bam}.recal.bam $input
     if [ $? = 1 ]; then continue; fi
-    cmd="java -jar $GATK $PRINT_READS_OPTS -I $input -BQSR ${input%.bam}.recal_data.grp -o ${output%.bam}.recal.bam && $MV ${output%.bam}.recal.ba* $OUTDIR"
+    cmd="java -jar $GATK $PRINT_READS_OPTS -I $input -BQSR ${input%.bam}.recal_data.grp -o ${output%.bam}.recal.bam && $MV "${output%.bam}.recal.ba*" $OUTDIR"
     command="$command\n$cmd"
 done
 echo -e $(date) 11. Recalculate base quality score
