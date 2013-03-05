@@ -33,6 +33,7 @@ P_RUN=true            # Run command
 P_NORUN=false         # Skip command
 STAGING_DIR=tx        # Staging directory in which to generate temporary files
 JAVA_OPTS=-Xmx2g
+N_CORES=1
 # Initialize stdout and stderr variables; can be overloaded in config
 # file. These variables set where *program output* logging goes;
 # pipeline status commands will still be printed to console
