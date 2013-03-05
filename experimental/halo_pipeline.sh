@@ -287,7 +287,6 @@ for f in $syncfiles; do
 done
 
 # 4. Pair reads
-# NB: sam file is kept in staging directory for following step (is this really necessary?)
 command=""
 for f in $sample_pfx; do
     OUTDIR=`dirname $f`
