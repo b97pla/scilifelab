@@ -23,11 +23,12 @@ def run_halo(path=None, project=None, batch_size=8, **kw):
     :param project: project name
     :param batch_size: number of samples to run in each project config file
     """
-    output_data = {'stdout':StringIO(), 'stderr':StringIO()}    
     plist = sorted(find_samples(path, **kw))
     plist_chunks=[plist[x:x+batch_size] for x in xrange(0, len(plist), batch_size)]
     i = 1
+    param_list = []
     for pl in plist_chunks:
+        param = {'cl':None, 'platform_args':None, 'workingDirectory':None}
         d = {'samples' : '"{}"'.format(" ".join([os.path.basename(x) for x in pl])),
              'indir' : path,
              'baits_file' : kw.get('baits', ""),
@@ -35,9 +36,19 @@ def run_halo(path=None, project=None, batch_size=8, **kw):
              'target_region' : kw.get('target_region', "")
              }
         outfile = os.path.join(path, "{}_{}_halo.projectrc".format(project, i))
+        if not kw.get("setup", False):
+            dry_write(outfile, PROJECTTEMPLATE.render(**d), dry_run=kw.get("dry_run", False))
+        if not os.path.exists(outfile):
+            LOG.warn("No such configuration file {}; rerun command with '--setup' option")
+            return []
+        if kw.get("config", None) and os.path.basename(outfile) != kw.get("config", None):
+            continue
+        param['cl'] = [HALOSCRIPT, "-c", HALORC, outfile]
+        label = '{}_halo_{}'.format(project[0:3].replace(".", "_"), i)
+        param['platform_args'] = ['--output', os.path.join("{}.out".format(label)),
+                                  '--error', os.path.join("{}.err".format(label)),
+                                  '--job-name', label]
+        param['workingDirectory'] = os.path.dirname(outfile)
+        param_list.append(param)
         i += 1
-        dry_write(outfile, PROJECTTEMPLATE.render(**d), dry_run=kw.get("dry_run", False))
-        cl = [HALOSCRIPT, "-c", HALORC, outfile]
-        print cl
-    
-    return output_data    
+    return param_list

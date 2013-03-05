@@ -9,7 +9,7 @@ READ1_REGEXP="R1_001"    # Regexp used for 1st reads
 READ2_REGEXP="R2_001"    # Regexp used for paired sequences
 
 # How many cores to run on
-N_CORES=7
+N_CORES=4
 
 # Logging output - set in projectrc to override
 LOGFILE="halo_pipeline.out"
