@@ -13,3 +13,7 @@ TARGET_INTERVALS_FILE=${targets_file}
 
 # Point to bed-file for interesting regions. Mostly identical to target file.
 TARGET_REGION=${target_region}
+
+# Log files
+${'LOGFILE={}'.format(output) if output else '# LOGFILE'}
+${'ERRFILE={}'.format(error) if error else  '# ERRFILE'}

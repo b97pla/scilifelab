@@ -29,14 +29,17 @@ def run_halo(path=None, project=None, batch_size=8, **kw):
     param_list = []
     for pl in plist_chunks:
         i += 1
+        outfile = os.path.join(path, "{}_{}_halo.projectrc".format(project, i))
         param = {'cl':None, 'platform_args':None, 'workingDirectory':None}
+        label = '{}_halo_{}'.format(project[0:3].replace(".", "_"), i)
         d = {'samples' : '"{}"'.format(" ".join([os.path.basename(x) for x in pl])),
              'indir' : path,
              'baits_file' : kw.get('baits', ""),
              'targets_file' : kw.get('targets', ""),
-             'target_region' : kw.get('target_region', "")
+             'target_region' : kw.get('target_region', ""),
+             'output' : os.path.join(os.path.dirname(outfile), "{}.out".format(label)),
+             'error' : os.path.join(os.path.dirname(outfile), "{}.err".format(label))
              }
-        outfile = os.path.join(path, "{}_{}_halo.projectrc".format(project, i))
         if kw.get("setup", False):
             dry_write(outfile, PROJECTTEMPLATE.render(**d), dry_run=kw.get("dry_run", False))
         if not os.path.exists(outfile):
@@ -45,7 +48,6 @@ def run_halo(path=None, project=None, batch_size=8, **kw):
         if kw.get("config", None) and os.path.basename(outfile) != kw.get("config", None):
             continue
         param['cl'] = [HALOSCRIPT, "-c", HALORC, outfile]
-        label = '{}_halo_{}'.format(project[0:3].replace(".", "_"), i)
         param['platform_args'] = ['--output', os.path.join("{}.out".format(label)),
                                   '--error', os.path.join("{}.err".format(label)),
                                   '--job-name', label]

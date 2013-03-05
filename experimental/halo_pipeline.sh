@@ -1,5 +1,5 @@
-#!/bin/bash
-
+#!/bin/bash -f
+# -f flag unsets wildcard expansion which is needed for the move operations
 USAGE=" 
 
 Usage: $0 [-nfh] [-c halorc] projectrc
@@ -32,7 +32,7 @@ E_PARAM_ERR=250       # If less than 2 params passed to function.
 P_RUN=true            # Run command
 P_NORUN=false         # Skip command
 STAGING_DIR=tx        # Staging directory in which to generate temporary files
-JAVA_OPTS=-Xmx2g
+JAVA_OPTS=-Xmx3g
 N_CORES=1
 # Initialize stdout and stderr variables; can be overloaded in config
 # file. These variables set where *program output* logging goes;
@@ -152,7 +152,7 @@ if [ ! -e $halorc ]; then
 fi
 source $halorc
 # Set parallel options
-PARALLEL_OPTS=-j $N_CORES
+PARALLEL_OPTS="-j $N_CORES"
 
 if [ ! "$samples" ]; then
     echo  $(date) "No samples provided; please provide either sample names or a file name listing sample names in the project configuration file" >> $ERRFILE
@@ -253,7 +253,11 @@ echo -e "$command" | $PARALLEL $PARALLEL_OPTS  >> $LOGFILE 2>> $ERRFILE
 
 # 2b. Resync mates - sometimes cutadapt cuts reads down to 0, so there
 # are some reads without mates
+# NB: this process is memory hungry so currently set max_proc = 1
 sample_pfx=`for f in $read1; do echo ${f%_${READ1_REGEXP}.fastq.gz}; done`
+RESYNC_PROC=$N_CORES
+RESYNC_MAX_PROC=1
+if [ "$RESYNC_PROC" -gt "$RESYNC_MAX_PROC" ]; then RESYNC_PROC=$RESYNC_MAX_PROC; fi
 command=""
 syncfiles=""
 for f in $sample_pfx; do
@@ -268,7 +272,7 @@ for f in $sample_pfx; do
 done
 echo -e $(date) 2b. Resync mates
 echo -e $(date) $command
-echo -e "$command" | $PARALLEL $PARALLEL_OPTS  >> $LOGFILE 2>> $ERRFILE
+echo -e "$command" | $PARALLEL -j $RESYNC_PROC  >> $LOGFILE 2>> $ERRFILE
 
 ##############################
 # Mapping - secondary analysis
@@ -286,7 +290,7 @@ for f in $syncfiles; do
     up_to_date ${f%.fastq.gz}.sai $f
     if [ $? = 1 ]; then continue; fi
     echo $(date) aligning reads $f
-    echo $(date) "$BWA aln -t $N_CORES $BWA_REF $f > ${TMP%.fastq.gz}.sai"
+    echo $(date) "$BWA aln -t $MAX_PROC $BWA_REF $f > ${TMP%.fastq.gz}.sai" >> $ERRFILE
     $BWA aln -t $MAX_PROC $BWA_REF $f > ${TMP%.fastq.gz}.sai 2>> $ERRFILE && $MV ${TMP%.fastq.gz}.sai $OUTDIR
 done
 
@@ -312,21 +316,24 @@ echo -e $(date) $command
 echo -e $command | $PARALLEL -j $SAMPE_PROC >> $LOGFILE 2>> $ERRFILE
 
 # 5. Generate bam file
-SORTSAM_OPTS="SO=coordinate"
+# Records in RAM = 250000 times # Gb RAM - cf http://sourceforge.net/apps/mediawiki/picard/index.php?title=Main_Page#Q:___A_Picard_program_that_sorts_its_output_SAM.2FBAM_file_is_taking_a_very_long_time_and.2For_running_out_of_memory.__What_can_I_do.3F
+# Similar to SAMPE we seem to run out of resources - in this case CPU
+SORT_PROC=$SAMPE_PROC
+SORTSAM_OPTS="SO=coordinate MAX_RECORDS_IN_RAM=750000"
 command=""
 for f in $sample_pfx; do
     OUTDIR=`dirname $f`
     TMP=$OUTDIR/$STAGING_DIR/`basename $f`
+    JAVA_EXTRA_OPTS=-Djava.io.tmpdir=$OUTDIR/tmp
     up_to_date $f.sort.bam $f.bam
     if [ $? = 1 ]; then continue; fi
-    echo $(date) generating bam file for $f
-    echo "$SAMTOOLS view -bS $f.sam > ${TMP}.bam && java -jar $PICARD_HOME/SortSam.jar $SORTSAM_OPTS INPUT=${TMP}.bam OUTPUT=${TMP}.sort.bam && echo \"$f.bam removed to save space; see $f.sort.bam\" > ${TMP}.bam && $MV ${TMP}.*.ba[mi] $OUTDIR && echo \"$f.sam removed to save space; see $f.sort.bam\" > $f.sam"
-    cmd="$SAMTOOLS view -bS $f.sam > ${TMP}.bam && java -jar $PICARD_HOME/SortSam.jar $SORTSAM_OPTS INPUT=${TMP}.bam OUTPUT=${TMP}.sort.bam && echo \"$f.bam removed to save space; see $f.sort.bam\" > ${TMP}.bam && $MV ${TMP}*.ba[mi] $OUTDIR && echo \"$f.sam removed to save space; see $f.sort.bam\" > $f.sam"
+    echo "$SAMTOOLS view -bS $f.sam > ${TMP}.bam && java $JAVA_EXTRA_OPTS $JAVA_OPTS -jar $PICARD_HOME/SortSam.jar $SORTSAM_OPTS INPUT=${TMP}.bam OUTPUT=${TMP}.sort.bam && echo \"$f.bam removed to save space; see $f.sort.bam\" > ${TMP}.bam && $MV ${TMP}*ba* $OUTDIR && echo \"$f.sam removed to save space; see $f.sort.bam\" > $f.sam && samtools index $f.sort.bam"
+    cmd="$SAMTOOLS view -bS $f.sam > ${TMP}.bam && java  $JAVA_EXTRA_OPTS $JAVA_OPTS -jar $PICARD_HOME/SortSam.jar $SORTSAM_OPTS INPUT=${TMP}.bam OUTPUT=${TMP}.sort.bam && echo \"$f.bam removed to save space; see $f.sort.bam\" > ${TMP}.bam && $MV ${TMP}*ba* $OUTDIR && echo \"$f.sam removed to save space; see $f.sort.bam\" > $f.sam && samtools index $f.sort.bam"
     command="$command\n$cmd"
 done
 echo -e $(date) 5. Generate sorted bam file
 echo -e $(date) $command
-echo -e $command | $PARALLEL $PARALLEL_OPTS >> $LOGFILE 2>> $ERRFILE
+echo -e $command | $PARALLEL -j $SORT_PROC >> $LOGFILE 2>> $ERRFILE
 
 # 6. Generate various metrics for the bamfiles
 # No staging directory is used here
@@ -382,7 +389,7 @@ echo -e $command | $PARALLEL $PARALLEL_OPTS >> $LOGFILE 2>> $ERRFILE
 
 # 7. Raw variant calling 
 # -L: interval_list(?) type input - bed format doesn't seem to work
-UNIFIED_GENOTYPER_OPTS="-T UnifiedGenotyper --dbsnp $DBSNP -stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 30 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $N_CORES -R $REF -L $TARGET_REGION"
+UNIFIED_GENOTYPER_OPTS="-T UnifiedGenotyper --dbsnp $DBSNP -stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 30 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $N_CORES -R $REF -L $TARGET_INTERVALS_FILE"
 echo -e $(date) 7. Raw variant calling
 for f in $sample_pfx; do
     OUTDIR=`dirname $f`
@@ -392,12 +399,12 @@ for f in $sample_pfx; do
     up_to_date ${input%.bam}.BOTH.raw.vcf $input
     if [ $? = 1 ]; then continue; fi
     echo $(date) generating raw variant calls for $f
-    java -jar $GATK $UNIFIED_GENOTYPER_OPTS -I $input -o $output && $MV $output* $OUTDIR >> $LOGFILE 2>> $ERRFILE
+    samtools index $f.sort.bam && java -jar $GATK $UNIFIED_GENOTYPER_OPTS -I $input -o $output && $MV $output $OUTDIR >> $LOGFILE 2>> $ERRFILE
 done
 
 # 8. Generate realignment intervals 
 DEEP_COVERAGE_OPTS="--mismatchFraction 0.30 --maxIntervalSize 650"
-REALIGNMENT_TARGET_CREATOR_OPTS="-T RealignerTargetCreator -L $TARGET_REGION -known $MILLS -known $THOUSANDG_OMNI -nt $N_CORES -R $REF $DEEP_COVERAGE_OPTS"
+REALIGNMENT_TARGET_CREATOR_OPTS="-T RealignerTargetCreator -L $TARGET_INTERVALS_FILE -known $MILLS -known $THOUSANDG_OMNI -nt $N_CORES -R $REF $DEEP_COVERAGE_OPTS"
 echo -e $(date) 8. Realignment - generate realign target intervals
 for f in $sample_pfx; do
     OUTDIR=`dirname $f`
@@ -416,6 +423,8 @@ done
 # the CPU to as many cores as are available. I am missing some option
 # here.
 
+# NB: Could be due to Javas GC: http://sourceforge.net/apps/mediawiki/picard/index.php?title=Main_Page#Q:_Why_does_a_Picard_program_use_so_many_threads.3F
+
 # One or several of DEEP_COVERAGE_OPTS seems to screw up the output
 DEEP_COVERAGE_OPTS="--maxReadsInMemory 300000 --maxReadsForRealignment 500000 --maxReadsForConsensuses 500 --maxConsensuses 100"
 INDEL_REALIGNER_OPTS="-T IndelRealigner -known $MILLS -known $THOUSANDG_OMNI  -R $REF"
@@ -428,7 +437,7 @@ for f in $sample_pfx; do
     up_to_date ${input%.bam}.realign.bam $input
     if [ $? = 1 ]; then continue; fi
     echo -e $(date) Realigning round indels for $f
-    java -jar $GATK $INDEL_REALIGNER_OPTS -I $input --targetIntervals ${input%.bam}.intervals -known ${input%.bam}.BOTH.raw.vcf -o ${output%.bam}.realign.bam && $MV ${output%.bam}.realign.ba[mi] $OUTDIR >> $LOGFILE 2>> $ERRFILE
+    java -jar $GATK $INDEL_REALIGNER_OPTS -I $input --targetIntervals ${input%.bam}.intervals -known ${input%.bam}.BOTH.raw.vcf -o ${output%.bam}.realign.bam && $MV ${output%.bam}.realign.ba* $OUTDIR >> $LOGFILE 2>> $ERRFILE
     # command="$command\n$cmd"
 done
 
@@ -437,7 +446,7 @@ done
 
 # 10. Base recalibration
 # NB: currently BaseRecalibrator does *not* support multiple threads
-RECALIBRATOR_OPTS="-T BaseRecalibrator -R $REF -L $TARGET_REGION --knownSites $DBSNP --knownSites $MILLS --knownSites $THOUSANDG_OMNI"
+RECALIBRATOR_OPTS="-T BaseRecalibrator -R $REF -L $TARGET_INTERVALS_FILE --knownSites $DBSNP --knownSites $MILLS --knownSites $THOUSANDG_OMNI"
 echo -e $(date) 10. Base recalibration
 command=""
 for f in $sample_pfx; do
@@ -462,7 +471,7 @@ for f in $sample_pfx; do
     output=$OUTDIR/$STAGING_DIR/`basename $input`
     up_to_date ${input%.bam}.recal.bam $input
     if [ $? = 1 ]; then continue; fi
-    cmd="java -jar $GATK $PRINT_READS_OPTS -I $input -BQSR ${input%.bam}.recal_data.grp -o ${output%.bam}.recal.bam && $MV ${output%.bam}.recal.ba[im] $OUTDIR"
+    cmd="java -jar $GATK $PRINT_READS_OPTS -I $input -BQSR ${input%.bam}.recal_data.grp -o ${output%.bam}.recal.bam && $MV ${output%.bam}.recal.ba* $OUTDIR"
     command="$command\n$cmd"
 done
 echo -e $(date) 11. Recalculate base quality score
@@ -481,7 +490,7 @@ for f in $sample_pfx; do
     output=$OUTDIR/$STAGING_DIR/`basename $input`
     up_to_date ${input%.bam}.clip.bam $input
     if [ $? = 1 ]; then continue; fi
-    cmd="java -jar $GATK $CLIP_READS_OPTS -I $input -o ${output%.bam}.clip.bam && $MV ${output%.bam}.clip.ba[mi] $OUTDIR"
+    cmd="java -jar $GATK $CLIP_READS_OPTS -I $input -o ${output%.bam}.clip.bam && $MV ${output%.bam}.clip.ba* $OUTDIR"
     command="$command\n$cmd"
 done
 echo -e $(date) $command
@@ -489,7 +498,7 @@ echo -e $command | $PARALLEL $PARALLEL_OPTS >> $LOGFILE 2>> $ERRFILE
 
 # 13. Make final calls with GATK UnifiedGenotyper
 #     FIXME: change to HaplotypeCaller when appropriate
-UNIFIEDGENOTYPER_OPTS="-T UnifiedGenotyper --dbsnp $DBSNP -filterMBQ -A AlleleBalance -stand_call_conf 30.0 -stand_emit_conf 10.0 -dt NONE --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $N_CORES -L $TARGET_REGION"
+UNIFIEDGENOTYPER_OPTS="-T UnifiedGenotyper --dbsnp $DBSNP -filterMBQ -A AlleleBalance -stand_call_conf 30.0 -stand_emit_conf 10.0 -dt NONE --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $N_CORES -L $TARGET_INTERVALS_FILE"
 echo -e $(date) 13. Final variant calling with UnifiedGenotyper
 for f in $sample_pfx; do
     OUTDIR=`dirname $f`
@@ -498,7 +507,7 @@ for f in $sample_pfx; do
     up_to_date ${input%.bam}.BOTH.final.vcf $input
     if [ $? = 1 ]; then continue; fi
     echo $(date) generating final variant calls for $f with UnifiedGenotyper
-    java -jar $GATK $UNIFIED_GENOTYPER_OPTS -I $input -o ${output%.bam}.BOTH.final.vcf && $MV ${output%.bam}.BOTH.final.vcf* $OUTDIR >> $LOGFILE 2>> $ERRFILE
+    java -jar $GATK $UNIFIED_GENOTYPER_OPTS -I $input -o ${output%.bam}.BOTH.final.vcf && $MV "${output%.bam}.BOTH.final.vcf*" $OUTDIR >> $LOGFILE 2>> $ERRFILE
 done
 
 # 14. Making final calls with samtools
@@ -536,7 +545,7 @@ for f in $sample_pfx; do
     output=$OUTDIR/$STAGING_DIR/`basename $input`
     up_to_date ${input%.vcf}.filtered.vcf $input
     if [ $? = 1 ]; then continue; fi
-    cmd="java -jar $GATK $VARIANTFILTRATION_OPTS --variant $input -o ${output%.vcf}.filtered.vcf && $MV ${output%.vcf}.filtered.vcf* $OUTDIR"
+    cmd="java -jar $GATK $VARIANTFILTRATION_OPTS --variant $input -o ${output%.vcf}.filtered.vcf && $MV "${output%.vcf}.filtered.vcf*" $OUTDIR"
     command="$command\n$cmd"
 done
 echo -e $(date) 15. Perform last variant filtration
