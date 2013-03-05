@@ -150,6 +150,8 @@ if [ ! -e $halorc ]; then
     exit
 fi
 source $halorc
+# Set parallel options
+PARALLEL_OPTS=-j $N_CORES
 
 if [ ! "$samples" ]; then
     echo  $(date) "No samples provided; please provide either sample names or a file name listing sample names in the project configuration file" >> $ERRFILE
@@ -223,7 +225,7 @@ for f in $read1 $read2; do
 done
 echo -e $(date) 1. QC section 
 echo -e $(date) $command
-echo -e "$command" | $PARALLEL  >> $LOGFILE 2>> $ERRFILE
+echo -e "$command" | $PARALLEL $PARALLEL_OPTS  >> $LOGFILE 2>> $ERRFILE
 
 # 2a. Trim adapter sequence
 command=""
@@ -246,7 +248,7 @@ for f in $read2; do
 done
 echo -e $(date) 2a. Adapter trimming
 echo -e $(date) $command
-echo -e "$command" | $PARALLEL  >> $LOGFILE 2>> $ERRFILE
+echo -e "$command" | $PARALLEL $PARALLEL_OPTS  >> $LOGFILE 2>> $ERRFILE
 
 # 2b. Resync mates - sometimes cutadapt cuts reads down to 0, so there
 # are some reads without mates
@@ -265,7 +267,7 @@ for f in $sample_pfx; do
 done
 echo -e $(date) 2b. Resync mates
 echo -e $(date) $command
-echo -e "$command" | $PARALLEL  >> $LOGFILE 2>> $ERRFILE
+echo -e "$command" | $PARALLEL $PARALLEL_OPTS  >> $LOGFILE 2>> $ERRFILE
 
 ##############################
 # Mapping - secondary analysis
@@ -301,7 +303,7 @@ for f in $sample_pfx; do
 done
 echo -e $(date) 4. Pair reads
 echo -e $(date) $command
-echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
+echo -e $command | $PARALLEL $PARALLEL_OPTS >> $LOGFILE 2>> $ERRFILE
 
 # 5. Generate bam file
 SORTSAM_OPTS="SO=coordinate"
@@ -318,7 +320,7 @@ for f in $sample_pfx; do
 done
 echo -e $(date) 5. Generate sorted bam file
 echo -e $(date) $command
-echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
+echo -e $command | $PARALLEL $PARALLEL_OPTS >> $LOGFILE 2>> $ERRFILE
 
 # 6. Generate various metrics for the bamfiles
 # No staging directory is used here
@@ -367,7 +369,7 @@ for f in $sample_pfx; do
 done
 echo -e $(date) 6. Calculate metrics
 echo -e $(date) $command
-echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
+echo -e $command | $PARALLEL $PARALLEL_OPTS >> $LOGFILE 2>> $ERRFILE
 ##############################
 # Variant calling, tertiary analysis
 ##############################
@@ -425,7 +427,7 @@ for f in $sample_pfx; do
 done
 
 # echo -e $(date) $command
-# echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
+# echo -e $command | $PARALLEL $PARALLEL_OPTS >> $LOGFILE 2>> $ERRFILE
 
 # 10. Base recalibration
 # NB: currently BaseRecalibrator does *not* support multiple threads
@@ -443,7 +445,7 @@ for f in $sample_pfx; do
     command="$command\n$cmd"
 done
 echo -e $(date) $command
-echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
+echo -e $command | $PARALLEL $PARALLEL_OPTS >> $LOGFILE 2>> $ERRFILE
 
 # 11. Recalculate base quality score
 PRINT_READS_OPTS="-T PrintReads -R $REF"
@@ -459,7 +461,7 @@ for f in $sample_pfx; do
 done
 echo -e $(date) 11. Recalculate base quality score
 echo -e $(date) $command
-echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
+echo -e $command | $PARALLEL $PARALLEL_OPTS >> $LOGFILE 2>> $ERRFILE
 
 
 # 12. Clip 5 bp in 5' on all reads. These bases are reference bias due
@@ -477,7 +479,7 @@ for f in $sample_pfx; do
     command="$command\n$cmd"
 done
 echo -e $(date) $command
-echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
+echo -e $command | $PARALLEL $PARALLEL_OPTS >> $LOGFILE 2>> $ERRFILE
 
 # 13. Make final calls with GATK UnifiedGenotyper
 #     FIXME: change to HaplotypeCaller when appropriate
@@ -509,7 +511,7 @@ for f in $sample_pfx; do
 done
 echo -e $(date) 14. Final variant calling with samtools 
 echo -e $(date) $command
-echo -e $command | $PARALLEL >> $LOGFILE 2>> $ERRFILE
+echo -e $command | $PARALLEL $PARALLEL_OPTS >> $LOGFILE 2>> $ERRFILE
 
 # 15. Run final variant filtration
 #
@@ -533,7 +535,7 @@ for f in $sample_pfx; do
 done
 echo -e $(date) 15. Perform last variant filtration
 echo -e $(date) "$command"
-echo -e "$command" | $PARALLEL  >> $LOGFILE 2>> $ERRFILE
+echo -e "$command" | $PARALLEL $PARALLEL_OPTS  >> $LOGFILE 2>> $ERRFILE
 
 # 16. Run variant evaluation
 # FIXME: should add  target_intervals
@@ -551,4 +553,4 @@ for f in $sample_pfx; do
     command="$command\n$cmd"
 done
 echo -e $(date) "$command"
-echo -e "$command" | $PARALLEL  >> $LOGFILE 2>> $ERRFILE
+echo -e "$command" | $PARALLEL $PARALLEL_OPTS  >> $LOGFILE 2>> $ERRFILE

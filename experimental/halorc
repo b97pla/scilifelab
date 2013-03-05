@@ -12,8 +12,8 @@ READ2_REGEXP="R2_001"    # Regexp used for paired sequences
 N_CORES=4
 
 # Logging output - set in projectrc to override
-LOGFILE="halo_pipeline.out"
-ERRFILE="halo_pipeline.err"
+# LOGFILE="halo_pipeline.out"
+# ERRFILE="halo_pipeline.err"
 
 # Software config
 # Modify for specific versions

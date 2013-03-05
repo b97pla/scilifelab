@@ -25,9 +25,10 @@ def run_halo(path=None, project=None, batch_size=8, **kw):
     """
     plist = sorted(find_samples(path, **kw))
     plist_chunks=[plist[x:x+batch_size] for x in xrange(0, len(plist), batch_size)]
-    i = 1
+    i = 0
     param_list = []
     for pl in plist_chunks:
+        i += 1
         param = {'cl':None, 'platform_args':None, 'workingDirectory':None}
         d = {'samples' : '"{}"'.format(" ".join([os.path.basename(x) for x in pl])),
              'indir' : path,
@@ -50,5 +51,4 @@ def run_halo(path=None, project=None, batch_size=8, **kw):
                                   '--job-name', label]
         param['workingDirectory'] = os.path.dirname(outfile)
         param_list.append(param)
-        i += 1
     return param_list
