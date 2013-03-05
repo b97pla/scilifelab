@@ -277,6 +277,7 @@ echo -e "$command" | $PARALLEL $PARALLEL_OPTS  >> $LOGFILE 2>> $ERRFILE
 # 3. Align sequences with bwa. Here we run command sequentially since
 # bwa takes care of parallelization. From now on we run at sample level.
 # Remove staging directory from syncfiles
+MAX_PROC=`cat /proc/cpuinfo | grep processor | tail -1 | awk '{print $3}'`
 syncfiles=`echo $syncfiles | sed -e "s/$STAGING_DIR\///g;"`
 echo -e $(date) 3. Alignment
 for f in $syncfiles; do
@@ -286,10 +287,14 @@ for f in $syncfiles; do
     if [ $? = 1 ]; then continue; fi
     echo $(date) aligning reads $f
     echo $(date) "$BWA aln -t $N_CORES $BWA_REF $f > ${TMP%.fastq.gz}.sai"
-    $BWA aln -t $N_CORES $BWA_REF $f > ${TMP%.fastq.gz}.sai 2>> $ERRFILE && $MV ${TMP%.fastq.gz}.sai $OUTDIR
+    $BWA aln -t $MAX_PROC $BWA_REF $f > ${TMP%.fastq.gz}.sai 2>> $ERRFILE && $MV ${TMP%.fastq.gz}.sai $OUTDIR
 done
 
 # 4. Pair reads
+# http://bio-bwa.sourceforge.net/bwa.shtml: "...the sampe command uses ~5.4GB"
+SAMPE_PROC=$N_CORES
+SAMPE_MAX_PROC=`cat /proc/meminfo | grep MemTotal | awk  '{print int($2/1e6/5.4)}'`
+if [ "$N_CORES" -gt "$SAMPE_MAX_PROC" ]; then SAMPE_PROC=$SAMPE_MAX_PROC; fi
 command=""
 for f in $sample_pfx; do
     OUTDIR=`dirname $f`
@@ -304,7 +309,7 @@ for f in $sample_pfx; do
 done
 echo -e $(date) 4. Pair reads
 echo -e $(date) $command
-echo -e $command | $PARALLEL $PARALLEL_OPTS >> $LOGFILE 2>> $ERRFILE
+echo -e $command | $PARALLEL -j $SAMPE_PROC >> $LOGFILE 2>> $ERRFILE
 
 # 5. Generate bam file
 SORTSAM_OPTS="SO=coordinate"
