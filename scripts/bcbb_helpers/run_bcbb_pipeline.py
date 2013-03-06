@@ -205,7 +205,7 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
             
             # Generate a sample-specific configuration yaml structure
             samplesheet = os.path.join(src_sample_dir,sample['samplesheet'])
-            sample_config = bcbb_configuration_from_samplesheet(samplesheet, **couch_credentials)
+            sample_config = bcbb_configuration_from_samplesheet(samplesheet, couch_credentials)
              
             # Append the sequence files to the config
             for lane in sample_config:
@@ -364,10 +364,31 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
     yaml_file = bcbio.solexa.samplesheet.csv2yaml(csv_samplesheet,yaml_file)
     with open(yaml_file) as fh:
         config = yaml.load(fh)
-    
+
+    application_setup = {
+                         'Amplicon': {'analysis': 'Align_standard'},
+                         'ChIP-seq': {'analysis': 'RNA-seq'},
+                         'Custom capture': {'analysis': 'Align_standard_seqcap'},
+                         'de novo': {'analysis': 'Align_standard',
+                                     'genome_build': 'unknown'},
+                         'Exome capture': {'analysis': 'Align_standard_seqcap'},
+                         'Finished library': {'analysis': 'Align_standard',
+                                              'genome_build': 'unknown'},
+                         'Mate-pair': {'analysis': 'Align_standard',
+                                       'genome_build': 'unknown'},
+                         'Metagenome': {'analysis': 'Align_standard',
+                                        'genome_build': 'unknown'},
+                         'miRNA-seq': {'analysis': 'Align_standard',
+                                       'genome_build': 'unknown'},
+                         'RNA-seq (mRNA)': {'analysis': 'RNA-seq'},
+                         'RNA-seq (total RNA)': {'analysis': 'RNA-seq'},
+                         'WG re-seq': {'analysis': 'Align_standard'},
+                         'default': {'analysis': 'Align_standard'},
+                         }
+
     #Connect to maggie to get project application 
-	try:
-        p_con = ProjectSummaryConnection(dbname='projects', **couch_credentials)
+    try:
+        p_con = ProjectSummaryConnection(**couch_credentials)
     except:
         print "Can't connect to maggie to get application"
         p_con = None
@@ -375,39 +396,20 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
   # Replace the default analysis
     ## TODO: This is an ugly hack, should be replaced by a custom config 
     for lane in config:
-        if lane.get('genome_build','') == 'hg19':
-            lane['analysis'] = 'Align_standard_seqcap'
-        else:
-            lane['analysis'] = 'Align_standard'
         for plex in lane.get('multiplex',[]):
+            application='default'
             if p_con is not None:
                 try:
                     Proj=plex.get('sample_prj','')
                     project = p_con.get_entry(Proj)
-                    application = project.get("application", '').trim().lower() if project else ''
+                    if project is not None:
+                        application = project.get("application", 'default').strip()
                 except:
-                    application=''
-            if application.startswith("RNA-seq".lower()):
-                plex['analysis'] = 'RNA-seq'
-            elif application.startswith("de novo"):
-                plex['genome_build'] = 'unknown'
-            elif application.startswith("Finished library").lower():
-                plex['genome_build'] = 'unknown'
-            elif application.startswith("Mate-pair").lower():
-                plex['genome_build'] = 'unknown'
-            elif application.startswith("Metagenome").lower():
-                plex['genome_build'] = 'unknown'
-            elif application.startswith("Custom capture").lower():
-                plex['analysis'] = 'Align_standard_seqcap'
-            elif application.startswith("Exome capture").lower():
-                plex['analysis'] = 'Align_standard_seqcap'
-            elif application.startswith("WG re-seq").lower():
-                plex['analysis'] = 'Align_standard'
-            elif application.startswith("Amplicon").lower():
-                plex['analysis'] = 'Align_standard'
-            else:
-                plex['genome_build'] = 'unknown'
-                
+                    application='default'
+            setup = application_setup.get(application,application_setup['default'])
+            for key, val in setup.items():
+                plex[key] = val
+            
     # Remove the yaml file, we will write a new one later
     os.remove(yaml_file)
     
