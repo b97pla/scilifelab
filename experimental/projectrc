@@ -4,12 +4,12 @@ samples="P001_101 P001_102"
 
 # Input directory in which to look for files - make sure this points
 # to the directory under which all input data can be found
-indir=$(pwd)/test
+indir=$(pwd)/../tests/full/data/projects/j_doe_00_04
 
 # Target definition files, on interval_list format
 # http://picard.sourceforge.net/javadoc/net/sf/picard/util/IntervalList.html
 BAIT_INTERVALS_FILE=""
 TARGET_INTERVALS_FILE=""
 
-# Point to bed-file for interesting regions. Mostly identical to target file.
+# Point to interval-list-file or regions for ROI. Mostly identical to target file.
 TARGET_REGION="chr11:1-2000000"

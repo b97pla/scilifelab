@@ -11,7 +11,7 @@ indir=${indir}
 BAIT_INTERVALS_FILE=${baits_file}
 TARGET_INTERVALS_FILE=${targets_file}
 
-# Point to bed-file for interesting regions. Mostly identical to target file.
+# Point to intervallist-file or define regiones for ROI. Mostly identical to target file.
 TARGET_REGION=${target_region}
 
 # Log files

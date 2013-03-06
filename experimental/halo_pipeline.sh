@@ -1,4 +1,4 @@
-#!/bin/bash -f
+#!/bin/bash -f 
 # -f flag unsets wildcard expansion which is needed for the move operations
 USAGE=" 
 
@@ -327,8 +327,14 @@ for f in $sample_pfx; do
     JAVA_EXTRA_OPTS=-Djava.io.tmpdir=$OUTDIR/tmp
     up_to_date $f.sort.bam $f.bam
     if [ $? = 1 ]; then continue; fi
-    echo "$SAMTOOLS view -bS $f.sam > ${TMP}.bam && java $JAVA_EXTRA_OPTS $JAVA_OPTS -jar $PICARD_HOME/SortSam.jar $SORTSAM_OPTS INPUT=${TMP}.bam OUTPUT=${TMP}.sort.bam && echo \"$f.bam removed to save space; see $f.sort.bam\" > ${TMP}.bam && $MV ${TMP}*ba* $OUTDIR && echo \"$f.sam removed to save space; see $f.sort.bam\" > $f.sam && samtools index $f.sort.bam"
-    cmd="$SAMTOOLS view -bS $f.sam > ${TMP}.bam && java  $JAVA_EXTRA_OPTS $JAVA_OPTS -jar $PICARD_HOME/SortSam.jar $SORTSAM_OPTS INPUT=${TMP}.bam OUTPUT=${TMP}.sort.bam && echo \"$f.bam removed to save space; see $f.sort.bam\" > ${TMP}.bam && $MV ${TMP}*ba* $OUTDIR && echo \"$f.sam removed to save space; see $f.sort.bam\" > $f.sam && samtools index $f.sort.bam"
+    # Since time stamps are so close look at size of sam file; if small (i.e. < 1kb)
+    SAMSIZE=`ls -l $f.sam | cut -f 5 -d " "`
+    if [ $SAMSIZE -lt 1000 ]; then
+	echo "Sam file $f.sam size: $SAMSIZE; skipping sort analysis"
+	continue
+    fi
+    echo "$SAMTOOLS view -bS $f.sam > ${TMP}.bam && java $JAVA_EXTRA_OPTS $JAVA_OPTS -jar $PICARD_HOME/SortSam.jar $SORTSAM_OPTS INPUT=${TMP}.bam OUTPUT=${TMP}.sort.bam && echo \"$f.bam removed to save space; see $f.sort.bam\" > ${TMP}.bam && $MV ${TMP}.bam $OUTDIR && $MV ${TMP}.sort.bam $OUTDIR && echo \"$f.sam removed to save space; see $f.sort.bam\" > $f.sam && samtools index $f.sort.bam $f.sort.bai"
+    cmd="$SAMTOOLS view -bS $f.sam > ${TMP}.bam && java  $JAVA_EXTRA_OPTS $JAVA_OPTS -jar $PICARD_HOME/SortSam.jar $SORTSAM_OPTS INPUT=${TMP}.bam OUTPUT=${TMP}.sort.bam && echo \"$f.bam removed to save space; see $f.sort.bam\" > ${TMP}.bam && $MV ${TMP}.bam $OUTDIR &&  $MV ${TMP}.sort.bam $OUTDIR && echo \"$f.sam removed to save space; see $f.sort.bam\" > $f.sam && samtools index $f.sort.bam $f.sort.bai"
     command="$command\n$cmd"
 done
 echo -e $(date) 5. Generate sorted bam file
@@ -389,7 +395,7 @@ echo -e $command | $PARALLEL $PARALLEL_OPTS >> $LOGFILE 2>> $ERRFILE
 
 # 7. Raw variant calling 
 # -L: interval_list(?) type input - bed format doesn't seem to work
-UNIFIED_GENOTYPER_OPTS="-T UnifiedGenotyper --dbsnp $DBSNP -stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 30 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $N_CORES -R $REF -L $TARGET_INTERVALS_FILE"
+UNIFIED_GENOTYPER_OPTS="-T UnifiedGenotyper --dbsnp $DBSNP -stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 30 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $N_CORES -R $REF -L $TARGET_REGION"
 echo -e $(date) 7. Raw variant calling
 for f in $sample_pfx; do
     OUTDIR=`dirname $f`
@@ -399,12 +405,12 @@ for f in $sample_pfx; do
     up_to_date ${input%.bam}.BOTH.raw.vcf $input
     if [ $? = 1 ]; then continue; fi
     echo $(date) generating raw variant calls for $f
-    samtools index $f.sort.bam && java -jar $GATK $UNIFIED_GENOTYPER_OPTS -I $input -o $output && $MV $output $OUTDIR >> $LOGFILE 2>> $ERRFILE
+    java -jar $GATK $UNIFIED_GENOTYPER_OPTS -I $input -o $output && $MV $output $OUTDIR && $MV $output.idx $OUTDIR >> $LOGFILE 2>> $ERRFILE
 done
 
 # 8. Generate realignment intervals 
 DEEP_COVERAGE_OPTS="--mismatchFraction 0.30 --maxIntervalSize 650"
-REALIGNMENT_TARGET_CREATOR_OPTS="-T RealignerTargetCreator -L $TARGET_INTERVALS_FILE -known $MILLS -known $THOUSANDG_OMNI -nt $N_CORES -R $REF $DEEP_COVERAGE_OPTS"
+REALIGNMENT_TARGET_CREATOR_OPTS="-T RealignerTargetCreator -L $TARGET_REGION -known $MILLS -known $THOUSANDG_OMNI -nt $N_CORES -R $REF $DEEP_COVERAGE_OPTS"
 echo -e $(date) 8. Realignment - generate realign target intervals
 for f in $sample_pfx; do
     OUTDIR=`dirname $f`
@@ -437,7 +443,7 @@ for f in $sample_pfx; do
     up_to_date ${input%.bam}.realign.bam $input
     if [ $? = 1 ]; then continue; fi
     echo -e $(date) Realigning round indels for $f
-    java -jar $GATK $INDEL_REALIGNER_OPTS -I $input --targetIntervals ${input%.bam}.intervals -known ${input%.bam}.BOTH.raw.vcf -o ${output%.bam}.realign.bam && $MV "${output%.bam}.realign.ba*" $OUTDIR >> $LOGFILE 2>> $ERRFILE
+    java -jar $GATK $INDEL_REALIGNER_OPTS -I $input --targetIntervals ${input%.bam}.intervals -known ${input%.bam}.BOTH.raw.vcf -o ${output%.bam}.realign.bam && $MV ${output%.bam}.realign.bam $OUTDIR && $MV ${output%.bam}.realign.bai $OUTDIR >> $LOGFILE 2>> $ERRFILE
     # command="$command\n$cmd"
 done
 
@@ -446,7 +452,7 @@ done
 
 # 10. Base recalibration
 # NB: currently BaseRecalibrator does *not* support multiple threads
-RECALIBRATOR_OPTS="-T BaseRecalibrator -R $REF -L $TARGET_INTERVALS_FILE --knownSites $DBSNP --knownSites $MILLS --knownSites $THOUSANDG_OMNI"
+RECALIBRATOR_OPTS="-T BaseRecalibrator -R $REF -L $TARGET_REGION --knownSites $DBSNP --knownSites $MILLS --knownSites $THOUSANDG_OMNI"
 echo -e $(date) 10. Base recalibration
 command=""
 for f in $sample_pfx; do
@@ -471,13 +477,12 @@ for f in $sample_pfx; do
     output=$OUTDIR/$STAGING_DIR/`basename $input`
     up_to_date ${input%.bam}.recal.bam $input
     if [ $? = 1 ]; then continue; fi
-    cmd="java -jar $GATK $PRINT_READS_OPTS -I $input -BQSR ${input%.bam}.recal_data.grp -o ${output%.bam}.recal.bam && $MV "${output%.bam}.recal.ba*" $OUTDIR"
+    cmd="java -jar $GATK $PRINT_READS_OPTS -I $input -BQSR ${input%.bam}.recal_data.grp -o ${output%.bam}.recal.bam && $MV ${output%.bam}.recal.bam $OUTDIR"
     command="$command\n$cmd"
 done
 echo -e $(date) 11. Recalculate base quality score
 echo -e $(date) $command
 echo -e $command | $PARALLEL $PARALLEL_OPTS >> $LOGFILE 2>> $ERRFILE
-
 
 # 12. Clip 5 bp in 5' on all reads. These bases are reference bias due
 # to the restriction enzyme site. 
@@ -490,7 +495,7 @@ for f in $sample_pfx; do
     output=$OUTDIR/$STAGING_DIR/`basename $input`
     up_to_date ${input%.bam}.clip.bam $input
     if [ $? = 1 ]; then continue; fi
-    cmd="java -jar $GATK $CLIP_READS_OPTS -I $input -o ${output%.bam}.clip.bam && $MV ${output%.bam}.clip.ba* $OUTDIR"
+    cmd="java -jar $GATK $CLIP_READS_OPTS -I $input -o ${output%.bam}.clip.bam && $MV ${output%.bam}.clip.bam $OUTDIR && ${output%.bam}.clip.bai $OUTDIR"
     command="$command\n$cmd"
 done
 echo -e $(date) $command
@@ -498,7 +503,7 @@ echo -e $command | $PARALLEL $PARALLEL_OPTS >> $LOGFILE 2>> $ERRFILE
 
 # 13. Make final calls with GATK UnifiedGenotyper
 #     FIXME: change to HaplotypeCaller when appropriate
-UNIFIEDGENOTYPER_OPTS="-T UnifiedGenotyper --dbsnp $DBSNP -filterMBQ -A AlleleBalance -stand_call_conf 30.0 -stand_emit_conf 10.0 -dt NONE --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $N_CORES -L $TARGET_INTERVALS_FILE"
+UNIFIEDGENOTYPER_OPTS="-T UnifiedGenotyper --dbsnp $DBSNP -filterMBQ -A AlleleBalance -stand_call_conf 30.0 -stand_emit_conf 10.0 -dt NONE --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $N_CORES -L $TARGET_REGION"
 echo -e $(date) 13. Final variant calling with UnifiedGenotyper
 for f in $sample_pfx; do
     OUTDIR=`dirname $f`
@@ -507,7 +512,7 @@ for f in $sample_pfx; do
     up_to_date ${input%.bam}.BOTH.final.vcf $input
     if [ $? = 1 ]; then continue; fi
     echo $(date) generating final variant calls for $f with UnifiedGenotyper
-    java -jar $GATK $UNIFIED_GENOTYPER_OPTS -I $input -o ${output%.bam}.BOTH.final.vcf && $MV "${output%.bam}.BOTH.final.vcf*" $OUTDIR >> $LOGFILE 2>> $ERRFILE
+    java -jar $GATK $UNIFIED_GENOTYPER_OPTS -I $input -o ${output%.bam}.BOTH.final.vcf && $MV ${output%.bam}.BOTH.final.vcf $OUTDIR && $MV ${output%.bam}.BOTH.final.vcf.idx $OUTDIR >> $LOGFILE 2>> $ERRFILE
 done
 
 # 14. Making final calls with samtools
@@ -521,7 +526,7 @@ for f in $sample_pfx; do
     up_to_date ${input%.bam}.BOTH.final.samtools.vcf $input
     if [ $? = 1 ]; then continue; fi
     echo $(date) generating final variant calls for $f with samtools
-    cmd="samtools mpileup $SAMTOOLS_OPTS $input > ${output%.bam}.BOTH.final.samtools.mpileup && bcftools view $BCFTOOLS_OPTS -g ${output%.bam}.BOTH.final.samtools.mpileup > ${output%.bam}.BOTH.final.samtools.vcf && $MV ${output%.bam}.BOTH.final.samtools.vcf $OUTDIR"
+    cmd="samtools mpileup $SAMTOOLS_OPTS $input > ${output%.bam}.BOTH.final.samtools.mpileup && bcftools view $BCFTOOLS_OPTS -g ${output%.bam}.BOTH.final.samtools.mpileup > ${output%.bam}.BOTH.final.samtools.vcf && $MV ${output%.bam}.BOTH.final.samtools.vcf $OUTDIR && $MV ${output%.bam}.BOTH.final.samtools.mpileup $OUTDIR"
     command="$command\n$cmd"
 done
 echo -e $(date) 14. Final variant calling with samtools 
@@ -545,7 +550,7 @@ for f in $sample_pfx; do
     output=$OUTDIR/$STAGING_DIR/`basename $input`
     up_to_date ${input%.vcf}.filtered.vcf $input
     if [ $? = 1 ]; then continue; fi
-    cmd="java -jar $GATK $VARIANTFILTRATION_OPTS --variant $input -o ${output%.vcf}.filtered.vcf && $MV "${output%.vcf}.filtered.vcf*" $OUTDIR"
+    cmd="java -jar $GATK $VARIANTFILTRATION_OPTS --variant $input -o ${output%.vcf}.filtered.vcf && $MV ${output%.vcf}.filtered.vcf $OUTDIR && $MV ${output%.vcf}.filtered.vcf.idx $OUTDIR"
     command="$command\n$cmd"
 done
 echo -e $(date) 15. Perform last variant filtration
