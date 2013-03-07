@@ -74,7 +74,7 @@ class ProjectMetaData:
            "project_id": "ID",
            "project_name": "Project name",
            "queue_date": "Queue date",
-           "no_samples": "No of samples",
+           "no_samples": "No of samples (in order)",
            "lanes_plates": "Lanes / Plates",
            "min_reads_per_sample": "minimal M read pairs/sample (passed filter)",
            "customer_reference": "Customer reference",
