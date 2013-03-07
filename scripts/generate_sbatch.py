@@ -45,7 +45,6 @@ def get_size(n,info):
         	prep = name[-1] + prep
                	name = name[0: -1]
 	if prep == '':
-		print 'AAA'
 		prep = 'A'
 	for samp in info['samples']:
         	if samp.strip('F')==name.strip('F'):
