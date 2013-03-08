@@ -47,8 +47,9 @@ def get_size(n,info):
 	if prep == '':
 		prep = 'A'
 	for samp in info['samples']:
-        	if samp==name:
-                	size=info['samples'][samp]['library_prep'][prep]['average_size_bp']
+        	if samp.strip('F')==name.strip('F'):
+			print samp
+                	size=info['samples'][samp.strip('F')]['library_prep'][prep]['average_size_bp']
 		elif name[0]=='P' and name.split('_')[1]==samp:
 			print "Best gues for sample found on statusDB corresponding to sample name ",n ," is ",samp
 			r = raw_input("If this seems to be correct press y	")
@@ -91,10 +92,12 @@ picard_tools		= conf['custom_algorithms']['RNA-seq analysis']['picard_tools']
 BEDTools_version	= conf['custom_algorithms']['RNA-seq analysis']['BEDTools_version']
 bedGraphToBigWig	= conf['custom_algorithms']['RNA-seq analysis']['bedGraphToBigWig']
 URL             	= conf['couch_db']['maggie_url']
-couch           	= couchdb.Server("http://" + URL)
+port			= conf['couch_db']['maggie_port']
+couch           	= couchdb.Server("http://" + URL + ':' +str(port))
 proj_db         	= couch['projects']
 key             	= find_proj_from_view(proj_db, proj_ID)
 info            	= proj_db[key]
+
 
 
 if not len ( hours.split(':') ) == 3: 
@@ -120,15 +123,17 @@ file_info={}
 
 for f in flist:
 	fname	=	f.split('/')[-1]
-	if (fname.split('.')[-1] == "fastq") | ( fname.split('.')[-2] == "fastq"):
-    		lane_run 	= "_".join(fname.split("_")[0:3])
-    		tag		= "_".join(fname.split("_")[3:-2])
-    		if not file_info.has_key(lane_run):
-    			file_info[lane_run]={}
-    		if not file_info[lane_run].has_key(tag):
-			file_info[lane_run][tag]=[]
-		file_info[lane_run][tag].append(fname)
-
+	try:
+		if (fname.split('.')[-1] == "fastq") | ( fname.split('.')[-2] == "fastq"):
+    			lane_run 	= "_".join(fname.split("_")[0:3])
+    			tag		= "_".join(fname.split("_")[3:-2])
+    			if not file_info.has_key(lane_run):
+    				file_info[lane_run]={}
+    			if not file_info[lane_run].has_key(tag):
+				file_info[lane_run][tag]=[]
+			file_info[lane_run][tag].append(fname)
+	except:
+		sys.exit('files missing? '+fname)
 print file_info.keys()
 
 print "Best guess for sample names: "
@@ -177,7 +182,7 @@ for lane in file_info:
 	f = open(an_path+"/map_tophat_"+samp+".sh", "w")
 	print >>f, """#! /bin/bash -l
 
-#SBATCH -A a2012034
+#SBATCH -A a2012043
 #SBATCH -p node
 #SBATCH -t {0}
 #SBATCH -J tophat_{1}

@@ -43,7 +43,11 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
 		if p.min_reads_per_sample.strip() != '':
                 	obj['min_m_reads_per_sample_ordered'] = float(p.min_reads_per_sample)
 		if p.no_samples.strip() != '':
-			obj['no_of_samples'] = int(p.no_samples)
+			try:
+				obj['no_of_samples'] = int(p.no_samples)
+			except:
+				obj['no_of_samples'] = p.no_samples
+				pass
                 obj['uppnex_id'] = p.uppnex_id
 		obj['application'] = p.application
 		obj['customer_reference'] = p.customer_reference
