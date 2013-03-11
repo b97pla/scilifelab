@@ -36,7 +36,7 @@ for i in ${name_list[*]};do
 done
 
 ## quantify_rRNA
-make_sbatch.py 2012043 node 01:00:00 quantify_rRNA $mail $config_file
+make_sbatch.py a2012043 node 01:00:00 quantify_rRNA $mail $config_file
 echo "cd $path
 quantify_rRNA.py $gtf_file" >> quantify_rRNA.sh
 sbatch quantify_rRNA.sh
