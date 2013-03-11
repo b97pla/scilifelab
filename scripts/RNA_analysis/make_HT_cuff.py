@@ -48,7 +48,7 @@ print >>f, """#!/bin/bash -l
 #SBATCH -J HT_cuff_{0}
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user={3}
-{7}
+#SBATCH {7}
 
 module unload cufflinks
 module load {4}
