@@ -389,10 +389,27 @@ class FlowcellRunMetricsConnection(Couch):
         super(FlowcellRunMetricsConnection, self).__init__(**kwargs)
         self.db = self.con[dbname]
         self.name_view = {k.key:k.id for k in self.db.view("names/name", reduce=False)}
+	self.stat_view = self.db.view("names/Barcode_lane_stat")
 
     def set_db(self):
         """Make sure we don't change db from flowcells"""
         pass
+
+    def get_barcode_lane_statistics(self, project_id, sample_id, flow_cell, lane):
+	"""Get Mean Quality Score (PF) and % of >= Q30 Bases (PF) for sample_id, flow_cell, lane."""
+        for fc in self.stat_view:
+		if fc.key == flow_cell:
+			try:
+				stat = fc.value
+		        	for samp in stat:
+					# hanle funny names
+					project_id = project_id.replace('_','').replace('.','')
+					proj = samp['Project'].replace('_','').replace('.','')
+            				if (proj == project_id) and (samp['Lane']==lane) and (samp['Sample ID']==sample_id):
+                				return samp['Mean Quality Score (PF)'], samp['% of >= Q30 Bases (PF)']
+			except:
+				pass
+	return None
 
     def get_phix_error_rate(self, name, lane):
         """Get phix error rate. Returns -1 if error rate could not be determined"""
@@ -504,3 +521,8 @@ class ProjectSummaryConnection(Couch):
             else:
                 self.log.warn("No library_prep information for project sample {}".format(project_sample_name))
         return map_d
+
+
+
+
+
