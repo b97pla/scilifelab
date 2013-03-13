@@ -50,4 +50,5 @@ print >>f, """#!/bin/bash -l
 module unload samtools
 module load {3}
 
+read_distribution.py --version
 read_distribution.py -i {4}/tophat_out_{0}/accepted_hits_sorted_dupRemoved_{0}.bam -r {2}""".format(name, mail, bed_file, sam, path, extra_arg)

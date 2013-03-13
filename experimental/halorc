@@ -1,0 +1,61 @@
+# Example configuration file for halo pipeline
+#
+# All parameters need to be set to avoid unpredictable behaviour
+# The settings currently work at biologin.uppmax.uu.se
+
+# Parameters that govern general behaviour
+# Regexps for reads - be careful when changing these if you want to avoid including bazillion files
+READ1_REGEXP="R1_001"    # Regexp used for 1st reads
+READ2_REGEXP="R2_001"    # Regexp used for paired sequences
+
+# How many cores to run on
+N_CORES=7
+
+# Logging output - set in projectrc to override
+# LOGFILE="halo_pipeline.out"
+# ERRFILE="halo_pipeline.err"
+
+# Software config
+# Modify for specific versions
+# GNU parallel is a requirement - see http://www.gnu.org/software/parallel/
+PARALLEL=parallel
+# Pigz (parallel gz) is a requirement - see http://zlib.net/pigz/
+PIGZ=pigz
+FASTQC=fastqc
+CUTADAPT=cutadapt
+CUTADAPT_OPTS="-m 50"
+# Samtools
+SAMTOOLS=samtools
+SAMSTAT=samstat
+
+# Picard and GATK require that GATK_HOME and PICARD_HOME be set
+# http://stackoverflow.com/questions/307503/whats-the-best-way-to-check-that-environment-variables-are-set-in-unix-shellscr
+: ${GATK_HOME:?"Please set GATK_HOME environment variable!"}
+: ${PICARD_HOME:?"Please set PICARD_HOME environment variable!"}
+GATK=$GATK_HOME/GenomeAnalysisTK.jar
+
+# Biodata home
+BIODATA=/bubo/nobackup/uppnex/reference/biodata/genomes
+
+# Bwa location
+BWA=bwa
+
+# Set default genome to hg19
+BWA_HG19=$BIODATA/Hsapiens/hg19/bwa/hg19.fa
+BWA_REF=$BWA_HG19
+
+# References and databases
+REF=$BIODATA/Hsapiens/hg19/seq/hg19.fa
+
+# Variant databases
+VARIANTDBHOME=$BIODATA/Hsapiens/hg19/variation
+DBSNP=$VARIANTDBHOME/dbsnp_132.vcf
+THOUSANDG_OMNI=$VARIANTDBHOME/1000G_omni2.5.vcf
+MILLS=$VARIANTDBHOME/Mills_Devine_2hit.indels.vcf
+HAPMAP=$VARIANTDBHOME/hapmap_3.3.vcf
+
+# Adapter sequences. These correspond to TruSeq adapter sequence.
+# THREEPRIME is found in the three-prime end of read 1, FIVEPRIME
+# revcomp in the end of read 2
+THREEPRIME="AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC"
+FIVEPRIME="AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT"
