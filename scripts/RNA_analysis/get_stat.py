@@ -45,12 +45,13 @@ NAME="""+name+"""
 
 BAM=tophat_out_${NAME}/accepted_hits_${NAME}.bam
 DUP_REM_BAM=tophat_out_${NAME}/accepted_hits_sorted_dupRemoved_${NAME}.bam
+bam_stat.py --version >> get_stat${NAME}.err
 echo '' >> get_stat${NAME}.err
 echo '===== Mapping statistics based on all reads =====' >> get_stat${NAME}.err
-bam_stat.py -i $BAM >> tophat_out_${NAME}/stat_${NAME}
+bam_stat.py -i $BAM
 echo '' >> get_stat${NAME}.err
 echo '===== Mapping statistics based on reads after duplicate removal =====' >> get_stat${NAME}.err
-bam_stat.py -i $DUP_REM_BAM >> tophat_out_${NAME}/stat_${NAME}
+bam_stat.py -i $DUP_REM_BAM
 SPLICED=`samtools view $DUP_REM_BAM |cut -f6 |grep -c N`
 echo '===== Number of spliced alignments (dupRem) ====='>> get_stat${NAME}.err
 echo 'spliced:          '$SPLICED >> get_stat${NAME}.err

@@ -1,7 +1,7 @@
 .. image:: ${sll_logo_small}
    :align: right
 
-.. header:: Document version: 1.0.1
+.. header:: Document version: 1.0.2
 
 .. footer:: ###Page###
 
@@ -11,7 +11,7 @@ Best practice analysis report
 
 :Project: ${project_name}
 :Application: Sequence capture
-
+:Date: ${date}
 
 Project summary
 ---------------
