@@ -1,6 +1,6 @@
 #!/bin/bash -l
-#SBATCH -A a2012043 
-#SBATCH -p devel
+#SBATCH -A a2010002 
+#SBATCH -p node
 #SBATCH -t 01:00:00
 #SBATCH -J make_sbatch
 #SBATCH -e make_sbatch.err
@@ -36,13 +36,13 @@ for i in ${name_list[*]};do
 done
 
 ## quantify_rRNA
-make_sbatch.py a2012043 node 01:00:00 quantify_rRNA $mail $config_file
+make_sbatch.py a2010002 node 01:00:00 quantify_rRNA $mail $config_file
 echo "cd $path
 quantify_rRNA.py $gtf_file" >> quantify_rRNA.sh
 sbatch quantify_rRNA.sh
 
 ## correl
-make_sbatch.py a2012043 node 01:00:00 correl $mail $config_file
+make_sbatch.py a2010002 node 01:00:00 correl $mail $config_file
 echo "cd $path
 R CMD BATCH '--args ${name_list[*]}' $WP/correl.R" >> correl.sh
 sbatch correl.sh

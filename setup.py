@@ -12,7 +12,7 @@ setup(name = "scilifelab",
       author_email = "genomics_support@scilifelab.se",
       description = "Useful scripts for use at SciLifeLab",
       license = "MIT",
-      scripts = glob.glob('scripts/*.py') + glob.glob('scripts/bcbb_helpers/*.py') + ['scripts/pm'],
+      scripts = glob.glob('scripts/*.py') + glob.glob('scripts/RNA_analysis/*.py') + glob.glob('scripts/bcbb_helpers/*.py') + ['scripts/pm'],
       install_requires = [
         "bcbio-nextgen >= 0.2",
         "drmaa >= 0.5",
@@ -36,6 +36,7 @@ setup(name = "scilifelab",
       package_data = {'scilifelab':[
           'data/grf/*',
           'data/templates/*.mako',
+          'data/templates/halo/*.mako',
           'data/templates/rst/*',
           ]}
       )
