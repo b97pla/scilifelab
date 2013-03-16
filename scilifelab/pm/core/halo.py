@@ -5,6 +5,7 @@ import os
 from cement.core import controller, handler
 from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.utils.halo import run_halo
+from scilifelab.utils.misc import query_yes_no
 
 import scilifelab.log
 
@@ -43,8 +44,13 @@ class HaloController(AbstractBaseController):
         if self.app.pargs.setup:
             self.app.log.info("Setup configuration files. Rerun command without '--setup' option to run analysis")
             return
+        if not len(param_list) > 0:
+            self.log.info("No samples found in {}; perhaps you need to add the '--data' option to look in the {} directory".format(self.app.pargs.project, os.path.join(self.app.pargs.project, "data")))
+        if len(param_list) > 0 and not query_yes_no("Going to start {} jobs... Are you sure you want to continue?".format(len(param_list)), force=self.pargs.force):
+            return
         for param in param_list:
             self.app.cmd.command(param['cl'], **param)
+            
 
 
 
