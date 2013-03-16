@@ -47,7 +47,8 @@ Results
 ^^^^^^^
 
 ${rounded_read_count} million paired reads in lane with PhiX error
-rate ${phix_error_rate}. Average quality score ${avg_quality_score}.
+rate ${phix_error_rate}. Average quality score ${avg_quality_score}
+(${pct_q30_bases}% bases >= Q30).
 
 Comments
 ^^^^^^^^
