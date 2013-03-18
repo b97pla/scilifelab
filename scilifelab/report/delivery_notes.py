@@ -296,7 +296,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
             s_param["phix_error_rate"] = _get_phix_error_rate(s["lane"], phix)
         # Get quality score from demultiplex stats, if that fails
         # (which it shouldn't), fall back on fastqc data.
-        (avg_quality_score, pct_q30_bases) = fc_con.get_barcode_lane_statistics(project_name, s.get("name"), flowcell, s["lane"])
+        (avg_quality_score, pct_q30_bases) = fc_con.get_barcode_lane_statistics(project_name, s.get("barcode_name"), fc, s["lane"])
         s_param['avg_quality_score'] = avg_quality_score if avg_quality_score else calc_avg_qv(s) 
         if not s_param['avg_quality_score']:
             LOG.warn("Setting average quality failed for sample {}, id {}".format(s.get("name"), s.get("_id")))
