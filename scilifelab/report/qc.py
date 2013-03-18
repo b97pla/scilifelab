@@ -18,23 +18,23 @@ QC_CUTOFF = {
     'reseq':{'PCT_PF_READS_ALIGNED':70,'PERCENT_DUPLICATION':30},
     'WG-reseq':{'PCT_PF_READS_ALIGNED':70,'PERCENT_DUPLICATION':30},
     'seqcap':{'PCT_PF_READS_ALIGNED':70,'PERCENT_ON_TARGET':60, 'PCT_TARGET_BASES_10X':90, 'PERCENT_DUPLICATION':30},
-    'customcap':{'PCT_PF_READS_ALIGNED':70, 'PERCENT_DUPLICATION':30, 'PCT_TARGET_BASES_10X':90},
+    'customcap':{'PCT_PF_READS_ALIGNED':70, 'PERCENT_DUPLICATION':30, 'PCT_TARGET_BASES_10X':90, 'FOLD_ENRICHMENT':1000},
     'finished':{},
     }
 
 ## QC data header information
 HEADER = ["sample","lane","flowcell", "date",  "TOTAL_READS",
-          "MEAN_INSERT_SIZE", "GENOME_SIZE", "PERCENT_ON_TARGET",
+          "MEAN_INSERT_SIZE", "GENOME_SIZE", "PERCENT_ON_TARGET", "FOLD_ENRICHMENT",
           "PERCENT_DUPLICATION", "PCT_TARGET_BASES_10X", "PCT_PF_READS_ALIGNED",
           "dup_status", "status"]
 HEADER_LABELS = ["sample","lane","flowcell", "date",  "#READS",
-                 "INS_SIZE", "G_SIZE", "PCT_TGT",
+                 "INS_SIZE", "G_SIZE", "PCT_TGT", "ENRICHMENT",
                  "PCT_DUP", "PCT_10X", "PCT_ALN",
                  "dup_status", "status"]
 HEADER_MAP = OrderedDict(zip(HEADER, HEADER_LABELS))
 
 ## FIXME: this should be used also in assess_qc to set column widths
-COL_WIDTHS = [20, 5, 11, 8, 11, 10, 11, 10, 10, 10, 10, 12, 12]
+COL_WIDTHS = [20, 5, 11, 8, 11, 10, 11, 10, 10, 10, 10, 10, 12, 12]
 
 ## Mapping from genomics project list application names
 APPLICATION_MAP = {'RNA-seq (Total RNA)':'rnaseq','WG re-seq':'WG-reseq','Resequencing':'reseq', 'Exome capture':'seqcap', 'Custom':'customcap', 'Finished library':'finished' , 'Custom capture':'customcap'}
@@ -94,6 +94,7 @@ def assess_qc(x, application):
             "{:>10.1f}".format(float(x["MEAN_INSERT_SIZE"])),
             "{:>10.1f}G".format(int(x["GENOME_SIZE"])/1e9) if x["GENOME_SIZE"]>1e9 else "{:.1f}M".format(int(x["GENOME_SIZE"])/1e6),
             "{:>10.1f}".format(float(x["PERCENT_ON_TARGET"])),
+            "{:>10.1f}".format(float(x["FOLD_ENRICHMENT"])),
             "{:>10.1f}".format(float(x["PERCENT_DUPLICATION"])),
             "{:>10.1f}".format(float(x["PCT_TARGET_BASES_10X"])), 
             "{:>10.1f}".format(float(x["PCT_PF_READS_ALIGNED"])), 
@@ -145,7 +146,7 @@ def _qc_info_header(project, application, output_data):
     output_data["stdout"].write("Application QC criteria\n")
     output_data["stdout"].write("==============\n")        
     for k,v in sorted(QC_CUTOFF[application].iteritems()):
-        output_data["stdout"].write("{:<24}={:>4}\n".format(k, v))
+        output_data["stdout"].write("{:<24}={:>6}\n".format(k, v))
     output_data["stdout"].write("==============\n\n") 
     output_data["stdout"].write("Header legend:\n")
     output_data["stdout"].write(", ".join(["{} = {}".format(v,k) for k, v in HEADER_MAP.iteritems()][5:11]))
