@@ -49,6 +49,7 @@ while getopts ":p:b:g:m:c:e:" option; do
                 g) gtf_file=${OPTARG};;
 		m) mail=${OPTARG};;
 		c) config_file=${OPTARG};;
+		e) extra_arg=${OPTARG};;
         esac
 done
 shift $(( OPTIND - 1 ))
@@ -79,7 +80,7 @@ if [ ${#run_dirs[*]} -gt 1 ];then
 	## run HTseq and cufflinks on meged samples
 	path=$path/merged
 	for i in ${rerun[*]};do
-		make_HT_cuff.py $i $gtf_file $mail $path $config_file	
+		make_HT_cuff.py $i $gtf_file $mail $path $config_file $extra_arg
 		JOBID=`sbatch --dependency=$DEPENDENCY_MERGE "HT_cuff_$i.sh"| sed -re 's/.+\s+([0-9]+)/\1/'`
 		DEPENDENCY_HT=$DEPENDENCY_HT:$JOBID
 	done

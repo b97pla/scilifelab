@@ -7,6 +7,7 @@
 #SBATCH -o merge.out
 #SBATCH --mail-user maya.brandi@scilifelab.se
 #SBATCH --mail-type=ALL
+#SBATCH --qos=seqver
 module load bioinfo-tools
 module load samtools
 WP=/bubo/home/h24/mayabr/glob/RNA_analysis
