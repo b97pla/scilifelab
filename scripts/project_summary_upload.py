@@ -275,7 +275,9 @@ def get_20158_info(client, project_name_swe):
                     "03": ["Sample name (SciLifeLab)", "Total number of reads (Millions)","Sheet1",
                           "Based on total number of reads after mapping and duplicate removal "],
                     "05": ["Sample name (from Project read counts)", "Total number","Sheet1",
-                          "Based on total number of reads","Based on total number of reads after mapping and duplicate removal"]}
+                          "Based on total number of reads","Based on total number of reads after mapping and duplicate removal"],
+                    "06": ["Sample name (from Project read counts)", "Total number","Sheet1",
+                          "Based on total number of reads","Based on total number of reads after mapping and duplicate removal"]}			
         info = {}
         feed = bcbio.google.spreadsheet.get_spreadsheets_feed(client, project_name_swe + '_20158', False)
         if len(feed.entry) != 0:
@@ -285,8 +287,8 @@ def get_20158_info(client, project_name_swe):
                 dummy, P_NP_colindex = get_column(content, versions[version][3])
                 dummy, No_reads_sequenced_colindex = get_column(content, versions[version][1])
 		row_ind, scilife_names_colindex = get_column(content, versions[version][0])
-                if version=="05":
-			dummy, P_NP_duprem_colindex = get_column(content, versions[version][3]) ## [version][4] for dup rem
+                if (version=="05")| (version=="06"):
+			dummy, P_NP_duprem_colindex = get_column(content, versions[version][4]) ## [version][4] for dup rem
 		else:
 			P_NP_duprem_colindex=''
                 for j, row in enumerate(content):
