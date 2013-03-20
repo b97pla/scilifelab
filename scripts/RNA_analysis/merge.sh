@@ -1,5 +1,5 @@
 #!/bin/bash -l
-#SBATCH -A a2010002
+#SBATCH -A a2012043
 #SBATCH -p node
 #SBATCH -t 40:00:00
 #SBATCH -J merge
@@ -7,6 +7,7 @@
 #SBATCH -o merge.out
 #SBATCH --mail-user maya.brandi@scilifelab.se
 #SBATCH --mail-type=ALL
+#SBATCH --qos=seqver
 module load bioinfo-tools
 module load samtools
 WP=/bubo/home/h24/mayabr/glob/RNA_analysis

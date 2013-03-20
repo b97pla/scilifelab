@@ -93,6 +93,7 @@ BEDTools_version	= conf['custom_algorithms']['RNA-seq analysis']['BEDTools_versi
 bedGraphToBigWig	= conf['custom_algorithms']['RNA-seq analysis']['bedGraphToBigWig']
 URL             	= conf['couch_db']['maggie_url']
 port			= conf['couch_db']['maggie_port']
+extra_arg 		= "#SBATCH " + conf['sbatch']['extra_arg']
 couch           	= couchdb.Server("http://" + URL + ':' +str(port))
 proj_db         	= couch['projects']
 key             	= find_proj_from_view(proj_db, proj_ID)
@@ -190,6 +191,7 @@ for lane in file_info:
 #SBATCH -o tophat_{1}.out
 #SBATCH --mail-user={2}
 #SBATCH --mail-type=ALL
+{19}
 
 module unload bioinfo-tools
 module unload bowtie
@@ -219,6 +221,6 @@ cufflinks -p 8 -G {12} -o cufflinks_out_{1} accepted_hits_sorted_dupRemoved_{1}.
 {14}
 
 rm accepted_hits_sorted_{1}.bam
-rm accepted_hits_sorted_dupRemoved_prehtseq_{1}.sam""".format(hours ,samp ,mail ,aligner_version,quantifyer_version,counts_version,str(innerdist),refpath,fpath,file_info[lane][samp][0],file_info[lane][samp][1],dup_remover_version,annopath,sam_bam,make_fai, qscale,picard_version,picard_tools,BEDTools_version)
+rm accepted_hits_sorted_dupRemoved_prehtseq_{1}.sam""".format(hours ,samp ,mail ,aligner_version,quantifyer_version,counts_version,str(innerdist),refpath,fpath,file_info[lane][samp][0],file_info[lane][samp][1],dup_remover_version,annopath,sam_bam,make_fai, qscale,picard_version,picard_tools,BEDTools_version, extra_arg)
     	f.close()
 

@@ -42,7 +42,7 @@ print >>f, """#!/bin/bash -l
 #SBATCH -J RSeQC_gbc_{0}
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user={1}
-{5}
+#SBATCH {5}
 
 module unload samtools
 module load {3}
