@@ -121,6 +121,7 @@ def _assert_flowcell_format(flowcell):
     :returns: boolean
     """
     if flowcell is None:
+        # Can this really be right?!?
         return True
     if not re.match("[A-Z0-9]+XX$", flowcell):
         return False
@@ -229,6 +230,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         "rounded_read_count" : None,
         "phix_error_rate" : None,
         "avg_quality_score" : None,
+        "pct_q30_bases" : None,
         "success" : None,
         "run_mode":None,
         }
@@ -292,10 +294,15 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         s_param["phix_error_rate"] = fc_con.get_phix_error_rate(str(fc), s["lane"])
         if phix:
             s_param["phix_error_rate"] = _get_phix_error_rate(s["lane"], phix)
-        s_param['avg_quality_score'] = calc_avg_qv(s)
+        # Get quality score from demultiplex stats, if that fails
+        # (which it shouldn't), fall back on fastqc data.
+        (avg_quality_score, pct_q30_bases) = fc_con.get_barcode_lane_statistics(project_name, s.get("barcode_name"), fc, s["lane"])
+        s_param['avg_quality_score'] = avg_quality_score if avg_quality_score else calc_avg_qv(s) 
         if not s_param['avg_quality_score']:
-            LOG.warn("Calculation of average quality failed for sample {}, id {}".format(s.get("name"), s.get("_id")))
-
+            LOG.warn("Setting average quality failed for sample {}, id {}".format(s.get("name"), s.get("_id")))
+        s_param['pct_q30_bases'] = pct_q30_bases
+        if not s_param['pct_q30_bases']:
+            LOG.warn("Setting % of >= Q30 Bases (PF) failed for sample {}, id {}".format(s.get("name"), s.get("_id")))
         # Compare phix error and qv to cutoffs
         err_stat = "OK"
         qv_stat = "OK"

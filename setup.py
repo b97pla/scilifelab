@@ -36,6 +36,7 @@ setup(name = "scilifelab",
       package_data = {'scilifelab':[
           'data/grf/*',
           'data/templates/*.mako',
+          'data/templates/halo/*.mako',
           'data/templates/rst/*',
           ]}
       )

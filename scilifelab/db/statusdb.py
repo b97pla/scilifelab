@@ -19,7 +19,8 @@ VIEWS = {'samples' : {'names': {'name' : '''function(doc) {if (!doc["name"].matc
                                 'id_to_name' : '''function(doc) {emit(doc["_id"], doc["name"]);}''',
                                 }},
          'flowcells' : {'names' : {'name' : '''function(doc) {emit(doc["name"], null);}''',
-                                   'id_to_name' : '''function(doc) {emit(doc["_id"], doc["name"]);}'''}},
+                                   'id_to_name' : '''function(doc) {emit(doc["_id"], doc["name"]);}''',
+                                   'Barcode_lane_stat' : '''function(doc) {emit(doc["name"],doc["illumina"]["Demultiplex_Stats"]["Barcode_lane_statistics"] );}'''}},
          'projects' : {'project' : {'project_id' : '''function(doc) {emit(doc.project_id, doc._id)}''',
                                     'project_name' : '''function(doc) {emit(doc.project_name, doc._id)}'''},
                        'names' : {'id_to_name' : '''function(doc) {emit(doc["_id"], doc["project_name"]);}''',
@@ -389,27 +390,30 @@ class FlowcellRunMetricsConnection(Couch):
         super(FlowcellRunMetricsConnection, self).__init__(**kwargs)
         self.db = self.con[dbname]
         self.name_view = {k.key:k.id for k in self.db.view("names/name", reduce=False)}
-	self.stat_view = self.db.view("names/Barcode_lane_stat")
+	self.stat_view = {k.key:k.value for k in self.db.view("names/Barcode_lane_stat", reduce=False)}
 
     def set_db(self):
         """Make sure we don't change db from flowcells"""
         pass
 
-    def get_barcode_lane_statistics(self, project_id, sample_id, flow_cell, lane):
-	"""Get Mean Quality Score (PF) and % of >= Q30 Bases (PF) for sample_id, flow_cell, lane."""
-        for fc in self.stat_view:
-		if fc.key == flow_cell:
-			try:
-				stat = fc.value
-		        	for samp in stat:
-					# hanle funny names
-					project_id = project_id.replace('_','').replace('.','')
-					proj = samp['Project'].replace('_','').replace('.','')
-            				if (proj == project_id) and (samp['Lane']==lane) and (samp['Sample ID']==sample_id):
-                				return samp['Mean Quality Score (PF)'], samp['% of >= Q30 Bases (PF)']
-			except:
-				pass
-	return None
+    def get_barcode_lane_statistics(self, project_id, sample_id, flowcell, lane):
+	"""Get Mean Quality Score (PF) and % of >= Q30 Bases (PF) for
+        project_id, sample_id, flow_cell, lane. In the current
+        implementation a unique key is made consisting of
+        project-sample-lane. Relies entirely on assumption that all
+        project names are formatted as J__Doe_00_01 in
+        Demultiplex_stats.htm.
+        """
+        if flowcell not in self.stat_view.keys():
+            return None, None
+        stats = self.stat_view.get(flowcell)
+        stats_d = {"{}-{}-{}".format(item.get("Project", None).replace("__", "."), 
+                                     item.get("Sample ID", None),
+                                     item.get("Lane", None)):item for item in stats}
+        sample_data = stats_d.get("{}-{}-{}".format(project_id, sample_id, lane), None)
+        if not sample_data:
+            return None, None
+        return sample_data.get('Mean Quality Score (PF)', None), sample_data.get('% of >= Q30 Bases (PF)', None)
 
     def get_phix_error_rate(self, name, lane):
         """Get phix error rate. Returns -1 if error rate could not be determined"""
