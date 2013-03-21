@@ -421,6 +421,25 @@ def _set_sample_table_values(sample_name, project_sample, barcode_seq, ordered_m
     vals.update({k:"N/A" for k in vals.keys() if vals[k] is None or vals[k] == ""})
     return vals
 
+def name_conversion_table(project_name=None, username=None, password=None, url=None, projectdb="projects", **kw):
+
+    output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
+    p_con = ProjectSummaryConnection(dbname=projectdb, username=username, password=password, url=url)
+    
+    prj_summary = p_con.get_entry(project_name)
+    if not prj_summary:
+        LOG.warn("No such project '{}'".format(project_name))
+        return
+    LOG.debug("Working on project '{}'.".format(project_name))
+
+    # Get the list of samples
+    output_data['stdout'].write("{}\n".format("\t".join(['SciLifeLab ID','Submitter ID'])))
+    samples = prj_summary.get('samples',[])
+    for sample in samples.values():
+        output_data['stdout'].write("{}\n".format("\t".join([sample.get("scilife_name","N/A"),sample.get("customer_name","N/A")])))
+    
+    return output_data
+    
 def project_status_note(project_name=None, username=None, password=None, url=None,
                         use_ps_map=True, use_bc_map=False, check_consistency=False,
                         ordered_million_reads=None, uppnex_id=None, customer_reference=None,
@@ -527,7 +546,7 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
                 LOG.info("No library prep information for sample {}; keeping in report".format(v['sample']))
             else:
                 if k not in last_library_preps_srm:
-                    LOG.info("Sample run {} ('{}') is not latest library prep ({}) for project sample {}: excluding from report".format(k, v["id"], last_library_preps[v['sample']].values()[0], v['sample']))
+                    LOG.info("Sample run {} ('{}') is not latest library prep ({}) for project sample {}: excluding from report".format(k, v["id"], ",".join(list(set(last_library_preps[v['sample']].values()))), v['sample']))
                     continue
         else:
             pass
