@@ -41,21 +41,19 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
 		logger.warning('Google Document Genomics Project list: %s not found' % project_name) 
 	else:
 		if p.min_reads_per_sample.strip() != '':
-                	obj['min_m_reads_per_sample_ordered'] = float(p.min_reads_per_sample)
+                	try: obj['min_m_reads_per_sample_ordered'] = round(float(p.min_reads_per_sample),2)
+			except: obj['min_m_reads_per_sample_ordered'] = p.min_reads_per_sample
 		if p.no_samples.strip() != '':
-			try:
-				obj['no_of_samples'] = int(p.no_samples)
-			except:
-				obj['no_of_samples'] = p.no_samples
-				pass
+			try:obj['no_of_samples'] = int(p.no_samples)
+			except:obj['no_of_samples'] = p.no_samples
                 obj['uppnex_id'] = p.uppnex_id
 		obj['application'] = p.application
 		obj['customer_reference'] = p.customer_reference
 		obj['project_id']='P' + p.project_id
 
 	### 20132
+	info = get_20132_info(client,project_name_swe)
 	try:
-		info = get_20132_info(client,project_name_swe)
                 scilife_names,preps = strip_scilife_name(info.keys())
                 for key in scilife_names:
                         scilife_name = scilife_names[key]
@@ -72,8 +70,8 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
                 pass
 
 	### 20158
+	info = get_20158_info(client, project_name_swe)
 	try:
-		info = get_20158_info(client, project_name_swe)
 		scilife_names, preps = strip_scilife_name(info.keys())
 		duplicates = find_duplicates(scilife_names.values())
 		for key in scilife_names:
@@ -103,7 +101,6 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
                 scilife_name, preps = strip_scilife_name([sci_name_raw])
                 scilife_name = scilife_name[sci_name_raw]
                 prep = 'A' if preps[sci_name_raw].replace('F','') == '' else preps[sci_name_raw].replace('F','')
-
                 if obj['samples'].has_key(scilife_name):
                         if obj['samples'][scilife_name].has_key("library_prep"):
                                 if obj['samples'][scilife_name]["library_prep"].has_key(prep):
@@ -118,25 +115,29 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
 	if WS_projects.has_key(project_name):
 		logger.debug('project run on Work Set')
 		info = WS_projects[project_name]	
+	else:
+		info={}
 	info = get_20135_info(client,project_name_swe, info)
 	scilife_names, preps = strip_scilife_name(info.keys())
 	for key in scilife_names:
 	       	striped_scilife_name = scilife_names[key]
 		for prep in info[key]:
-	        	try:
-				Av_sice = int(float(info[key][prep][0]))
+			if (obj['application']=='Exome capture')|(obj['application']=='Custom capture'):
+				try: Av_sice = int(float(info[key][prep][2]))
+				except: Av_sice = info[key][prep][2]
+				prep_status = info[key][prep][3]
+			else:
+				try: Av_sice = int(float(info[key][prep][0]))
+				except: Av_sice = info[key][prep][0]
 				prep_status = info[key][prep][1]
-				if obj['samples'][striped_scilife_name].has_key("library_prep"):
-					if obj['samples'][striped_scilife_name]["library_prep"].has_key(prep):
-        					obj['samples'][striped_scilife_name]["library_prep"][prep]["average_size_bp"]=Av_sice
-						obj['samples'][striped_scilife_name]["library_prep"][prep]["prep_status"]=prep_status
-					else:
-						obj['samples'][striped_scilife_name]["library_prep"][prep]={"average_size_bp":Av_sice,"prep_status":prep_status}
+			if obj['samples'][striped_scilife_name].has_key("library_prep"):
+				if obj['samples'][striped_scilife_name]["library_prep"].has_key(prep):
+        				obj['samples'][striped_scilife_name]["library_prep"][prep]["average_size_bp"]=Av_sice
+					obj['samples'][striped_scilife_name]["library_prep"][prep]["prep_status"]=prep_status
 				else:
-					obj['samples'][striped_scilife_name]["library_prep"]={prep:{"average_size_bp":Av_sice,"prep_status":prep_status}}
-        		except:
-	               		pass
-
+					obj['samples'][striped_scilife_name]["library_prep"][prep]={"average_size_bp":Av_sice,"prep_status":prep_status}
+			else:
+				obj['samples'][striped_scilife_name]["library_prep"]={prep:{"average_size_bp":Av_sice,"prep_status":prep_status}}
       	return obj
 
 
@@ -236,6 +237,7 @@ def find_samp_from_view(samp_db, proj_name):
 			samps[doc.key] = doc.value[1:3]
         return samps
 
+
 def get_20132_info(client,project_name_swe):
         info = {}
         versions = {"01": ["Data", 'Sample name Scilife (Index included)'],
@@ -272,8 +274,10 @@ def get_20158_info(client, project_name_swe):
                           "Based on total number of reads after mapping and duplicate removal"],
                     "03": ["Sample name (SciLifeLab)", "Total number of reads (Millions)","Sheet1",
                           "Based on total number of reads after mapping and duplicate removal "],
-                    "04": ["Sample name (from Project read counts)", "Total number","Sheet1",
-                          "Based on total number of reads","Based on total number of reads after mapping and duplicate removal"]}
+                    "05": ["Sample name (from Project read counts)", "Total number","Sheet1",
+                          "Based on total number of reads","Based on total number of reads after mapping and duplicate removal"],
+                    "06": ["Sample name (from Project read counts)", "Total number","Sheet1",
+                          "Based on total number of reads","Based on total number of reads after mapping and duplicate removal"]}			
         info = {}
         feed = bcbio.google.spreadsheet.get_spreadsheets_feed(client, project_name_swe + '_20158', False)
         if len(feed.entry) != 0:
@@ -283,8 +287,8 @@ def get_20158_info(client, project_name_swe):
                 dummy, P_NP_colindex = get_column(content, versions[version][3])
                 dummy, No_reads_sequenced_colindex = get_column(content, versions[version][1])
 		row_ind, scilife_names_colindex = get_column(content, versions[version][0])
-                if version=="04":
-			dummy, P_NP_duprem_colindex = get_column(content, versions[version][4])
+                if (version=="05")| (version=="06"):
+			dummy, P_NP_duprem_colindex = get_column(content, versions[version][4]) ## [version][4] for dup rem
 		else:
 			P_NP_duprem_colindex=''
                 for j, row in enumerate(content):
@@ -312,7 +316,8 @@ def get_WS_info(client):
                 if ssheet_name[0:3].lower()== 'ws1':
                         try:
                                 content, ws_key, ss_key = get_google_document(ssheet_name, "Library QC",client)
-                                dummy, Project_name_col = get_column(content,'Project name')
+				dummy, Transfer_to_plan_col  = get_column(content,'Transfer to planning of instrument runs')
+                                dummy, Project_name_col = get_column(content,'Project name',Transfer_to_plan_col)
                                 dummy, Finished_library_col  = get_column(content, 'Finished library ')
                                 dummy, Hyb_Finished_library_col  = get_column(content, 'Hybridized finished library (sequence capture only)')
                                 dummy, Av_sice_bp_colindex = get_column(content, 'Average size (bp) ',Finished_library_col)
@@ -323,50 +328,53 @@ def get_WS_info(client):
                                 row_ind, prep_colindex = get_column(content, 'Prep version (A, B etc)')
                                 for j, row in enumerate(content):
                                         proj = str(row[Project_name_col]).strip()
-                                        if (j > row_ind):
+					if (j > row_ind):
                                         	sci_name = str(row[scilife_names_colindex]).strip()
                                                 prep = str(row[prep_colindex]).strip()
                                                 if prep=='': prep='A'
-                                                if str(row[Hyb_Av_sice_bp_colindex]).strip().strip('-')!='':
-                                        	        Av_sice = str(row[Hyb_Av_sice_bp_colindex]).strip()
-                                                	prep_status = str(row[Hyb_prep_status_col]).strip()
-                                   		else:
-                                                	Av_sice = str(row[Av_sice_bp_colindex]).strip()
-                                                        prep_status = str(row[prep_status_col]).strip()
-
-						if not WS_projects.has_key(proj):
-							WS_projects[proj]={sci_name:{prep:[Av_sice,prep_status]}}
-						elif WS_projects[proj].has_key(sci_name):
-							WS_projects[proj][sci_name][prep] = [Av_sice,prep_status]
-						else:
-							WS_projects[proj][sci_name] = {prep:[Av_sice,prep_status]}
+                                                Av_sice_Hyb = str(row[Hyb_Av_sice_bp_colindex]).strip()
+                                                prep_status_Hyb = str(row[Hyb_prep_status_col]).strip()
+                                                Av_sice = str(row[Av_sice_bp_colindex]).strip()
+                                                prep_status = str(row[prep_status_col]).strip()
+						prep_info_list = [Av_sice,prep_status,Av_sice_Hyb,prep_status_Hyb]
+                                                if ''.join(prep_info_list) !='' and not WS_projects.has_key(proj):
+                                                        WS_projects[proj]={sci_name:{prep:prep_info_list}}
+                                                elif WS_projects[proj].has_key(sci_name) and ''.join(prep_info_list) !='':
+                                                        WS_projects[proj][sci_name][prep] = prep_info_list
+                                                elif ''.join(prep_info_list) !='':
+                                                        WS_projects[proj][sci_name] = {prep:prep_info_list}
                         except:
                                 pass
-	return WS_projects
+        return WS_projects
 
 def get_20135_info(client,project_name_swe, info={}):
         feed = bcbio.google.spreadsheet.get_spreadsheets_feed(client, project_name_swe + '_20135', False)
         if len(feed.entry) != 0:
                 ssheet = feed.entry[0].title.text
                 content, ws_key, ss_key = get_google_document(ssheet, "Library QC", client)
+		dummy, Hyb_Finished_library_col  = get_column(content, 'Hybridized finished library (sequence capture only)')
                 dummy, Finished_library_col  = get_column(content, 'Finished library ')
                 dummy, Av_sice_bp_colindex = get_column(content,'Average size (bp)',Finished_library_col)
+                dummy, Hyb_Av_sice_bp_colindex = get_column(content, 'Average size (bp) ',Hyb_Finished_library_col)
                 dummy, prep_status_col  = get_column(content, 'Status (P/NP)',Finished_library_col)
+                dummy, Hyb_prep_status_col  = get_column(content, 'Status (P/NP)',Hyb_Finished_library_col)
                 row_ind, scilife_names_colindex = get_column(content,'SciLifeLab ID')
                 row_ind, prep_colindex = get_column(content,'Prep version (A, B etc)')
                 for j, row in enumerate(content):
                         if (j > row_ind):
                                 try:
                                         sci_name = str(row[scilife_names_colindex]).strip()
+                                        Av_sice_Hyb = str(row[Hyb_Av_sice_bp_colindex]).strip()
+                                        prep_status_Hyb = str(row[Hyb_prep_status_col]).strip()
                                         Av_sice = str(row[Av_sice_bp_colindex]).strip()
                                         prep_status = str(row[prep_status_col]).strip()
                                         prep = str(row[prep_colindex]).strip()
-                                        if prep=='':
-                                                prep='A'
-                                        if info.has_key(sci_name) and Av_sice!='':
-                                                info[sci_name][prep] = [Av_sice,prep_status]
-                                        elif Av_sice!='':
-                                                info[sci_name] = {prep:[Av_sice,prep_status]}
+                                        if prep=='': prep='A'
+					prep_info_list = [Av_sice,prep_status,Av_sice_Hyb,prep_status_Hyb]
+                                        if info.has_key(sci_name) and ''.join(prep_info_list) !='':
+                                                info[sci_name][prep] = prep_info_list
+                                        elif ''.join(prep_info_list) !='':
+                                                info[sci_name] = {prep:prep_info_list}
                                 except:
                                         pass
                	logger.debug('Google document found:	'+ssheet)
@@ -401,7 +409,10 @@ def strip_scilife_name(names):
         preps = 'F_BCDE'
         for name_init in names:
 		prep = ''
-		name = name_init.replace('-', '_').replace(' ', '').split("_index")[0].split("_ss")[0].split("_dual")[0].strip()
+		indexes = ['_index','_rpi','_agilent','_mondrian','_haloht','_halo','_sureselect','_dual','_hht','_ss','_i','_r','_a','_m','_h']
+		name = name_init.replace('-', '_').replace(' ', '')
+		for i in indexes:
+			name=name.split(i)[0]
 		if name != '':
 			while name[-1] in preps:
 				prep = name[-1] + prep
@@ -412,14 +423,14 @@ def strip_scilife_name(names):
 	return N, P
 
 
-def  main(client, CONFIG, URL, proj_ID, all_projects):
+def  main(client, CONFIG, URL, proj_ID, all_projects, GPL ):
 	couch = couchdb.Server("http://" + URL)
        	samp_db = couch['samples']
         proj_db = couch['projects']
 	info = None
 	WS_projects = get_WS_info(client)
         if all_projects:
-		content, ws_key, ss_key = get_google_document("Genomics Project list", "Ongoing", client)	
+		content, ws_key, ss_key = get_google_document("Genomics Project list", GPL, client) 	
 		row_ind, col_ind = get_column(content, 'Project name')
 		for j, row in enumerate(content):
       			try:
@@ -447,11 +458,12 @@ if __name__ == '__main__':
 Options (Only one option is acceptab):
 	-a,			upploads all projects in genomics project list into couchDB
      	-p <project_ID>,	upploads the project <project_ID> into couchDB                                         
-
+	-g <GPL_sheet>,		specify sheet in GPL if not Ongoing (default)
 """
     	parser = OptionParser(usage=usage)
     	parser.add_option("-p", "--project", dest="project_ID", default=None)
     	parser.add_option("-a", "--all_projects", dest="all_projects", action="store_true", default=False)
+	parser.add_option("-g", "--GPL", dest="GPL", default="Ongoing")
     	(options, args) = parser.parse_args()
 
 	CREDENTIALS_FILE = os.path.join(os.environ['HOME'], 'opt/config/gdocs_credentials')
@@ -464,9 +476,9 @@ Options (Only one option is acceptab):
 
 	if (options.project_ID is None) and (options.all_projects is False):
                 sys.exit()
-
 	kwargs = {'proj_ID': options.project_ID,
-                  'all_projects': options.all_projects}
+                  'all_projects': options.all_projects,
+		   'GPL':options.GPL}
     	main(make_client(CREDENTIALS_FILE), CONFIG, URL , **kwargs)
 
 
