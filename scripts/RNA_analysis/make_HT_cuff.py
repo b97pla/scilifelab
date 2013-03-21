@@ -40,7 +40,7 @@ except:
 tophat_out_path = "{0}/tophat_out_{1}".format(path,name) 
 f=open("HT_cuff_"+name+".sh",'w')
 print >>f, """#!/bin/bash -l
-#SBATCH -A a2010002
+#SBATCH -A a2012043
 #SBATCH -p node
 #SBATCH -t 10:00:00
 #SBATCH -e HT_cuff_{0}.err
@@ -48,7 +48,7 @@ print >>f, """#!/bin/bash -l
 #SBATCH -J HT_cuff_{0}
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user={3}
-{7}
+#SBATCH {7}
 
 module unload cufflinks
 module load {4}
