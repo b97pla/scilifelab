@@ -180,6 +180,19 @@ class DeliveryReportController(AbstractBaseController):
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
 
 
+    @controller.expose(help="Print the SciLife name to customer name conversion table for a project")
+    def name_table(self):
+        if not self._check_pargs(["project_name"]):
+            return
+        kw = vars(self.pargs)
+        kw.update({"flat_table":True, "samplesdb":self.app.config.get("db", "samples"), "flowcelldb":self.app.config.get("db", "flowcells"), "projectdb":self.app.config.get("db", "projects")})
+        out_data = project_status_note(**kw)
+        self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
+        self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
+        self.app._output_data['debug'].write(out_data['debug'].getvalue())
+        
+
+
     @controller.expose(help="Print summary QC data for a flowcell/project for application QC control")
     def application_qc(self):
         if not self._check_pargs(["project_name"]):
