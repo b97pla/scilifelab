@@ -9,7 +9,7 @@ from scilifelab.report import sequencing_success
 from scilifelab.report.rl import *
 from scilifelab.report.qc import application_qc, fastq_screen, QC_CUTOFF
 from scilifelab.bcbio.run import find_samples
-from scilifelab.report.delivery_notes import sample_status_note, project_status_note, name_conversion_table
+from scilifelab.report.delivery_notes import sample_status_note, project_status_note
 from scilifelab.report.best_practice import best_practice_note, SEQCAP_KITS
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, get_scilife_to_customer_name
 from scilifelab.utils.misc import query_yes_no, filtered_walk
@@ -184,9 +184,13 @@ class DeliveryReportController(AbstractBaseController):
     def name_table(self):
         if not self._check_pargs(["project_name"]):
             return
-        out_data = name_conversion_table(**vars(self.pargs))
+        kw = vars(self.pargs)
+        kw.update({"flat_table":True, "samplesdb":self.app.config.get("db", "samples"), "flowcelldb":self.app.config.get("db", "flowcells"), "projectdb":self.app.config.get("db", "projects")})
+        out_data = project_status_note(**kw)
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
+        self.app._output_data['debug'].write(out_data['debug'].getvalue())
+        
 
 
     @controller.expose(help="Print summary QC data for a flowcell/project for application QC control")
