@@ -1,6 +1,6 @@
 #!/bin/bash -l
 #SBATCH -A a2012043 
-#SBATCH -p devel
+#SBATCH -p node
 #SBATCH -t 01:00:00
 #SBATCH -J make_sbatch
 #SBATCH -e make_sbatch.err
