@@ -7,7 +7,7 @@ if len(sys.argv) < 7:
 Usage:
         stand in 'intermediate' and run
 
-        RNA_analysis.py <project id> <bed file> <gtf file> <mail> <config_file> <run dir 1> <run dir 2> ... <run dir N>
+        RNA_analysis.py <project id> <bed file> <gtf file> <mail> <config_file> <extra_arg> <run dir 1> <run dir 2> ... <run dir N>
 
 Arguments:
         <run dir i>
