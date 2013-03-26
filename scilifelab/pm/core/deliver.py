@@ -83,20 +83,8 @@ class DeliveryController(AbstractBaseController):
 
     @controller.expose(help="Deliver best practice results")
     def best_practice(self):
-        if not self._check_pargs(["project", "uppmax_project"]):
-            return
-        project_path = os.path.normpath(os.path.join("/proj", self.pargs.uppmax_project))
-        if not os.path.exists(project_path):
-            self.log.warn("No such project {}; skipping".format(self.pargs.uppmax_project))
-            return
-        if self.pargs.outdir:
-            outpath = os.path.join(project_path, "INBOX", self.pargs.outdir)
-        else:
-            outpath = os.path.join(project_path, "INBOX", self.pargs.statusdb_project_name) if self.pargs.statusdb_project_name else os.path.join(project_path, "INBOX", self.pargs.project)
-        if not query_yes_no("Going to deliver data to {}; continue?".format(outpath)):
-            return
-        if not os.path.exists(outpath):
-            self.app.cmd.safe_makedir(outpath)
+        outpath = self._setup_delivery()
+        
         kw = vars(self.pargs)
         basedir = os.path.abspath(os.path.join(self._meta.root_path, self._meta.path_id))
         flist = find_samples(basedir, **vars(self.pargs))
@@ -130,7 +118,30 @@ class DeliveryController(AbstractBaseController):
         if self.pargs.size:
             self.app._output_data['stderr'].write("\n********************************\nEstimated delivery size: {:.1f}G\n********************************".format(size/1e9))
 
-
+    @controller.expose(help="Deliver raw data")
+    def raw_data(self):
+        import pdb; pdb.set_trace()
+        outpath = self._setup_delivery()
+        print self.pargs
+    
+    def _setup_delivery(self):
+        if not self._check_pargs(["project", "uppmax_project"]):
+            return
+        project_path = os.path.normpath(os.path.join("/proj", self.pargs.uppmax_project))
+        if not os.path.exists(project_path):
+            self.log.warn("No such project {}; skipping".format(self.pargs.uppmax_project))
+            return
+        if self.pargs.outdir:
+            outpath = os.path.join(project_path, "INBOX", self.pargs.outdir)
+        else:
+            outpath = os.path.join(project_path, "INBOX", self.pargs.statusdb_project_name) if self.pargs.statusdb_project_name else os.path.join(project_path, "INBOX", self.pargs.project)
+        if not query_yes_no("Going to deliver data to {}; continue?".format(outpath)):
+            return
+        if not os.path.exists(outpath):
+            self.app.cmd.safe_makedir(outpath)
+        
+        return outpath
+        
     def _transfer_files(self, sources, targets):
         for src, tgt in zip(sources, targets):
             if not os.path.exists(os.path.dirname(tgt)):
