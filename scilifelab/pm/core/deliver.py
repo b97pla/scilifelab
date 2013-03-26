@@ -8,7 +8,7 @@ from scilifelab.pm.core.controller import AbstractBaseController, AbstractExtend
 from scilifelab.report import sequencing_success
 from scilifelab.report.rl import *
 from scilifelab.report.qc import application_qc, fastq_screen, QC_CUTOFF
-from scilifelab.bcbio.run import find_samples
+from scilifelab.bcbio.run import find_samples, get_file_copy_list
 from scilifelab.report.delivery_notes import sample_status_note, project_status_note
 from scilifelab.report.best_practice import best_practice_note, SEQCAP_KITS
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, get_scilife_to_customer_name
@@ -30,6 +30,8 @@ class DeliveryController(AbstractBaseController):
         arguments = [
             (['project'], dict(help="Project name, formatted as 'J.Doe_00_00'", default=None, nargs="?")),
             (['uppmax_project'], dict(help="Uppmax project.", default=None, nargs="?")),
+            (['--flowcell'], dict(action="store", dest="flowcell", default=None, help="The specific flowcell to deliver data for (format: YYMMDD_[AB]ABC123XX)")),
+            (['--production-root'], dict(action="store", dest="production_root", default=None, help="Path to production run folder. Overrides config setting.")),
             (['-i', '--interactive'], dict(help="Interactively select samples to be delivered", default=False, action="store_true")),
             (['-a', '--deliver_all_fcs'], dict(help="rsync samples from all flow cells", default=False, action="store_true")),
             (['-S', '--sample'], dict(help="Project sample id. If sample is a file, read file and use sample names within it. Sample names can also be given as full paths to bcbb-config.yaml configuration file.", action="store", default=None, type=str)),
@@ -122,6 +124,24 @@ class DeliveryController(AbstractBaseController):
     def raw_data(self):
         import pdb; pdb.set_trace()
         outpath = self._setup_delivery()
+        self._meta.production_root = self.pargs.production_root if self.pargs.production_root is not None else self.app.config.get("production", "root")
+        proj_base_dir = os.path.join(self._meta.production_root, self.pargs.project)
+        
+        # If running interactively, query for samples to skip
+        skip_list = []
+        if self.pargs.interactive:
+            for sample_dir in os.listdir(proj_base_dir):
+                if not os.path.isdir(os.path.join(proj_base_dir,sample_dir)):
+                    continue
+                if not query_yes_no("Deliver sample {:s}?".format(sample_dir), default="no"):
+                    skip_list.append(sample_dir)
+        
+        to_copy = get_file_copy_list(proj_base_dir,
+                                     outpath,
+                                 fcid,
+                                 args.deliver_all_fcs,
+                                 args.deliver_nophix,
+                                 skip_list)
         print self.pargs
     
     def _setup_delivery(self):
