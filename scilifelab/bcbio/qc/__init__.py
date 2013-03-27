@@ -11,6 +11,7 @@ import csv
 import collections
 import xml.etree.cElementTree as ET
 from bs4 import BeautifulSoup
+import datetime
 
 from cement.core import backend
 LOG = backend.minimal_logger("bcbio")
@@ -62,6 +63,19 @@ class MetricsParser():
         for line in in_handle:
             data[line['lane']].append({c:line[c] for c in in_handle.fieldnames if c != 'lane'})
         return data
+
+    def parse_bcbb_checkpoints(self, in_handle):
+        
+        TIMEFORMAT = "%Y-%m-%dT%H:%M:%S.%f"
+        timestamp = []
+        for line in in_handle:
+            try:
+                ts = datetime.datetime.strptime(line.strip(), TIMEFORMAT)
+                timestamp.append(ts)
+            except ValueError:
+                pass 
+    
+        return timestamp
 
 class ExtendedPicardMetricsParser(PicardMetricsParser):
     """Extend basic functionality and parse all picard metrics"""
@@ -487,6 +501,24 @@ class SampleRunMetricsParser(RunMetricsParser):
         except:
             self.log.warn("no fastq screen metrics for sample {}".format(barcode_name))
             return {}
+
+    def parse_bcbb_checkpoints(self, barcode_name, sample_prj, flowcell, barcode_id, **kw):
+        self.log.debug("parse_bcbb_checkpoints for sample {}, project {} in run {}".format(barcode_name, sample_prj, flowcell))
+        parser = MetricsParser()
+        pattern = r"[0-9][0-9]_.*\.txt"
+        files = self.filter_files(pattern)
+        self.log.debug("files {}".format(",".join(files)))
+        
+        checkpoints = {}
+        for f in files:
+            try: 
+                with open(f) as fh:
+                    checkpoints[os.path.splitext(os.path.basename(f))[0]] = parser.parse_bcbb_checkpoints(fh)
+            except Exception as e:
+                self.log.warn("Exception: {}".format(e))
+                self.log.warn("no bcbb checkpoint for sample {} using pattern '{}'".format(barcode_name, pattern))
+        
+        return checkpoints
 
     def read_fastqc_metrics(self, barcode_name, sample_prj, lane, flowcell, barcode_id, **kw):
         self.log.debug("read_fastqc_metrics for sample {}, project {}, lane {} in run {}".format(barcode_name, sample_prj, lane, flowcell))
