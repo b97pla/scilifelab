@@ -12,6 +12,8 @@ import bcbio.solexa.flowcell
 import bcbio.solexa.samplesheet
 from bcbio.pipeline.config_loader import load_config
 from scilifelab.db.statusdb import ProjectSummaryConnection
+from scilifelab.illumina.hiseq import HiSeqRun
+from scilifelab.illumina import IlluminaRun
 
 # The directory where CASAVA has written the demuxed output
 CASAVA_OUTPUT_DIR = "Unaligned"
@@ -434,32 +436,38 @@ def parse_casava_directory(fc_dir):
     
     fc_dir = os.path.abspath(fc_dir)
     fc_name, fc_date = bcbio.solexa.flowcell.get_flowcell_info(fc_dir)
-    unaligned_dir_pattern = os.path.join(fc_dir,"{}*".format(CASAVA_OUTPUT_DIR))
-    basecall_stats_dir_pattern = os.path.join(unaligned_dir_pattern,"Basecall_Stats_*")
-    basecall_stats_dir = [os.path.relpath(d,fc_dir) for d in glob.glob(basecall_stats_dir_pattern)]
+    run = HiSeqRun(fc_dir)
+    basecall_stats_dir = run.get_basecall_stats()
+    undetermined_indices_dir = run.get_unmatched_dir()
     
-    project_dir_pattern = os.path.join(unaligned_dir_pattern,"Project_*")
-    for project_dir in glob.glob(project_dir_pattern):
+    # Get samples that are alone in a lane
+    single_lane_samples = []
+    if run.samplesheet:
+        for sample in run.samplesheet:
+            i = run.samplesheet.header.indexOf("Lane")
+            if len([1 for s in run.samplesheet if s[i] == sample[i]]) == 1:
+                single_lane_samples.append([sample[run.samplesheet.header.indexOf("SampleProject")],
+                                            sample[run.samplesheet.header.indexOf("SampleID")],
+                                            sample[i]])
+        
+    for project_dir in run.get_project_dir(): 
         project_samples = []
-        sample_dir_pattern = os.path.join(project_dir,"Sample_*")
-        for sample_dir in glob.glob(sample_dir_pattern):
-            fastq_file_pattern = os.path.join(sample_dir,"*.fastq.gz")
-            samplesheet_pattern = os.path.join(sample_dir,"*.csv")
-            fastq_files = [os.path.basename(file) for file in glob.glob(fastq_file_pattern)]
-            samplesheet = glob.glob(samplesheet_pattern)
-            assert len(samplesheet) == 1, "ERROR: Could not unambiguously locate samplesheet in %s" % sample_dir
-            sample_name = os.path.basename(sample_dir).replace("Sample_","").replace('__','.')
+        project_name = os.path.basename(project_dir).split("_",1)[1].replace('__','.')
+        for sample_dir in run.get_sample_dir(project_name):
+            sample_name = os.path.basename(sample_dir).split("_",1)[1].replace('__','.')
+            fastq_files = run.get_project_sample_files(project_name, sample_name)
+            samplesheet = IlluminaRun.get_samplesheet(sample_dir)
             project_samples.append({'sample_dir': os.path.basename(sample_dir), 
                                     'sample_name': sample_name, 
-                                    'files': fastq_files, 
-                                    'samplesheet': os.path.basename(samplesheet[0])})
-        project_name = os.path.basename(project_dir).replace("Project_","").replace('__','.')
+                                    'files': [os.path.basename(f) for f in fastq_files], 
+                                    'samplesheet': os.path.basename(samplesheet)})
+        
         projects.append({'data_dir': os.path.relpath(os.path.dirname(project_dir),fc_dir), 
                          'project_dir': os.path.basename(project_dir), 
                          'project_name': project_name, 
                          'samples': project_samples})
-    
-    return {'fc_dir': fc_dir, 'fc_name': fc_name, 'fc_date': fc_date, 'basecall_stats_dir': basecall_stats_dir, 'projects': projects}
+            
+    return {'fc_dir': fc_dir, 'fc_name': fc_name, 'fc_date': fc_date, 'basecall_stats_dir': basecall_stats_dir, 'projects': projects, 'undetermined_indices': undetermined_indices_dir}
     
 def has_casava_output(fc_dir):
     try:

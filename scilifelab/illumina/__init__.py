@@ -103,6 +103,29 @@ class IlluminaRun(object):
         
         return dirs
 
+    def get_sample_dir(self, project=None, sample=None):
+        """Return the path to the directory containing the sample reads, optionally filtering by project and sample
+        """
+        dirs = []
+        for project_dir in self.get_project_dir(project):
+            glob_pattern = os.path.join(proejct_dir,"Sample_*")
+            for dir in glob.glob(glob_pattern):
+                if sample is not None and sample != os.path.basename(dir).split("_",1)[1]:
+                    continue
+                dirs.append(dir)
+                
+        return dirs
+
+    def get_project_sample_files(self, project=None, sample=None):
+        """Return the path to the sample files, optionally filtering by project and sample
+        """
+        files = []
+        for sample_dir in self.get_sample_dir(project,sample):
+            glob_pattern = os.path.join(sample_dir,"*.fastq.gz")
+            files.extend(glob.glob(glob_pattern))
+            
+        return files
+
     def get_sequence_dir_pattern(self):
         """Return the path pattern to the top directories containing the sequence reads
         """
