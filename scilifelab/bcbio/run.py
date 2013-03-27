@@ -317,7 +317,7 @@ def setup_sample(f, analysis, amplicon=False, genome_build="hg19", **kw):
         if kw.get('distributed', None):
             LOG.info("setting distributed execution")
             pp['algorithm']['num_cores'] = 'messaging'
-        else:
+        elif kw.get('num_cores', None):
             LOG.info("setting parallell execution")
             pp['algorithm']['num_cores'] = kw['num_cores']
         if kw.get('snpEff', None):
