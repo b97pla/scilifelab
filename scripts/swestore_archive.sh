@@ -156,8 +156,8 @@ do
   # Remove source file if everything seems OK
   if [ ${CLEAN} == "1" ]
   then
-    echo `date -u +"%xT%TZ"`"   Removing source file ${RUN}" |tee -a ${LOGFILE}
-    CMD="rm -f ${RUN}"
+    echo `date -u +"%xT%TZ"`"   Removing source file ${RUN} and moving log files to archived" |tee -a ${LOGFILE}
+    CMD="rm -f ${RUN} && mv ${RUN}.* archived/"
     echo $CMD |tee -a ${LOGFILE}
     if [ ${DRYRUN} == "0" ]
     then
