@@ -70,7 +70,7 @@ class MetricsParser():
         timestamp = []
         for line in in_handle:
             try:
-                ts = datetime.datetime.strptime(line.strip(), TIMEFORMAT)
+                ts = "{}Z".format(datetime.datetime.strptime(line.strip(), TIMEFORMAT).isoformat())
                 timestamp.append(ts)
             except ValueError:
                 pass 
@@ -505,8 +505,10 @@ class SampleRunMetricsParser(RunMetricsParser):
     def parse_bcbb_checkpoints(self, barcode_name, sample_prj, flowcell, barcode_id, **kw):
         self.log.debug("parse_bcbb_checkpoints for sample {}, project {} in run {}".format(barcode_name, sample_prj, flowcell))
         parser = MetricsParser()
-        pattern = r"[0-9][0-9]_.*\.txt"
-        files = self.filter_files(pattern)
+        def filter_fn(f):
+            return re.match("[0-9][0-9]_[^\/]+\.txt", os.path.basename(f)) != None
+        
+        files = self.filter_files(None,filter_fn)
         self.log.debug("files {}".format(",".join(files)))
         
         checkpoints = {}
