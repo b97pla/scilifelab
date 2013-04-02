@@ -130,14 +130,15 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
 				try: Av_sice = int(float(info[key][prep][0]))
 				except: Av_sice = info[key][prep][0]
 				prep_status = info[key][prep][1]
-			if obj['samples'][striped_scilife_name].has_key("library_prep"):
-				if obj['samples'][striped_scilife_name]["library_prep"].has_key(prep):
-        				obj['samples'][striped_scilife_name]["library_prep"][prep]["average_size_bp"]=Av_sice
-					obj['samples'][striped_scilife_name]["library_prep"][prep]["prep_status"]=prep_status
-				else:
-					obj['samples'][striped_scilife_name]["library_prep"][prep]={"average_size_bp":Av_sice,"prep_status":prep_status}
-			else:
-				obj['samples'][striped_scilife_name]["library_prep"]={prep:{"average_size_bp":Av_sice,"prep_status":prep_status}}
+                        if obj['samples'].has_key(striped_scilife_name):
+                                if obj['samples'][striped_scilife_name].has_key("library_prep"):
+                                        if obj['samples'][striped_scilife_name]["library_prep"].has_key(prep):
+                                                obj['samples'][striped_scilife_name]["library_prep"][prep]["average_size_bp"]=Av_sice
+                                                obj['samples'][striped_scilife_name]["library_prep"][prep]["prep_status"]=prep_status
+                                        else:
+                                                obj['samples'][striped_scilife_name]["library_prep"][prep]={"average_size_bp":Av_sice,"prep_status":prep_status}
+                                else:
+                                        obj['samples'][striped_scilife_name]["library_prep"]={prep:{"average_size_bp":Av_sice,"prep_status":prep_status}}
       	return obj
 
 
