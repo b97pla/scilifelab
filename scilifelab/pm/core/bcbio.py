@@ -29,7 +29,7 @@ class BcbioRunController(AbstractBaseController):
         group.add_argument('--targets', help="sequence capture target file", action="store", default=None)
         group.add_argument('--baits', help="sequence capture baits file", action="store", default=None)
         group.add_argument('--distributed', help="run distributed, changing 'num_cores' in  post_process to 'messaging': calls automated_initial_analysis.py", action="store_true", default=False)
-        group.add_argument('--num_cores', help="num_cores value; default 8", action="store", default=8, type=int)
+        group.add_argument('--num_cores', help="Number of concurrent processes (not threads) to run during analysis", action="store", default=None, type=int)
         group.add_argument('--only_setup', help="only perform setup", action="store_true", default=False)
         group.add_argument('--restart', help="restart analysis", action="store_true", default=False)
         group.add_argument('--analysis', help="set analysis type in bcbb config file", action="store", default=None, type=str)
@@ -38,6 +38,9 @@ class BcbioRunController(AbstractBaseController):
         group.add_argument('--new_config', help="make new config file", action="store_true", default=False)
         group.add_argument('--hs_file_type', help="File type glob", default="sort-dup")
         group.add_argument('--from_ssheet', help="setup analysis from SampleSheet.csv file", default=False, action="store_true")
+
+        group = app.args.add_argument_group('Bcbio variant annotation group', 'Options for bcbio variant annotation')
+        group.add_argument('--vcfext', help="vcf extension to search for and merge. Default 'sort-gatkrecal-realign-variants-combined-phased-annotated'", default="sort-gatkrecal-realign-variants-combined-phased-annotated", action="store")
         super(BcbioRunController, self)._setup(app)
 
     def _sample_status(self, x):
@@ -121,14 +124,10 @@ class BcbioRunController(AbstractBaseController):
         ### FIX ME: this isn't caught by _process_args
         flist = []
         path =  self.pargs.flowcell if self.pargs.flowcell else self.pargs.project
-        if self.pargs.sample:
-            if os.path.exists(self.pargs.sample):
-                with open(self.pargs.sample) as fh:
-                    flist = [x.rstrip() for x in fh.readlines()]
-            else:
-                pattern = "{}{}".format(sample, pattern)
-        if not flist:
-            flist = filtered_walk(os.path.join(self.config.get(self.app.controller._meta.label, "root"), path), filter_fn=filter_fn, exclude_dirs=['nophix', 'alignments', 'fastqc', 'fastq_screen'])
+        basedir = os.path.abspath(os.path.join(self.app.controller._meta.root_path, self.app.controller._meta.path_id))
+        samples = find_samples(basedir, **vars(self.pargs))
+        inc_dirs = [os.path.dirname(x) for x in samples]
+        flist = filtered_walk(os.path.join(self.config.get(self.app.controller._meta.label, "root"), path), filter_fn=filter_fn, exclude_dirs=['nophix', 'alignments', 'fastqc', 'fastq_screen'], include_dirs=inc_dirs)
         if not query_yes_no("Going to run hs_metrics on {} files. Are you sure you want to continue?".format(len(flist)), force=self.pargs.force):
             return
         for f in flist:
@@ -141,34 +140,45 @@ class BcbioRunController(AbstractBaseController):
             if out:
                 self.app._output_data["stdout"].write(out.rstrip())
 
-    @controller.expose(help="Perform basic variant summary")
+    @controller.expose(help="Perform basic variant summary. NOTE: requires libraries 'vcftools' and 'tabix'")
     def vcf_summary(self):
         if not self._check_pargs(["project"]):
             return
         flist = find_samples(os.path.abspath(os.path.join(self.app.controller._meta.project_root, self.app.controller._meta.path_id)), **vars(self.pargs))
-        vcf_d = get_vcf_files(flist)
+        vcf_d = get_vcf_files(flist, **vars(self.pargs))
         ## Traverse files, copy to result directory, run bgzip and tabix, and merge vcfs to one file
         outdir = os.path.join(os.path.abspath(os.path.join(self.app.controller._meta.project_root, self.app.controller._meta.path_id, "intermediate", "results", "vcf")))
+        vcf_out = []
         if not os.path.exists(outdir):
             self.app.cmd.safe_makedir(outdir)
         for k, v in vcf_d.iteritems():
-            print v
-            if v.endswith(".gz"):
-                tgt = os.path.join(outdir, os.path.basename(v).replace("TOTAL", "TOTAL_{}".format(k)))
-                v = v.replace(".gz", "")
-                tgt = tgt.replace(".gz", "")
-            else:
+            # FIXME: this should be memoized
+            if os.path.exists("{}.tbi".format(v)):
+                self.app.log.info("{}.tbi exists; skipping bgzip and tabix operations".format(v))
+                vcf_out.append(v)
+                continue
+            if not v.endswith(".gz"):
                 ## bgzip
-                LOG.info("Running bgzip on {}".format(v))
+                self.app.log.info("Running bgzip on {}".format(v))
                 cl = ["bgzip", v]
                 self.app.cmd.command(cl)
-            ##if not os.path.exists("{}.gz.tbi"):
-            ## tabix
-            LOG.info("Running tabix on {}.gz".format(v))
+                vcf_out.append("{}.gz".format(v))
+            else:
+                vcf_out.append(v)
+            # tabix
+            self.app.log.info("Running tabix on {}.gz".format(v))
             cl = ["tabix", "-f", "-p", "vcf", "{}.gz".format(v)]
             self.app.cmd.command(cl)
-            self.app.cmd.link("{}.gz".format(v), "{}.gz".format(tgt))
-            self.app.cmd.link("{}.gz.tbi".format(v), "{}.gz.tbi".format(tgt))
-        ## Make all-variants file
-        # all_variants = os.path.join(outdir, "all-variants.vcf")
-        # cl = vcf-merge `ls -1 *.vcf.gz | tr '\n', ' '` > all-variants.vcf
+        # Make all-variants file
+        all_variants = os.path.join(outdir, "all-variants.vcf")
+        cl = ['vcf-merge'] + vcf_out
+        if not os.path.exists(all_variants):
+            self.app.log.debug("Merging vcf files {} to {}".format(vcf_out ,all_variants))
+            self.app.log.info("Merging {} vcf files to {}".format(len(vcf_out), all_variants))
+            output = self.app.cmd.command(cl)
+            with open(all_variants, "w") as fh:
+                fh.write(output)
+            cl = ['bgzip', all_variants]
+            self.app.cmd.command(cl)
+            cl = ['tabix', "-f", "-p", "vcf", "{}.gz".format(all_variants)]
+            self.app.cmd.command(cl)

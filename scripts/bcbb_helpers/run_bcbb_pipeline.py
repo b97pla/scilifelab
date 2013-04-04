@@ -11,6 +11,7 @@ import argparse
 import bcbio.solexa.flowcell
 import bcbio.solexa.samplesheet
 from bcbio.pipeline.config_loader import load_config
+from scilifelab.db.statusdb import ProjectSummaryConnection
 
 # The directory where CASAVA has written the demuxed output
 CASAVA_OUTPUT_DIR = "Unaligned"
@@ -153,6 +154,12 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
     assert os.path.exists(fc_dir), "ERROR: Flowcell directory %s does not exist" % fc_dir
     assert os.path.exists(analysis_dir), "ERROR: Analysis top directory %s does not exist" % analysis_dir
     
+    couch_credentials = config.get('couch_db',{})
+    couch_credentials['url'] = couch_credentials.get('maggie_url','localhost')
+    couch_credentials['port'] = couch_credentials.get('maggie_port','5984')
+    couch_credentials['username'] = couch_credentials.get('maggie_username','anonymous')
+    couch_credentials['password'] = couch_credentials.get('maggie_password','password')
+    
     # A list with the arguments to each run, when running by sample
     sample_run_arguments = []
     
@@ -198,7 +205,7 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
             
             # Generate a sample-specific configuration yaml structure
             samplesheet = os.path.join(src_sample_dir,sample['samplesheet'])
-            sample_config = bcbb_configuration_from_samplesheet(samplesheet)
+            sample_config = bcbb_configuration_from_samplesheet(samplesheet, couch_credentials)
              
             # Append the sequence files to the config
             for lane in sample_config:
@@ -349,7 +356,7 @@ def _setup_config_files(dst_dir,configs,post_process_config_file,fc_dir,sample_n
     
     return [os.path.basename(local_post_process_file), dst_dir, fc_dir, os.path.basename(config_file)]
     
-def bcbb_configuration_from_samplesheet(csv_samplesheet):
+def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
     """Parse an illumina csv-samplesheet and return a dictionary suitable for the bcbb-pipeline
     """
     tfh, yaml_file = tempfile.mkstemp('.yaml','samplesheet')
@@ -357,21 +364,52 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet):
     yaml_file = bcbio.solexa.samplesheet.csv2yaml(csv_samplesheet,yaml_file)
     with open(yaml_file) as fh:
         config = yaml.load(fh)
-    
-    # Replace the default analysis
+
+    application_setup = {
+                         'Amplicon': {'analysis': 'Align_standard'},
+                         'ChIP-seq': {'analysis': 'RNA-seq'},
+                         'Custom capture': {'analysis': 'Align_standard_seqcap'},
+                         'de novo': {'analysis': 'Align_standard',
+                                     'genome_build': 'unknown'},
+                         'Exome capture': {'analysis': 'Align_standard_seqcap'},
+                         'Finished library': {'analysis': 'Align_standard',
+                                              'genome_build': 'unknown'},
+                         'Mate-pair': {'analysis': 'Align_standard',
+                                       'genome_build': 'unknown'},
+                         'Metagenome': {'analysis': 'Align_standard',
+                                        'genome_build': 'unknown'},
+                         'miRNA-seq': {'analysis': 'Align_standard',
+                                       'genome_build': 'unknown'},
+                         'RNA-seq (mRNA)': {'analysis': 'RNA-seq'},
+                         'RNA-seq (total RNA)': {'analysis': 'RNA-seq'},
+                         'WG re-seq': {'analysis': 'Align_standard'},
+                         'default': {'analysis': 'Align_standard'},
+                         }
+
+    #Connect to maggie to get project application 
+    try:
+        p_con = ProjectSummaryConnection(**couch_credentials)
+    except:
+        print "Can't connect to maggie to get application"
+        p_con = None
+  
+  # Replace the default analysis
     ## TODO: This is an ugly hack, should be replaced by a custom config 
     for lane in config:
-        if lane.get('genome_build','') == 'hg19':
-            lane['analysis'] = 'Align_standard_seqcap'
-        else:
-            lane['analysis'] = 'Align_standard'
         for plex in lane.get('multiplex',[]):
-            if plex.get('genome_build','') == 'hg19':
-                plex['analysis'] = 'Align_standard_seqcap'
-            else:
-                plex['analysis'] = 'Align_standard'
-                
-
+            application='default'
+            if p_con is not None:
+                try:
+                    Proj=plex.get('sample_prj','')
+                    project = p_con.get_entry(Proj)
+                    if project is not None:
+                        application = project.get("application", 'default').strip()
+                except:
+                    application='default'
+            setup = application_setup.get(application,application_setup['default'])
+            for key, val in setup.items():
+                plex[key] = val
+            
     # Remove the yaml file, we will write a new one later
     os.remove(yaml_file)
     

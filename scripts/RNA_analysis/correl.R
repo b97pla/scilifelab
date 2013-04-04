@@ -32,7 +32,7 @@ write.table(d.2, file="fpkm_table.txt", quote=F, row.names=F, sep="\t")
 # continue with numeric e
 
 pdf("FPKM_heatmap.pdf")
-heatmap(cor(e), symm=T)
+heatmap(cor(e), symm=T,cexCol=0.4,cexRow=0.4)
 dev.off()
 
 library(MASS)

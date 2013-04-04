@@ -223,6 +223,7 @@ class RunMetricsController(AbstractBaseController):
         fcdir = os.path.join(os.path.abspath(self._meta.root_path), self.pargs.flowcell)
         (fc_date, fc_name) = fc_parts(self.pargs.flowcell)
         ## Check modification time
+        demux_stats = None
         if modified_within_days(fcdir, self.pargs.mtime):
             fc_kw = dict(fc_date = fc_date, fc_name=fc_name)
             parser = FlowcellRunMetricsParser(fcdir)
@@ -234,8 +235,9 @@ class RunMetricsController(AbstractBaseController):
             fcobj["undemultiplexed_barcodes"] = parser.parse_undemultiplexed_barcode_metrics(**fc_kw)
             fcobj["illumina"].update({"Demultiplex_Stats" : parser.parse_demultiplex_stats_htm(**fc_kw)})
             fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(runinfo_csv=runinfo_csv, **fc_kw)
+            demux_stats = fcobj["illumina"]["Demultiplex_Stats"]
             qc_objects.append(fcobj)
-        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, demultiplex_stats=fcobj["illumina"]["Demultiplex_Stats"])
+        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, demultiplex_stats=demux_stats)
         return qc_objects
 
     @controller.expose(help="Upload run metrics to statusdb")
@@ -516,6 +518,23 @@ class RunMetricsController(AbstractBaseController):
             samples[id][key] = [project]
         
         return samples
+    
+    def _get_run_parameter_data(self, fc_doc):
+        """
+        Extract instrument type and run mode from runParameter data
+        """
+        
+        runParameters = fc_doc.get("RunParameters",{}).get("Setup",{})
+        run_data = {}
+        if "ApplicationVersion" in runParameters:
+            if int(runParameters['ApplicationVersion'][0]) > 1:
+                run_data["InstrumentType"] = "HiSeq2500"
+            else:
+                run_data["InstrumentType"] = "HiSeq2000"
+        if "RunMode" in runParameters:
+            run_data["RunMode"] = runParameters["RunMode"]
+            
+        return run_data
 
     @controller.expose(help="List the projects and corresponding applications on a flowcell")
     def list_projects(self):
@@ -550,7 +569,16 @@ class RunMetricsController(AbstractBaseController):
         if len(ssheet_data) == 0:
             self.log.warn("No csv samplesheet data for flowcell {}".format(fcid))
             return
-    
+        
+        self.log.debug("Fetch runParameter data for flowcell {}".format(fcid))
+        run_data = self._get_run_parameter_data(fc)
+        if len(run_data) == 0:
+            self.log.warn("No runParameter data for flowcell {}".format(fcid))
+        
+        out_data = [[self.pargs.flowcell,
+                     run_data.get("InstrumentType","HiSeq2000"),
+                     run_data.get("RunMode","High Output")]]
+        
         # Extract the project names
         projects = set([proj[0].replace("__",".") for data in ssheet_data.values() for proj in data.values()])
     

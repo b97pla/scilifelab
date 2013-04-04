@@ -7,7 +7,7 @@ if len(sys.argv) < 7:
 Usage:
         stand in 'intermediate' and run
 
-        RNA_analysis.py <project id> <bed file> <gtf file> <mail> <config_file> <run dir 1> <run dir 2> ... <run dir N>
+        RNA_analysis.py <project id> <bed file> <gtf file> <mail> <config_file> <extra_arg> <run dir 1> <run dir 2> ... <run dir N>
 
 Arguments:
         <run dir i>
@@ -37,10 +37,13 @@ Arguments:
                 - mail adress for SLURM messages
 
         <config_file>
-                - post_process.yaml"""
+                - post_process.yaml
+
+	<extra_arg>
+		- qos flagg for sbatch scripts"""
 	sys.exit()
 
-command=[os.environ['HOME']+'/opt/scilifelab/scripts/RNA_analysis/RNA_analysis.sh', '-p', sys.argv[1], '-b', sys.argv[2], '-g', sys.argv[3], '-m', sys.argv[4], '-c', sys.argv[5]] + sys.argv[6:]
+command=[os.environ['HOME']+'/opt/scilifelab/scripts/RNA_analysis/RNA_analysis.sh', '-p', sys.argv[1], '-b', sys.argv[2], '-g', sys.argv[3], '-m', sys.argv[4], '-c', sys.argv[5], '-e', sys.argv[6]] + sys.argv[7:]
 command=' '.join(command)
 os.system(command)
 
