@@ -1,6 +1,7 @@
 """Scilifelab dry module"""
 import os
 import shutil
+from cement.utils import shell
 
 import scilifelab.log
 LOG = scilifelab.log.minimal_logger(__name__)
@@ -14,8 +15,8 @@ def dry(message, func, dry_run=True, *args, **kw):
     :param **kw: keyword arguments to pass to function
     """
     if dry_run:
-        LOG.debug("(DRY_RUN): " + message + "\n")
-        return "(DRY_RUN): " + message + "\n"
+        LOG.debug("(DRY_RUN): " + str(message) + "\n")
+        return "(DRY_RUN): " + str(message) + "\n"
     return func(*args, **kw)
 
 def dry_unlink(fn, dry_run=True):
@@ -103,3 +104,24 @@ def dry_makedir(dname, dry_run=True):
         return dname
     return dry("Make directory %s" % dname, runpipe, dry_run)
 
+
+def dry_rsync(src, tgt, options="-av", dry_run=True, ignore_error=False, capture=True):
+    """Rsync src to tgt.
+
+    :param src: source destination
+    :param tgt: target destination
+    :param options: rsync options
+    """
+    if src is None or tgt is None:
+        return
+    cmd_args = ["rsync", options, src, tgt]
+    cmd = [" ".join(cmd_args)]
+    def runpipe():
+        (stdout, stderr, returncode) = shell.exec_cmd(cmd, **{'shell':True})
+        if returncode and not ignore_error:
+            if capture:
+                LOG.error(stderr)
+            raise Exception("Subprocess return code: {}".format(returncode))
+        if capture:
+            return stdout
+    return dry(cmd, runpipe, dry_run)

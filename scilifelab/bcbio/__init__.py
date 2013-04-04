@@ -1,8 +1,9 @@
 """bcbio init"""
 import os
 import copy
-import datetime
 import yaml
+from itertools import izip
+from scilifelab.utils.dry import dry_rsync
 from scilifelab.utils.misc import opt_to_dict
 from scilifelab.log import minimal_logger
 
@@ -131,13 +132,17 @@ def sort_sample_config_fastq(conf):
     newconf['details'] = runinfo
     return newconf
 
-def merge_sample_config(flist, sample):
+def merge_sample_config(flist, sample, out_d, dry_run=True):
     """Merge sample config files, making unique lanes if necessary.
 
-    Also write absolute paths to input sequence files. This will remove the multiplex key and place all configurations lane-wise.
+    Also copies sequence files with rsync to the output directory.
+    This is a workaround for the case where sequence file names are
+    identical for different flowcell runs, causing the pipeline to
+    crash.
 
     :param flist: list of configuration files
     :param sample: sample name to be used in description field for merging
+    :param out_d: output directory
     
     :returns: merged configuration 
     """
@@ -146,15 +151,19 @@ def merge_sample_config(flist, sample):
     for f in flist:
         with open(f) as fh:
             conf = yaml.load(fh)
+        # Make sure the fastq files exist
+        conf = sort_sample_config_fastq(conf)
         runinfo = conf.get("details") if conf.get("details", None) else conf
         for i in range(0, len(runinfo)):
             for j in range(0, len(runinfo[i].get("multiplex"))):
                 seqfiles = [os.path.join(os.path.dirname(f), x) for x in runinfo[i]["multiplex"][0]["files"]]
+                target_seqfiles = [os.path.join(out_d, os.path.basename(x).replace(sample, "{}_{}".format(sample, runinfo[i]["flowcell_id"]))) for x in seqfiles]
+                [dry_rsync(src, tgt, dry_run=dry_run) for src, tgt in izip(seqfiles, target_seqfiles)]
                 info = {}
                 info["lane"] = str(lane)
                 info["analysis"] = runinfo[i]["analysis"]
                 info["description"] = str(sample)
-                info["files"] = seqfiles
+                info["files"] = target_seqfiles
                 info["genome_build"] = runinfo[i]["genome_build"]
                 newconf['details'].append(info)
                 lane = lane + 1

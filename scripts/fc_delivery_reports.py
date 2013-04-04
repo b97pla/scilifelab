@@ -626,8 +626,7 @@ def generate_report(proj_conf):
     low_samples = []
 
     for l in proj_conf['lanes']:
-        
-        bc_file_name_prefix = os.path.join(proj_conf['analysis_dir'], proj_conf['flowcell'], '_'.join([l['lane'], fc_date, fc_name, "nophix_barcode"]), '_'.join([l['lane'], fc_date, fc_name, "nophix"]))
+	bc_file_name_prefix = os.path.join(proj_conf['analysis_dir'], proj_conf['flowcell'], '_'.join([l['lane'], fc_date, fc_name, "nophix_barcode"]), '_'.join([l['lane'], fc_date, fc_name, "nophix"]))
         bc_file = bc_file_name_prefix + ".bc_metrics"
 	if not os.path.exists(bc_file):
 		bc_file = bc_file_name_prefix + "_bc.metrics"
@@ -638,7 +637,7 @@ def generate_report(proj_conf):
         bc_count = {}
         for line in bc_file:
             c = line.strip().split()
-            bc_count[c[0]] = c[1] + ' (~' + str(int(round(float(c[1]) / 1000000))) + " million)"
+            bc_count[c[0]]=c[1] + ' (~' + str (int ( round (float(c[1])/1000000) ) ) + " million)"
         no_samples = len(bc_count) - 1
         if no_samples == 0:
             print("WARNING: did not find a BC metrics file... Skipping lane %s for %s" % (l['lane'], proj_conf['id']))

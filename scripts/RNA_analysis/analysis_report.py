@@ -386,23 +386,27 @@ def generate_report(proj_conf):
 def make_stat(f,counts):
         aft_dup_rem={}
         bef_dup_rem={}
+	stat={'Total_No_read-pairs':counts}
         step=0
-        for i, line in enumerate(f):
-                if line[0]=='#':
-                        step = step+1
-                elif step==1:
-                        try:
-                                line = line.split(':')
-                                bef_dup_rem[line[0].strip()] = line[1].strip()
-                        except:
-                                pass
-                elif step==2:
-                        try:
-                                line = line.split(':')
-                                aft_dup_rem[line[0].strip()] = line[1].strip()
-                        except:
-                                pass
-
+	file_content = f.readlines()	
+        for i, line in enumerate(file_content):
+		if line.strip() != '':
+			if line.split()[0]=='bam_stat.py':
+				stat['version']=line.strip()
+                	if line[0]=='#':
+                	        step = step+1
+                	elif step==1:
+                	        try:
+                	                line = line.split(':')
+                	                bef_dup_rem[line[0].strip()] = line[1].strip()
+                        	except:
+                                	pass
+                	elif step==2:
+                        	try:
+                        	        line = line.split(':')
+                        	        aft_dup_rem[line[0].strip()] = line[1].strip()
+                        	except:
+                        	        pass
         f.close()
 	if float(counts) > 0:
         	bef_dup_rem['%uniq_mapped'] = round(100*(float(bef_dup_rem['Read-1'])+float(bef_dup_rem['Read-2']))/(2*float(counts)),2)
@@ -410,28 +414,33 @@ def make_stat(f,counts):
 	else:
 		aft_dup_rem['%uniq_mapped'] = 0
 		bef_dup_rem['%uniq_mapped'] = 0
-
 	if (float(aft_dup_rem['Read-1']) + float(aft_dup_rem['Read-2'])) > 0:
 		aft_dup_rem['%spliced'] = round(100*float(aft_dup_rem['spliced'])/(float(aft_dup_rem['Read-1'])+float(aft_dup_rem['Read-2'])))
 	else:
 		aft_dup_rem['%spliced'] = 0
-
-        stat={'Total_No_read-pairs':counts,'bef_dup_rem':bef_dup_rem,'aft_dup_rem':aft_dup_rem}
+        stat['bef_dup_rem']=bef_dup_rem
+	stat['aft_dup_rem']=aft_dup_rem
         return stat
 
-def read_RSeQC_rd233(f): 
-	dict={}
-	for i, line in enumerate(f):
-        	if 4 < i < 15:
-        		line = line.split()
-                	dict[line[0]] = {'Total_bases':line[1],'Tag_count':line[2],'Tags/Kb':line[3]}
-        	elif i == 1:
-                	Total_Tags = int(line.split()[2])
+def read_RSeQC_rd233(f):
+        dict={}
+	delim = 0
+        for i, l in enumerate(f):
+		if l[0] != '=':
+			line = l.split()
+			if delim == 1:
+                        	dict[line[0]] = {'Total_bases':line[1],'Tag_count':line[2],'Tags/Kb':line[3]}
+                	elif line[0] == "read_distribution.py":
+				dict['version'] = l.strip()
+			elif line[1] == "Tags":
+                        	Total_Tags = int(line[2])
+		else:
+			delim = delim + 1
         f.close()
         mRNA_frac = (float(dict['CDS_Exons']['Tag_count']) + float(dict["5'UTR_Exons"]['Tag_count'])
                         + float(dict["3'UTR_Exons"]['Tag_count'])) / Total_Tags
-	dict['mRNA_frac'] = round(mRNA_frac,2)
-	return dict
+        dict['mRNA_frac'] = round(mRNA_frac,2)
+        return dict
 
 
 ##-----------------------------------------------------------------------------

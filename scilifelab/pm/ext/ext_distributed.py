@@ -233,7 +233,7 @@ def make_job_template_args(opt_d, **kw):
     job_args['account'] = kw.get('account', None) or opt_d.get('-A', None) or  opt_d.get('--account', None)
     job_args['outputPath'] = kw.get('outputPath', None) or opt_d.get('--output', None) or opt_d.get('-o', os.curdir)
     job_args['errorPath'] = kw.get('errorPath', None) or opt_d.get('--error', None) or opt_d.get('-e', os.curdir)
-    job_args['workingDirectory'] = kw.get('workingDirectory', None) or opt_d.get('-D', None) 
+    job_args['workingDirectory'] = kw.get('workingDirectory', None) or opt_d.get('-D', os.curdir) 
     job_args['email'] = kw.get('email', None) or opt_d.get('--mail-user', None) 
     invalid_keys = ["--mail-user", "--mail-type", "-o", "--output", "-D", "--workdir", "-J", "--job-name", "-p", "--partition", "-t", "--time", "-A", "--account", "-e", "--error"]
     extra_keys = [x for x in opt_d.keys() if x not in invalid_keys]

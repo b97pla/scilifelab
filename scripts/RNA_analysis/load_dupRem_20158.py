@@ -34,16 +34,25 @@ PROJECT_ID 	= sys.argv[1]
 VERSION		= sys.argv[2]
 CREDENTIALS_FILE = os.path.join(os.environ['HOME'], 'opt/config/gdocs_credentials')
 
+dup_rem_col = "Total number of reads after duplicate removal (Millions)"
+scilife_col = "Sample name (SciLifeLab)"
+
+
 if VERSION == "2":
 	ssheet_title    = "%s_20158_02 QC for HiSeq sequencing results" % (PROJECT_ID)
 elif VERSION == "3":
 	ssheet_title    = "%s_20158_03 QC for HiSeq sequencing results" % (PROJECT_ID)
+elif VERSION == "5":
+        ssheet_title    = "%s_20158_05 QC for HiSeq sequencing results" % (PROJECT_ID)
+	dup_rem_col 	= "Total number after duplicate removal"
+	scilife_col = "Sample"
+elif VERSION == "6":
+        ssheet_title    = "%s_20158_06 QC for HiSeq sequencing results" % (PROJECT_ID)
+        dup_rem_col     = "Total number after duplicate removal"
+        scilife_col = "Sample"
 else:
 	sys.exit("Unknown VERSIONnumber")
 
-
-dup_rem_col = "Total number of reads after duplicate removal (Millions)"
-scilife_col = "Sample name (SciLifeLab)"
 wsheet_title = 'Sheet1'
 
 try:
@@ -78,6 +87,7 @@ for j,row in enumerate(content):
 			if str(col).strip() == dup_rem_col:
 				reads_colindex = i+1
 	name = str(row[names_colindex-1]).strip()
+	print name
 	if dict.has_key(name):
 		R1=dict[name]['aft_dup_rem']['Read-1']
 		R2=dict[name]['aft_dup_rem']['Read-2']

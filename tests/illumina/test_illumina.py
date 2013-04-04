@@ -139,19 +139,19 @@ class TestIlluminaRun(unittest.TestCase):
     def test_get_sequence_dir(self):
         """Get the sequence read directory
         """
-        self.assertEqual(self.exp_seqdir, self.run.get_sequence_dir(),
+        self.assertEqual(sorted(self.exp_seqdir), sorted(self.run.get_sequence_dir()),
                          "Did not get correct top directory for sequence reads")
         
     def test_get_unmatched_dir(self):
         """Get the unmatched indices read top directory
         """
-        self.assertEqual(self.exp_unmatched_directory, self.run.get_unmatched_dir(),
+        self.assertEqual(sorted(self.exp_unmatched_directory), sorted(self.run.get_unmatched_dir()),
                          "Did not get correct top directory for undetermined indices sequence reads")
         
     def test_get_basecall_stats(self):
         """Get the basecall stats directory
         """
-        self.assertEqual(self.run.get_basecall_stats(), self.exp_basecall_stats,
+        self.assertEqual(sorted(self.run.get_basecall_stats()), sorted(self.exp_basecall_stats),
                          "Did not get correct Basecall_Stats directory")
         
     def test_get_unmatched_reads(self):
