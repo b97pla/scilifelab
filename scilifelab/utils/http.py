@@ -8,10 +8,10 @@ def get_server_status_code(url):
     Download just the header of a URL and
     return the server's status code.
     """
-    host, path = urlparse.urlparse(url)[1:3]
+    pcs = urlparse.urlparse(url)
     try:
-        conn = httplib.HTTPConnection(host)
-        conn.request('HEAD', path)
+        conn = httplib.HTTPConnection(host=pcs.hostname, port=pcs.port)
+        conn.request('HEAD', pcs.path)
         return conn.getresponse().status
     except StandardError:
         return None
