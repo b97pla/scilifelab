@@ -471,8 +471,7 @@ Options (Only one option is acceptab):
 	CONFIG_FILE = os.path.join(os.environ['HOME'], 'opt/config/post_process.yaml')
 	CONFIG = cl.load_config(CONFIG_FILE)
 	log_path = CONFIG['analysis']['log']
-	URL = CONFIG['couch_db']['maggie_url'] + ':' + str(CONFIG['couch_db']['maggie_port'])
-
+	URL = CONFIG['couch_db']['maggie_login']+':'+CONFIG['couch_db']['maggie_pass']+'@'+CONFIG['couch_db']['maggie_url'] + ':' + str(CONFIG['couch_db']['maggie_port'])
 	logger = my_logging(log_path+'/proj_coucdb.log')
 
 	if (options.project_ID is None) and (options.all_projects is False):
