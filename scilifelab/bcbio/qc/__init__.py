@@ -728,11 +728,12 @@ class FlowcellRunMetricsParser(RunMetricsParser):
                 in_handle = csv.DictReader(fh, dialect=csv.excel_tab)
                 data = parser.parse_undemultiplexed_barcode_metrics(in_handle)
                 for k in lanes.keys():
-                    lanes[str(k)]["undemultiplexed_barcodes"] = collections.defaultdict(list)
+                    if "undemultiplexed_barcodes" not in lanes[str(k)]:
+                        lanes[str(k)]["undemultiplexed_barcodes"] = collections.defaultdict(list)
                     try:
                         for barcode in data[str(k)]:
                             # Warn that we are replacing previously parsed results
-                            if len(lanes[str(k)]) > 0:
+                            if len(lanes[str(k)].get("undemultiplexed_barcodes",{})) > 0:
                                 self.log.warn("Conflicting undemultiplexed barcode metrics for lane {}. Using values parsed from {}".format(k,metrics_file))
                             for key, val in barcode.items():
                                 lanes[str(k)]["undemultiplexed_barcodes"][key].append(val)
