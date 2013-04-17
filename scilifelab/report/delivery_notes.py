@@ -23,13 +23,17 @@ instrument = {
         'instrument_alias':'Smeagol',
         'instrument' : 'HiSeq 2000',
         },
+    'SN1018': {
+        'instrument_alias':'Gandalf',
+        'instrument' : 'HiSeq 2500',
+        },
     'sN188': {
         'instrument_alias':'Eowyn',# ?
         'instrument' : 'HiSeq 2000',
         },
     'SN7001298': {
         'instrument_alias':'Deagol',
-        'instrument' : 'HiSeq 2000',
+        'instrument' : 'HiSeq 2500',
         },
     'SN7001301': {
         'instrument_alias':'Eomer',
@@ -45,7 +49,11 @@ instrument = {
         },
     'M00275' : {
         'instrument_alias':'Gloin',
-        'instrument' : 'MiSeq 2500',
+        'instrument' : 'MiSeq 2',
+        },
+    'M01320' : {
+        'instrument_alias':'Bombur',
+        'instrument' : 'MiSeq 2',
         }
     }
 # Software versions used in data production. Instrument specific?
