@@ -6,6 +6,7 @@ import ast
 import json
 import math
 import csv
+import yaml
 from cStringIO import StringIO
 from collections import Counter
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, calc_avg_qv
@@ -17,51 +18,21 @@ import scilifelab.log
 
 LOG = scilifelab.log.minimal_logger(__name__)
 
-# Instrument configurations for insertion into report
-instrument = {
-    'SN1025': {
-        'instrument_alias':'Smeagol',
-        'instrument' : 'HiSeq 2000',
-        },
-    'SN1018': {
-        'instrument_alias':'Gandalf',
-        'instrument' : 'HiSeq 2500',
-        },
-    'sN188': {
-        'instrument_alias':'Eowyn',# ?
-        'instrument' : 'HiSeq 2000',
-        },
-    'SN7001298': {
-        'instrument_alias':'Deagol',
-        'instrument' : 'HiSeq 2500',
-        },
-    'SN7001301': {
-        'instrument_alias':'Eomer',
-        'instrument' : 'HiSeq 2500',
-        },
-    'SN7001362': {
-        'instrument_alias':'Aragorn',
-        'instrument' : 'HiSeq 2500',
-        },
-    'default': {
-        'instrument_alias':'',
-        'instrument' : 'NN',
-        },
-    'M00275' : {
-        'instrument_alias':'Gloin',
-        'instrument' : 'MiSeq',
-        },
-    'M01320' : {
-        'instrument_alias':'Bombur',
-        'instrument' : 'MiSeq',
-        }
-    }
 # Software versions used in data production. Instrument specific?
 software_versions = {
     'baseconversion_version' : 'OLB v1.9',
     'casava_version' : 'CASAVA v1.8.2'
     }
 
+def _parse_instrument_config(cfile):
+    """Parse a supplied yaml file with instrument ids and associated metadata and return a list of dicts
+    """
+    if cfile is None or not os.path.exists(cfile):
+        LOG.warn("No instrument config file supplied, will use default value")
+        return [{'instrument_id': 'default', 'instrument_alias': 'NN', 'instrument_version': 'NN'}]
+    
+    with open(cfile) as fh:
+        return yaml.load(fh)
 
 # http://stackoverflow.com/questions/3154460/python-human-readable-large-numbers
 def _round_read_count_in_millions(n):
@@ -230,6 +201,9 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         "qv_cutoff" : 30,
         }
     
+    instrument = _parse_instrument_config(os.path.expanduser(kw.get("instrument_config","")))
+    instrument_dict = {i['instrument_id']: i for i in instrument}
+    
     # parameters
     parameters = {
         "project_name" : None,
@@ -293,10 +267,10 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         fc = "{}_{}".format(s.get("date"), s.get("flowcell"))
         # Get instrument
         try:
-            s_param.update(instrument[fc_con.get_instrument(str(fc))])
+            s_param.update(instrument_dict[fc_con.get_instrument(str(fc))])
         except:
             LOG.warn("Failed to set instrument and software versions for flowcell {} in report due to missing RunInfo -> Instrument field in statusdb. Either rerun 'pm qc update-qc' or search-and-replace 'NN' in the sample report.".format(fc))
-            s_param.update(instrument['default'])
+            s_param.update(instrument_dict['default'])
         # Get run mode
         s_param["run_mode"] = fc_con.get_run_mode(str(fc))
         s_param.update(software_versions)
