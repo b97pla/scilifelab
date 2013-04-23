@@ -49,11 +49,11 @@ instrument = {
         },
     'M00275' : {
         'instrument_alias':'Gloin',
-        'instrument' : 'MiSeq 2',
+        'instrument' : 'MiSeq',
         },
     'M01320' : {
         'instrument_alias':'Bombur',
-        'instrument' : 'MiSeq 2',
+        'instrument' : 'MiSeq',
         }
     }
 # Software versions used in data production. Instrument specific?
