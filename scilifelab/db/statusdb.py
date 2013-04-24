@@ -186,7 +186,7 @@ class SampleRunMetricsDocument(StatusDocument):
     _fields =["barcode_id", "barcode_name", "barcode_type", "bc_count", "date",
               "flowcell", "lane", "sample_prj", "sequence", "barcode_type",
               "genomes_filter_out", "project_sample_name", "project_id"] 
-    _dict_fields = ["fastqc", "fastq_scr", "picard_metrics"]
+    _dict_fields = ["fastqc", "fastq_scr", "picard_metrics", "bcbb_checkpoints"]
     def __init__(self, **kw):
         StatusDocument.__init__(self, **kw)
         self["name"] = "{}_{}_{}_{}".format(self["lane"], self["date"], self["flowcell"], self["sequence"])

@@ -50,7 +50,7 @@ Ordered amount: ${ordered_amount} million paired reads."""))
     
     paragraphs["Method"] = dict(style=h3,
                                 tpl = Template("""Clustered on cBot
-and sequenced on ${instrument} according to manufacturer's
+and sequenced on ${instrument_version} according to manufacturer's
 instructions. Demultiplexing and conversion using ${casava_version}.
 The quality scale is Sanger / phred33 / Illumina 1.8+."""))
     paragraphs["Results"] = dict(style=h3,

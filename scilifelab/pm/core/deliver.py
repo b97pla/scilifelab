@@ -207,7 +207,7 @@ class DeliveryReportController(AbstractBaseController):
         if not self._check_pargs(["project_name", "flowcell"]):
             return
         kw = vars(self.pargs)
-        kw.update({"samplesdb":self.app.config.get("db", "samples"), "flowcelldb":self.app.config.get("db", "flowcells"), "projectdb":self.app.config.get("db", "projects")})
+        kw.update({"samplesdb":self.app.config.get("db", "samples"), "flowcelldb":self.app.config.get("db", "flowcells"), "projectdb":self.app.config.get("db", "projects"), "instrument_config": self.app.config.get("instrument","config")})
         out_data = sample_status_note(**kw)
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())

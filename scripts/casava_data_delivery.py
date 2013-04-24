@@ -33,7 +33,10 @@ def is_fastq(fname):
     fastq_ext = [".fastq.gz",
                  ".fastq",
                  "_fastq.txt.gz",
-                 "_fastq.txt"]
+                 "_fastq.txt",
+                 ".fastq..gz",
+                 "_fastq.txt..gz"
+                 ]
     for ext in fastq_ext:
         if fname.endswith(ext):
             return True
@@ -64,7 +67,7 @@ def create_final_name(fname, date, fc_id, sample_name):
                                                        fc_id,
                                                        sample_name,
                                                        read]),
-                                             ext)
+                                             ext.replace('..','.'))
     return dest_file_name
       
 def get_file_copy_list(proj_base_dir, dest_proj_path, fcid, deliver_all_fcs, deliver_nophix, skip_list):
@@ -398,6 +401,8 @@ class TestDataDelivery(unittest.TestCase):
                        "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name)),
                       ("{}_CGATGT_L001_R1_001.fastq.gz".format(sample_name),
                        "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name)),
+                      ("{}_CGATGT_L001_R1_001.fastq..gz".format(sample_name),
+                       "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name)),
                       ("{}_CGATGT_L001_R1_001.fastq".format(sample_name),
                        "1_{}_{}_{}_1.fastq".format(date,fcid,sample_name))]
         
@@ -440,7 +445,8 @@ class TestDataDelivery(unittest.TestCase):
                     os.makedirs(d)
                     test_names = ["{:d}_{:s}_1_1_fastq.txt.gz".format(random.randint(1,8),
                                                                            fcid),
-                                  "{}_CGATGT_L001_R1_001.fastq.gz".format(samples[-1]),]
+                                  "{}_CGATGT_L001_R1_001.fastq.gz".format(samples[-1]),
+                                  "{}_CGATGT_L001_R1_001.fastq..gz".format(samples[-1]),]
                     for test_name in test_names:
                         test_file = os.path.join(d,test_name)
                         open(test_file,"w").close()

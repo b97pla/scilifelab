@@ -61,6 +61,7 @@ find ./ -maxdepth 1 -name "${FILE}" -mtime +1 |while read RUN
 do
   
   RUN=`basename ${RUN}`
+  DSTPATH="${ROOT}/${PROJECT}/${RUN}"
   
   # If the run already seems to have been archived, we skip it
   if [ -e ${RUN}.irods.log ]
@@ -72,11 +73,11 @@ do
   LOGFILE=${RUN}.archive.log
   
   # Check if the file already exists on the destination, in which case we will warn and skip it
-  CMD="ils ${RUN}"
+  CMD="ils ${DSTPATH}"
   ${CMD} >& /dev/null
   if [ $? -eq 0 ]
   then
-    echo `date -u +"%xT%TZ"`"   ERROR: ${RUN} already exists on destination, you will need to remove it with 'irm' before archiving" |tee -a ${LOGFILE}
+    echo `date -u +"%xT%TZ"`"   ERROR: ${DSTPATH} already exists on destination, you will need to remove it with 'irm' before archiving" |tee -a ${LOGFILE}
     continue
   fi
   
@@ -104,7 +105,7 @@ do
   
   # Archiving file through iRODS
   echo `date -u +"%xT%TZ"`"   Archiving ${RUN}" |tee -a ${LOGFILE}
-  CMD="iput -K -P ${RUN}"
+  CMD="iput -K -P ${RUN} ${DSTPATH}"
   echo ${CMD} |tee -a ${LOGFILE}
   if [ ${DRYRUN} == "0" ]
   then
@@ -121,7 +122,7 @@ do
   echo `date -u +"%xT%TZ"`"   Verifying checksum in Swestore" |tee -a ${LOGFILE}
   if [ ${DRYRUN} == "0" ]
   then
-    s=`ichksum ${RUN}`
+    s=`ichksum ${DSTPATH}`
     s=`echo $s |cut -f 2 -d ' '`
     u=`cut -f 1 -d ' ' ${RUN}.md5`
     if [ "$s" == "$u" ]
@@ -138,7 +139,7 @@ do
   
   # As an extra precaution, verify the integrity of the file using ssverify.sh
   echo `date -u +"%xT%TZ"`"   Verifying upload through ssverify.sh" |tee -a ${LOGFILE}
-  CMD="ssverify.sh ${RUN} ${ROOT}/${PROJECT}/${RUN}"
+  CMD="ssverify.sh ${RUN} ${DSTPATH}"
   echo $CMD |tee -a ${LOGFILE}
   if [ ${DRYRUN} == "0" ]
   then
@@ -157,6 +158,13 @@ do
   then
     echo `date -u +"%xT%TZ"`"   Removing source file ${RUN}" |tee -a ${LOGFILE}
     CMD="rm -f ${RUN}"
+    echo $CMD |tee -a ${LOGFILE}
+    if [ ${DRYRUN} == "0" ]
+    then
+      $CMD
+    fi
+    echo `date -u +"%xT%TZ"`"   Moving log files to archived" |tee -a ${LOGFILE}
+    CMD="mv ${RUN}.* archived/"
     echo $CMD |tee -a ${LOGFILE}
     if [ ${DRYRUN} == "0" ]
     then
