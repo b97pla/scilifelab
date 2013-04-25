@@ -63,9 +63,8 @@ http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf.
 Acknowledgement
 """""""""""""""
 
-Please notify us when you publish using data produced at Science For
-Life Laboratory (SciLifeLab) Stockholm. To acknowledge SciLifeLab
-Stockholm in your 'article, you can use a sentence like "The authors
-would like to acknowledge ' support from Science for Life Laboratory,
-the national infrastructure SNISS, and Uppmax for providing assistance
-in massively parallel sequencing and 'computational infrastructure.
+In publications based on data from the work covered by this contract, the 
+authors must acknowledge SciLifeLab, NGI and Uppmax: "The authors would 
+like to acknowledge support from Science for Life Laboratory, the National 
+Genomics Infrastructure, NGI, and Uppmax for providing assistance in massive 
+parallel sequencing and computational infrastructure."
