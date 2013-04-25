@@ -74,7 +74,6 @@ def upload_to_gdocs(fcdir, credentials_file=None, gdocs_folder=None):
     samples = _format_samples(metrics)
     
     ssheet_name = _demultiplex_spreadsheet(metrics['RunInfo'].get('Date',None))
-    ssheet_name = "test_do_not_use"
     ssheet = SpreadSheet(credentials,ssheet_name)
     ssheet.move_to_folder(gdocs_folder)
     
@@ -94,7 +93,7 @@ def upload_to_gdocs(fcdir, credentials_file=None, gdocs_folder=None):
         for sample in project_samples:
             sample['Description'] = wsheet_name
             
-        ssheet_name = "test_do_not_use_{}_sequencing_results".format(project)
+        ssheet_name = "{}_sequencing_results".format(project)
         ssheet = SpreadSheet(credentials,ssheet_name)
         ssheet.move_to_folder(gdocs_folder)
         write_flowcell_metrics(project_samples, ssheet, wsheet_name)
