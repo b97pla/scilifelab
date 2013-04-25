@@ -42,7 +42,7 @@ if [ $3 = "y" ]; then exit; fi
 
 fi
 
-logfile=/bubo/home/h24/mayabr/RNA_delivery_log/`date +%F_%T|sed -e 's/-//g'`.log
+logfile=/bubo/home/h27/funk_001/log/RNA_delivery_log/`date +%F_%T|sed -e 's/-//g'`.log
 
 mkdir $deliv_path/analysis 2>$logfile
 mkdir $deliv_path/analysis/quantification 2>>$logfile
