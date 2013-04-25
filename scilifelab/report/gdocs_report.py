@@ -82,7 +82,7 @@ def upload_to_gdocs(fcdir, credentials_file=None, gdocs_folder=None):
     wsheet_name = "_".join([run_id[0],run_id[-1]])
     
     # Write the metrics for the entire flowcell
-    #write_flowcell_metrics(samples, ssheet, wsheet_name)
+    write_flowcell_metrics(samples, ssheet, wsheet_name)
     
     # Write project-centered metrics
     projects = list(set([sample.get('Project name','') for sample in samples]))

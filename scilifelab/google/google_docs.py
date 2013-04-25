@@ -39,7 +39,7 @@ class GoogleConnection(object):
 
     def get_key(self, object):
         """Get the unique gdocs key identifier for the supplied object"""
-        return object.id.text.split('/')[-1]
+        return object.id.text.split('/')[-1].replace('spreadsheet%3A','')
 
 class Document(GoogleConnection):
     
@@ -64,7 +64,7 @@ class Document(GoogleConnection):
         if target_folder is None:
             return
         self.client.MoveIntoFolder(doc,target_folder)
-    
+        
     def get_folder(self, folder_name):
         """Get a folder if it exists"""
         q = gdata.docs.service.DocumentQuery(categories=['folder'], params={'showfolders': 'true'})
@@ -84,30 +84,35 @@ class SpreadSheet(GoogleConnection):
         self.doc = Document(self.credentials)
         self.ssheet = None
         if name is not None:
-            self.ssheet = self.get_spreadsheet(name)
+            self.ssheet = self.get_spreadsheet(title=name)
             # Create the spreadsheet if it doesn't exist
             if self.ssheet is None:
                 self.ssheet = self.doc.add_spreadsheet(name)
     
     def move_to_folder(self, target_folder):
+        key = self.get_key(self.ssheet)
         self.doc.move_to_folder(self.ssheet,target_folder)
+        self.ssheet = self.get_spreadsheet(key=key)
         
-    def get_spreadsheet(self, title):
+    def get_spreadsheet(self, title=None, key=None):
         """Get an exact match for a spreadsheet"""
-        feed = self.get_spreadsheets_feed(title, True)
-        if len(feed.entry) == 0:
-            return None
-        return feed.entry[0]
+        ssheet = None
+        if title is not None:
+            feed = self.get_spreadsheets_feed(title, True)
+            if len(feed.entry) > 0:
+                ssheet = feed.entry[0]
+        elif key is not None:
+            ssheet = self.client.GetSpreadsheetsFeed(key=key)
+        return ssheet
 
-
-    def get_spreadsheets_feed(self, title=None, exact_match=False):
+    def get_spreadsheets_feed(self, title, exact_match=False):
         """Get a feed of all available spreadsheets, optionally restricted by title.
         """
 
         # Create a query that restricts the spreadsheet feed to documents
         # having the supplied title.
         q = self._get_query(title, exact_match)
-        # Query the server for an Atom feed containing a list of your documents.
+        # Query the server for an Atom feed containing a list of your documents.    
         return self.client.GetSpreadsheetsFeed(query=q)
 
     def add_worksheet(self, name, rows=0, cols=0, append=False):
