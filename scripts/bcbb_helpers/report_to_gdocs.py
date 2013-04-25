@@ -6,20 +6,20 @@ import glob
 import yaml
 import sys
 import tempfile
+import argparse
 from collections import defaultdict
 
-from optparse import OptionParser
 from bcbio.pipeline.config_loader import load_config
 import bcbio.pipeline.demultiplex as dmx 
 import bcbio.solexa.flowcell as fc 
 import bcbio.solexa.samplesheet as ssheet
 from bcbio.google.sequencing_report import create_report_on_gdocs
+from scilifelab.bcbio.qc import FlowcellRunMetricsParser
 
-
-def main(run_id, config_file, run_info_file=None, dryrun=False):
+def main(fcdir, config_file):
     
-    assert run_id, \
-    "No run id was specified"
+    assert os.path.exists(fcdir), \
+    "The run folder, {}, does not exist".format(fcdir)
     assert os.path.exists(config_file), \
     "The configuration file, {}, could not be found".format(config_file)
 
@@ -27,17 +27,11 @@ def main(run_id, config_file, run_info_file=None, dryrun=False):
     assert "gdocs_upload" in config, \
     "The configuration file, {}, has no section specifying the Google docs details".format(config_file)
 
-    analysis_cfg = config.get("analysis",{})
-    if "store_dir" in analysis_cfg:    
-        archive_dir = os.path.join(analysis_cfg["store_dir"], run_id)
-    else:
-        archive_dir = os.getcwd()
-    
-    analysis_dir = None
-    if "base_dir" in analysis_cfg:
-        analysis_dir = os.path.join(analysis_cfg["base_dir"], run_id)
-    if analysis_dir is None or not os.path.exists(analysis_dir):
-        analysis_dir = tempfile.mkdtemp()
+    parser = FlowcellRunMetricsParser(fcdir)
+
+    import pdb; pdb.set_trace()
+    metrics = parser.parse_demultiplex_stats_htm(fcdir.split("_")[-1])
+    sys.exit(0)
         
     dirs = {"work": os.path.normpath(analysis_dir),
             "flowcell": os.path.normpath(archive_dir)}
@@ -140,18 +134,10 @@ def _casava_report_to_metrics(run_info_file, casava_report, dirs):
     return metric_files
         
 if __name__ == "__main__":
-    parser = OptionParser()
-    parser.add_option("-f", "--run-info-file", dest="run_info_file", default=None)
-    parser.add_option("-n", "--dry-run", dest="dryrun", action="store_true", default=False)
-    options, args = parser.parse_args()
-
-    run_id = None
-    if len(args) == 2:
-        run_id = args[0]
-        config_file = args[1]
-    else:
-        print(__doc__)
-        sys.exit()
-
-    main(run_id, config_file,
-         options.run_info_file, options.dryrun)
+    parser = argparse.ArgumentParser(description="Upload sequencing yields and QC metrics to Google docs")
+    parser.add_argument("-n", "--dry-run", dest="dryrun", action="store_true", default=False)
+    parser.add_argument("config", action="store", default=None, help="Path to the .yaml configuration file containing google docs credentials")
+    parser.add_argument("fcdir", action="store", default=None, help="Path to the run folder")
+    args = parser.parse_args()
+    
+    main(args.fcdir, args.config)
