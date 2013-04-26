@@ -201,7 +201,20 @@ class RunInfoParser():
         p.CharacterDataHandler = self._char_data
         p.ParseFile(fp)
 
-
+class RunParametersParser():
+    """runParameters.xml parser"""
+    def __init__(self):
+        self.data = {}
+        
+    def parse(self, fh):
+        
+        tree = ET.parse(fh)
+        root = tree.getroot()
+        self.data = XmlToDict(root)
+        if 'Setup' in self.data:
+            self.data = self.data['Setup']
+        return self.data
+        
 # Generic XML to dict parsing
 # See http://code.activestate.com/recipes/410469-xml-as-dictionary/
 class XmlToList(list):
@@ -621,9 +634,8 @@ class FlowcellRunMetricsParser(RunMetricsParser):
             return {}
         try:
             with open(infile) as fh:
-                tree = ET.parse(fh)
-            root = tree.getroot()
-            data = XmlToDict(root)
+                parser = RunParametersParser()
+                data = parser.parse(fh)
             return data
         except:
             self.log.warn("Reading file {} failed".format(os.path.join(os.path.abspath(self.path), fn)))
