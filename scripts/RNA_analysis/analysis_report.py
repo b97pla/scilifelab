@@ -14,6 +14,8 @@ Arguments:
 		- Sample names should be give as a comma delimited string.
 
 Options:
+	-e, --single_end
+
   	-c, --config-file = <config file>   	   
 		- post_process.yaml
         -r, --rRNA_table        to include an rRNA table in the report
@@ -54,8 +56,7 @@ def image(fp, width):
    res = ".. figure:: %s\n    :width: %s\n\n" % (fp, width)
    return res
 
-def main(run,project_id,sample_names,config_file,Map_Stat,Read_Dist,FPKM,rRNA_table):
-
+def main(run,project_id,sample_names,single_end,config_file,Map_Stat,Read_Dist,FPKM,rRNA_table):
     TEMPLATE="""\
 RNA-seq analysis report for ${project_id}
 =================================
@@ -103,17 +104,19 @@ ${Mapping_statistics}
 Comments
 ~~~~~~~~
     
-**tot # read pairs:** 
+**Tot # reads:** 
 
-The total number of read pairs indicates the total number of sequenced paired-end reads. Since a paired-end read is made up of two sequenced fragments (mates), the total number of sequenced 100-bp regions is twice the number shown in this column.
-    
+If paired-end reads, the total number of reads indicates the total number of sequenced paired-end reads. Since a paired-end read is made up of two sequenced fragments (mates), the total number of sequenced 100-bp regions is twice the number shown in this column.
+
+If single-end reads, this column reflects the total numer of sequences.
+
 **% mapped reads:**
     
 The number of fragments that are mapped relative to the total number of sequenced fragments. 
     
 **% reads left after dup rem:**
     
-We remove duplicate reads (paired end reads where both mates map to the same loci as both mates in a different paired-end read because these are likely to be artifacts caused by PCR amplification or over-sequencing. Aligned files in BAM format with duplicates removed can be found in /proj/${uppnex}/INBOX/${project_id}/analysis/alignments.
+We remove duplicate reads (if paired-end, duplicates are definded as the paired end reads where both mates map to the same loci as both mates in a different paired-end read) because these are likely to be artifacts caused by PCR amplification or over-sequencing. Aligned files in BAM format with duplicates removed can be found in /proj/${uppnex}/INBOX/${project_id}/analysis/alignments.
 
 
 .. raw:: latex
@@ -138,8 +141,7 @@ For analyzing differential expression of genes or transcripts, it may be useful 
    \clearpage
 
 """
-    
-    
+     
     if FPKM:
         TEMPLATE=TEMPLATE+"""
 FPKM heatmap
@@ -164,8 +166,7 @@ ${FPKM_PCAplot}
        
    \clearpage
 
-"""
-    
+""" 
     if Read_Dist:
         TEMPLATE=TEMPLATE+"""
 Read distribution
@@ -218,7 +219,7 @@ ${rRNA_table}
 	'samples': sample_names.split(',')
          }
 
-    d = generate_report(proj_conf)
+    d = generate_report(proj_conf,single_end)
     rstfile = "%s.rst" % (project_id)
     fp = open(rstfile, "w")
     fp.write(tmpl.render(**d))
@@ -245,7 +246,7 @@ ${rRNA_table}
             fp.close()
 
 ##-----------------------------------------------------------------------------
-def generate_report(proj_conf):
+def generate_report(proj_conf,single_end):
 
     d = {
 	'runname':proj_conf['run'],
@@ -303,7 +304,7 @@ def generate_report(proj_conf):
     ## Mapping Statistics
     tab = Texttable()
     tab.set_cols_dtype(['t','t','t','t'])
-    tab.add_row(['Sample','Tot # read pairs','Uniquely mapped reads (%)','Uniquely mapped reads (%)\n dups removed'])
+    tab.add_row(['Sample','Tot # reads','Uniquely mapped reads (%)','Uniquely mapped reads (%)\n dups removed'])
     statistics={}
     try:
 	for sample_name in proj_conf['samples']:
@@ -312,7 +313,8 @@ def generate_report(proj_conf):
 	    	tot_NO_read_pairs = f.readlines()[2].split()[3]
 	    	f.close()
 	    	f = open('tophat_out_'+sample_name+'/stat'+sample_name, 'r')
-	    	dict = make_stat(f,tot_NO_read_pairs)
+		print single_end
+	    	dict = make_stat(f,tot_NO_read_pairs,single_end)
 	    	tab.add_row([sample_name,tot_NO_read_pairs,dict['bef_dup_rem']['%uniq_mapped'],dict['aft_dup_rem']['%uniq_mapped']])
 	    	statistics[sample_name] = dict
 	    except:
@@ -383,10 +385,10 @@ def generate_report(proj_conf):
  
     return d
 
-def make_stat(f,counts):
+def make_stat(f,counts,single_end):
         aft_dup_rem={}
         bef_dup_rem={}
-	stat={'Total_No_read-pairs':counts}
+	stat={'Total_No_reads':counts}
         step=0
 	file_content = f.readlines()	
         for i, line in enumerate(file_content):
@@ -408,16 +410,21 @@ def make_stat(f,counts):
                         	except:
                         	        pass
         f.close()
-	if float(counts) > 0:
-        	bef_dup_rem['%uniq_mapped'] = round(100*(float(bef_dup_rem['Read-1'])+float(bef_dup_rem['Read-2']))/(2*float(counts)),2)
-        	aft_dup_rem['%uniq_mapped'] = round(100*(float(aft_dup_rem['Read-1'])+float(aft_dup_rem['Read-2']))/(2*float(counts)),2)
+	if single_end:
+		bef_dup_rem['%uniq_mapped'] = round(100*(float(bef_dup_rem['Uniquely mapped']))/(2*float(counts)),2)
+		aft_dup_rem['%uniq_mapped'] = round(100*(float(aft_dup_rem['Uniquely mapped']))/(2*float(counts)),2)
+		aft_dup_rem['%spliced'] = round(100*float(aft_dup_rem['spliced'])/float(aft_dup_rem['Uniquely mapped']))
 	else:
-		aft_dup_rem['%uniq_mapped'] = 0
-		bef_dup_rem['%uniq_mapped'] = 0
-	if (float(aft_dup_rem['Read-1']) + float(aft_dup_rem['Read-2'])) > 0:
-		aft_dup_rem['%spliced'] = round(100*float(aft_dup_rem['spliced'])/(float(aft_dup_rem['Read-1'])+float(aft_dup_rem['Read-2'])))
-	else:
-		aft_dup_rem['%spliced'] = 0
+		if float(counts) > 0:
+        		bef_dup_rem['%uniq_mapped'] = round(100*(float(bef_dup_rem['Read-1'])+float(bef_dup_rem['Read-2']))/(2*float(counts)),2)
+        		aft_dup_rem['%uniq_mapped'] = round(100*(float(aft_dup_rem['Read-1'])+float(aft_dup_rem['Read-2']))/(2*float(counts)),2)
+		else:
+			aft_dup_rem['%uniq_mapped'] = 0
+			bef_dup_rem['%uniq_mapped'] = 0
+		if (float(aft_dup_rem['Read-1']) + float(aft_dup_rem['Read-2'])) > 0:
+			aft_dup_rem['%spliced'] = round(100*float(aft_dup_rem['spliced'])/(float(aft_dup_rem['Read-1'])+float(aft_dup_rem['Read-2'])))
+		else:
+			aft_dup_rem['%spliced'] = 0
         stat['bef_dup_rem']=bef_dup_rem
 	stat['aft_dup_rem']=aft_dup_rem
         return stat
@@ -446,6 +453,7 @@ def read_RSeQC_rd233(f):
 ##-----------------------------------------------------------------------------
 if __name__ == "__main__":
     parser = OptionParser()
+    parser.add_option("-e", "--single_end", dest="single_end", action="store_true",default=False)
     parser.add_option("-n", "--dry_run", dest="dry_run", action="store_true",default=False)
     parser.add_option("--v1.5", dest="v1_5_fc", action="store_true", default=False)
     parser.add_option("-c", "--config-file", dest="config_file", default=None)
@@ -457,7 +465,7 @@ if __name__ == "__main__":
     if len(args) < 1:
         print __doc__
         sys.exit()
-    kwargs = dict(
+    kwargs = dict(single_end = options.single_end,
 		config_file = options.config_file,
 		Map_Stat = options.Map_Stat,
 		Read_Dist = options.Read_Dist,
