@@ -411,8 +411,8 @@ def make_stat(f,counts,single_end):
                         	        pass
         f.close()
 	if single_end:
-		bef_dup_rem['%uniq_mapped'] = round(100*(float(bef_dup_rem['Uniquely mapped']))/(2*float(counts)),2)
-		aft_dup_rem['%uniq_mapped'] = round(100*(float(aft_dup_rem['Uniquely mapped']))/(2*float(counts)),2)
+		bef_dup_rem['%uniq_mapped'] = round(100*(float(bef_dup_rem['Uniquely mapped']))/(float(counts)),2)
+		aft_dup_rem['%uniq_mapped'] = round(100*(float(aft_dup_rem['Uniquely mapped']))/(float(counts)),2)
 		aft_dup_rem['%spliced'] = round(100*float(aft_dup_rem['spliced'])/float(aft_dup_rem['Uniquely mapped']))
 	else:
 		if float(counts) > 0:
