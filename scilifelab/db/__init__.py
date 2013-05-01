@@ -48,7 +48,10 @@ class Couch(Database):
         self.port = 5984
         self.user = kwargs.get("username", None)
         self.pw = kwargs.get("password", None)
-        self.url_string = "http://{}:{}".format(self.url, self.port)
+        if self.user and self.pw:
+            self.url_string = "http://{}:{}@{}:{}".format(self.user, self.pw, self.url, self.port)
+        else:
+            self.url_string = "http://{}:{}".format(self.url, self.port)
         if log:
             self.log = log
         super(Couch, self).__init__(**kwargs)        
