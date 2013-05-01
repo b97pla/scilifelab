@@ -474,14 +474,13 @@ def has_casava_output(fc_dir):
     return False
 
 def report_to_gdocs(fc_dir, post_process_config_file):
-    # Rename any existing run_info.yaml as it will interfere with gdocs upload
-    run_info = os.path.join(fc_dir, "run_info.yaml")
-    if os.path.exists(run_info):
-        os.rename(run_info, "{}.bak".format(run_info))
+    """Upload the run results to Google Docs using pm"""
+    
     # Call the report_to_gdocs script
-    cmd = ["report_to_gdocs.py",
-            os.path.basename(os.path.abspath(fc_dir)),
-            post_process_config_file]
+    cmd = ["pm",
+           "report",
+           "report-to-gdocs",
+            "--run-id={}".format(os.path.basename(os.path.abspath(fc_dir)))]
     subprocess.check_call(cmd)
 
 if __name__ == "__main__":
