@@ -143,7 +143,8 @@ def summarize_project(ssheet):
             sample_summary = summary.get(sample['Sample name'],{})
             
             sample_summary['Sample name'] = sample['Sample name']
-            sample_summary['Project name'] = sample['Project name']
+            if 'Project name' in sample:
+                sample_summary['Project name'] = sample['Project name']
             
             sample_summary['Lane'] = sample_summary.get('Lane',"").split(";") + ["{}-{}".format(wsheet,sample.get('Lane',''))]
             sample_summary['Lane'] = ";".join([s for s in sample_summary['Lane'] if len(s) > 0])
