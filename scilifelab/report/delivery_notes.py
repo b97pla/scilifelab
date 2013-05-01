@@ -472,6 +472,7 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
     # Get project summary from project database
     sample_aliases = _literal_eval_option(sample_aliases, default={})
     prj_summary = p_con.get_entry(project_name)
+    print prj_summary
     if not prj_summary:
         LOG.warn("No such project '{}'".format(project_name))
         return
@@ -521,6 +522,7 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
     last_library_preps_srm = [x for l in last_library_preps.values() for x in l] 
     LOG.debug("Looping through sample map that maps project sample names to sample run metrics ids")
     for k,v in samples.items():
+	print v
         LOG.debug("project sample '{}' maps to '{}'".format(k, v))
         if not include_all_samples:
             if v['sample'] not in last_library_preps.keys():
@@ -541,6 +543,7 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
             continue
         # Get the project sample name from the sample run and set table values
         project_sample = sample_dict[v['sample']]
+	print project_sample
         vals = _set_sample_table_values(v['sample'], project_sample, barcode_seq, ordered_million_reads, param)
         if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
         sample_table.append([vals[k] for k in table_keys])

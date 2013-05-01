@@ -1,11 +1,11 @@
 #!/bin/bash -l
 #SBATCH -A a2012043 
-#SBATCH -p node
+#SBATCH -p core
 #SBATCH -t 01:00:00
 #SBATCH -J make_sbatch
 #SBATCH -e make_sbatch.err
 #SBATCH -o make_sbatch.out
-
+#SBATCH --qos=seqver
 while getopts ":e:" option; do
         case ${option} in
                 e) extra_arg=${OPTARG};;
