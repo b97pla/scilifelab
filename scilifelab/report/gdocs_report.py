@@ -100,8 +100,7 @@ def upload_to_gdocs(fcdir, credentials_file=None, gdocs_folder=None):
         
         # Create the summary over all worksheets in the project
         summary_samples = summarize_project(ssheet)
-        wsheet_name = "Summary"
-        write_flowcell_metrics(summary_samples, ssheet, wsheet_name)
+        write_flowcell_metrics(summary_samples, ssheet, "Summary")
     
     return output_data
 
@@ -140,9 +139,14 @@ def summarize_project(ssheet):
     
     for wsheet in sorted(project_data.keys()):
         for n, sample in enumerate(project_data[wsheet]):
-            sample_summary = summary.get(sample['Sample name'],{})
+            sample_key = _match_key_name(summary.keys(), sample['Sample name'])
+            sample_summary = summary.get(sample_key,{})
             
-            sample_summary['Sample name'] = sample['Sample name']
+            if len(sample_key) > sample['Sample name']:
+                sample_summary['Sample name'] = sample_key
+            else:
+                sample_summary['Sample name'] = sample['Sample name']
+                
             if 'Project name' in sample:
                 sample_summary['Project name'] = sample['Project name']
             
@@ -156,10 +160,23 @@ def summarize_project(ssheet):
             sample_summary['Barcode sequence'] = sample_summary.get('Barcode sequence',"").split(";") + [sample.get('Barcode sequence','')]
             sample_summary['Barcode sequence'] = ";".join([s for s in sample_summary['Barcode sequence'] if len(s) > 0])
     
-            summary[sample['Sample name']] = sample_summary
+            summary[sample_key] = sample_summary
             
     return summary.values()
-         
+
+            
+def _match_key_name(haystack, needle):
+    
+    min_match = 5
+    for straw in haystack:
+        if straw == needle:
+            return straw
+        if straw.startswith(needle) and len(needle) >= min_match:
+            return straw
+        if needle.startswith(straw) and len(straw) >= min_match:
+            return straw
+    return needle
+        
 def _format_samples(metrics):
     
     # Get the casava - gdocs mapping and the header columns
