@@ -29,7 +29,7 @@ class BcbioRunController(AbstractBaseController):
         group.add_argument('--targets', help="sequence capture target file", action="store", default=None)
         group.add_argument('--baits', help="sequence capture baits file", action="store", default=None)
         group.add_argument('--distributed', help="run distributed, changing 'num_cores' in  post_process to 'messaging': calls automated_initial_analysis.py", action="store_true", default=False)
-        group.add_argument('--num_cores', help="num_cores value; default 8", action="store", default=8, type=int)
+        group.add_argument('--num_cores', help="Number of concurrent processes (not threads) to run during analysis", action="store", default=None, type=int)
         group.add_argument('--only_setup', help="only perform setup", action="store_true", default=False)
         group.add_argument('--restart', help="restart analysis", action="store_true", default=False)
         group.add_argument('--analysis', help="set analysis type in bcbb config file", action="store", default=None, type=str)

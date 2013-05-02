@@ -5,6 +5,8 @@ import itertools
 import ast
 import json
 import math
+import csv
+import yaml
 from cStringIO import StringIO
 from collections import Counter
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, calc_avg_qv
@@ -16,43 +18,21 @@ import scilifelab.log
 
 LOG = scilifelab.log.minimal_logger(__name__)
 
-# Instrument configurations for insertion into report
-instrument = {
-    'SN1025': {
-        'instrument_alias':'Smeagol',
-        'instrument' : 'HiSeq 2000',
-        },
-    'sN188': {
-        'instrument_alias':'Eowyn',# ?
-        'instrument' : 'HiSeq 2000',
-        },
-    'SN7001298': {
-        'instrument_alias':'Deagol',
-        'instrument' : 'HiSeq 2000',
-        },
-    'SN7001301': {
-        'instrument_alias':'Eomer',
-        'instrument' : 'HiSeq 2500',
-        },
-    'SN7001362': {
-        'instrument_alias':'Aragorn',
-        'instrument' : 'HiSeq 2500',
-        },
-    'default': {
-        'instrument_alias':'',
-        'instrument' : 'NN',
-        },
-    'M00275' : {
-        'instrument_alias':'Gloin',
-        'instrument' : 'MiSeq 2500',
-        }
-    }
 # Software versions used in data production. Instrument specific?
 software_versions = {
     'baseconversion_version' : 'OLB v1.9',
     'casava_version' : 'CASAVA v1.8.2'
     }
 
+def _parse_instrument_config(cfile):
+    """Parse a supplied yaml file with instrument ids and associated metadata and return a list of dicts
+    """
+    if cfile is None or not os.path.exists(cfile):
+        LOG.warn("No instrument config file supplied, will use default value")
+        return [{'instrument_id': 'default', 'instrument_alias': 'NN', 'instrument_version': 'NN'}]
+    
+    with open(cfile) as fh:
+        return yaml.load(fh)
 
 # http://stackoverflow.com/questions/3154460/python-human-readable-large-numbers
 def _round_read_count_in_millions(n):
@@ -221,6 +201,9 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         "qv_cutoff" : 30,
         }
     
+    instrument = _parse_instrument_config(os.path.expanduser(kw.get("instrument_config","")))
+    instrument_dict = {i['instrument_id']: i for i in instrument}
+    
     # parameters
     parameters = {
         "project_name" : None,
@@ -284,10 +267,10 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         fc = "{}_{}".format(s.get("date"), s.get("flowcell"))
         # Get instrument
         try:
-            s_param.update(instrument[fc_con.get_instrument(str(fc))])
+            s_param.update(instrument_dict[fc_con.get_instrument(str(fc))])
         except:
             LOG.warn("Failed to set instrument and software versions for flowcell {} in report due to missing RunInfo -> Instrument field in statusdb. Either rerun 'pm qc update-qc' or search-and-replace 'NN' in the sample report.".format(fc))
-            s_param.update(instrument['default'])
+            s_param.update(instrument_dict['default'])
         # Get run mode
         s_param["run_mode"] = fc_con.get_run_mode(str(fc))
         s_param.update(software_versions)
@@ -410,7 +393,7 @@ def _set_sample_table_values(sample_name, project_sample, barcode_seq, ordered_m
 
     :returns: vals, a dictionary of table values
     """
-    prjs_to_table = {'ScilifeID':'scilife_name', 'CustomerID':'customer_name', 'MSequenced':'m_reads_sequenced'}#, 'MOrdered':'min_m_reads_per_sample_ordered', 'Status':'status'}
+    prjs_to_table = {'ScilifeID':'scilife_name', 'SubmittedID':'customer_name', 'MSequenced':'m_reads_sequenced'}#, 'MOrdered':'min_m_reads_per_sample_ordered', 'Status':'status'}
     vals = {x:project_sample.get(prjs_to_table[x], None) for x in prjs_to_table.keys()}
     # Set status
     vals['Status'] = project_sample.get("status", "N/A")
@@ -420,13 +403,13 @@ def _set_sample_table_values(sample_name, project_sample, barcode_seq, ordered_m
     vals['BarcodeSeq'] = barcode_seq
     vals.update({k:"N/A" for k in vals.keys() if vals[k] is None or vals[k] == ""})
     return vals
-
+    
 def project_status_note(project_name=None, username=None, password=None, url=None,
                         use_ps_map=True, use_bc_map=False, check_consistency=False,
                         ordered_million_reads=None, uppnex_id=None, customer_reference=None,
                         exclude_sample_ids={}, project_alias=None, sample_aliases={},
                         projectdb="projects", samplesdb="samples", flowcelldb="flowcells",
-                        include_all_samples=False, **kw):
+                        include_all_samples=False, flat_table=False, **kw):
     """Make a project status note. Used keywords:
 
     :param project_name: project name
@@ -446,29 +429,71 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
     :param samplesdb: samples db name
     :param flowcelldb: flowcells db name
     :param include_all_samples: include all samples in report
+    :param flat_table: Just create a simple tab-separated version of the table instead of the fancy pdf
     """
+    
     # parameters
     parameters = {
         "project_name" : project_name,
         "finished" : "Not finished, or cannot yet assess if finished.",
         }
+    
+    output_data, sample_table, param = _project_status_note_table(project_name, username, password, url,
+                                                                  use_ps_map, use_bc_map, check_consistency,
+                                                                  ordered_million_reads, uppnex_id, 
+                                                                  customer_reference, exclude_sample_ids, 
+                                                                  project_alias, sample_aliases, projectdb, 
+                                                                  samplesdb, flowcelldb, include_all_samples,
+                                                                  parameters, **kw)
+    
+    if not flat_table:
+        # Set report paragraphs
+        paragraphs = project_note_paragraphs()
+        headers = project_note_headers()
+    
+        paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
+        make_note("{}_project_summary.pdf".format(project_name), headers, paragraphs, **param)
+        make_rest_note("{}_project_summary.rst".format(project_name), sample_table=sample_table, report="project_report", **param)
+    
+    else:
+        # Write tab-separated output
+        sample_table[0].insert(0,'ProjectID')
+        table_cols = [sample_table[0].index(col) for col in ['ProjectID', 'ScilifeID', 'SubmittedID', 'BarcodeSeq', 'MSequenced']]
+        outfile = "{}_project_summary.csv".format(project_name)
+        with open(outfile,"w") as outh:
+            csvw = csv.writer(outh)
+            for i,sample in enumerate(sample_table):
+                if i > 0:
+                    sample.insert(0,project_name)
+                data = [str(sample[col]) for col in table_cols]
+                csvw.writerow(data)
+                output_data['stdout'].write("{}\n".format("\t".join(data)))
+        
+    param.update({k:"N/A" for k in param.keys() if param[k] is None or param[k] ==  ""})
+    output_data["debug"].write(json.dumps({'param':param, 'table':sample_table}))
+
+    return output_data
+    
+
+def _project_status_note_table(project_name=None, username=None, password=None, url=None,
+                               use_ps_map=True, use_bc_map=False, check_consistency=False,
+                               ordered_million_reads=None, uppnex_id=None, customer_reference=None,
+                               exclude_sample_ids={}, project_alias=None, sample_aliases={},
+                               projectdb="projects", samplesdb="samples", flowcelldb="flowcells",
+                               include_all_samples=False, param={}, **kw):
+
     # mapping project_summary to parameter keys
     ps_to_parameter = {"scilife_name":"scilife_name", "customer_name":"customer_name", "project_name":"project_name"}
     # mapping project sample to table
-    table_keys = ['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status']
-
+    table_keys = ['ScilifeID', 'SubmittedID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status']
+    
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
     # Connect and run
     s_con = SampleRunMetricsConnection(dbname=samplesdb, username=username, password=password, url=url)
     fc_con = FlowcellRunMetricsConnection(dbname=flowcelldb, username=username, password=password, url=url)
     p_con = ProjectSummaryConnection(dbname=projectdb, username=username, password=password, url=url)
 
-    # Set report paragraphs
-    paragraphs = project_note_paragraphs()
-    headers = project_note_headers()
-    # Set local param variable
-    param = parameters
-    
+
     # Get project summary from project database
     sample_aliases = _literal_eval_option(sample_aliases, default={})
     prj_summary = p_con.get_entry(project_name)
@@ -527,7 +552,7 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
                 LOG.info("No library prep information for sample {}; keeping in report".format(v['sample']))
             else:
                 if k not in last_library_preps_srm:
-                    LOG.info("Sample run {} ('{}') is not latest library prep ({}) for project sample {}: excluding from report".format(k, v["id"], last_library_preps[v['sample']].values()[0], v['sample']))
+                    LOG.info("Sample run {} ('{}') is not latest library prep ({}) for project sample {}: excluding from report".format(k, v["id"], ",".join(list(set(last_library_preps[v['sample']].values()))), v['sample']))
                     continue
         else:
             pass
@@ -568,11 +593,7 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
     if all_passed: param["finished"] = 'Project finished.'
     sample_table.sort()
     sample_table = list(sample_table for sample_table,_ in itertools.groupby(sample_table))
-    sample_table.insert(0, ['ScilifeID', 'CustomerID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status'])
-    paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
-    make_note("{}_project_summary.pdf".format(project_name), headers, paragraphs, **param)
-    make_rest_note("{}_project_summary.rst".format(project_name), sample_table=sample_table, report="project_report", **param)
-    param.update({k:"N/A" for k in param.keys() if param[k] is None or param[k] ==  ""})
-    output_data["debug"].write(json.dumps({'param':param, 'table':sample_table}))
-    return output_data
+    sample_table.insert(0, ['ScilifeID', 'SubmittedID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status'])
+
+    return output_data, sample_table, param
 

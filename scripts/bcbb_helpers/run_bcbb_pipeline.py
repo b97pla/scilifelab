@@ -367,21 +367,24 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
 
     application_setup = {
                          'Amplicon': {'analysis': 'Align_standard'},
-                         'ChIP-seq': {'analysis': 'RNA-seq'},
+                         'ChIP-seq': {'analysis': 'Align_standard',
+                                      'genome_build': 'phix'},
                          'Custom capture': {'analysis': 'Align_standard_seqcap'},
                          'de novo': {'analysis': 'Align_standard',
                                      'genome_build': 'unknown'},
                          'Exome capture': {'analysis': 'Align_standard_seqcap'},
                          'Finished library': {'analysis': 'Align_standard',
-                                              'genome_build': 'unknown'},
+                                              'genome_build': 'phix'},
                          'Mate-pair': {'analysis': 'Align_standard',
                                        'genome_build': 'unknown'},
                          'Metagenome': {'analysis': 'Align_standard',
                                         'genome_build': 'unknown'},
                          'miRNA-seq': {'analysis': 'Align_standard',
                                        'genome_build': 'unknown'},
-                         'RNA-seq (mRNA)': {'analysis': 'RNA-seq'},
-                         'RNA-seq (total RNA)': {'analysis': 'RNA-seq'},
+                         'RNA-seq (mRNA)': {'analysis': 'Align_standard',
+                                            'genome_build': 'phix'},
+                         'RNA-seq (total RNA)': {'analysis': 'Align_standard',
+                                                 'genome_build': 'phix'},
                          'WG re-seq': {'analysis': 'Align_standard'},
                          'default': {'analysis': 'Align_standard'},
                          }
@@ -471,14 +474,13 @@ def has_casava_output(fc_dir):
     return False
 
 def report_to_gdocs(fc_dir, post_process_config_file):
-    # Rename any existing run_info.yaml as it will interfere with gdocs upload
-    run_info = os.path.join(fc_dir, "run_info.yaml")
-    if os.path.exists(run_info):
-        os.rename(run_info, "{}.bak".format(run_info))
+    """Upload the run results to Google Docs using pm"""
+    
     # Call the report_to_gdocs script
-    cmd = ["report_to_gdocs.py",
-            os.path.basename(os.path.abspath(fc_dir)),
-            post_process_config_file]
+    cmd = ["pm",
+           "report",
+           "report-to-gdocs",
+            "--run-id={}".format(os.path.basename(os.path.abspath(fc_dir)))]
     subprocess.check_call(cmd)
 
 if __name__ == "__main__":

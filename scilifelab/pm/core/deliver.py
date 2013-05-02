@@ -13,6 +13,7 @@ from scilifelab.report.delivery_notes import sample_status_note, project_status_
 from scilifelab.report.best_practice import best_practice_note, SEQCAP_KITS
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, get_scilife_to_customer_name
 from scilifelab.utils.misc import query_yes_no, filtered_walk
+from scilifelab.report.gdocs_report import upload_to_gdocs
 
 BCBIO_EXCLUDE_DIRS = ['realign-split', 'variants-split', 'tmp', 'tx', 'fastqc', 'fastq_screen', 'alignments', 'nophix']
 
@@ -162,6 +163,8 @@ class DeliveryReportController(AbstractBaseController):
         group.add_argument('--sphinx', help="Generate editable sphinx template. Installs conf.py and Makefile for subsequent report generation.", action="store", default=None, type=float)
         group.add_argument('--project_id', help="Project identifier, formatted as 'P###'.",  action="store", default=None, type=str)
         group.add_argument('--include_all_samples', help="Include all samples in project status report. Default is to only use the latest library prep.",  action="store_true", default=False)
+        group.add_argument('--run-id', help="Run id (e.g. 130423_SN9999_0100_BABC123CXX). Required for reporting to Google docs",  action="store", default=None, type=str)
+        group.add_argument('--credentials-file', help="Text file containing base64-encoded Google Docs credentials",  action="store", default=None, type=str)
         super(DeliveryReportController, self)._setup(app)
 
     def _process_args(self):
@@ -180,6 +183,38 @@ class DeliveryReportController(AbstractBaseController):
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
 
 
+    @controller.expose(help="Print the SciLife name to customer name conversion table for a project")
+    def name_table(self):
+        if not self._check_pargs(["project_name"]):
+            return
+        kw = vars(self.pargs)
+        kw.update({"flat_table":True, "samplesdb":self.app.config.get("db", "samples"), "flowcelldb":self.app.config.get("db", "flowcells"), "projectdb":self.app.config.get("db", "projects")})
+        out_data = project_status_note(**kw)
+        self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
+        self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
+        self.app._output_data['debug'].write(out_data['debug'].getvalue())
+        
+    @controller.expose(help="Report the run statistics to Google Docs")
+    def report_to_gdocs(self):
+        if self.pargs.project_name is not None:
+            self.log.warn("You have specified a project_name, note that this parameter will NOT be used")
+        
+        if self.pargs.flowcell is not None:
+            self.log.warn("You have specified a flowcell, note that this parameter will NOT be used")
+        
+        if not self._check_pargs(["run_id"]):
+            self.log.error("You must specify a run id, using the --run-id parameter")
+            return
+        
+        cfile = self.app.config.get("gdocs","credentials_file")
+        if self.pargs.credentials_file is not None:
+            cfile = self.pargs.credentials_file
+        
+        gdocs_folder = self.app.config.get("gdocs","gdocs_folder")
+        
+        out_data = upload_to_gdocs(os.path.join(self.app.config.get("archive","root"),self.pargs.run_id),
+                                   credentials_file=os.path.expanduser(cfile), gdocs_folder=gdocs_folder)
+        
     @controller.expose(help="Print summary QC data for a flowcell/project for application QC control")
     def application_qc(self):
         if not self._check_pargs(["project_name"]):
@@ -194,7 +229,7 @@ class DeliveryReportController(AbstractBaseController):
         if not self._check_pargs(["project_name", "flowcell"]):
             return
         kw = vars(self.pargs)
-        kw.update({"samplesdb":self.app.config.get("db", "samples"), "flowcelldb":self.app.config.get("db", "flowcells"), "projectdb":self.app.config.get("db", "projects")})
+        kw.update({"samplesdb":self.app.config.get("db", "samples"), "flowcelldb":self.app.config.get("db", "flowcells"), "projectdb":self.app.config.get("db", "projects"), "instrument_config": self.app.config.get("instrument","config")})
         out_data = sample_status_note(**kw)
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())

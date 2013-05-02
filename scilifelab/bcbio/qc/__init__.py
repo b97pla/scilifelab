@@ -11,6 +11,7 @@ import csv
 import collections
 import xml.etree.cElementTree as ET
 from bs4 import BeautifulSoup
+import datetime
 
 from cement.core import backend
 LOG = backend.minimal_logger("bcbio")
@@ -62,6 +63,19 @@ class MetricsParser():
         for line in in_handle:
             data[line['lane']].append({c:line[c] for c in in_handle.fieldnames if c != 'lane'})
         return data
+
+    def parse_bcbb_checkpoints(self, in_handle):
+        
+        TIMEFORMAT = "%Y-%m-%dT%H:%M:%S.%f"
+        timestamp = []
+        for line in in_handle:
+            try:
+                ts = "{}Z".format(datetime.datetime.strptime(line.strip(), TIMEFORMAT).isoformat())
+                timestamp.append(ts)
+            except ValueError:
+                pass 
+    
+        return timestamp
 
 class ExtendedPicardMetricsParser(PicardMetricsParser):
     """Extend basic functionality and parse all picard metrics"""
@@ -187,7 +201,20 @@ class RunInfoParser():
         p.CharacterDataHandler = self._char_data
         p.ParseFile(fp)
 
-
+class RunParametersParser():
+    """runParameters.xml parser"""
+    def __init__(self):
+        self.data = {}
+        
+    def parse(self, fh):
+        
+        tree = ET.parse(fh)
+        root = tree.getroot()
+        self.data = XmlToDict(root)
+        if 'Setup' in self.data:
+            self.data = self.data['Setup']
+        return self.data
+        
 # Generic XML to dict parsing
 # See http://code.activestate.com/recipes/410469-xml-as-dictionary/
 class XmlToList(list):
@@ -488,6 +515,26 @@ class SampleRunMetricsParser(RunMetricsParser):
             self.log.warn("no fastq screen metrics for sample {}".format(barcode_name))
             return {}
 
+    def parse_bcbb_checkpoints(self, barcode_name, sample_prj, flowcell, barcode_id, **kw):
+        self.log.debug("parse_bcbb_checkpoints for sample {}, project {} in run {}".format(barcode_name, sample_prj, flowcell))
+        parser = MetricsParser()
+        def filter_fn(f):
+            return re.match("[0-9][0-9]_[^\/]+\.txt", os.path.basename(f)) != None
+        
+        files = self.filter_files(None,filter_fn)
+        self.log.debug("files {}".format(",".join(files)))
+        
+        checkpoints = {}
+        for f in files:
+            try: 
+                with open(f) as fh:
+                    checkpoints[os.path.splitext(os.path.basename(f))[0]] = parser.parse_bcbb_checkpoints(fh)
+            except Exception as e:
+                self.log.warn("Exception: {}".format(e))
+                self.log.warn("no bcbb checkpoint for sample {} using pattern '{}'".format(barcode_name, pattern))
+        
+        return checkpoints
+
     def read_fastqc_metrics(self, barcode_name, sample_prj, lane, flowcell, barcode_id, **kw):
         self.log.debug("read_fastqc_metrics for sample {}, project {}, lane {} in run {}".format(barcode_name, sample_prj, lane, flowcell))
         if barcode_name == "unmatched":
@@ -587,9 +634,8 @@ class FlowcellRunMetricsParser(RunMetricsParser):
             return {}
         try:
             with open(infile) as fh:
-                tree = ET.parse(fh)
-            root = tree.getroot()
-            data = XmlToDict(root)
+                parser = RunParametersParser()
+                data = parser.parse(fh)
             return data
         except:
             self.log.warn("Reading file {} failed".format(os.path.join(os.path.abspath(self.path), fn)))
@@ -694,11 +740,12 @@ class FlowcellRunMetricsParser(RunMetricsParser):
                 in_handle = csv.DictReader(fh, dialect=csv.excel_tab)
                 data = parser.parse_undemultiplexed_barcode_metrics(in_handle)
                 for k in lanes.keys():
-                    lanes[str(k)]["undemultiplexed_barcodes"] = collections.defaultdict(list)
+                    if "undemultiplexed_barcodes" not in lanes[str(k)]:
+                        lanes[str(k)]["undemultiplexed_barcodes"] = collections.defaultdict(list)
                     try:
                         for barcode in data[str(k)]:
                             # Warn that we are replacing previously parsed results
-                            if len(lanes[str(k)]) > 0:
+                            if len(lanes[str(k)].get("undemultiplexed_barcodes",{})) > 0:
                                 self.log.warn("Conflicting undemultiplexed barcode metrics for lane {}. Using values parsed from {}".format(k,metrics_file))
                             for key, val in barcode.items():
                                 lanes[str(k)]["undemultiplexed_barcodes"][key].append(val)

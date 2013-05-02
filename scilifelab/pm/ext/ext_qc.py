@@ -128,6 +128,7 @@ class RunMetricsController(AbstractBaseController):
                     obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
                     obj["bc_count"] = parser.get_bc_count(**sample_kw)
                     obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
+                    obj["bcbb_checkpoints"] = parser.parse_bcbb_checkpoints(**sample_kw)
                     qc_objects.append(obj)
         else:
             for sample in runinfo[1:]:
@@ -164,6 +165,7 @@ class RunMetricsController(AbstractBaseController):
                 obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
                 obj["bc_count"] = parser.get_bc_count(demultiplex_stats=demultiplex_stats, **sample_kw)
                 obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
+                obj["bcbb_checkpoints"] = parser.parse_bcbb_checkpoints(**sample_kw)
                 qc_objects.append(obj)
         return qc_objects
 
@@ -289,6 +291,7 @@ class RunMetricsController(AbstractBaseController):
         EXPECTED_LANE_YIELD = 143000000
         MAX_PHIX_ERROR_RATE = 2.0
         MIN_PHIX_ERROR_RATE = 0.0
+        MIN_GTQ30 = 80.0
         read_pairs = True
         
         out_data = []
@@ -376,6 +379,16 @@ class RunMetricsController(AbstractBaseController):
                              err_rate,
                              "{} < PhiX e (%) <= {}".format(MIN_PHIX_ERROR_RATE,
                                                             MAX_PHIX_ERROR_RATE)])
+        
+        # Check the %>=Q30 value for each sample
+        sample_quality = self._get_quality_per_sample(fc_doc)
+        for id in sample_quality.keys():
+            for key in sample_quality[id].keys():
+                lane, index = key.split("_")
+                status = "FAIL"
+                if sample_quality[id][key][0] >= MIN_GTQ30:
+                    status = "PASS"
+                out_data.append([status,"Sample quality",lane,sample_quality[id][key][2],id,sample_quality[id][key][0],"[%>=Q30 >= {}%]".format(MIN_GTQ30)])
                 
         # Check that each lane received the minimum amount of reads
         for lane, reads in lane_yield.items():
@@ -443,6 +456,27 @@ class RunMetricsController(AbstractBaseController):
                                                        data["index_name"][i]])
         return undetermined_indexes
         
+    def _get_quality_per_sample(self, fc_doc):
+        """
+        Extract the quality per sample, keyed on SampleId and "Lane_Index"
+        Returns a dictionary of dictionaries    
+        """     
+        
+        # Get the quality for each sample, lane, index
+        sample_quality = {}
+        samples = fc_doc.get("illumina",{}).get("Demultiplex_Stats",{}).get("Barcode_lane_statistics",[])
+        for sample in samples:
+            id = sample['Sample ID']
+            lane = sample['Lane']
+            index = sample['Index']
+            gtQ30 = sample['% of >= Q30 Bases (PF)']
+            avgQ = sample['Mean Quality Score (PF)']
+            if id not in sample_quality:
+                sample_quality[id] = {}
+            sample_quality[id]["_".join([lane,index])] = [gtQ30, avgQ, sample['Project']]
+            
+        return sample_quality
+    
     def _get_yield_per_sample(self, fc_doc, read_pairs=True):
         """
         Extract the yield per sample, keyed on SampleId and "Lane_Index"
