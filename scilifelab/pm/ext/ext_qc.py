@@ -172,6 +172,7 @@ class RunMetricsController(AbstractBaseController):
     def _collect_pre_casava_qc(self):
         qc_objects = []
         as_yaml = False
+        read_setup = None
         runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "{}.csv".format(fc_id(self.pargs.flowcell)))
         if not os.path.exists(runinfo_csv):
             LOG.warn("No such file {}: trying fallback SampleSheet.csv".format(runinfo_csv))
@@ -203,15 +204,17 @@ class RunMetricsController(AbstractBaseController):
             fcobj["filter_metrics"] = parser.parse_filter_metrics(**fc_kw)
             fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(runinfo_csv=runinfo_csv, **fc_kw)
             fcobj["run_info_yaml"] = parser.parse_run_info_yaml(**fc_kw)
-            fcobj["run_setup"] = self._run_setup(fcobj["RunInfo"].get('Reads',[]))
+            read_setup = fcobj["RunInfo"].get('Reads',[])
+            fcobj["run_setup"] = self._run_setup(read_setup)
             qc_objects.append(fcobj)
         else:
             return qc_objects
-        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, as_yaml=as_yaml, setup=fcobj["RunInfo"].get('Reads',None))
+        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, as_yaml=as_yaml, setup=read_setup)
         return qc_objects
 
     def _collect_casava_qc(self):
         qc_objects = []
+        read_setup = None
         runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "{}.csv".format(fc_id(self.pargs.flowcell)))
         if not os.path.exists(runinfo_csv):
             LOG.warn("No such file {}: trying fallback SampleSheet.csv".format(runinfo_csv))
@@ -238,10 +241,11 @@ class RunMetricsController(AbstractBaseController):
             fcobj["undemultiplexed_barcodes"] = parser.parse_undemultiplexed_barcode_metrics(**fc_kw)
             fcobj["illumina"].update({"Demultiplex_Stats" : parser.parse_demultiplex_stats_htm(**fc_kw)})
             fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(runinfo_csv=runinfo_csv, **fc_kw)
-            fcobj["run_setup"] = self._run_setup(fcobj["RunInfo"].get('Reads',[]))
+            read_setup = fcobj["RunInfo"].get('Reads',[])
+            fcobj["run_setup"] = self._run_setup(read_setup)
             demux_stats = fcobj["illumina"]["Demultiplex_Stats"]
             qc_objects.append(fcobj)
-        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, demultiplex_stats=demux_stats, setup=fcobj["RunInfo"].get('Reads',None))
+        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, demultiplex_stats=demux_stats, setup=read_setup)
         return qc_objects
 
     def _run_setup(self, reads):
