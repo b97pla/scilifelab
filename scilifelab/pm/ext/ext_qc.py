@@ -407,7 +407,7 @@ class RunMetricsController(AbstractBaseController):
             for key in sample_quality[id].keys():
                 lane, index = key.split("_")
                 status = "FAIL"
-                if sample_quality[id][key][0] >= MIN_GTQ30:
+                if float(sample_quality[id][key][0]) >= MIN_GTQ30:
                     status = "PASS"
                 out_data.append([status,"Sample quality",lane,sample_quality[id][key][2],id,sample_quality[id][key][0],"[%>=Q30 >= {}%]".format(MIN_GTQ30)])
                 
