@@ -107,7 +107,7 @@ class RunMetricsController(AbstractBaseController):
     ##############################
     ## New structures
     ##############################
-    def _parse_samplesheet(self, runinfo, qc_objects, fc_date, fc_name, fcdir, as_yaml=False, demultiplex_stats=None):
+    def _parse_samplesheet(self, runinfo, qc_objects, fc_date, fc_name, fcdir, as_yaml=False, demultiplex_stats=None, setup=None):
         """Parse samplesheet information and populate sample run metrics object"""
         if as_yaml:
             for info in runinfo:
@@ -126,7 +126,7 @@ class RunMetricsController(AbstractBaseController):
                     obj = SampleRunMetricsDocument(**sample_kw)
                     obj["picard_metrics"] = parser.read_picard_metrics(**sample_kw)
                     obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
-                    obj["bc_count"] = parser.get_bc_count(**sample_kw)
+                    obj["bc_count"] = parser.get_bc_count(run_setup=setup, **sample_kw)
                     obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
                     obj["bcbb_checkpoints"] = parser.parse_bcbb_checkpoints(**sample_kw)
                     qc_objects.append(obj)
@@ -163,7 +163,7 @@ class RunMetricsController(AbstractBaseController):
                 obj = SampleRunMetricsDocument(**sample_kw)
                 obj["picard_metrics"] = parser.read_picard_metrics(**sample_kw)
                 obj["fastq_scr"] = parser.parse_fastq_screen(**sample_kw)
-                obj["bc_count"] = parser.get_bc_count(demultiplex_stats=demultiplex_stats, **sample_kw)
+                obj["bc_count"] = parser.get_bc_count(demultiplex_stats=demultiplex_stats, run_setup=setup, **sample_kw)
                 obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
                 obj["bcbb_checkpoints"] = parser.parse_bcbb_checkpoints(**sample_kw)
                 qc_objects.append(obj)
@@ -203,10 +203,11 @@ class RunMetricsController(AbstractBaseController):
             fcobj["filter_metrics"] = parser.parse_filter_metrics(**fc_kw)
             fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(runinfo_csv=runinfo_csv, **fc_kw)
             fcobj["run_info_yaml"] = parser.parse_run_info_yaml(**fc_kw)
+            fcobj["run_setup"] = self._run_setup(fcobj["RunInfo"].get('Reads',[]))
             qc_objects.append(fcobj)
         else:
             return qc_objects
-        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, as_yaml=as_yaml)
+        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, as_yaml=as_yaml, setup=fcobj["RunInfo"].get('Reads',None))
         return qc_objects
 
     def _collect_casava_qc(self):
@@ -237,11 +238,27 @@ class RunMetricsController(AbstractBaseController):
             fcobj["undemultiplexed_barcodes"] = parser.parse_undemultiplexed_barcode_metrics(**fc_kw)
             fcobj["illumina"].update({"Demultiplex_Stats" : parser.parse_demultiplex_stats_htm(**fc_kw)})
             fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(runinfo_csv=runinfo_csv, **fc_kw)
+            fcobj["run_setup"] = self._run_setup(fcobj["RunInfo"].get('Reads',[]))
             demux_stats = fcobj["illumina"]["Demultiplex_Stats"]
             qc_objects.append(fcobj)
-        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, demultiplex_stats=demux_stats)
+        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, demultiplex_stats=demux_stats, setup=fcobj["RunInfo"].get('Reads',None))
         return qc_objects
 
+    def _run_setup(self, reads):
+        """Return a string representing the run setup"""
+        
+        read_cycles = [r.get('NumCycles','?') for r in reads if r.get('IsIndexedRead','N') == 'N']
+        nreads = len(read_cycles)
+
+        c = list(set(read_cycles))
+        if len(c) == 1:
+            setup = "{}x{}".format(str(nreads),c[0])
+        else:
+            setup = ",".join(c)
+        
+        return setup
+
+    
     @controller.expose(help="Upload run metrics to statusdb")
     def upload_qc(self):
         if not self._check_pargs(['flowcell']):
