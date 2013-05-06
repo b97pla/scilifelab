@@ -453,6 +453,15 @@ class FlowcellRunMetricsConnection(Couch):
         run_mode = fc.get('RunParameters', {}).get('Setup', {}).get('RunMode', None)
         return run_mode
 
+    def is_paired_end(self, name):
+        """Get paired end status"""
+        fc = self.get_entry(name)
+        if not fc:
+            return None
+        reads = fc.get('RunInfo', {}).get('Reads', [])
+        return len([read for read in reads if read.get('IsIndexedRun','N') == 'N']) == 1
+        
+
 class ProjectSummaryConnection(Couch):
     _doc_type = ProjectSummaryDocument
     _update_fn = update_fn

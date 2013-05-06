@@ -568,7 +568,7 @@ class SampleRunMetricsParser(RunMetricsParser):
             self.log.warn("No filter nophix metrics for lane {}".format(lane))
             return {"reads":None, "reads_aligned":None, "reads_fail_align":None}
 
-    def get_bc_count(self, barcode_name, sample_prj, flowcell, lane, barcode_id, demultiplex_stats=None, **kw):
+    def get_bc_count(self, barcode_name, sample_prj, flowcell, lane, barcode_id, demultiplex_stats=None, run_setup=None, **kw):
         """Parse bc metrics at sample level and get *bc_count* for a sample run!"""
         self.log.debug("get_bc_count for sample {}, project {} in flowcell {}".format(barcode_name, sample_prj, flowcell))
         # If demultiplex_stats passed use this info instead
@@ -577,7 +577,12 @@ class SampleRunMetricsParser(RunMetricsParser):
             sample_lane = "{}_{}".format(barcode_name, lane)
             if sample_lane in demux_stats_dict:
                 self.log.debug("sample {}, lane {} found in demultiplex_stats - using this information".format(barcode_name, lane))
-                return int(demux_stats_dict[sample_lane]["# Reads"].replace(",", ""))/2
+                # Only return paired read counts for paired-end runs
+                reads = int(demux_stats_dict[sample_lane]["# Reads"].replace(",", ""))
+                if self._is_single_end(run_setup):
+                    return reads
+                else:
+                    return reads/2
         pattern = "{}_[0-9]+_[0-9A-Za-z]+(_nophix)?[\._]bc[\._]metrics".format(lane)
         files = self.filter_files(pattern)
         if len(files) == 0:
@@ -594,6 +599,11 @@ class SampleRunMetricsParser(RunMetricsParser):
             self.log.warn("No bc_metrics info for lane {}".format(lane))
             return None
 
+    def _is_single_end(self, reads):
+        """Return True if run is single end, False otherwise"""
+        if len([read for read in reads if read.get("IsIndexedRead","N") == "N"]) == 1:
+            return True
+        return False
 
 class FlowcellRunMetricsParser(RunMetricsParser):
     """Flowcell level class for parsing flowcell run metrics data."""
