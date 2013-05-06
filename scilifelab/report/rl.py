@@ -46,7 +46,7 @@ def sample_note_paragraphs():
     
     paragraphs["Sample"] = dict(style=h3,
                                 tpl=Template("""${scilifelab_name} / ${customer_name}.
-Ordered amount: ${ordered_amount} million paired reads."""))
+Ordered amount: ${ordered_amount} million read${'{}'.format(' pair') if is_paired else ''}s."""))
     
     paragraphs["Method"] = dict(style=h3,
                                 tpl = Template("""Clustered on cBot
@@ -54,9 +54,8 @@ and sequenced on ${instrument_version} according to manufacturer's
 instructions. Demultiplexing and conversion using ${casava_version}.
 The quality scale is Sanger / phred33 / Illumina 1.8+."""))
     paragraphs["Results"] = dict(style=h3,
-                                 tpl = Template("""${rounded_read_count} million paired reads in lane with PhiX
-error rate ${phix_error_rate}%. Average quality score
-${avg_quality_score}."""))
+                                 tpl = Template("""${rounded_read_count} million read${'{}'.format(' pair') if is_paired else ''}s${' in lane with PhiX error rate {}%'.format(phix_error_rate) if phix_error_rate != 'N/A' else ''}. 
+                                 Average quality score ${avg_quality_score} (${pct_q30_bases}% bases >= Q30)."""))
     
     paragraphs["Comments"] = dict(style=h3,
                                   tpl = Template("${success}"))
@@ -132,14 +131,11 @@ http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf."""))
     
     paragraphs["Information"]["Acknowledgement"] = dict(
         style=h4,
-        tpl=Template("""Please notify us when you publish using data
-produced at Science For Life Laboratory (SciLifeLab)
-Stockholm. To acknowledge SciLifeLab Stockholm in your
-'article, you can use a sentence like "The authors would like
-to acknowledge ' support from Science for Life Laboratory,
-the national infrastructure SNISS, and Uppmax for providing
-assistance in massively parallel sequencing and
-'computational infrastructure.""" ))
+        tpl=Template("""In publications based on data from the work covered by 
+this contract, the authors must acknowledge SciLifeLab, NGI and Uppmax: \"The 
+authors would like to acknowledge support from Science for Life Laboratory, 
+the National Genomics Infrastructure, NGI, and Uppmax for providing assistance 
+in massive parallel sequencing and computational infrastructure.\"""" ))
     return paragraphs
 
 def project_note_headers():
@@ -242,6 +238,7 @@ def make_example_sample_note(outfile):
     kw = {
         "project_name": "A_test",
         "customer_reference": "Some_test",
+        "is_paired": True,
         "uppnex_project_id": "b2013444",
         "ordered_amount":"23",
         "start_date": "000101",
