@@ -181,7 +181,7 @@ def _set_project_sample_dict(project_sample_item):
 def sample_status_note(project_name=None, flowcell=None, username=None, password=None, url=None,
                        ordered_million_reads=None, uppnex_id=None, customer_reference=None, bc_count=None,
                        project_alias=[], projectdb="projects", samplesdb="samples", flowcelldb="flowcells",
-                       phix=None, **kw):
+                       phix=None, is_paired=True, **kw):
     """Make a sample status note. Used keywords:
 
     :param project_name: project name
@@ -194,6 +194,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
     :param customer_reference: customer project name
     :param project_alias: project alias name
     :param phix: phix error rate
+    :param is_paired: True if run is paired-end, False for single-end
     """
     # Cutoffs
     cutoffs = {
@@ -216,6 +217,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         "pct_q30_bases" : None,
         "success" : None,
         "run_mode":None,
+        "is_paired":True
         }
     # key mapping from sample_run_metrics to parameter keys
     srm_to_parameter = {"project_name":"sample_prj", "FC_id":"flowcell", 
@@ -273,6 +275,10 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
             s_param.update(instrument_dict['default'])
         # Get run mode
         s_param["run_mode"] = fc_con.get_run_mode(str(fc))
+        s_param["is_paired"] = fc_con.is_paired_end(str(fc))
+        if s_param["is_paired"] is None:
+            LOG.warn("Could not determine run setup for flowcell {}. Will assume paired-end.".format(fc))
+            s_param["is_paired"] = True
         s_param.update(software_versions)
         s_param["phix_error_rate"] = fc_con.get_phix_error_rate(str(fc), s["lane"])
         if phix:
