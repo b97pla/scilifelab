@@ -42,23 +42,21 @@ def sample_note_paragraphs():
                                       tpl=Template("${FC_id}"))
     
     paragraphs["Sequence data directory"] = dict(style=h3, 
-                                                 tpl=Template("/proj/${uppnex_project_id}/INBOX/${project_name}/${scilifelab_name}/${start_date}_${FC_id}"))
+                                                 tpl=Template("/proj/${uppnex_project_id}/INBOX/${project_name}/[SciLifeLab ID]/${start_date}_${FC_id}"))
     
     paragraphs["Sample"] = dict(style=h3,
-                                tpl=Template("""${scilifelab_name} / ${customer_name}.
-Ordered amount: ${ordered_amount} million read${'{}'.format(' pair') if is_paired else ''}s."""))
+                                tpl=Template("""${scilifelab_name} (SciLifeLab ID)
+${customer_name} (Submitted ID)"""))
     
     paragraphs["Method"] = dict(style=h3,
-                                tpl = Template("""Clustered on cBot
-and sequenced on ${instrument_version} according to manufacturer's
-instructions. Demultiplexing and conversion using ${casava_version}.
+                                tpl = Template("""Clustered on ${'cBot' if not clustered == "OnBoardClustering" else 'board'} and 
+sequenced on ${instrument_version} (${'high output' if not run_mode == 'RapidRun' else 'rapid'} mode) in a ${run_setup}bp sequencing setup 
+according to manufacturer's instructions. Basecalling was performed with RTA v${rtaversion}. 
+Demultiplexing and fastq conversion were done using ${casava_software}.
 The quality scale is Sanger / phred33 / Illumina 1.8+."""))
-    paragraphs["Results"] = dict(style=h3,
-                                 tpl = Template("""${rounded_read_count} million read${'{}'.format(' pair') if is_paired else ''}s${' in lane with PhiX error rate {}%'.format(phix_error_rate) if phix_error_rate != 'N/A' else ''}. 
-                                 Average quality score ${avg_quality_score} (${pct_q30_bases}% bases >= Q30)."""))
     
-    paragraphs["Comments"] = dict(style=h3,
-                                  tpl = Template("${success}"))
+    paragraphs["Samples"] = dict(style=h3, tpl=Template(""))
+
     return paragraphs
 
 def sample_note_headers():

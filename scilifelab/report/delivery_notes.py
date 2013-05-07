@@ -216,8 +216,12 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         "avg_quality_score" : None,
         "pct_q30_bases" : None,
         "success" : None,
-        "run_mode":None,
-        "is_paired":True
+        "run_mode": None,
+        "is_paired": True,
+        "clustered": None,
+        "run_setup": None,
+        "rtaversion": None,
+        "casava_software": None
         }
     # key mapping from sample_run_metrics to parameter keys
     srm_to_parameter = {"project_name":"sample_prj", "FC_id":"flowcell", 
@@ -252,18 +256,29 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         return output_data
     
     # Set options
-    ordered_million_reads = _literal_eval_option(ordered_million_reads)
     bc_count = _literal_eval_option(bc_count)
     phix = _literal_eval_option(phix)
 
     # Count number of times a sample has been run on a flowcell; if several, make lane-specific reports
     sample_count = Counter([x.get("barcode_name") for x in sample_run_list])
-
+    sample_table_header = ['SciLifeLab ID', 'Submitted ID', 'Index', 'Lane', 'Read{}s'.format(' pair' if is_paired else ''), '% bases >= Q30', 'Mean Q']
+    sample_table = [sample_table_header]
+    
     # Loop samples and collect information
     s_param_out = []
     for s in sample_run_list:
         s_param = {}
         LOG.debug("working on sample '{}', sample run metrics name '{}', id '{}'".format(s.get("barcode_name", None), s.get("name", None), s.get("_id", None)))
+        
+        project_sample = p_con.get_project_sample(project_name, s.get("project_sample_name", None))
+        if project_sample:
+            LOG.debug("project sample run metrics mapping found: '{}' : '{}'".format(s["name"], project_sample["sample_name"]))
+        
+        ### fortsätt här
+        
+        sample_table_row = []
+        sample_table_row[0] = s.get("barcode_name", None)
+        
         s_param.update(parameters)
         s_param.update({key:s[srm_to_parameter[key]] for key in srm_to_parameter.keys()})
         fc = "{}_{}".format(s.get("date"), s.get("flowcell"))
