@@ -32,6 +32,11 @@ h4 = styles['Heading4']
 def sample_note_paragraphs():
     """Get paragraphs for sample notes."""
     paragraphs = OrderedDict()
+    paragraphs["Description"] = dict(style=h3, 
+                                      tpl=Template("""This is a raw data delivery note containing detailed information about the sequencing 
+of your samples on one flowcell. If your samples have been sequenced on multiple flowcells, you will receive one delivery note for each flowcell.
+You will also receive a project sample note summarizing the progress of your project."""))
+    
     paragraphs["Project name"] = dict(style=h3, 
                                       tpl=Template("${project_name} ${'({})'.format(customer_reference) if customer_reference not in ['', 'N/A'] else ''}"))
     
@@ -48,9 +53,10 @@ def sample_note_paragraphs():
 
     paragraphs["Method"] = dict(style=h3,
                                 tpl = Template("""Clustered on ${'cBot' if not clustered == "OnBoardClustering" else 'board'} and 
-sequenced on ${instrument_version} (${'high output' if not run_mode == 'RapidRun' else 'rapid'} mode) in a ${run_setup}bp sequencing setup 
-according to manufacturer's instructions. Basecalling was performed with RTA v${rtaversion}. 
-Demultiplexing and fastq conversion were done using ${casava_version}.
+sequenced on ${instrument_version} in ${'high output' if not run_mode == 'RapidRun' else 'rapid'} mode 
+according to manufacturer's instructions. The sequencing setup was ${run_setup}bp. 
+Basecalling was performed on instrument with ${basecall_software} v${basecaller_version}. 
+Demultiplexing and fastq conversion were done using ${demultiplex_version}.
 The quality scale is Sanger / phred33 / Illumina 1.8+."""))
     
     return paragraphs
@@ -63,16 +69,16 @@ def sample_note_headers():
     headers["{:%B %d, %Y}".format(datetime.now())] = h2
     return headers
 
-def make_sample_table(data,  header_size=11, row_size=9, **kw):
+def make_sample_table(data,  header_size=8, row_size=8, **kw):
     """Format sample table"""
     default_colWidths=[1.5*inch, 2*inch, 1*inch, 1*inch, 1*inch, .8*inch]
 
     if not kw.get("colWidths", None):
-        colWidths = len(data[0]) * [0*inch]
+        colWidths = len(data[0]) * [1.2 * stringWidth(str("a" * 8), "Helvetica", header_size)]
         for row in data:
-            for i in range(0, len(row)):
-                width = stringWidth(str(row[i]), "Helvetica", header_size)
-                colWidths[i] = min(default_colWidths, max(colWidths[i], 1.2 * width))
+            for i, val in enumerate(row):
+                width = stringWidth(str(val), "Helvetica", header_size)
+                colWidths[i] = max(1.2 * width, colWidths[i])#min(default_colWidths, max(colWidths[i], 1.2 * width))
         
     if not kw.get("rowHeights", None):
         rowHeights = len(data)*[0.25*inch]
@@ -80,11 +86,12 @@ def make_sample_table(data,  header_size=11, row_size=9, **kw):
     
     t.setStyle(TableStyle([
                            ('VALIGN',(0,0),(-1,-1),'BOTTOM'),
-                           ('ALIGN',(1,0),(-1,-1),'RIGHT'),
-                           ('ALIGN',(0,0),(0,-1),'LEFT'),
+                           ('ALIGN',(1,0),(-1,-1),'CENTER'),
+                           ('ALIGN',(0,0),(0,-1),'CENTER'),
                            ('FONTSIZE',(0,0),(-1,0),header_size),
                            ('FONTSIZE',(0,1),(-1,-1), row_size),
                            ('LINEABOVE',(0,1),(-1,1),1,colors.black),
+                           ('LINEBEFORE',(1,0),(-1,-1),1,colors.black),
                            ]))
     return t
 

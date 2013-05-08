@@ -7,6 +7,7 @@ import json
 import math
 import csv
 import yaml
+import operator
 from cStringIO import StringIO
 from collections import Counter
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, calc_avg_qv
@@ -20,8 +21,8 @@ LOG = scilifelab.log.minimal_logger(__name__)
 
 # Software versions used in data production. Instrument specific?
 software_versions = {
-    'baseconversion_version' : 'OLB v1.9',
-    'casava_version' : 'CASAVA v1.8.2'
+    'basecall_software': 'RTA',
+    'demultiplex_software' : 'configureBclToFastq.pl',
     }
 
 def _parse_instrument_config(cfile):
@@ -215,7 +216,14 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
     bc_count = _literal_eval_option(bc_count)
     phix = _literal_eval_option(phix)
 
-    sample_table_header = ['SciLifeLab ID', 'Submitted ID', 'Lane', 'Barcode', 'Read{}s (Mbases)'.format(' pair' if is_paired else ''), 'bases >= Q30 (%)', 'Average Q', 'PhiX error rate (%)']
+    sample_table_header = ['SciLifeLab ID', 
+                           'Submitted ID', 
+                           'Lane', 
+                           'Barcode', 
+                           'Read{}s'.format(' pair' if is_paired else ''), 
+                           'Avg Q', 
+                           '>=Q30 (%)', 
+                           'Error rate (%)']
     sample_table = [sample_table_header]
     
     # Connect and run
@@ -263,9 +271,12 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         fc_param["is_paired"] = True
     # FIXME: parse this from configs
     fc_param.update(software_versions)
-    fc_param["clustered"] = ""
-    fc_param["rtaversion"] = "hej"
-    fc_param["run_setup"] = "2x101"
+    demux_software = fc_con.get_demultiplex_software(str(fc))
+    fc_param["basecaller_version"] = demux_software.get(fc_param["basecall_software"],"")
+    fc_param["demultiplex_version"] = demux_software.get(fc_param["demultiplex_software"],"CASAVA v1.8.3")
+    fc_param.update()
+    fc_param["clustered"] = fc_con.get_clustered(str(fc))
+    fc_param["run_setup"] = fc_con.get_run_setup(str(fc))
     
     # Get uppnex id, possible overridden on the command line
     if uppnex_id:
@@ -354,6 +365,9 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         #if s_param["avg_quality_score"] < cutoffs["qv_cutoff"]:
         #    qv_stat = "LOW"
         #output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format(s["barcode_name"], s["lane"], s_param["phix_error_rate"], err_stat, s_param["avg_quality_score"], qv_stat))
+
+    # Sort the table by smaple and lane
+    sample_table = [sample_table[0]] + sorted(sample_table[1:], key=operator.itemgetter(0,2))
 
     # Write final output to reportlab and rst files
     output_data["debug"].write(json.dumps({'s_param': [fc_param], 'sample_runs':{s["name"]:s["barcode_name"] for s in sample_run_list}}))

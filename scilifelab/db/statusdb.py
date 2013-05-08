@@ -461,7 +461,33 @@ class FlowcellRunMetricsConnection(Couch):
         reads = fc.get('RunInfo', {}).get('Reads', [])
         return len([read for read in reads if read.get('IsIndexedRun','N') == 'N']) == 1
         
-
+    def get_clustered(self, name):
+        """Get clustering setup"""
+        fc = self.get_entry(name)
+        if not fc:
+            return None
+        return fc.get('RunParameters', {}).get('Setup', {}).get('ClusteringChoice', None)
+        
+    def get_run_setup(self, name):
+        """Get run setup"""
+        fc = self.get_entry(name)
+        if not fc:
+            return None
+        return fc.get('run_setup', None)
+        
+    def get_demultiplex_software(self, name):
+        """Get the software listed in demultiplex config"""
+        fc = self.get_entry(name)
+        if not fc:
+            return None
+        software = {}
+        for config in fc.get('DemultiplexConfig',{}).values():
+             config = config.get('Software',None)
+             while config:
+                 software[config['Name']] = config['Version']
+                 config = config.get('Software',None)
+        return software
+    
 class ProjectSummaryConnection(Couch):
     _doc_type = ProjectSummaryDocument
     _update_fn = update_fn
