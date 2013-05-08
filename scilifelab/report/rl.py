@@ -44,19 +44,15 @@ def sample_note_paragraphs():
     paragraphs["Sequence data directory"] = dict(style=h3, 
                                                  tpl=Template("/proj/${uppnex_project_id}/INBOX/${project_name}/[SciLifeLab ID]/${start_date}_${FC_id}"))
     
-    paragraphs["Sample"] = dict(style=h3,
-                                tpl=Template("""${scilifelab_name} (SciLifeLab ID)
-${customer_name} (Submitted ID)"""))
-    
+    paragraphs["Samples"] = dict(style=h3, tpl=Template(""))
+
     paragraphs["Method"] = dict(style=h3,
                                 tpl = Template("""Clustered on ${'cBot' if not clustered == "OnBoardClustering" else 'board'} and 
 sequenced on ${instrument_version} (${'high output' if not run_mode == 'RapidRun' else 'rapid'} mode) in a ${run_setup}bp sequencing setup 
 according to manufacturer's instructions. Basecalling was performed with RTA v${rtaversion}. 
-Demultiplexing and fastq conversion were done using ${casava_software}.
+Demultiplexing and fastq conversion were done using ${casava_version}.
 The quality scale is Sanger / phred33 / Illumina 1.8+."""))
     
-    paragraphs["Samples"] = dict(style=h3, tpl=Template(""))
-
     return paragraphs
 
 def sample_note_headers():

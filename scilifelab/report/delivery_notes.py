@@ -205,43 +205,23 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
     instrument = _parse_instrument_config(os.path.expanduser(kw.get("instrument_config","")))
     instrument_dict = {i['instrument_id']: i for i in instrument}
     
-    # parameters
-    parameters = {
-        "project_name" : None,
-        "start_date" : None,
-        "FC_id" : None,
-        "scilifelab_name" : None,
-        "rounded_read_count" : None,
-        "phix_error_rate" : None,
-        "avg_quality_score" : None,
-        "pct_q30_bases" : None,
-        "success" : None,
-        "run_mode": None,
-        "is_paired": True,
-        "clustered": None,
-        "run_setup": None,
-        "rtaversion": None,
-        "casava_software": None
-        }
-    # key mapping from sample_run_metrics to parameter keys
-    srm_to_parameter = {"project_name":"sample_prj", "FC_id":"flowcell", 
-                        "scilifelab_name":"barcode_name", "start_date":"date", "rounded_read_count":"bc_count"}
-    
-    LOG.debug("got parameters {}".format(parameters))
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
     if not _assert_flowcell_format(flowcell):
         LOG.warn("Wrong flowcell format {}; skipping. Please use the flowcell id (format \"[A-Z0-9]+XX\")".format(flowcell) )
         return output_data
     output_data = _update_sample_output_data(output_data, cutoffs)
 
+    # Set options
+    bc_count = _literal_eval_option(bc_count)
+    phix = _literal_eval_option(phix)
+
+    sample_table_header = ['SciLifeLab ID', 'Submitted ID', 'Lane', 'Barcode', 'Read{}s (Mbases)'.format(' pair' if is_paired else ''), 'bases >= Q30 (%)', 'Average Q', 'PhiX error rate (%)']
+    sample_table = [sample_table_header]
+    
     # Connect and run
     s_con = SampleRunMetricsConnection(dbname=samplesdb, username=username, password=password, url=url)
     fc_con = FlowcellRunMetricsConnection(dbname=flowcelldb, username=username, password=password, url=url)
     p_con = ProjectSummaryConnection(dbname=projectdb, username=username, password=password, url=url)
-
-    # Set up paragraphs
-    paragraphs = sample_note_paragraphs()
-    headers = sample_note_headers()
 
     # Get project
     project = p_con.get_entry(project_name)
@@ -255,86 +235,54 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         LOG.warn("No samples for project '{}', flowcell '{}'. Maybe there are no sample run metrics in statusdb?".format(project_name, flowcell))
         return output_data
     
-    # Set options
-    bc_count = _literal_eval_option(bc_count)
-    phix = _literal_eval_option(phix)
-
-    # Count number of times a sample has been run on a flowcell; if several, make lane-specific reports
-    sample_count = Counter([x.get("barcode_name") for x in sample_run_list])
-    sample_table_header = ['SciLifeLab ID', 'Submitted ID', 'Index', 'Lane', 'Read{}s'.format(' pair' if is_paired else ''), '% bases >= Q30', 'Mean Q']
-    sample_table = [sample_table_header]
+    # Peek at the samples to create the abbreviated run id
+    # Create a dict with the flowcell level information
+    fc_param = {}
+    i = 0
+    while i < len(sample_run_list) and len(fc_param.get("start_date","")) == 0:
+        fc_param["start_date"] = sample_run_list[i].get("date","")
+        i += 1
     
-    # Loop samples and collect information
-    s_param_out = []
-    for s in sample_run_list:
-        s_param = {}
+    fc_param["FC_id"] = flowcell
+    fc_param["project_name"] = project_name
+    fc_param["pdffile"] = "{}_{}_{}_flowcell_summary.pdf".format(project_name, fc_param["start_date"], flowcell)
+    fc_param["rstfile"] = "{}.rst".format(os.path.splitext(fc_param["pdffile"])[0])
+    fc = "{}_{}".format(fc_param["start_date"], flowcell)
+    
+    # Get instrument
+    try:
+        fc_param.update(instrument_dict[fc_con.get_instrument(str(fc))])
+    except:
+        LOG.warn("Failed to set instrument and software versions for flowcell {} in report due to missing RunInfo -> Instrument field in statusdb. Either rerun 'pm qc update-qc' or search-and-replace 'NN' in the sample report.".format(fc))
+        fc_param.update(instrument_dict['default'])
+    # Get run mode
+    fc_param["run_mode"] = fc_con.get_run_mode(str(fc))
+    fc_param["is_paired"] = fc_con.is_paired_end(str(fc))
+    if fc_param["is_paired"] is None:
+        LOG.warn("Could not determine run setup for flowcell {}. Will assume paired-end.".format(fc))
+        fc_param["is_paired"] = True
+    # FIXME: parse this from configs
+    fc_param.update(software_versions)
+    fc_param["clustered"] = ""
+    fc_param["rtaversion"] = "hej"
+    fc_param["run_setup"] = "2x101"
+    
+    # Get uppnex id, possible overridden on the command line
+    if uppnex_id:
+        fc_param["uppnex_project_id"] = uppnex_id
+    else:
+        fc_param['uppnex_project_id'] = project.get('uppnex_id')
+        
+    # Get customer reference, possible overridden on the command line        
+    if customer_reference:
+        fc_param["customer_reference"] = customer_reference
+    else:
+        fc_param['customer_reference'] = project.get('customer_reference')
+    
+    # Loop samples and build the sample information table
+    for s in sample_run_list: 
         LOG.debug("working on sample '{}', sample run metrics name '{}', id '{}'".format(s.get("barcode_name", None), s.get("name", None), s.get("_id", None)))
         
-        project_sample = p_con.get_project_sample(project_name, s.get("project_sample_name", None))
-        if project_sample:
-            LOG.debug("project sample run metrics mapping found: '{}' : '{}'".format(s["name"], project_sample["sample_name"]))
-        
-        ### fortsŠtt hŠr
-        
-        sample_table_row = []
-        sample_table_row[0] = s.get("barcode_name", None)
-        
-        s_param.update(parameters)
-        s_param.update({key:s[srm_to_parameter[key]] for key in srm_to_parameter.keys()})
-        fc = "{}_{}".format(s.get("date"), s.get("flowcell"))
-        # Get instrument
-        try:
-            s_param.update(instrument_dict[fc_con.get_instrument(str(fc))])
-        except:
-            LOG.warn("Failed to set instrument and software versions for flowcell {} in report due to missing RunInfo -> Instrument field in statusdb. Either rerun 'pm qc update-qc' or search-and-replace 'NN' in the sample report.".format(fc))
-            s_param.update(instrument_dict['default'])
-        # Get run mode
-        s_param["run_mode"] = fc_con.get_run_mode(str(fc))
-        s_param["is_paired"] = fc_con.is_paired_end(str(fc))
-        if s_param["is_paired"] is None:
-            LOG.warn("Could not determine run setup for flowcell {}. Will assume paired-end.".format(fc))
-            s_param["is_paired"] = True
-        s_param.update(software_versions)
-        s_param["phix_error_rate"] = fc_con.get_phix_error_rate(str(fc), s["lane"])
-        if phix:
-            s_param["phix_error_rate"] = _get_phix_error_rate(s["lane"], phix)
-        # Get quality score from demultiplex stats, if that fails
-        # (which it shouldn't), fall back on fastqc data.
-        (avg_quality_score, pct_q30_bases) = fc_con.get_barcode_lane_statistics(project_name, s.get("barcode_name"), fc, s["lane"])
-        s_param['avg_quality_score'] = avg_quality_score if avg_quality_score else calc_avg_qv(s) 
-        if not s_param['avg_quality_score']:
-            LOG.warn("Setting average quality failed for sample {}, id {}".format(s.get("name"), s.get("_id")))
-        s_param['pct_q30_bases'] = pct_q30_bases
-        if not s_param['pct_q30_bases']:
-            LOG.warn("Setting % of >= Q30 Bases (PF) failed for sample {}, id {}".format(s.get("name"), s.get("_id")))
-        # Compare phix error and qv to cutoffs
-        err_stat = "OK"
-        qv_stat = "OK"
-        if s_param["phix_error_rate"] > cutoffs["phix_err_cutoff"]:
-            err_stat = "HIGH"
-        elif s_param["phix_error_rate"] == -1:
-            err_stat = "N/A"
-        if s_param["avg_quality_score"] < cutoffs["qv_cutoff"]:
-            qv_stat = "LOW"
-        output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format(s["barcode_name"], s["lane"], s_param["phix_error_rate"], err_stat, s_param["avg_quality_score"], qv_stat))
-
-        # Update/set remaning sample run parameters, falling back on project defaults if *key* is missing
-        s_param['ordered_amount'] = s_param.get('ordered_amount', p_con.get_ordered_amount(project_name))
-        s_param['customer_reference'] = s_param.get('customer_reference', project.get('customer_reference'))
-        s_param['uppnex_project_id'] = s_param.get('uppnex_project_id', project.get('uppnex_id'))
-
-        # Override database settings if options passed at command line
-        if ordered_million_reads:
-            s_param["ordered_amount"] = _get_ordered_million_reads(s["barcode_name"], ordered_million_reads)
-        if bc_count:
-            s_param["rounded_read_count"] = _round_read_count_in_millions(_get_bc_count(s["barcode_name"], bc_count, s))
-        else:
-            s_param["rounded_read_count"] = _round_read_count_in_millions(s_param["rounded_read_count"])
-        if uppnex_id:
-            s_param["uppnex_project_id"] = uppnex_id
-        if customer_reference:
-            s_param["customer_reference"] = customer_reference
-
         # Get the project sample name corresponding to the sample run
         project_sample = p_con.get_project_sample(project_name, s.get("project_sample_name", None))
         if project_sample:
@@ -352,32 +300,72 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
                     LOG.debug("project sample run metrics mapping found: '{}' : '{}'".format(s["name"], project_sample_d[s["name"]]))
                 else:
                     LOG.warn("inconsistent mapping for '{}': '{}' != '{}' (project summary id)".format(s["name"], s["_id"], project_sample_d[s["name"]]))
-            s_param['customer_name'] = project_sample_item.get("customer_name", None)
-
+            s['customer_name'] = project_sample_item.get("customer_name", None)
+            
         # No project sample found. Manual upload to database necessary.
         else:
-            s_param['customer_name'] = None
+            s['customer_name'] = None
             LOG.warn("No project sample name found for sample run name '{}'".format(s["barcode_name"]))
             LOG.info("Please run 'pm qc upload-qc FLOWCELL_ID --extensive-matching' to update project sample names ")
             LOG.info("or 'pm qc update --sample_prj PROJECT_NAME --names BARCODE_TO_SAMPLE_MAP to update project sample names.")
             LOG.info("Please refer to the pm documentation for examples.")
             query_ok(force=kw.get("force", False))
 
-        # Finally assess sequencing success, update parameters and set outputs
-        s_param['success'] = sequencing_success(s_param, cutoffs)
-        s_param.update({k:"N/A" for k in s_param.keys() if s_param[k] is None or s_param[k] ==  "" or s_param[k] == -1.0})
-        if sample_count[s.get("barcode_name")] > 1:
-            outfile = "{}_{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"], s["lane"])
+        sample_table_row = ["" for i in range(len(sample_table[-1]))]
+        sample_table_row[0] = s.get("barcode_name", None)
+        sample_table_row[1] = s.get("customer_name", None)
+        sample_table_row[2] = s.get("lane",None)
+        sample_table_row[3] = s.get("sequence",None)
+        
+        # Get read counts, possible overridden on the command line
+        if bc_count:
+            sample_table_row[4] = _round_read_count_in_millions(_get_bc_count(s["barcode_name"], bc_count, s))
         else:
-            outfile = "{}_{}_{}.pdf".format(s["barcode_name"], s["date"], s["flowcell"])
-        s_param["outfile"] = outfile
-        s_param_out.append(s_param)
+            sample_table_row[4] = _round_read_count_in_millions(s.get("bc_count",None))
+        
+        # Get quality score from demultiplex stats, if that fails
+        # (which it shouldn't), fall back on fastqc data.
+        (avg_quality_score, pct_q30_bases) = fc_con.get_barcode_lane_statistics(project_name, s.get("barcode_name"), fc, s["lane"])
+        if not avg_quality_score:
+            avg_quality_score = calc_avg_qv(s) 
+        if not avg_quality_score:
+            LOG.warn("Setting average quality failed for sample {}, id {}".format(s.get("name"), s.get("_id")))
+        if not pct_q30_bases:
+            LOG.warn("Setting % of >= Q30 Bases (PF) failed for sample {}, id {}".format(s.get("name"), s.get("_id")))
+        
+        sample_table_row[5] = avg_quality_score
+        sample_table_row[6] = pct_q30_bases
+        
+        # Get phix error rate, possible overridden on the command line
+        if phix:
+            sample_table_row[7] = _get_phix_error_rate(s["lane"], phix)
+        else:
+            sample_table_row[7] = fc_con.get_phix_error_rate(str(fc), s["lane"]) 
+        
+        sample_table.append(sample_table_row)
+        
+        # Compare phix error and qv to cutoffs
+        #err_stat = "OK"
+        #qv_stat = "OK"
+        #if s_param["phix_error_rate"] > cutoffs["phix_err_cutoff"]:
+        #    err_stat = "HIGH"
+        #elif s_param["phix_error_rate"] == -1:
+        #    err_stat = "N/A"
+        #if s_param["avg_quality_score"] < cutoffs["qv_cutoff"]:
+        #    qv_stat = "LOW"
+        #output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format(s["barcode_name"], s["lane"], s_param["phix_error_rate"], err_stat, s_param["avg_quality_score"], qv_stat))
 
     # Write final output to reportlab and rst files
-    output_data["debug"].write(json.dumps({'s_param': s_param_out, 'sample_runs':{s["name"]:s["barcode_name"] for s in sample_run_list}}))
-    notes = [make_note(headers=headers, paragraphs=paragraphs, **sp) for sp in s_param_out]
-    rest_notes = make_sample_rest_notes("{}_{}_{}_sample_summary.rst".format(project_name, s.get("date", None), s.get("flowcell", None)), s_param_out)
-    concatenate_notes(notes, "{}_{}_{}_sample_summary.pdf".format(project_name, s.get("date", None), s.get("flowcell", None)))
+    output_data["debug"].write(json.dumps({'s_param': [fc_param], 'sample_runs':{s["name"]:s["barcode_name"] for s in sample_run_list}}))
+    
+    # Set up paragraphs
+    paragraphs = sample_note_paragraphs()
+    paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
+    headers = sample_note_headers()
+
+    make_note(fc_param["pdffile"], headers, paragraphs, **fc_param)
+    make_rest_note(fc_param["rstfile"], sample_table=sample_table, report="sample_report", **fc_param)
+    
     return output_data
 
 
