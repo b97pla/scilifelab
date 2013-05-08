@@ -214,7 +214,29 @@ class RunParametersParser():
         if 'Setup' in self.data:
             self.data = self.data['Setup']
         return self.data
+
+class DemultiplexConfigParser():
+    """DemultiplexConfig.xml parser"""
+    def __init__(self, cfgfile):
+        self.data = {}
+        self.cfgfile = cfgfile
         
+    def parse(self):
+        
+        if not os.path.exists(self.cfgfile):
+            self.log.warn("No such file {}".format(self.cfgfile))
+            return {}
+        try:
+            with open(self.cfgfile) as fh:
+                tree = ET.parse(fh)
+                root = tree.getroot()
+                self.data = XmlToDict(root)
+        except:
+            self.log.warn("Reading file {} failed".format(self.cfgfile))
+            return {}
+        
+        return self.data
+
 # Generic XML to dict parsing
 # See http://code.activestate.com/recipes/410469-xml-as-dictionary/
 class XmlToList(list):
@@ -650,6 +672,17 @@ class FlowcellRunMetricsParser(RunMetricsParser):
         except:
             self.log.warn("Reading file {} failed".format(os.path.join(os.path.abspath(self.path), fn)))
             return {}
+
+    def parseDemultiplexConfig(self, fn="DemultiplexConfig.xml", **kw):
+        """Parse the DemultiplexConfig.xml configuration files"""
+        pattern = os.path.join(os.path.abspath(self.path), "Unaligned*", fn)
+        cfg = {}
+        for cfgfile in glob.glob(pattern):
+            parser = DemultiplexConfigParser(cfgfile)
+            data = parser.parse()
+            if len(data) > 0:
+                cfg[os.path.basename(os.path.dirname(cfgfile))] = data
+        return cfg
 
     def parse_samplesheet_csv(self, runinfo_csv="SampleSheet.csv", **kw):
         infile = os.path.join(os.path.abspath(self.path), runinfo_csv)
