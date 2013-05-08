@@ -676,12 +676,12 @@ class FlowcellRunMetricsParser(RunMetricsParser):
     def parseDemultiplexConfig(self, fn="DemultiplexConfig.xml", **kw):
         """Parse the DemultiplexConfig.xml configuration files"""
         pattern = os.path.join(os.path.abspath(self.path), "Unaligned*", fn)
-        cfg = []
+        cfg = {}
         for cfgfile in glob.glob(pattern):
             parser = DemultiplexConfigParser(cfgfile)
             data = parser.parse()
             if len(data) > 0:
-                cfg.append(data)
+                cfg[os.path.basename(os.path.dirname(cfgfile))] = data
         return cfg
 
     def parse_samplesheet_csv(self, runinfo_csv="SampleSheet.csv", **kw):
