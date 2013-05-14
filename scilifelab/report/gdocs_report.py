@@ -22,7 +22,7 @@ def _column_mapping():
                ["# Reads", "Total reads"],
                ["Index", "Barcode sequence"],
                ["% of >= Q30 Bases (PF)", "% of >= Q30 Bases (PF)"],
-               ["Mean Quality Score (PF)", "Mean quality"],
+               ["Mean Quality Score (PF)", "Mean Quality Score (PF)"],
                ["% Perfect Index Reads", "% Perfect Index Reads"],
                ["% One Mismatch Reads (Index)", "% One Mismatch Reads (Index)"],
                ["Yield (Mbases)", "Yield (Mbases)"],
