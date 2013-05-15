@@ -38,7 +38,7 @@ class MiSeqRun(illumina.IlluminaRun):
     def write_hiseq_samplesheet(self, samplesheet):
         """Export the metadata for this run in a HiSeq samplesheet format
         """
-        hs_ssheet = HiSeqSampleSheet(self.samplesheet.to_hiseq(self.run_config))
+        hs_ssheet = HiSeqSampleSheet(self.samplesheet.to_hiseq(self.run_info))
         hs_ssheet.write(samplesheet)
         
     def _data_dir(self):
@@ -190,7 +190,7 @@ class MiSeqSampleSheet:
     def to_hiseq(self, run_config={}):
         """Convert Miseq SampleSheet to HiSeq formatted Samplesheet.
         """
-        FCID = run_config.get('Barcode','NA')
+        FCID = run_config.get('Flowcell','NA')
         Lane = "1"
         SampleRef = "NA"
         Description = "NA"
