@@ -15,11 +15,12 @@ gffFile=sys.argv[1]
 
 rRNAgeneList=commands.getoutput("grep 'rRNA' "+gffFile+" |awk '{print $10}'").replace('"','').replace(";","").split("\n")
 
-DIR_tophat=commands.getoutput("ls -d tophat_out_*").split()
+names=commands.getoutput("ls -d tophat_out_*|sed 's/tophat_out_//g'").split('\n')
 outList=[]
-for DIR in DIR_tophat:
+for name in names:
+	DIR = str('tophat_out_'+name)
 	try:
-		countFile=commands.getoutput("ls "+DIR+"/*.counts")
+		countFile=commands.getoutput("ls "+DIR+"/"+name+".counts")
 		totNum=commands.getoutput("awk '{SUM+=$2} END {print SUM}' "+countFile)
 		if totNum != '':
 			rRNAnum=0
