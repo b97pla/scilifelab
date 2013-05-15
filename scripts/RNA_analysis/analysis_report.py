@@ -313,7 +313,6 @@ def generate_report(proj_conf,single_end):
 	    	tot_NO_read_pairs = f.readlines()[2].split()[3]
 	    	f.close()
 	    	f = open('tophat_out_'+sample_name+'/stat'+sample_name, 'r')
-		print single_end
 	    	dict = make_stat(f,tot_NO_read_pairs,single_end)
 	    	tab.add_row([sample_name,tot_NO_read_pairs,dict['bef_dup_rem']['%uniq_mapped'],dict['aft_dup_rem']['%uniq_mapped']])
 	    	statistics[sample_name] = dict
