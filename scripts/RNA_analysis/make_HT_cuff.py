@@ -54,8 +54,12 @@ module unload cufflinks
 module load {4}
 module load {5}
 
+samtools view {1}/accepted_hits_{0}.bam |sort > {1}/accepted_hits_prehtseq_{0}.sam
+python -m HTSeq.scripts.count -s no -q {1}/accepted_hits_prehtseq_{0}.sam {2} > {1}/{0}_WithDupl.counts
+
 samtools view {1}/accepted_hits_sorted_dupRemoved_{0}.bam |sort > {1}/accepted_hits_sorted_dupRemoved_prehtseq_{0}.sam
 python -m HTSeq.scripts.count -s no -q {1}/accepted_hits_sorted_dupRemoved_prehtseq_{0}.sam {2} > {1}/{0}.counts
+
 rm {1}/accepted_hits_sorted_dupRemoved_prehtseq_{0}.sam
 samtools index {1}/accepted_hits_sorted_dupRemoved_{0}.bam
 cufflinks -p 8 -G {2} -o {1}/cufflinks_out_{0} {6}/tophat_out_{0}/accepted_hits_sorted_dupRemoved_{0}.bam""".format(name, tophat_out_path, gtf_file, mail, quant, counts, path, extra_arg)
