@@ -22,16 +22,25 @@ To be run from the analysis directory, eg:
 
 /proj/a2012043/private/nobackup/projects/t_olsson_11_02/intermediate/20120503A_hiseq2000
 
-load_dupRem_20158.py <project id> <version>
+load_dupRem_20158.py <project id> <version> -s
 
 	<project id> 	eg: T.Olsson_11_02
 	<version>	document version of 20158 integer - either 1,2 or 3 
-			
+	[-s] 		optional for single end	
 	"""
 	sys.exit()
 
 PROJECT_ID 	= sys.argv[1]
 VERSION		= sys.argv[2]
+try:
+	if sys.argv[3] ==  '-s':
+		single = True
+	else:
+		single=False
+except:
+	single=False
+	pass
+		
 CREDENTIALS_FILE = os.path.join(os.environ['HOME'], 'opt/config/gdocs_credentials')
 
 dup_rem_col = "Total number of reads after duplicate removal (Millions)"
@@ -89,9 +98,13 @@ for j,row in enumerate(content):
 	name = str(row[names_colindex-1]).strip()
 	print name
 	if dict.has_key(name):
-		R1=dict[name]['aft_dup_rem']['Read-1']
-		R2=dict[name]['aft_dup_rem']['Read-2']
-		M_reads_aft_dup_rem=str(round((float(R2)+float(R1))/2000000,2))
+        	if single:
+			print dict[name]['aft_dup_rem']['Uniquely mapped']
+                	M_reads_aft_dup_rem=str(round(float(dict[name]['aft_dup_rem']['Uniquely mapped'])/1000000.0,2))
+        	else:
+			R1=dict[name]['aft_dup_rem']['Read-1']
+			R2=dict[name]['aft_dup_rem']['Read-2']
+			M_reads_aft_dup_rem=str(round((float(R2)+float(R1))/2000000,2))
 		client.UpdateCell(j+1, reads_colindex, M_reads_aft_dup_rem, ss_key, ws_key)
 		print name+' '+M_reads_aft_dup_rem
 
