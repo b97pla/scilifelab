@@ -173,7 +173,20 @@ class RunMetricsController(AbstractBaseController):
         qc_objects = []
         as_yaml = False
         read_setup = None
-        runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "{}.csv".format(fc_id(self.pargs.flowcell)))
+        
+        fcdir = os.path.abspath(self.pargs.flowcell)
+        
+        ## Check modification time
+        if not modified_within_days(fcdir, self.pargs.mtime):
+            return qc_objects
+        
+        # Get the fc_name, fc_date from RunInfo    
+        parser = FlowcellRunMetricsParser(fcdir)
+        runinfo_xml = parser.parseRunInfo()
+        fc_date = runinfo_xml.get('Date',None)
+        fc_name = runinfo_xml.get('Flowcell',None)
+        
+        runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "{}.csv".format(fc_name))
         if not os.path.exists(runinfo_csv):
             LOG.warn("No such file {}: trying fallback SampleSheet.csv".format(runinfo_csv))
             runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "SampleSheet.csv")
@@ -190,32 +203,36 @@ class RunMetricsController(AbstractBaseController):
         except IOError as e:
             self.app.log.warn(str(e))
             raise e
-        fcdir = os.path.abspath(self.pargs.flowcell)
-        (fc_date, fc_name) = fc_parts(self.pargs.flowcell)
-        ## Check modification time
-        if modified_within_days(fcdir, self.pargs.mtime):
-            fc_kw = dict(fc_date = fc_date, fc_name=fc_name)
-            parser = FlowcellRunMetricsParser(fcdir)
-            fcobj = FlowcellRunMetricsDocument(**fc_kw)
-            fcobj["RunInfo"] = parser.parseRunInfo(**fc_kw)
-            fcobj["RunParameters"] = parser.parseRunParameters(**fc_kw)
-            fcobj["illumina"] = parser.parse_illumina_metrics(fullRTA=False, **fc_kw)
-            fcobj["bc_metrics"] = parser.parse_bc_metrics(**fc_kw)
-            fcobj["filter_metrics"] = parser.parse_filter_metrics(**fc_kw)
-            fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(runinfo_csv=runinfo_csv, **fc_kw)
-            fcobj["run_info_yaml"] = parser.parse_run_info_yaml(**fc_kw)
-            read_setup = fcobj["RunInfo"].get('Reads',[])
-            fcobj["run_setup"] = self._run_setup(read_setup)
-            qc_objects.append(fcobj)
-        else:
-            return qc_objects
+        
+        fc_kw = dict(fc_date = fc_date, fc_name=fc_name)
+        fcobj = FlowcellRunMetricsDocument(**fc_kw)
+        fcobj["RunInfo"] = runinfo_xml
+        fcobj["RunParameters"] = parser.parseRunParameters(**fc_kw)
+        fcobj["illumina"] = parser.parse_illumina_metrics(fullRTA=False, **fc_kw)
+        fcobj["bc_metrics"] = parser.parse_bc_metrics(**fc_kw)
+        fcobj["filter_metrics"] = parser.parse_filter_metrics(**fc_kw)
+        fcobj["samplesheet_csv"] = parser.parse_samplesheet_csv(runinfo_csv=runinfo_csv, **fc_kw)
+        fcobj["run_info_yaml"] = parser.parse_run_info_yaml(**fc_kw)
+        read_setup = fcobj["RunInfo"].get('Reads',[])
+        fcobj["run_setup"] = self._run_setup(read_setup)
+        qc_objects.append(fcobj)
         qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, as_yaml=as_yaml, setup=read_setup)
         return qc_objects
 
     def _collect_casava_qc(self):
         qc_objects = []
         read_setup = None
-        runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "{}.csv".format(fc_id(self.pargs.flowcell)))
+        demux_stats = None
+        
+        fcdir = os.path.join(os.path.abspath(self._meta.root_path), self.pargs.flowcell)
+        
+        # Get the fc_name, fc_date from RunInfo    
+        parser = FlowcellRunMetricsParser(fcdir)
+        runinfo_xml = parser.parseRunInfo()
+        fc_date = runinfo_xml.get('Date',None)
+        fc_name = runinfo_xml.get('Flowcell',None)
+        
+        runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "{}.csv".format(fc_name))
         if not os.path.exists(runinfo_csv):
             LOG.warn("No such file {}: trying fallback SampleSheet.csv".format(runinfo_csv))
             runinfo_csv = os.path.join(os.path.join(self._meta.root_path, self.pargs.flowcell), "SampleSheet.csv")
@@ -226,15 +243,11 @@ class RunMetricsController(AbstractBaseController):
         except IOError as e:
             self.app.log.warn(str(e))
             raise e
-        fcdir = os.path.join(os.path.abspath(self._meta.root_path), self.pargs.flowcell)
-        (fc_date, fc_name) = fc_parts(self.pargs.flowcell)
-        ## Check modification time
-        demux_stats = None
+        
         if modified_within_days(fcdir, self.pargs.mtime):
             fc_kw = dict(fc_date = fc_date, fc_name=fc_name)
-            parser = FlowcellRunMetricsParser(fcdir)
             fcobj = FlowcellRunMetricsDocument(fc_date, fc_name)
-            fcobj["RunInfo"] = parser.parseRunInfo(**fc_kw)
+            fcobj["RunInfo"] = runinfo_xml
             fcobj["RunParameters"] = parser.parseRunParameters(**fc_kw)
             fcobj["DemultiplexConfig"] = parser.parseDemultiplexConfig(**fc_kw)
             fcobj["illumina"] = parser.parse_illumina_metrics(fullRTA=False, **fc_kw)

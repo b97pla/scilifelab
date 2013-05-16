@@ -211,7 +211,8 @@ class RunParametersParser():
         tree = ET.parse(fh)
         root = tree.getroot()
         self.data = XmlToDict(root)
-        if 'Setup' in self.data:
+        # If not a MiSeq run, return the contents of the Setup tag
+        if 'MCSVersion' not in self.data:
             self.data = self.data['Setup']
         return self.data
 
@@ -771,7 +772,7 @@ class FlowcellRunMetricsParser(RunMetricsParser):
         
         lanes = {str(k):{} for k in self._lanes}
         # Use a glob to allow for multiple fastq folders
-        metrics_file_pattern = os.path.join(self.path, "Unaligned*", "Basecall_Stats_{}".format(fc_name[1:]), "Undemultiplexed_stats.metrics")
+        metrics_file_pattern = os.path.join(self.path, "Unaligned*", "Basecall_Stats_{}".format(fc_name), "Undemultiplexed_stats.metrics")
         for metrics_file in glob.glob(metrics_file_pattern):
             self.log.debug("parsing {}".format(metrics_file))
             if not os.path.exists(metrics_file):
