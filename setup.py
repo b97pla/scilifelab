@@ -5,9 +5,12 @@ from setuptools import setup, find_packages
 import sys
 import os
 import glob
+import subprocess
+
+commit = subprocess.check_output(["git", "describe"])
 
 setup(name = "scilifelab",
-      version = "0.3.0",
+      version = "{}".format(commit),
       author = "Science for Life Laboratory",
       author_email = "genomics_support@scilifelab.se",
       description = "Useful scripts for use at SciLifeLab",
