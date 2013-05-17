@@ -8,10 +8,10 @@ import subprocess
 import copy
 import tempfile
 import argparse
-import bcbio.solexa.flowcell
 import bcbio.solexa.samplesheet
 from bcbio.pipeline.config_loader import load_config
 from scilifelab.db.statusdb import ProjectSummaryConnection
+from scilifelab.bcbio.qc import FlowcellRunMetricsParser
 
 # The directory where CASAVA has written the demuxed output
 CASAVA_OUTPUT_DIR = "Unaligned"
@@ -436,7 +436,13 @@ def parse_casava_directory(fc_dir):
     projects = []
     
     fc_dir = os.path.abspath(fc_dir)
-    fc_name, fc_date = bcbio.solexa.flowcell.get_flowcell_info(fc_dir)
+    parser = FlowcellRunMetricsParser(fc_dir)
+    run_info = parser.parseRunInfo()
+        
+    fc_name = run_info.get('Flowcell',None)
+    fc_date = run_info.get('Date',None)
+    assert fc_name is not None and fc_date is not None, "Could not parse flowcell name and flowcell date"
+    
     unaligned_dir_pattern = os.path.join(fc_dir,"{}*".format(CASAVA_OUTPUT_DIR))
     basecall_stats_dir_pattern = os.path.join(unaligned_dir_pattern,"Basecall_Stats_*")
     basecall_stats_dir = [os.path.relpath(d,fc_dir) for d in glob.glob(basecall_stats_dir_pattern)]
