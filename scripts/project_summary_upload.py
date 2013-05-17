@@ -50,6 +50,8 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
 		obj['application'] = p.application
 		obj['customer_reference'] = p.customer_reference
 		obj['project_id']='P' + p.project_id
+		print p.type
+		obj['type']=p.type
 
 	### 20132
 	info = get_20132_info(client,project_name_swe)
@@ -215,8 +217,8 @@ def save_couchdb_obj(db, obj):
     return None 
 
 def comp_obj(obj, dbobj):
-	for key in dbobj:
-		if (obj.has_key(key)):
+	for key in obj:
+		if (dbobj.has_key(key)):
 			if (obj[key] != dbobj[key]):
 	                     return False
 	     	else:
