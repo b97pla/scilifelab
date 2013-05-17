@@ -660,7 +660,8 @@ class RunMetricsController(AbstractBaseController):
                 pdoc = {}
         
             application = pdoc.get("application","N/A")
-            out_data.append([project,application])
+            type = pdoc.get("type","Check GPL")
+            out_data.append([project,application,type])
         
         self.app._output_data['stdout'].write("\n".join(["\t".join([str(r) for r in row]) for row in out_data]))
                
