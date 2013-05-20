@@ -71,6 +71,7 @@ class ProjectMetaData:
         """
 
         return {
+	   "type" : "Type",
            "project_id": "ID",
            "project_name": "Project name",
            "queue_date": "Queue date",
@@ -143,6 +144,13 @@ class ProjectMetaData:
     def _set_uppnex_id(self, value):
         self._uppnex_id = value
 
+    def _get_type(self):
+        return self._type
+
+    def _set_type(self, value):
+        self._type = value
+
+    type = property(_get_type, _set_type)
     project_id = property(_get_project_id, _set_project_id)
     project_name = property(_get_project_name, _set_project_name)
     queue_date = property(_get_queue_date, _set_queue_date)
