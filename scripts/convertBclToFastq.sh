@@ -17,9 +17,10 @@ OUTDIR="Unaligned"
 SSHEET="SampleSheet.csv"
 MM=1
 BASEMASK=""
+TAG=""
 
 # Parse optional command line arguments
-while getopts ":i:m:o:s:b:h" opt; do
+while getopts ":i:m:o:s:b:h:t" opt; do
   case $opt in
     m)
       MM=${OPTARG}
@@ -36,15 +37,19 @@ while getopts ":i:m:o:s:b:h" opt; do
     b)
       BASEMASK=${OPTARG}
       ;;
+    t)
+      TAG="_${OPTARG}"
+      ;;
     h)
       echo $"
-Usage: $0 [-i INDIR -o OUTDIR -m MISMATCHES -s SAMPLESHEET -b BASEMASK]
+Usage: $0 [-i INDIR -o OUTDIR -m MISMATCHES -s SAMPLESHEET -b BASEMASK -t TAG]
 
     -i INDIR       Input directory, default is ${INDIR}
     -o OUTDIR      Output directory, default is ${OUTDIR}
     -s SAMPLESHEET Sample sheet, default is ${SSHEET} 
     -m MISMATCHES  Number of allowed mismatches, default is ${MM}
     -b BASEMASK    The base mask to use, default is to auto-detect
+    -t TAG         A tag to use for the logfile names to uniquely identify the logs
 " >&2
       exit 0
       ;;
@@ -73,14 +78,14 @@ then
   CMD="${CMD} --use-bases-mask ${BASEMASK}"
 fi
 
-LOG="configureBclToFastq.log"
+LOG="configureBclToFastq${TAG}.log"
 echo `date`$'\t'"Configuring the bcl to fastq conversion, log is ${LOG}"
 ${CMD} >& ${LOG}
 
 echo `date`$'\t'"Changing to ${OUTDIR}"
 cd ${OUTDIR}
 
-LOG="../bclToFastq.log"
+LOG="../bclToFastq${TAG}.log"
 echo `date`$'\t'"Running bcl conversion, log is ${LOG}"
 
 CMD="
