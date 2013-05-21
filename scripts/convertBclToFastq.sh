@@ -21,7 +21,7 @@ TAG=""
 J="8"
 
 # Parse optional command line arguments
-while getopts ":i:m:o:s:b:h:t:j" opt; do
+while getopts ":i:m:o:s:b:t:j:h" opt; do
   case $opt in
     m)
       MM=${OPTARG}
