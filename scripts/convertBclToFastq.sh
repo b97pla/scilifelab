@@ -14,7 +14,7 @@ set -e
 
 INDIR="Data/Intensities/BaseCalls"
 OUTDIR="Unaligned"
-SSHEET="SampleSheet.csv"
+SSHEET=""
 MM=1
 BASEMASK=""
 TAG=""
@@ -50,7 +50,7 @@ Usage: $0 [-i INDIR -o OUTDIR -m MISMATCHES -s SAMPLESHEET -b BASEMASK -j CORES 
 
     -i INDIR       Input directory, default is ${INDIR}
     -o OUTDIR      Output directory, default is ${OUTDIR}
-    -s SAMPLESHEET Sample sheet, default is ${SSHEET} 
+    -s SAMPLESHEET Sample sheet, default is to not use a samplesheet
     -m MISMATCHES  Number of allowed mismatches, default is ${MM}
     -b BASEMASK    The base mask to use, default is to auto-detect
     -j CORES       The number of cores to use
@@ -76,8 +76,12 @@ configureBclToFastq.pl \
 --output-dir ${OUTDIR} \
 --mismatches ${MM} \
 --fastq-cluster-count 0 \
---sample-sheet ${SSHEET} \
 "
+if [ ! -z ${SSHEET} ]
+then
+  CMD="${CMD} --sample-sheet ${SSHEET}"
+fi
+
 if [ ! -z ${BASEMASK} ]
 then
   CMD="${CMD} --use-bases-mask ${BASEMASK}"
