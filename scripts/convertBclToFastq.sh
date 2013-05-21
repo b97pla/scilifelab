@@ -18,9 +18,10 @@ SSHEET="SampleSheet.csv"
 MM=1
 BASEMASK=""
 TAG=""
+J="8"
 
 # Parse optional command line arguments
-while getopts ":i:m:o:s:b:h:t" opt; do
+while getopts ":i:m:o:s:b:h:t:j" opt; do
   case $opt in
     m)
       MM=${OPTARG}
@@ -40,15 +41,19 @@ while getopts ":i:m:o:s:b:h:t" opt; do
     t)
       TAG="_${OPTARG}"
       ;;
+    j)
+      J=${OPTARG}
+      ;;
     h)
       echo $"
-Usage: $0 [-i INDIR -o OUTDIR -m MISMATCHES -s SAMPLESHEET -b BASEMASK -t TAG]
+Usage: $0 [-i INDIR -o OUTDIR -m MISMATCHES -s SAMPLESHEET -b BASEMASK -j CORES -t TAG]
 
     -i INDIR       Input directory, default is ${INDIR}
     -o OUTDIR      Output directory, default is ${OUTDIR}
     -s SAMPLESHEET Sample sheet, default is ${SSHEET} 
     -m MISMATCHES  Number of allowed mismatches, default is ${MM}
     -b BASEMASK    The base mask to use, default is to auto-detect
+    -j CORES       The number of cores to use
     -t TAG         A tag to use for the logfile names to uniquely identify the logs
 " >&2
       exit 0
