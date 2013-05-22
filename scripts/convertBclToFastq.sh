@@ -19,9 +19,10 @@ MM=1
 BASEMASK=""
 TAG=""
 J="8"
+IGNOREMISSING=0
 
 # Parse optional command line arguments
-while getopts ":i:m:o:s:b:t:j:h" opt; do
+while getopts ":i:m:o:s:b:t:j:xh" opt; do
   case $opt in
     m)
       MM=${OPTARG}
@@ -44,6 +45,9 @@ while getopts ":i:m:o:s:b:t:j:h" opt; do
     j)
       J=${OPTARG}
       ;;
+    x)
+      IGNOREMISSING=1
+      ;;
     h)
       echo $"
 Usage: $0 [-i INDIR -o OUTDIR -m MISMATCHES -s SAMPLESHEET -b BASEMASK -j CORES -t TAG]
@@ -55,6 +59,7 @@ Usage: $0 [-i INDIR -o OUTDIR -m MISMATCHES -s SAMPLESHEET -b BASEMASK -j CORES 
     -b BASEMASK    The base mask to use, default is to auto-detect
     -j CORES       The number of cores to use
     -t TAG         A tag to use for the logfile names to uniquely identify the logs
+    -x             Ignore any missing bcl, stats or control files
 " >&2
       exit 0
       ;;
@@ -86,6 +91,12 @@ if [ ! -z ${BASEMASK} ]
 then
   CMD="${CMD} --use-bases-mask ${BASEMASK}"
 fi
+
+if [ ${IGNOREMISSING} -eq 1 ]
+then
+  CMD="${CMD} --ignore-missing-bcl  --ignore-missing-stats --ignore-missing-control"
+fi
+
 
 LOG="configureBclToFastq${TAG}.log"
 echo `date`$'\t'"Configuring the bcl to fastq conversion, log is ${LOG}"
