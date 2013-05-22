@@ -255,11 +255,11 @@ def collect_metrics(path):
         return {}
     
     # Insert a dummy character as the parse method expects a flowcell position
-    metrics = parser.parse_demultiplex_stats_htm("X{}".format(fcid))
+    metrics = parser.parse_demultiplex_stats_htm(fcid)
     metrics['RunInfo'] = run_info
     
     # Get the undemultiplexed indexes
-    undemux = parser.parse_undemultiplexed_barcode_metrics("X{}".format(fcid))
+    undemux = parser.parse_undemultiplexed_barcode_metrics(fcid)
     metrics['Undemultiplexed'] = undemux
     
     return metrics
