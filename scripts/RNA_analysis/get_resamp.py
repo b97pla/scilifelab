@@ -39,7 +39,7 @@ dict = eval(open('stat.json').read())
 samps=dict.keys()
 print 'sample    M_reads       M_reads_(dup_rem)         Status'
 for sample in samps:
-	Total_M_read=float(dict[sample]['Total_No_read-pairs'])/1000000
+	Total_M_read=float(dict[sample]['Total_No_reads'])/1000000
 	if single:
 		M_reads_aft_dup_rem=(float(dict[sample]['aft_dup_rem']['Uniquely mapped']))/1000000
 	else:	
