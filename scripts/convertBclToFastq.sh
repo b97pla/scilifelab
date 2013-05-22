@@ -54,7 +54,7 @@ Usage: $0 [-i INDIR -o OUTDIR -m MISMATCHES -s SAMPLESHEET -b BASEMASK -j CORES 
 
     -i INDIR       Input directory, default is ${INDIR}
     -o OUTDIR      Output directory, default is ${OUTDIR}
-    -s SAMPLESHEET Sample sheet, default is to not use a samplesheet
+    -s SAMPLESHEET Sample sheet, default is SampleSheet.csv in ${INDIR}
     -m MISMATCHES  Number of allowed mismatches, default is ${MM}
     -b BASEMASK    The base mask to use, default is to auto-detect
     -j CORES       The number of cores to use
