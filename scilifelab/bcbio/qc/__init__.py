@@ -772,7 +772,7 @@ class FlowcellRunMetricsParser(RunMetricsParser):
         
         lanes = {str(k):{} for k in self._lanes}
         # Use a glob to allow for multiple fastq folders
-        metrics_file_pattern = os.path.join(self.path, "Unaligned*", "Basecall_Stats_{}".format(fc_name), "Undemultiplexed_stats.metrics")
+        metrics_file_pattern = os.path.join(self.path, "Unaligned*", "Basecall_Stats_*{}".format(fc_name[1:]), "Undemultiplexed_stats.metrics")
         for metrics_file in glob.glob(metrics_file_pattern):
             self.log.debug("parsing {}".format(metrics_file))
             if not os.path.exists(metrics_file):
@@ -804,7 +804,7 @@ class FlowcellRunMetricsParser(RunMetricsParser):
         metrics = {"Barcode_lane_statistics": [],
                    "Sample_information": []}
         # Use a glob to allow for multiple fastq directories
-        htm_file_pattern = os.path.join(self.path, "Unaligned*", "Basecall_Stats_{}".format(fc_name), "Demultiplex_Stats.htm")
+        htm_file_pattern = os.path.join(self.path, "Unaligned*", "Basecall_Stats_*{}".format(fc_name[1:]), "Demultiplex_Stats.htm")
         for htm_file in glob.glob(htm_file_pattern):
             self.log.debug("parsing {}".format(htm_file))
             if not os.path.exists(htm_file):
