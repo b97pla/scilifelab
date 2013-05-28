@@ -438,9 +438,11 @@ def parse_casava_directory(fc_dir):
     fc_dir = os.path.abspath(fc_dir)
     parser = FlowcellRunMetricsParser(fc_dir)
     run_info = parser.parseRunInfo()
+    runparams = parser.parseRunParameters()
         
     fc_name = run_info.get('Flowcell',None)
     fc_date = run_info.get('Date',None)
+    fc_pos = runparams.get('FCPosition','')
     assert fc_name is not None and fc_date is not None, "Could not parse flowcell name and flowcell date"
     
     unaligned_dir_pattern = os.path.join(fc_dir,"{}*".format(CASAVA_OUTPUT_DIR))
@@ -468,7 +470,7 @@ def parse_casava_directory(fc_dir):
                          'project_name': project_name, 
                          'samples': project_samples})
     
-    return {'fc_dir': fc_dir, 'fc_name': fc_name, 'fc_date': fc_date, 'basecall_stats_dir': basecall_stats_dir, 'projects': projects}
+    return {'fc_dir': fc_dir, 'fc_name': '{}{}'.join(fc_pos,fc_name), 'fc_date': fc_date, 'basecall_stats_dir': basecall_stats_dir, 'projects': projects}
     
 def has_casava_output(fc_dir):
     try:
