@@ -526,7 +526,8 @@ class SampleRunMetricsParser(RunMetricsParser):
         self.log.debug("parse_fastq_screen for sample {}, project {}, lane {} in run {}".format(barcode_name, sample_prj, lane, flowcell))
         parser = MetricsParser()
         pattern = "|".join(["{}_[0-9]+_[0-9A-Za-z]+(_nophix)?_{}_[12]_screen.txt".format(lane, barcode_id),
-                            "{}_[0-9]+_[0-9A-Za-z]+_{}(_nophix)?_[12]_screen.txt".format(lane, barcode_id)])
+                            "{}_[0-9]+_[0-9A-Za-z]+_{}(_nophix)?_[12]_screen.txt".format(lane, barcode_id),
+                            "{}_{}_L0*{}_.*_screen.txt".format(barcode_name, kw.get("sequence"), lane)])
         files = self.filter_files(pattern)
         self.log.debug("files {}".format(",".join(files)))
         try:

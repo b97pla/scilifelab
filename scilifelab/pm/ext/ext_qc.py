@@ -131,9 +131,8 @@ class RunMetricsController(AbstractBaseController):
                     obj["bcbb_checkpoints"] = parser.parse_bcbb_checkpoints(**sample_kw)
                     qc_objects.append(obj)
         else:
-            for sample in runinfo[1:]:
-                LOG.debug("Getting information for sample defined by {}".format(sample))
-                d = dict(zip(runinfo[0], sample))
+            for d in runinfo:
+                LOG.debug("Getting information for sample defined by {}".format(d.values()))
                 if self.app.pargs.project_name and self.app.pargs.project_name != d['SampleProject']:
                     continue
                 if self.app.pargs.sample and self.app.pargs.sample != d['SampleID']:
@@ -216,7 +215,7 @@ class RunMetricsController(AbstractBaseController):
         read_setup = fcobj["RunInfo"].get('Reads',[])
         fcobj["run_setup"] = self._run_setup(read_setup)
         qc_objects.append(fcobj)
-        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, as_yaml=as_yaml, setup=read_setup)
+        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, "{}{}".format(fc_pos,fc_name), fcdir, as_yaml=as_yaml, setup=read_setup)
         return qc_objects
 
     def _collect_casava_qc(self):
@@ -242,7 +241,7 @@ class RunMetricsController(AbstractBaseController):
         if modified_within_days(fcdir, self.pargs.mtime):
             # Most of the code expects to have the flowcell position pre-pended to the flowcell id
             fc_kw = dict(fc_date = fc_date, fc_name="{}{}".format(fc_pos,fc_name))
-            fcobj = FlowcellRunMetricsDocument(fc_date, fc_name)
+            fcobj = FlowcellRunMetricsDocument(**fc_kw)
             fcobj["RunInfo"] = runinfo_xml
             fcobj["RunParameters"] = runparams
             fcobj["DemultiplexConfig"] = parser.parseDemultiplexConfig(**fc_kw)
@@ -255,7 +254,7 @@ class RunMetricsController(AbstractBaseController):
             fcobj["run_setup"] = self._run_setup(read_setup)
             demux_stats = fcobj["illumina"]["Demultiplex_Stats"]
             qc_objects.append(fcobj)
-        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, demultiplex_stats=demux_stats, setup=read_setup)
+        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, "{}{}".format(fc_pos,fc_name), fcdir, demultiplex_stats=demux_stats, setup=read_setup)
         return qc_objects
 
     def _run_setup(self, reads):
