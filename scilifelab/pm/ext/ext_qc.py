@@ -241,7 +241,7 @@ class RunMetricsController(AbstractBaseController):
         if modified_within_days(fcdir, self.pargs.mtime):
             # Most of the code expects to have the flowcell position pre-pended to the flowcell id
             fc_kw = dict(fc_date = fc_date, fc_name="{}{}".format(fc_pos,fc_name))
-            fcobj = FlowcellRunMetricsDocument(fc_date, fc_name)
+            fcobj = FlowcellRunMetricsDocument(**fc_kw)
             fcobj["RunInfo"] = runinfo_xml
             fcobj["RunParameters"] = runparams
             fcobj["DemultiplexConfig"] = parser.parseDemultiplexConfig(**fc_kw)
