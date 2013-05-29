@@ -131,9 +131,8 @@ class RunMetricsController(AbstractBaseController):
                     obj["bcbb_checkpoints"] = parser.parse_bcbb_checkpoints(**sample_kw)
                     qc_objects.append(obj)
         else:
-            for sample in runinfo[1:]:
-                LOG.debug("Getting information for sample defined by {}".format(sample))
-                d = dict(zip(runinfo[0], sample))
+            for d in runinfo:
+                LOG.debug("Getting information for sample defined by {}".format(d.values()))
                 if self.app.pargs.project_name and self.app.pargs.project_name != d['SampleProject']:
                     continue
                 if self.app.pargs.sample and self.app.pargs.sample != d['SampleID']:
