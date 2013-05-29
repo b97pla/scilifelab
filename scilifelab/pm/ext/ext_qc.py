@@ -215,7 +215,7 @@ class RunMetricsController(AbstractBaseController):
         read_setup = fcobj["RunInfo"].get('Reads',[])
         fcobj["run_setup"] = self._run_setup(read_setup)
         qc_objects.append(fcobj)
-        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, as_yaml=as_yaml, setup=read_setup)
+        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, "{}{}".format(fc_pos,fc_name), fcdir, as_yaml=as_yaml, setup=read_setup)
         return qc_objects
 
     def _collect_casava_qc(self):
@@ -254,7 +254,7 @@ class RunMetricsController(AbstractBaseController):
             fcobj["run_setup"] = self._run_setup(read_setup)
             demux_stats = fcobj["illumina"]["Demultiplex_Stats"]
             qc_objects.append(fcobj)
-        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, fc_name, fcdir, demultiplex_stats=demux_stats, setup=read_setup)
+        qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, "{}{}".format(fc_pos,fc_name), fcdir, demultiplex_stats=demux_stats, setup=read_setup)
         return qc_objects
 
     def _run_setup(self, reads):
