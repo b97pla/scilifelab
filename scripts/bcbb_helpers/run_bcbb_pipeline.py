@@ -470,7 +470,7 @@ def parse_casava_directory(fc_dir):
                          'project_name': project_name, 
                          'samples': project_samples})
     
-    return {'fc_dir': fc_dir, 'fc_name': '{}{}'.join(fc_pos,fc_name), 'fc_date': fc_date, 'basecall_stats_dir': basecall_stats_dir, 'projects': projects}
+    return {'fc_dir': fc_dir, 'fc_name': '{}{}'.format(fc_pos,fc_name), 'fc_date': fc_date, 'basecall_stats_dir': basecall_stats_dir, 'projects': projects}
     
 def has_casava_output(fc_dir):
     try:
