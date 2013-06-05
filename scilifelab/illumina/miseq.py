@@ -110,7 +110,7 @@ class MiSeqSampleSheet:
         
         # Parse the samplesheet file into a data structure
         data = defaultdict(dict)
-        with open(self.samplesheet,"r") as fh:
+        with open(self.samplesheet,"rU") as fh:
             current = None
             for line in fh:
                 line = line.strip()
@@ -159,7 +159,7 @@ class MiSeqSampleSheet:
         
         if getattr(self, "_sample_names", None) is None:
             sample_names = []
-            with open(self.samplesheet,"r") as fh:
+            with open(self.samplesheet,"rU") as fh:
                 for line in fh:
                     if line.startswith("[Data]"):
                         for line in fh:
