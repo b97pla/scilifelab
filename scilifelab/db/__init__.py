@@ -50,23 +50,25 @@ class Couch(Database):
         self.pw = kwargs.get("password", None)
         if self.user and self.pw:
             self.url_string = "http://{}:{}@{}:{}".format(self.user, self.pw, self.url, self.port)
+            self.display_url_string = "http://{}:{}@{}:{}".format(self.user, "*********", self.url, self.port)
         else:
             self.url_string = "http://{}:{}".format(self.url, self.port)
+            self.display_url_string = "http://{}:{}".format(self.url, self.port)
         if log:
             self.log = log
         super(Couch, self).__init__(**kwargs)        
         if not self.con:
-            raise ConnectionError("Connection failed for url {}".format(self.url_string))
+            raise ConnectionError("Connection failed for url {}".format(self.display_url_string))
 
     def connect(self, username=None, password=None, url="localhost", port=5984, **kw):
         if not username or not password or not url:
             self.log.warn("please supply username, password, and url")
             return None
         if not check_url(self.url_string):
-            self.log.warn("No such url {}".format(self.url_string))
+            self.log.warn("No such url {}".format(self.display_url_string))
             return None
         self.con = couchdb.Server(url=self.url_string)
-        self.log.debug("Connected to server @{}".format(self.url_string))
+        self.log.debug("Connected to server @{}".format(self.display_url_string))
         self.user = username
         self.pw = password
 

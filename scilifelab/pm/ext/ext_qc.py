@@ -156,7 +156,7 @@ class RunMetricsController(AbstractBaseController):
                     runinfo_yaml = yaml.load(fh)
                 if not runinfo_yaml['details'][0].get("multiplex", None):
                     self.app.log.warn("No multiplex information for sample {}".format(d['SampleID']))
-                    continue
+                    runinfo_yaml['details'][0]['multiplex'] = [{'barcode_id': 0, 'sequence': 'NoIndex'}]
                 sample_kw = dict(flowcell=fc_name, date=fc_date, lane=d['Lane'], barcode_name=d['SampleID'], sample_prj=d['SampleProject'].replace("__", "."), barcode_id=runinfo_yaml['details'][0]['multiplex'][0]['barcode_id'], sequence=runinfo_yaml['details'][0]['multiplex'][0]['sequence'])
                 parser = SampleRunMetricsParser(sample_fcdir)
                 obj = SampleRunMetricsDocument(**sample_kw)
