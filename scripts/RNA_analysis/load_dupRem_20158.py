@@ -96,6 +96,10 @@ for j,row in enumerate(content):
 			if str(col).strip() == dup_rem_col:
 				reads_colindex = i+1
 	name = str(row[names_colindex-1]).strip()
+        try:
+                name=name.split('_')[0]+'_'+name.split('_')[1]
+        except:
+                pass
 	print name
 	if dict.has_key(name):
         	if single:
