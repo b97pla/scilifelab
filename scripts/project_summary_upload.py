@@ -50,7 +50,6 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
 		obj['application'] = p.application
 		obj['customer_reference'] = p.customer_reference
 		obj['project_id']='P' + p.project_id
-		print p.type
 		obj['type']=p.type
 
 	### 20132
@@ -135,12 +134,20 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
                         if obj['samples'].has_key(striped_scilife_name):
                                 if obj['samples'][striped_scilife_name].has_key("library_prep"):
                                         if obj['samples'][striped_scilife_name]["library_prep"].has_key(prep):
-                                                obj['samples'][striped_scilife_name]["library_prep"][prep]["average_size_bp"]=Av_sice
-                                                obj['samples'][striped_scilife_name]["library_prep"][prep]["prep_status"]=prep_status
+						if (Av_sice != '-') and (Av_sice != ''):
+                                                	obj['samples'][striped_scilife_name]["library_prep"][prep]["average_size_bp"]=Av_sice
+						if (prep_status != '-') and (prep_status != ''):
+                                                	obj['samples'][striped_scilife_name]["library_prep"][prep]["prep_status"]=prep_status
                                         else:
-                                                obj['samples'][striped_scilife_name]["library_prep"][prep]={"average_size_bp":Av_sice,"prep_status":prep_status}
+						if (Av_sice != '-') and (Av_sice != ''):
+                                                	obj['samples'][striped_scilife_name]["library_prep"][prep]={"average_size_bp":Av_sice}
+						if (prep_status != '-') and (prep_status != ''):
+							obj['samples'][striped_scilife_name]["library_prep"][prep]["prep_status"]=prep_status
                                 else:
-                                        obj['samples'][striped_scilife_name]["library_prep"]={prep:{"average_size_bp":Av_sice,"prep_status":prep_status}}
+					if (Av_sice != '-') and (Av_sice != ''):
+                                        	obj['samples'][striped_scilife_name]["library_prep"]={prep:{"average_size_bp":Av_sice}}
+					if (prep_status != '-') and (prep_status != ''):
+						obj['samples'][striped_scilife_name]["library_prep"][prep]["prep_status"]=prep_status
       	return obj
 
 
@@ -412,7 +419,7 @@ def strip_scilife_name(names):
         preps = 'F_BCDE'
         for name_init in names:
 		prep = ''
-		indexes = ['_index','_rpi','_agilent','_mondrian','_haloht','_halo','_sureselect','_dual','_hht','_ss','_i','_r','_a','_m','_h']
+		indexes = ['_nxdual','_index','_rpi','_agilent','_mondrian','_haloht','_halo','_sureselect','_dual','_hht','_ss','_i','_r','_a','_m','_h']
 		name = name_init.replace('-', '_').replace(' ', '')
 		for i in indexes:
 			name=name.split(i)[0]
