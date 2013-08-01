@@ -33,7 +33,7 @@ class FastQParser:
             def _next(self):
                 self._records_read += 1
                 return [self._fh.next().strip() for n in range(4)]
-        else:
+        else :
             def _next(self):
                 while True:
                     record = [self._fh.next().strip() for n in range(4)]
@@ -158,6 +158,9 @@ def parse_header(header):
             'is_filtered': (is_filtered == 'Y'),
             'control_number': int(control_number),
             'index': str(index)} # Note that MiSeq Reporter outputs a SampleSheet index rather than the index sequence
+
+
+
 
 def is_read_pair(rec1, rec2, casava18=True):
     """Returns true if the two records belong to the same read pair, determined by matching the header strings and disregarding
