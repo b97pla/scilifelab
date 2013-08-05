@@ -6,14 +6,15 @@ import sys
 import os
 import argparse
 import collections
-from scilifelab.utils.fastq_utils import FastQParser, is_read_pair, FastQWriter, parse_header
+from scilifelab.utils.fastq_utils import FastQParser, is_read_pair, FastQWriter, parse_header, gtQ30count,avgQ
 from scilifelab.illumina.hiseq import HiSeqSampleSheet
 
 
-def demultiplex(CVS):
-    sdata =  HiSeqSampleSheet(CVS)
+def demultiplex(CSV, keepIndexes):
+    sdata =  HiSeqSampleSheet(CSV)
     folderStruct = collections.defaultdict(lambda : collections.defaultdict(dict))
     outfiles = {}
+    DemultiplexStats = {}
     counts = {}
     
     for sd in sdata:
@@ -23,6 +24,7 @@ def demultiplex(CVS):
         index = sd["Index"]
         if lane not in outfiles:
             outfiles[lane] = {}
+            DemultiplexStats[lane] = {}
             counts[lane] = {}
         outfiles[lane][index] = []
         counts[lane][index] = 0
@@ -37,20 +39,68 @@ def demultiplex(CVS):
                                                               lane,
                                                               read)
         folderStruct[sampleProject][sampleID][lane] = [read1, read2]
-        projectDirName = "Project_"+sampleProject
-        sampleDirName = "Sample_"+sampleID
-        outfiles[lane][index].append(os.path.join(projectDirName+ "/" + sampleDirName + "/" , read1))
-        outfiles[lane][index].append(os.path.join(projectDirName+ "/" + sampleDirName + "/" , read2))
+        projectDirName = "Project_{}".format(sampleProject)
+        sampleDirName  = "Sample_{}".format(sampleID)
+        outfiles[lane][index].append(os.path.join(projectDirName, sampleDirName, read1))
+        outfiles[lane][index].append(os.path.join(projectDirName, sampleDirName, read2))
+        ## now prepare Demultiplex stats
+        DemultiplexStats[lane][index] = {'SampleID' : sampleDirName,
+                                         'SampleRef': sd['SampleRef'],
+                                         'Index'    : index,
+                                         'Description': sd['Description'],
+                                         'Control'    : sd['Control'],
+                                         'Project'    : sampleProject,
+                                         'numReads'   : 0,
+                                         'Yeld'       : 0,
+                                         'PF'         : 100, # not lcear how to set this one
+                                         'lanePerc'   : 0,
+                                         'Q30'        : 0,
+                                         '0error'     : 0,
+                                         '1error'     : 0,
+                                         'meanQuality': 0,
+                                         'Recipe'     : sd['Recipe'] ,
+                                         'Operator'   : sd['Operator'],
+                                         'Directory'  : os.path.join(os.getcwd(), projectDirName, sampleDirName)
+                                         }
+        
         
     for lane in outfiles:
+        #create undetermined group 
         outfiles[lane]["Undetermined"] = [];
-        read1 = "lane" + lane + "_Undetermined_L00" + lane + "_R1_001.fastq"
-        read2 = "lane" + lane + "_Undetermined_L00" + lane + "_R2_001.fastq"
-        outfiles[lane]["Undetermined"].append("Undetermined_indices/Sample_lane" + lane + "/" + read1)
-        outfiles[lane]["Undetermined"].append("Undetermined_indices/Sample_lane" + lane + "/" + read2)
-        folderStruct["Undetermined_indices"]["Sample_lane" + lane][lane] = [read1,read2]
-    
-    
+        read1 = "tmp_lane{}_Undetermined_L00{}_R{}_001.fastq.gz".format(lane, lane, 1)
+        read2 = "tmp_lane{}_Undetermined_L00{}_R{}_001.fastq.gz".format(lane, lane, 2)
+        projectDirName = "Undetermined_indices"
+        sampleDirName = "Sample_lane{}".format(lane)
+        outfiles[lane]["Undetermined"].append(os.path.join(projectDirName, sampleDirName, read1))
+        outfiles[lane]["Undetermined"].append(os.path.join(projectDirName, sampleDirName, read2))
+        folderStruct["Undetermined_indices"][sampleDirName][lane] = [read1,read2]
+        DemultiplexStats[lane]['Undetermined'] = {'SampleID' : sampleDirName,
+                                         'SampleRef'  : 'unknown',
+                                         'Index'      : 'Undetermined',
+                                         'Description': 'unmatched barcodes for lane {}'.format(lane),
+                                         'Control'    : 'N',
+                                         'Project'    : projectDirName,
+                                         'numReads'   : 0,
+                                         'Yeld'       : 0,
+                                         'PF'         : 100, # not lcear how to set this one
+                                         'lanePerc'   : 0,
+                                         'Q30'        : 0,
+                                         '0error'     : 0,
+                                         '1error'     : 0,
+                                         'meanQuality': 0,
+                                         'Recipe'     : 'R1' ,
+                                         'Operator'   : 'NN',
+                                         'Directory'  : os.path.join(os.getcwd(), projectDirName, sampleDirName)
+                                         }
+        #create ambiguous group
+        outfiles[lane]["Ambiguous"] = [];
+        read1 = "tmp_lane{}_Ambiguous_L00{}_R{}_001.fastq.gz".format(lane, lane, 1)
+        read2 = "tmp_lane{}_Ambiguous_L00{}_R{}_001.fastq.gz".format(lane, lane, 2)
+        projectDirName = "Ambiguous_indices"
+        sampleDirName = "Sample_lane{}".format(lane)
+        outfiles[lane]["Ambiguous"].append(os.path.join(projectDirName, sampleDirName, read1))
+        outfiles[lane]["Ambiguous"].append(os.path.join(projectDirName, sampleDirName, read2))
+        folderStruct["Ambiguous_indices"][sampleDirName][lane] = [read1,read2]
     prepareDirectories(folderStruct)
     for lane in outfiles:
         for index in outfiles[lane]:
@@ -58,8 +108,7 @@ def demultiplex(CVS):
             outfiles[lane][index] = [] 
             for file in files:
                 outfiles[lane][index].append(FastQWriter(file))
-    
-    demultiplex_lanes(outfiles)
+    demultiplex_lanes(outfiles, keepIndexes, DemultiplexStats)
     return
 
 
@@ -68,19 +117,18 @@ def prepareDirectories(folderStruct):
         projectDirName = "Project_"+project
         if project is "Undetermined_indices":
             projectDirName = "Undetermined_indices"
+        elif project is "Ambiguous_indices":
+            projectDirName = "Ambiguous_indices"
         assert not os.path.exists(projectDirName), "Directory already exist, I am not going to overwrite previous results" 
         os.mkdir(projectDirName)
-        os.chdir(projectDirName)
         for sample in folderStruct[project]:
             sampleDirName = "Sample_" + sample
             if project is "Undetermined_indices":
                 sampleDirName = sample
-            assert not os.path.exists(sampleDirName), "Directory already exist, I am not going to overwrite previous results" 
-            os.mkdir(sampleDirName)
-            os.chdir(sampleDirName)
-            os.chdir("..")
-        os.chdir("..")
-    
+            elif project is "Ambiguous_indices":
+                sampleDirName = sample
+            os.mkdir(os.path.join(projectDirName,sampleDirName))
+
 
 def change_index(header,new_index):
     """Changes the index field in the header with the one specified in a  FASTQ header as specified by CASAVA 1.8.2 
@@ -94,37 +142,87 @@ def change_index(header,new_index):
     new_header = ":".join([instrument, run_number, flowcell_id, lane, tile, x_pos, y_pos_read, is_filtered, control_number, new_index])
     return new_header
 
-def demultiplex_lanes(outfiles):
+def demultiplex_lanes(outfiles, keepIndexes, DemultiplexStats):
     for lane in outfiles:
         unmultiplexedDirForLane = "Sample_lane"+lane
         if os.path.exists(unmultiplexedDirForLane):
-            unmultiplexedFileRead1  = "lane"+lane+"_Undetermined_L00"+lane+"_R1_001.fastq"
-            unmultiplexedFileRead2  = "lane"+lane+"_Undetermined_L00"+lane+"_R2_001.fastq"
-            print "working on lane {}".format(lane)
-            demultiplex_lane(unmultiplexedDirForLane, unmultiplexedFileRead1, unmultiplexedFileRead2, outfiles)
+            unmultiplexedFileRead1  = "lane{}_Undetermined_L00{}_R{}_001.fastq".format(lane,lane,1)
+            unmultiplexedFileRead2  = "lane{}_Undetermined_L00{}_R{}_001.fastq".format(lane,lane,2)
+            if not(os.path.exists(os.path.join(unmultiplexedDirForLane, unmultiplexedFileRead1)) and os.path.exists(os.path.join(unmultiplexedDirForLane, unmultiplexedFileRead2))):
+                unmultiplexedFileRead1  = "lane{}_Undetermined_L00{}_R{}_001.fastq.gz".format(lane,lane,1)
+                unmultiplexedFileRead2  = "lane{}_Undetermined_L00{}_R{}_001.fastq.gz".format(lane,lane,2)
+            assert os.path.exists(os.path.join(unmultiplexedDirForLane, unmultiplexedFileRead1)) and os.path.exists(os.path.join(unmultiplexedDirForLane, unmultiplexedFileRead2)),'Error in lane {} folder {}: folder exists but no read file present: this is unexpected'.format(lane, unmultiplexedDirForLane) 
+            DemultiplexStats = demultiplex_lane(unmultiplexedDirForLane, unmultiplexedFileRead1, unmultiplexedFileRead2, outfiles, keepIndexes, DemultiplexStats)
         else:
             print 'Lane {0} with folder {1} not found'.format(lane, unmultiplexedDirForLane)
-    return
     
-def demultiplex_lane(unmultiplexedFolder, unmultiplexedFastq1, unmultiplexedFastq2, outfiles):
-    fp1 = FastQParser(unmultiplexedFolder+"/"+unmultiplexedFastq1)
-    fp2 = FastQParser(unmultiplexedFolder+"/"+unmultiplexedFastq2)
+    print  "Lane SampleID SampleRef Index Description Control Project Yield(Mbases) %PF #Reads %ofRawClustersPerLane %PerfectIndexReads %OneMismatchReads(Index) %of>=Q30Bases(PF) MeanQualityScore(PF)"
+    for lane in DemultiplexStats:
+        for index in DemultiplexStats[lane]:
+            print "{} {} {} {} {} {} {} {} {} {} {} {} {} {} {}".format(lane, index, 
+                                                                        DemultiplexStats[lane][index]['SampleID'],
+                                                                        DemultiplexStats[lane][index]['SampleRef'],
+                                                                        DemultiplexStats[lane][index]['Index'],
+                                                                        DemultiplexStats[lane][index]['Description'],
+                                                                        DemultiplexStats[lane][index]['Control'],
+                                                                        DemultiplexStats[lane][index]['Project'],
+                                                                        DemultiplexStats[lane][index]['Yeld'],
+                                                                        DemultiplexStats[lane][index]['PF'],
+                                                                        DemultiplexStats[lane][index]['numReads'],
+                                                                        DemultiplexStats[lane][index]['lanePerc'],
+                                                                        DemultiplexStats[lane][index]['0error'],
+                                                                        DemultiplexStats[lane][index]['1error'],
+                                                                        DemultiplexStats[lane][index]['Q30'],
+                                                                        DemultiplexStats[lane][index]['meanQuality']
+                                                                        )
+    
+    print "here it goes information about the samples --> to be build"
+#DemultiplexStats[lane][index]['Recipe']
+#DemultiplexStats[lane][index]['Operator']
+#DemultiplexStats[lane][index]['Directory'] 
+
+
+def demultiplex_lane(unmultiplexedFolder, unmultiplexedFastq1, unmultiplexedFastq2, outfiles, keepIndexes, DemultiplexStats):
+    fp1 = FastQParser(os.path.join(unmultiplexedFolder, unmultiplexedFastq1))
+    fp2 = FastQParser(os.path.join(unmultiplexedFolder, unmultiplexedFastq2))
+    numReadInLane = 0
+    lane_r1 = 0
     for r1 in fp1:
         r2 = fp2.next()
         assert is_read_pair(r1,r2), "Mismatching headers for expected read pair" 
         header_r1 = parse_header(r1[0])
         lane_r1 = str(header_r1['lane'])
         index_r1 = header_r1['index']
-        real_index = check_index(index_r1 , outfiles[lane_r1])
+        real_index, num_mismatches = check_index(index_r1 , outfiles[lane_r1])
+        numReadInLane += 2
         
-        r1[0] = change_index(r1[0], real_index)
-        r2[0] = change_index(r2[0], real_index)
-        
+        if not keepIndexes and real_index is not'Undetermined' and real_index is not 'Ambiguous':
+            r1[0] = change_index(r1[0], real_index)
+            r2[0] = change_index(r2[0], real_index)
         outfiles[lane_r1][real_index][0].write(r1)
         outfiles[lane_r1][real_index][1].write(r2)
-       
-       
+        if real_index is not 'Ambiguous':
+            DemultiplexStats[lane_r1][real_index]['Yeld']       += len(r1[1]) + len(r1[2])
+            #DemultiplexStats[lane_r1][real_index]['PF']         = 1
+            DemultiplexStats[lane_r1][real_index]['numReads']   += 2
+            DemultiplexStats[lane_r1][real_index]['lanePerc']   += 2
+            if num_mismatches == 0:
+                DemultiplexStats[lane_r1][real_index]['0error'] += 2
+            elif num_mismatches == 1:
+                DemultiplexStats[lane_r1][real_index]['1error'] += 2
 
+            DemultiplexStats[lane_r1][real_index]['Q30']         += (gtQ30count(r1) + gtQ30count(r2)) 
+            DemultiplexStats[lane_r1][real_index]['meanQuality'] += (avgQ(r1) + avgQ(r2)) 
+    
+    for index in DemultiplexStats[lane_r1]:
+        DemultiplexStats[lane_r1][real_index]['Q30']     = round(100*float(DemultiplexStats[lane_r1][real_index]['Q30'])/DemultiplexStats[lane_r1][index]['Yeld'],2)
+        DemultiplexStats[lane_r1][index]['Yeld']         = round(DemultiplexStats[lane_r1][index]['Yeld']/1000) 
+        DemultiplexStats[lane_r1][index]['lanePerc']     = round(100*float(DemultiplexStats[lane_r1][index]['lanePerc'])/numReadInLane,2)
+        DemultiplexStats[lane_r1][real_index]['0error']  = round(100*float(DemultiplexStats[lane_r1][real_index]['0error'])/DemultiplexStats[lane_r1][real_index]['numReads'],2)
+        DemultiplexStats[lane_r1][real_index]['1error']  = round(100*float(DemultiplexStats[lane_r1][real_index]['1error'])/DemultiplexStats[lane_r1][real_index]['numReads'],2)
+        DemultiplexStats[lane_r1][real_index]['meanQuality'] = round(float(DemultiplexStats[lane_r1][real_index]['meanQuality'])/DemultiplexStats[lane_r1][real_index]['numReads'],2)
+    
+    return DemultiplexStats
 
         
 def check_index(index_r1 , filter):
@@ -138,11 +236,11 @@ def check_index(index_r1 , filter):
             index_matched = index
             num_matches += 1
     if num_matches == 1:
-        return index_matched
+        return index_matched, num_mismatches
     elif num_matches == 0:
-        return "Undetermined"
+        return "Undetermined", num_mismatches
     else:
-        return "ambiguity"
+        return "Ambiguous", num_mismatches
     
 
 def hamdist(str1, str2):
@@ -159,12 +257,12 @@ def main():
     parser = argparse.ArgumentParser(description="Demultiplex a CASAVA 1.8+ FastQ file based on the information in the fastq header")
     
     
-    parser.add_argument('CVS', action='store',
-                        help="CVS file describing the experiment")
+    parser.add_argument('CSV', action='store',help="CSV file describing the experiment")
+    parser.add_argument('--keepIndexes', action='store_true',help="if specified does not trim the index (keeps the one used to demultiplex)")
     
     args = parser.parse_args()
     
-    demultiplex(args.CVS)
+    demultiplex(args.CSV , args.keepIndexes )
 
 
 

@@ -33,7 +33,7 @@ class FastQParser:
             def _next(self):
                 self._records_read += 1
                 return [self._fh.next().strip() for n in range(4)]
-        else :
+        else:
             def _next(self):
                 while True:
                     record = [self._fh.next().strip() for n in range(4)]
@@ -137,6 +137,15 @@ def gtQ30(record,offset=33):
         if ord(c) >= cutoff:
             g += 1
     return round(100*float(g)/len(qual),1)
+
+def gtQ30count(record,offset=33):
+    qual = record[3].strip()
+    cutoff = 30 + offset
+    g = 0
+    for c in qual:
+        if ord(c) >= cutoff:
+            g += 1
+    return g
 
 def parse_header(header):
     """Parses the FASTQ header as specified by CASAVA 1.8.2 and returns the fields in a dictionary
