@@ -1,4 +1,5 @@
 """Utilities for handling FastQ data"""
+import subprocess
 import gzip
 import os
 from scilifelab.illumina.hiseq import HiSeqRun
@@ -12,11 +13,11 @@ class FastQParser:
     def __init__(self,file,filter=None):
         self.fname = file
         self.filter = filter
-        fh = open(file,"rb")
+        
         if file.endswith(".gz"):
-            self._fh = gzip.GzipFile(fileobj=fh)
+            self._fh = subprocess.Popen(["gunzip", "-d", "-c", file], stdout = subprocess.PIPE, bufsize = 1).stdout
         else:
-            self._fh = fh
+            self._fh = subprocess.Popen(["cat", file], stdout = subprocess.PIPE, bufsize = 1).stdout
         self._records_read = 0
         self._next = self.setup_next()
         
@@ -68,18 +69,18 @@ class FastQWriter:
        
     def __init__(self,file):
         self.fname = file
-        fh = open(file,"wb")
         if file.endswith(".gz"):
-            self._fh = gzip.GzipFile(fileobj=fh)
-        else:    
-            self._fh = fh
+            command = "gzip -c  > {}".format(file)
+            self._fh = subprocess.Popen(command , shell= True,  stdin=subprocess.PIPE)
+        else:
+            self._fh = subprocess.Popen(file, stdin=subprocess.PIPE)
         self._records_written = 0
         
     def name(self):
         return self.fname
     
     def write(self,record):
-        self._fh.write("{}\n".format("\n".join([r.strip() for r in record])))
+        self._fh.stdin.write("{}\n".format("\n".join([r.strip() for r in record])))
         self._records_written += 1
     
     def rwritten(self):

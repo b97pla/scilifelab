@@ -1,7 +1,7 @@
 """Demultiplex a CASAVA 1.8+ FastQ file based on the information in the fastq header 
 assumed to be run in Undermined_indeces
 """
-
+import time
 import sys
 import os
 import argparse
@@ -138,7 +138,7 @@ def change_index(header,new_index):
     if header[0] != '@':
         return None
     
-    instrument, run_number, flowcell_id, lane, tile, x_pos, y_pos_read, is_filtered, control_number, index = header[1:].split(":")
+    instrument, run_number, flowcell_id, lane, tile, x_pos, y_pos_read, is_filtered, control_number, index = header[:].split(":")
     new_header = ":".join([instrument, run_number, flowcell_id, lane, tile, x_pos, y_pos_read, is_filtered, control_number, new_index])
     return new_header
 
@@ -159,7 +159,7 @@ def demultiplex_lanes(outfiles, keepIndexes, DemultiplexStats):
     print  "Lane SampleID SampleRef Index Description Control Project Yield(Mbases) %PF #Reads %ofRawClustersPerLane %PerfectIndexReads %OneMismatchReads(Index) %of>=Q30Bases(PF) MeanQualityScore(PF)"
     for lane in DemultiplexStats:
         for index in DemultiplexStats[lane]:
-            print "{} {} {} {} {} {} {} {} {} {} {} {} {} {} {}".format(lane, index, 
+            print "{} {} {} {} {} {} {} {} {} {} {} {} {} {} {}".format(lane, 
                                                                         DemultiplexStats[lane][index]['SampleID'],
                                                                         DemultiplexStats[lane][index]['SampleRef'],
                                                                         DemultiplexStats[lane][index]['Index'],
@@ -187,6 +187,7 @@ def demultiplex_lane(unmultiplexedFolder, unmultiplexedFastq1, unmultiplexedFast
     fp2 = FastQParser(os.path.join(unmultiplexedFolder, unmultiplexedFastq2))
     numReadInLane = 0
     lane_r1 = 0
+    oldTime = time.clock()
     for r1 in fp1:
         r2 = fp2.next()
         assert is_read_pair(r1,r2), "Mismatching headers for expected read pair" 
@@ -195,14 +196,17 @@ def demultiplex_lane(unmultiplexedFolder, unmultiplexedFastq1, unmultiplexedFast
         index_r1 = header_r1['index']
         real_index, num_mismatches = check_index(index_r1 , outfiles[lane_r1])
         numReadInLane += 2
-        
-        if not keepIndexes and real_index is not'Undetermined' and real_index is not 'Ambiguous':
+        currentTime  = time.clock()
+        if numReadInLane % 1000000 == 0:
+            print "processing reads 1000000 reads in {}".format(currentTime - oldTime)
+            oldTime = currentTime
+        if not keepIndexes and real_index is not 'Undetermined' and real_index is not 'Ambiguous':
             r1[0] = change_index(r1[0], real_index)
             r2[0] = change_index(r2[0], real_index)
         outfiles[lane_r1][real_index][0].write(r1)
         outfiles[lane_r1][real_index][1].write(r2)
         if real_index is not 'Ambiguous':
-            DemultiplexStats[lane_r1][real_index]['Yeld']       += len(r1[1]) + len(r1[2])
+            DemultiplexStats[lane_r1][real_index]['Yeld']       += len(r1[1]) + len(r2[1])
             #DemultiplexStats[lane_r1][real_index]['PF']         = 1
             DemultiplexStats[lane_r1][real_index]['numReads']   += 2
             DemultiplexStats[lane_r1][real_index]['lanePerc']   += 2
@@ -210,46 +214,49 @@ def demultiplex_lane(unmultiplexedFolder, unmultiplexedFastq1, unmultiplexedFast
                 DemultiplexStats[lane_r1][real_index]['0error'] += 2
             elif num_mismatches == 1:
                 DemultiplexStats[lane_r1][real_index]['1error'] += 2
-
-            DemultiplexStats[lane_r1][real_index]['Q30']         += (gtQ30count(r1) + gtQ30count(r2)) 
+            DemultiplexStats[lane_r1][real_index]['Q30']        += (gtQ30count(r1) + gtQ30count(r2)) 
             DemultiplexStats[lane_r1][real_index]['meanQuality'] += (avgQ(r1) + avgQ(r2)) 
-    
     for index in DemultiplexStats[lane_r1]:
-        DemultiplexStats[lane_r1][real_index]['Q30']     = round(100*float(DemultiplexStats[lane_r1][real_index]['Q30'])/DemultiplexStats[lane_r1][index]['Yeld'],2)
-        DemultiplexStats[lane_r1][index]['Yeld']         = round(DemultiplexStats[lane_r1][index]['Yeld']/1000) 
-        DemultiplexStats[lane_r1][index]['lanePerc']     = round(100*float(DemultiplexStats[lane_r1][index]['lanePerc'])/numReadInLane,2)
-        DemultiplexStats[lane_r1][real_index]['0error']  = round(100*float(DemultiplexStats[lane_r1][real_index]['0error'])/DemultiplexStats[lane_r1][real_index]['numReads'],2)
-        DemultiplexStats[lane_r1][real_index]['1error']  = round(100*float(DemultiplexStats[lane_r1][real_index]['1error'])/DemultiplexStats[lane_r1][real_index]['numReads'],2)
-        DemultiplexStats[lane_r1][real_index]['meanQuality'] = round(float(DemultiplexStats[lane_r1][real_index]['meanQuality'])/DemultiplexStats[lane_r1][real_index]['numReads'],2)
+        if index is not "Ambiguous":
+            if DemultiplexStats[lane_r1][index]['Yeld'] > 0:
+                DemultiplexStats[lane_r1][index]['Q30']     = round(100*float(DemultiplexStats[lane_r1][index]['Q30'])/DemultiplexStats[lane_r1][index]['Yeld'],2)
+                DemultiplexStats[lane_r1][index]['Yeld']    = round(float(DemultiplexStats[lane_r1][index]['Yeld'])/1000, 2)
+                DemultiplexStats[lane_r1][index]['lanePerc']= round(100*float(DemultiplexStats[lane_r1][index]['lanePerc'])/numReadInLane,2)
+                DemultiplexStats[lane_r1][index]['0error']  = round(100*float(DemultiplexStats[lane_r1][index]['0error'])/DemultiplexStats[lane_r1][index]['numReads'],2)
+                DemultiplexStats[lane_r1][index]['1error']  = round(100*float(DemultiplexStats[lane_r1][index]['1error'])/DemultiplexStats[lane_r1][index]['numReads'],2)
+                DemultiplexStats[lane_r1][index]['meanQuality'] = round(float(DemultiplexStats[lane_r1][index]['meanQuality'])/DemultiplexStats[lane_r1][index]['numReads'],2)
     
     return DemultiplexStats
 
         
 def check_index(index_r1 , filter):
     num_matches = 0
+    best_match  = 0
     index_matched = ""
     for index in filter:
         indexLength = len(index)
         index_to_compare = index_r1[0:indexLength]
-        num_mismatches =  hamdist(index_to_compare, index)
+        num_mismatches = hamdist(index_to_compare, index, 2)
         if num_mismatches <= 1:
             index_matched = index
+            best_match    = num_mismatches
             num_matches += 1
     if num_matches == 1:
-        return index_matched, num_mismatches
+        return index_matched, best_match
     elif num_matches == 0:
-        return "Undetermined", num_mismatches
+        return "Undetermined", best_match
     else:
-        return "Ambiguous", num_mismatches
-    
+        return "Ambiguous", best_match
+ 
 
-def hamdist(str1, str2):
+def hamdist(str1, str2, max_dist):
     """Count the # of differences between equal length strings str1 and str2"""
     diffs = 0
     for ch1, ch2 in zip(str1, str2):
-       if ch1 != ch2:
-           diffs += 1
-           
+        if ch1 != ch2:
+            diffs += 1
+        if diffs >= max_dist:
+            break
     return diffs
     
 def main():
