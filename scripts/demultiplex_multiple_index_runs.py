@@ -10,7 +10,7 @@ from scilifelab.utils.fastq_utils import FastQParser, is_read_pair, FastQWriter,
 from scilifelab.illumina.hiseq import HiSeqSampleSheet
 
 
-def demultiplex(CSV, keepIndexes):
+def demultiplex(CSV, keepIndexes, indexesToExtract):
     sdata =  HiSeqSampleSheet(CSV)
     folderStruct = collections.defaultdict(lambda : collections.defaultdict(dict))
     outfiles = {}
@@ -22,29 +22,30 @@ def demultiplex(CSV, keepIndexes):
         sampleID = sd['SampleID']
         lane = sd["Lane"]
         index = sd["Index"]
-        if lane not in outfiles:
-            outfiles[lane] = {}
-            DemultiplexStats[lane] = {}
-            counts[lane] = {}
-        outfiles[lane][index] = []
-        counts[lane][index] = 0
-        read = 1
-        read1 = "tmp_{}_{}_L00{}_R{}_001.fastq.gz".format(sampleID,
+        if indexesToExtract is None or index in indexesToExtract:
+            if lane not in outfiles:
+                outfiles[lane] = {}
+                DemultiplexStats[lane] = {}
+                counts[lane] = {}
+            outfiles[lane][index] = []
+            counts[lane][index] = 0
+            read = 1
+            read1 = "tmp_{}_{}_L00{}_R{}_001.fastq.gz".format(sampleID,
                                                               index,
                                                               lane,
                                                               read)
-        read = 2
-        read2 = "tmp_{}_{}_L00{}_R{}_001.fastq.gz".format(sampleID,
+            read = 2
+            read2 = "tmp_{}_{}_L00{}_R{}_001.fastq.gz".format(sampleID,
                                                               index,
                                                               lane,
                                                               read)
-        folderStruct[sampleProject][sampleID][lane] = [read1, read2]
-        projectDirName = "Project_{}".format(sampleProject)
-        sampleDirName  = "Sample_{}".format(sampleID)
-        outfiles[lane][index].append(os.path.join(projectDirName, sampleDirName, read1))
-        outfiles[lane][index].append(os.path.join(projectDirName, sampleDirName, read2))
-        ## now prepare Demultiplex stats
-        DemultiplexStats[lane][index] = {'SampleID' : sampleDirName,
+            folderStruct[sampleProject][sampleID][lane] = [read1, read2]
+            projectDirName = "Project_{}".format(sampleProject)
+            sampleDirName  = "Sample_{}".format(sampleID)
+            outfiles[lane][index].append(os.path.join(projectDirName, sampleDirName, read1))
+            outfiles[lane][index].append(os.path.join(projectDirName, sampleDirName, read2))
+            ## now prepare Demultiplex stats
+            DemultiplexStats[lane][index] = {'SampleID' : sampleDirName,
                                          'SampleRef': sd['SampleRef'],
                                          'Index'    : index,
                                          'Description': sd['Description'],
@@ -62,8 +63,6 @@ def demultiplex(CSV, keepIndexes):
                                          'Operator'   : sd['Operator'],
                                          'Directory'  : os.path.join(os.getcwd(), projectDirName, sampleDirName)
                                          }
-        
-        
     for lane in outfiles:
         #create undetermined group 
         outfiles[lane]["Undetermined"] = [];
@@ -101,7 +100,9 @@ def demultiplex(CSV, keepIndexes):
         outfiles[lane]["Ambiguous"].append(os.path.join(projectDirName, sampleDirName, read1))
         outfiles[lane]["Ambiguous"].append(os.path.join(projectDirName, sampleDirName, read2))
         folderStruct["Ambiguous_indices"][sampleDirName][lane] = [read1,read2]
-    prepareDirectories(folderStruct)
+    ##Use folderStruct to build the folder structure of the experiment
+    prepareDirectories(folderStruct, indexesToExtract)
+    
     for lane in outfiles:
         for index in outfiles[lane]:
             files = outfiles[lane][index]
@@ -112,22 +113,28 @@ def demultiplex(CSV, keepIndexes):
     return
 
 
-def prepareDirectories(folderStruct):
+def prepareDirectories(folderStruct, indexesToExtract):
     for project in folderStruct:
         projectDirName = "Project_"+project
         if project is "Undetermined_indices":
             projectDirName = "Undetermined_indices"
         elif project is "Ambiguous_indices":
             projectDirName = "Ambiguous_indices"
-        assert not os.path.exists(projectDirName), "Directory already exist, I am not going to overwrite previous results" 
-        os.mkdir(projectDirName)
+        if indexesToExtract is None:
+            assert not os.path.exists(projectDirName), "Directory {} already exist, I am not going to overwrite previous results".format(projectDirName) 
+        
+        if not os.path.exists(projectDirName):
+            os.mkdir(projectDirName)
         for sample in folderStruct[project]:
             sampleDirName = "Sample_" + sample
-            if project is "Undetermined_indices":
+            if project is "Undetermined_indices" or project is "Ambiguous_indices":
                 sampleDirName = sample
-            elif project is "Ambiguous_indices":
-                sampleDirName = sample
-            os.mkdir(os.path.join(projectDirName,sampleDirName))
+                if not os.path.exists(os.path.join(projectDirName,sampleDirName)):
+                    os.mkdir(os.path.join(projectDirName,sampleDirName))
+            else:
+                assert not os.path.exists(os.path.join(projectDirName,sampleDirName)), "Directory {} already exists, I am not going to overwrite previous results".format(sampleDirName)
+                os.mkdir(os.path.join(projectDirName,sampleDirName))
+            
 
 
 def change_index(header,new_index):
@@ -259,17 +266,29 @@ def hamdist(str1, str2, max_dist):
             break
     return diffs
     
+def check_input(indexes, CSV):
+    sdata =  HiSeqSampleSheet(CSV)
+    indexes_in_CSV = {}
+    for sd in sdata:
+        indexes_in_CSV[sd["Index"]] = 0
+    for index in indexes:
+        assert index in indexes_in_CSV, "index {} is not present in {}: please specify only indexes that are present in the sample sheet file".format(index, CSV)
+    
 def main():
     
     parser = argparse.ArgumentParser(description="Demultiplex a CASAVA 1.8+ FastQ file based on the information in the fastq header")
     
     
     parser.add_argument('CSV', action='store',help="CSV file describing the experiment")
+    parser.add_argument('--indexes',  nargs='+', help='sprcify which index(es) you want to demultiplex')
     parser.add_argument('--keepIndexes', action='store_true',help="if specified does not trim the index (keeps the one used to demultiplex)")
     
     args = parser.parse_args()
     
-    demultiplex(args.CSV , args.keepIndexes )
+    if args.indexes is not None:
+        check_input(args.indexes, args.CSV)
+    
+    demultiplex(args.CSV , args.keepIndexes, args.indexes )
 
 
 
