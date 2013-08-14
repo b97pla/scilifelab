@@ -49,7 +49,7 @@ def _return_extensive_match_result(name_map, barcode_name, force=False):
         return name_map
     else:
         return None
-                        
+
 
 def _match_barcode_name_to_project_sample(barcode_name, project_samples, extensive_matching=False, force=False):
     """Take a barcode name and map it to a list of project sample names.
@@ -58,7 +58,7 @@ def _match_barcode_name_to_project_sample(barcode_name, project_samples, extensi
     :param project_samples: dictionary of project samples as obtained from statusdb project_summary
     :param extensive_matching: perform extensive matching of barcode to project sample names
     :param force: override interactive queries. NB: not called from get_project_sample.
-    
+
     :returns: dictionary with keys project sample name and project sample or None
     """
     if barcode_name in project_samples.keys():
@@ -114,7 +114,7 @@ def _match_barcode_name_to_project_sample(barcode_name, project_samples, extensi
                 return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
             elif str(barcode_name).startswith(str(project_sample_name).rstrip("E")):
                 return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
-            
+
             # Look for cases barcode: PXXX_XX[BCDEF]_indexXX matching to project_sample_name: XX_indexXX
             elif str(barcode_name.replace("{}_".format(prj_id), "")).startswith(str(project_sample_name)):
                 return {'sample_name':project_sample_name, 'project_sample':project_samples[project_sample_name]}
@@ -160,7 +160,7 @@ class ProjectSummaryDocument(StatusDocument):
     """project summary document"""
     _entity_type = "project_summary"
     _fields = ["application", "customer_reference", "min_m_reads_per_sample_ordered",
-               "no_of_samples", "project_id", "project_name"]
+               "no_of_samples", "project_id", "project_name", "source"]
     _dict_fields = ["samples"]
     def __init__(self, **kw):
         StatusDocument.__init__(self, **kw)
@@ -185,14 +185,14 @@ class SampleRunMetricsDocument(StatusDocument):
     _entity_type = "sample_run_metrics"
     _fields =["barcode_id", "barcode_name", "barcode_type", "bc_count", "date",
               "flowcell", "lane", "sample_prj", "sequence", "barcode_type",
-              "genomes_filter_out", "project_sample_name", "project_id"] 
+              "genomes_filter_out", "project_sample_name", "project_id"]
     _dict_fields = ["fastqc", "fastq_scr", "picard_metrics", "bcbb_checkpoints"]
     def __init__(self, **kw):
         StatusDocument.__init__(self, **kw)
         self["name"] = "{}_{}_{}_{}".format(self["lane"], self["date"], self["flowcell"], self["sequence"])
         if self["barcode_name"]:
             self.set_project_id()
-        
+
     def set_project_id(self, value=None):
         """Get corresponding project id for a project name.
 
@@ -204,9 +204,9 @@ class SampleRunMetricsDocument(StatusDocument):
         m = re.search(re_project_id, self["barcode_name"])
         if m:
             self["project_id"] = m.group(1)
-        return 
+        return
 
-# Updating function for object comparison        
+# Updating function for object comparison
 def update_fn(cls, db, obj, viewname = "names/id_to_name", key="name"):
     """Compare object with object in db if present.
 
@@ -248,12 +248,12 @@ def update_fn(cls, db, obj, viewname = "names/id_to_name", key="name"):
 def calc_avg_qv(srm):
     """Calculate average quality score for a sample based on
     FastQC results.
-    
-    FastQC reports QV results in the field 'Per sequence quality scores', 
+
+    FastQC reports QV results in the field 'Per sequence quality scores',
     where the subfields 'Count' and 'Quality' refer to the counts of a given quality value.
-    
+
     :param srm: sample run metrics
-    
+
     :returns avg_qv: Average quality value score.
     """
     try:
@@ -266,7 +266,7 @@ def calc_avg_qv(srm):
 
 def get_qc_data(sample_prj, p_con, s_con, fc_id=None):
     """Get qc data for a project, possibly subset by flowcell.
-    
+
     :param sample_prj: project identifier
     :param p_con: object of type <ProjectSummaryConnection>
     :param s_con: object of type <SampleRunMetricsConnection>
@@ -306,11 +306,11 @@ def get_qc_data(sample_prj, p_con, s_con, fc_id=None):
 def get_scilife_to_customer_name(project_name, p_con, s_con):
     """Get scilife to customer name mapping, represented as a
     dictionary.
-    
+
     :param project_name: project name
     :param p_con: object of type <ProjectSummaryConnection>
     :param s_con: object of type <SampleRunMetricsConnection>
-    
+
     :returns: dictionary with keys scilife name and values customer name
     """
     barcode_names = [s.get("barcode_name", None) for s in s_con.get_samples(sample_prj=project_name)]
@@ -407,7 +407,7 @@ class FlowcellRunMetricsConnection(Couch):
         if flowcell not in self.stat_view.keys():
             return None, None
         stats = self.stat_view.get(flowcell)
-        stats_d = {"{}-{}-{}".format(item.get("Project", None).replace("__", "."), 
+        stats_d = {"{}-{}-{}".format(item.get("Project", None).replace("__", "."),
                                      item.get("Sample ID", None),
                                      item.get("Lane", None)):item for item in stats}
         sample_data = stats_d.get("{}-{}-{}".format(project_id, sample_id, lane), None)
@@ -419,8 +419,8 @@ class FlowcellRunMetricsConnection(Couch):
         """Get phix error rate. Returns -1 if error rate could not be determined"""
         fc = self.get_entry(name)
         phix_r = []
-        
-        # Get the error rate for non-index reads and add them 
+
+        # Get the error rate for non-index reads and add them
         summary = fc.get("illumina",{}).get("Summary",{})
         for read in summary.values():
             if read.get("ReadType","").strip() != "(Index)":
@@ -428,13 +428,13 @@ class FlowcellRunMetricsConnection(Couch):
                 # Only use the value if error rate is >0.0
                 if r > 0:
                     phix_r.append(r)
-        
+
         # Return -1 if the error rate could not be determined
         if len(phix_r) == 0:
             return -1
-        
+
         return sum(phix_r)/len(phix_r)
-    
+
     def get_instrument(self, name):
         """Get instrument id"""
         fc = self.get_entry(name)
@@ -460,7 +460,7 @@ class FlowcellRunMetricsConnection(Couch):
             return None
         reads = fc.get('RunInfo', {}).get('Reads', [])
         return len([read for read in reads if read.get('IsIndexedRun','N') == 'N']) == 1
-        
+
 
 class ProjectSummaryConnection(Couch):
     _doc_type = ProjectSummaryDocument
@@ -476,7 +476,7 @@ class ProjectSummaryConnection(Couch):
 
     def get_project_sample(self, project_name, barcode_name=None, extensive_matching=False):
         """Get project sample name for a SampleRunMetrics barcode_name.
-        
+
         :param project_id: the project name
         :param barcode_name: the barcode name of a sample run
         :param extensive_matching: do extensive matching of barcode names
@@ -499,7 +499,7 @@ class ProjectSummaryConnection(Couch):
             return v.get('sample_run_metrics', None)
 
     def get_ordered_amount(self, project_name, rounded=True, dec=1):
-        """Get (rounded) ordered amount of reads in millions. 
+        """Get (rounded) ordered amount of reads in millions.
 
         :param project_name: project name
         :param rounded: <boolean>
@@ -535,7 +535,14 @@ class ProjectSummaryConnection(Couch):
                 self.log.warn("No library_prep information for project sample {}".format(project_sample_name))
         return map_d
 
+    def get_info_source(self, project_name):
+        """Returns the source of information for the project.
 
+        The projects started after July 1st 2013 should have LIMS as source.
 
-
+        :param projec_name: Project name
+        :returns: The source of information for the project.
+        """
+        project = self.get_entry(project_name)
+        return project.get('source', None)
 
