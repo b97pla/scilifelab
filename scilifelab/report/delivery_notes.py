@@ -552,7 +552,7 @@ def _project_status_note_table(project_name=None, username=None, password=None, 
     # Google docs summary table to use the P names
     sample_dict = prj_summary['samples']
     param.update({key:prj_summary.get(ps_to_parameter[key], None) for key in ps_to_parameter.keys()})
-    param["ordered_amount"] = param.get("ordered_amount", p_con.get_ordered_amount(project_name))
+    param["ordered_amount"] = param.get("ordered_amount", p_con.get_ordered_amount(project_name, samples=sample_dict))
     param['customer_reference'] = param.get('customer_reference', prj_summary.get('customer_reference'))
     param['uppnex_project_id'] = param.get('uppnex_project_id', prj_summary.get('uppnex_id'))
 
