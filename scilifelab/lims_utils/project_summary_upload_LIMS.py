@@ -8,7 +8,7 @@ import sys
 import os
 import codecs
 from optparse import OptionParser
-from statusDB_utils import *
+from scilifelab.db.statusDB_utils import *
 from helpers import *
 from pprint import pprint
 from genologics.lims import *

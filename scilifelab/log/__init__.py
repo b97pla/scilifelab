@@ -3,7 +3,7 @@ log module
 """
 import sys
 import logging
-import bcbio.pipeline.config_loader as cl
+import bcbio.pipeline.config_utils as cl
 
 def minimal_logger(namespace, debug=False):
     """Make and return a minimal console logger.

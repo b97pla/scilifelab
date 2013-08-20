@@ -12,7 +12,7 @@ from pprint import pprint
 from genologics.lims import *
 from helpers import *
 from lims_utils import *
-from statusDB_utils import *
+from scilifelab.db.statusDB_utils import *
 from genologics.config import BASEURI, USERNAME, PASSWORD
 import os
 import couchdb
