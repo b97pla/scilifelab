@@ -1,5 +1,6 @@
 """Reportlab module for generating pdf documents"""
 import os
+import unicodedata
 from datetime import datetime
 from pyPdf import PdfFileWriter, PdfFileReader
 from collections import OrderedDict
