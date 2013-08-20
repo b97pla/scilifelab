@@ -126,13 +126,16 @@ then
   HASHNAME=`basename ${HASHFILE}` 
   CMD1="rsync -cav ${HASHFILE} ${REMOTE}"
   CMD2="rsync -cav ${TARBALL} ${REMOTE}"
-  CMD3="ssh ${REMOTEHOST} 'cd ${REMOTEPATH} && md5sum -c ${HASHNAME}'"
   CMD3=$"ssh ${REMOTEHOST} <<'ENDSSH' cd ${REMOTEPATH} && md5sum -c ${HASHNAME} ENDSSH"
+  MD5CHECK=""
   if [ ${DRYRUN} -eq "0" ]
   then
     ${CMD1}
     ${CMD2}
-    ${CMD3} >> ${MD5STATUS}  
+    set +e
+    MD5CHECK=`${CMD3}`
+    set -e  
+    echo ${MD5CHECK} >> ${MD5STATUS}
   else
     echo "${CMD1} && ${CMD2} && ${CMD3}"
   fi
