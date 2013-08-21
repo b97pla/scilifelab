@@ -45,9 +45,20 @@ class ProjectDB():
             googledocs_status = {}
             print 'issues finding status from 20158'
             pass
+        seq_finished = None
+        if self.lims_project.close_date and len(runs) > 0:
+            d = '2000-10-10'
+            for run in runs:
+                new_date = dict(run.udf.items())['Finish Date'].isoformat()
+                if comp_dates(d,new_date):
+                    d = new_date
+                seq_finished = d
+
         #Temporary solution untill 20158 implemented in lims <<<<<<<<<<<<<<<<<<<<<<<
         self.project={'source' : 'lims',
+            'sequencing_finished' : seq_finished,
             'open_date' : self.lims_project.open_date,
+            'close_date' : self.lims_project.close_date,
             'entity_type' : 'project_summary',
             'application' : None,
             'project_name' : self.lims_project.name,
@@ -299,6 +310,7 @@ class SampleDB():
                             prep['prep_start_date'] = info['date']
                         elif info['type'] in PREPEND.keys():
                             prep['prep_finished_date'] = info['date']
+                            prep['prep_id'] = info['id']
                         elif info['type'] == '74':
                             libPrep = info
                             prep['pre_prep_start_date'] = info['date']
@@ -332,7 +344,7 @@ class SampleDB():
         input artifact of the SEQUENCING process to find the folowing information:
 
         dillution_and_pooling_start_date    date-run of SEQSTART step
-        sequencing_start_date               date-run of SEQUENCING step
+        sequencing_run_QC_finished          date-run of SEQUENCING step
         sequencing_finish_date              udf ('Finish Date') of SEQUENCING step
         sample_run_metrics_id               The sample database (statusdb) _id for the sample_run_metrics 
                                             corresponding to the run, sample, lane in question.
@@ -368,7 +380,7 @@ class SampleDB():
                         except:
                             samp_run_met_id = None
                         dict = {'dillution_and_pooling_start_date': dillution_and_pooling_start_date,
-                                'sequencing_start_date': run['start_date'],
+                                'sequencing_run_QC_finished': run['start_date'],
                                 'sequencing_finish_date': run['finish_date'],
                                 'sample_run_metrics_id': find_sample_run_id_from_view(samp_db, samp_run_met_id) }
                         dict = delete_Nones(dict)

@@ -31,10 +31,10 @@ def save_couchdb_obj(db, obj):
         return 'created'
     else:
         obj["_rev"] = dbobj.get("_rev")
-        del dbobj["modification_time"]
+        obj["modification_time"] = time_log
+        dbobj["modification_time"] = time_log
         obj["creation_time"] = dbobj["creation_time"]
         if not comp_obj(obj, dbobj):
-            obj["modification_time"] = time_log
             db.save(obj)
             return 'uppdated'
     return 'not uppdated'

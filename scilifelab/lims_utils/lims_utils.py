@@ -11,7 +11,7 @@ lims = Lims(BASEURI, USERNAME, PASSWORD)
 
 """process category dictionaries
 
-In the LIMS2DB context, processes are categorised into groups that define, 
+In the lims_utils context, processes are categorised into groups that define, 
 or are used to define a certain type of statusdb key. The categories and their 
 processes are defined here:"""
 
@@ -48,10 +48,12 @@ def get_sequencing_info(fc):
     Output: A dictionary where keys are lanes 1,2,...,8, and values are lane artifact udfs"""
     fc_summary={}
     for iom in fc.input_output_maps:
-        art = iom[0]['uri']
+        art = Artifact(lims,id = iom[0]['limsid'])
+        #art = iom[0]['uri']
         lane = art.location[1].split(':')[0]
         if not fc_summary.has_key(lane):
-                 fc_summary[lane]= dict(art.udf.items()) #"%.2f" % val ----round??
+            fc_summary[lane]= dict(art.udf.items()) #"%.2f" % val ----round??
+            fc_summary[lane]['qc'] = art.qc_flag
     return fc_summary
 
 

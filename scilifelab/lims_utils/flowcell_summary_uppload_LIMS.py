@@ -13,8 +13,8 @@ from pprint import pprint
 from genologics.lims import *
 from genologics.config import BASEURI, USERNAME, PASSWORD
 from datetime import date
-import genologics.lims_utils as lims_utils
-from statusDB_utils import *
+from lims_utils import *
+from scilifelab.db.statusDB_utils import *
 import scilifelab.log
 lims = Lims(BASEURI, USERNAME, PASSWORD)
 
@@ -29,12 +29,12 @@ def  main(flowcell, all_flowcells,days,conf):
             try:
                 closed = date(*map(int, fc.date_run.split('-')))
                 delta = today-closed
-                if delta.days < days:
+                if delta.days < days and dict(fc.udf.items()).has_key('Flow Cell Position') and dict(fc.udf.items()).has_key('Flow Cell ID'):
                     flowcell_name = dict(fc.udf.items())['Flow Cell Position'] + dict(fc.udf.items())['Flow Cell ID']
                     key = find_flowcell_from_view(fc_db, flowcell_name)
                     if key:
                         dbobj = fc_db.get(key)
-                        dbobj["illumina"]["run_summary"] = lims_utils.get_sequencing_info(fc)
+                        dbobj["illumina"]["run_summary"] = get_sequencing_info(fc)
                         info = save_couchdb_obj(fc_db, dbobj)
                         LOG.info('flowcell %s %s : _id = %s' % (flowcell_name, info, key))
             except:
@@ -43,12 +43,11 @@ def  main(flowcell, all_flowcells,days,conf):
         try:
             flowcell_name = flowcell[1:len(flowcell)]
             flowcell_position = flowcell[0]
-            fc = lims.get_processes(type = 'Illumina Sequencing (Illumina SBS) 4.0', 
-            udf = {'Flow Cell ID':flowcell_name,'Flow Cell Position':flowcell_position})[0]
+            fc = lims.get_processes(type = 'Illumina Sequencing (Illumina SBS) 4.0', udf = {'Flow Cell ID' : flowcell_name, 'Flow Cell Position' : flowcell_position})[0]
             key = find_flowcell_from_view(fc_db, flowcell)
             if key:
                 dbobj = fc_db.get(key)
-                dbobj["illumina"]["run_summary"] = lims_utils.get_sequencing_info(fc)
+                dbobj["illumina"]["run_summary"] = get_sequencing_info(fc)
                 info = save_couchdb_obj(fc_db, dbobj)
                 LOG.info('flowcell %s %s : _id = %s' % (flowcell_name, info, key))
         except:
