@@ -53,7 +53,6 @@ class ProjectDB():
                 if comp_dates(d,new_date):
                     d = new_date
                 seq_finished = d
-
         #Temporary solution untill 20158 implemented in lims <<<<<<<<<<<<<<<<<<<<<<<
         self.project={'source' : 'lims',
             'sequencing_finished' : seq_finished,
