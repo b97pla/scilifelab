@@ -22,13 +22,17 @@ with open(version_py, 'w') as fh:
     fh.write(version_msg + os.linesep + "__version__=" + version_git)
 
 setup(name = "scilifelab",
-      version = "{ver}".format(ver=version_git),
-      author = "Science for Life Laboratory",
-      author_email = "genomics_support@scilifelab.se",
-      description = "Useful scripts for use at SciLifeLab",
-      license = "MIT",
-      scripts = glob.glob('scripts/*.py') + glob.glob('scripts/RNA_analysis/*.py') + glob.glob('scripts/bcbb_helpers/*.py') + ['scripts/pm'],
-      install_requires = [
+    version = "{ver}".format(ver=version_git),
+    author = "Science for Life Laboratory",
+    author_email = "genomics_support@scilifelab.se",
+    description = "Useful scripts for use at SciLifeLab",
+    license = "MIT",
+    scripts = glob.glob('scripts/*.py') + 
+                glob.glob('scripts/RNA_analysis/*.py') + 
+                glob.glob('scripts/bcbb_helpers/*.py') + 
+                glob.glob('scilifelab/lims_utils/*.py') +
+                ['scripts/pm'],
+    install_requires = [
         "bcbio-nextgen >= 0.2",
         "drmaa >= 0.5",
         "sphinx >= 1.1.3",
