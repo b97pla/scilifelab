@@ -61,7 +61,7 @@ def find_samp_from_view(samp_db, proj_name):
     view = samp_db.view('names/id_to_proj')
     samps = {}
     for doc in view:
-        if (doc.value[0] == proj_name)|(doc.value[0] == proj_name.lower()):
+        if (doc.value[0] == proj_name) or (doc.value[0] == proj_name.lower()):
             samps[doc.key] = doc.value[1:3]
     return samps
 
