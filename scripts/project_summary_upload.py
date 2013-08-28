@@ -211,19 +211,19 @@ def save_couchdb_obj(db, obj):
     if dbobj is None:
         #obj["creation_time"] = time_log
         #obj["modification_time"] = time_log
-        #db.save(obj)
-	return None
-    elif obj.has_key('source'):
-        if obj['source']=='lims':
+        #db.save(obj)   
+        return None
+    elif dbobj.has_key('source'):
+        if dbobj['source']=='lims':
             return None
     else:
         obj["_rev"] = dbobj.get("_rev")
-	del dbobj["modification_time"]
-	obj["creation_time"] = dbobj["creation_time"]
+        del dbobj["modification_time"]
+        obj["creation_time"] = dbobj["creation_time"]
         if not comp_obj(obj, dbobj):
             obj["modification_time"] = time_log
             db.save(obj)
-	    return 'Uppdated'
+            return 'Uppdated'
     return 'Not uppdated'
 
 def comp_obj(obj, dbobj):
@@ -437,37 +437,39 @@ def strip_scilife_name(names):
 
 
 def  main(client, CONFIG, URL, proj_ID, all_projects, GPL ):
-	couch = couchdb.Server("http://" + URL)
-       	samp_db = couch['samples']
-        proj_db = couch['projects']
-	info = None
-	WS_projects = get_WS_info(client)
-        if all_projects:
-		content, ws_key, ss_key = get_google_document("Genomics Project list", GPL, client)
-		row_ind, col_ind = get_column(content, 'Project name')
-		for j, row in enumerate(content):
-      			try:
-	        		proj_ID = str(row[col_ind]).strip().split(' ')[0]
-				if (proj_ID != '') & (j > row_ind + 2):
-                       			obj = get_proj_inf(WS_projects,proj_ID, samp_db, proj_db, client, CONFIG)
-        				if obj['samples'].keys() != []:
-                				info = save_couchdb_obj(proj_db, obj)
-						if info:
-							logger.info('CouchDB: %s %s %s' % (obj['_id'], obj['project_name'], info))
-						else:
-							logger.info('CouchDB: %s %s Not uppdated. Project might be opened after first of july' % (obj['_id'], obj['project_name']))
-			except:
-				pass
-	elif proj_ID is not None:
-	        obj = get_proj_inf(WS_projects,proj_ID, samp_db, proj_db, client, CONFIG)
-        	if obj['samples'].keys() != []:
-                	info = save_couchdb_obj(proj_db, obj)
-	else:
-		logger.debug('Argument error')
-	if info:
-		logger.info('CouchDB: %s %s %s' % (obj['_id'], obj['project_name'], info))
-	else:
-		logger.info('Project opened after first of jul? Load with project_summary_uppoad_LIMS.py')
+    print proj_ID
+    couch = couchdb.Server("http://" + URL)
+    samp_db = couch['samples']
+    proj_db = couch['projects']
+    info = None
+    WS_projects = get_WS_info(client)
+    if all_projects:
+        content, ws_key, ss_key = get_google_document("Genomics Project list", GPL, client)
+        row_ind, col_ind = get_column(content, 'Project name')
+        for j, row in enumerate(content):
+            try:
+                proj_ID = str(row[col_ind]).strip().split(' ')[0]
+                if (proj_ID != '') & (j > row_ind + 2):
+                    obj = get_proj_inf(WS_projects,proj_ID, samp_db, proj_db, client, CONFIG)
+                    if obj['samples'].keys() != []:
+                        info = save_couchdb_obj(proj_db, obj)
+                        if info:
+                            logger.info('CouchDB: %s %s %s' % (obj['_id'], obj['project_name'], info))
+                        else:
+                            logger.info('CouchDB: %s %s Not uppdated. Project might be opened after first of july' % (obj['_id'], obj['project_name']))
+            except:
+                pass
+    elif proj_ID is not None:
+        print proj_ID
+        obj = get_proj_inf(WS_projects,proj_ID, samp_db, proj_db, client, CONFIG)
+        if obj['samples'].keys() != []:
+            info = save_couchdb_obj(proj_db, obj)
+    else:
+        logger.debug('Argument error')
+    if info:
+        logger.info('CouchDB: %s %s %s' % (obj['_id'], obj['project_name'], info))
+    else:
+        logger.info('Project opened after first of jul? Load with project_summary_uppoad_LIMS.py')
 
 if __name__ == '__main__':
     	usage = """Usage:	python project_summary_upload.py [options]
