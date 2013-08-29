@@ -181,7 +181,11 @@ def _set_project_sample_dict(project_sample_item, source):
             for fc in sample_run_metrics.items():
                 fc, metrics = fc
                 for k, v in metrics.iteritems():
-                    project_sample_d[k] = v['sample_run_metrics_id']
+                    sample_run_metrics = v.get('sample_run_metrics_id', '')
+                    if sample_run_metrics:
+                        project_sample_d[k] = v['sample_run_metrics_id']
+                    else:
+                        LOG.warn("No sample_run_metrics information for sample '{}'".format(project_sample_item))
         else:
             sample_run_metrics = project_sample_item.get("sample_run_metrics", {})
             project_sample_d = {metrics[0]:metrics[1]['sample_run_metrics_id'] \
