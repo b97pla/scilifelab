@@ -177,8 +177,15 @@ def _set_project_sample_dict(project_sample_item, source):
         if "library_prep" in project_sample_item.keys():
             sample_run_metrics = {k:v.get("sample_run_metrics", {}) for k,v in \
                                     project_sample_item["library_prep"].iteritems()}
-            project_sample_d = {metrics[0]:metrics[1]['sample_run_metrics_id'] \
-                                    for metrics in sample_run_metrics.items()}
+            project_sample_d = {}
+            for fc in sample_run_metrics.items():
+                fc, metrics = fc
+                for k, v in metrics.iteritems():
+                    sample_run_metrics = v.get('sample_run_metrics_id', '')
+                    if sample_run_metrics:
+                        project_sample_d[k] = v['sample_run_metrics_id']
+                    else:
+                        LOG.warn("No sample_run_metrics information for sample '{}'".format(project_sample_item))
         else:
             sample_run_metrics = project_sample_item.get("sample_run_metrics", {})
             project_sample_d = {metrics[0]:metrics[1]['sample_run_metrics_id'] \
