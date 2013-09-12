@@ -94,7 +94,7 @@ def _get_bc_count(sample_name, bc_count, sample_run):
 
 
 def _assert_flowcell_format(flowcell):
-    """Assert name of flowcell: "[A-Z0-9]+XX"
+    """Assert name of flowcell: "[A-Z0-9\-]+"
 
     :param flowcell: flowcell id
 
@@ -103,7 +103,7 @@ def _assert_flowcell_format(flowcell):
     if flowcell is None:
         # Can this really be right?!?
         return True
-    if not re.match("[A-Z0-9]+XX$", flowcell):
+    if not re.match("[A-Z0-9\-]+$", flowcell):
         return False
     return True
 
@@ -253,7 +253,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
     LOG.debug("got parameters {}".format(parameters))
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
     if not _assert_flowcell_format(flowcell):
-        LOG.warn("Wrong flowcell format {}; skipping. Please use the flowcell id (format \"[A-Z0-9]+XX\")".format(flowcell) )
+        LOG.warn("Wrong flowcell format {}; skipping. Please use the flowcell id (format \"[A-Z0-9\-]+\")".format(flowcell) )
         return output_data
     output_data = _update_sample_output_data(output_data, cutoffs)
 
