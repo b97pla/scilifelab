@@ -247,7 +247,8 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         }
     # key mapping from sample_run_metrics to parameter keys
     srm_to_parameter = {"project_name":"sample_prj", "FC_id":"flowcell",
-                        "scilifelab_name":"barcode_name", "start_date":"date", "rounded_read_count":"bc_count"}
+                        "scilifelab_name":"barcode_name", "start_date":"date", 
+                        "rounded_read_count":"bc_count", "lane": "lane"}
 
     LOG.debug("got parameters {}".format(parameters))
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}

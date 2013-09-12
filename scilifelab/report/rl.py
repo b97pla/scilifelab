@@ -42,6 +42,9 @@ def sample_note_paragraphs():
     paragraphs["Flow cell id"] = dict(style=h3,
                                       tpl=Template("${FC_id}"))
 
+    paragraphs["Lane"] = dict(style=h3,
+                              tpl=Template("${lane}"))
+
     paragraphs["Sequence data directory"] = dict(style=h3,
                                                  tpl=Template("/proj/${uppnex_project_id}/INBOX/${project_name}/${scilifelab_name}/${start_date}_${FC_id}"))
 
