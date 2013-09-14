@@ -1,30 +1,42 @@
 #!usr/bin/env -python
 
+import re
+import os
+import base64
+import argparse
+import datetime
+import subprocess
 import gdata
 import gdata.docs.service
 import gdata.spreadsheet.service
-import base64
-import re
-import os
-from os.path import expanduser
-import datetime
-import subprocess
-import sys
+from scilifelab.google import get_credentials
+from scilifelab.google.google_docs import SpreadSheet
 
-##script called time
-t = str(datetime.datetime.now()).split('.')[0]
+## declaring arguments and values for the script
+parser = argparse.ArgumentParser()
+parser.add_argument("Config_file", type=str, help="Path to the config file that has info for the run")
+args = parser.parse_args()
+fCnt = 0
+search1 = 'all raw-data delivered.*sign'
+search2 = 'all raw-data delivered.*date'
+search3 = 'project name'
+config = {}
+t = str(datetime.datetime.utcnow().isoformat()).split('.')[0]
 
-print "\nProgram started at "+t ##log
+##looks for config file and gets the values needed for the run
+config_file = args.Config_file
+if os.path.exists(config_file):
+	file_config = open(config_file,'r')
+	for line in file_config.readlines():
+		vals = line.strip().split(':')
+		config[vals[0]] = vals[1]
+else:
+	print "\nConfig file doesn't exist, Provide valid file\n"
+	raise SystemExit
+
+print "\nProgram started at {}".format(t) ##log
 print "--------------------------------------\n" ##log
-
-##looking for gdoc credentials file in opt/config
-gdoc = sys.argv[1]
-try:
-	gdoc_cred = open(gdoc,'r').readline().strip()
-	gdoc_mail, gdoc_pass = base64.b64decode(gdoc_cred).split(':')
-except IOError:
-	print "\nRUN TERMINATING: No gdoc credential file found in \"opt/config/\"\n"
-	
+print "Fetching Spreadsheet from google drive..." ##log
 
 ## method to merge two header rows to one
 def get_head(head1,head2):
@@ -33,19 +45,19 @@ def get_head(head1,head2):
 	hd2 = [h.replace('\n','') for h in head2]
 	for i,h in enumerate(hd1):
 		if h != '':
-			head_main.append(h+'_'+hd2[i])
+			head_main.append("{}_{}".format(h,hd2[i]))
 			pre = h
 		elif h == '':
-			head_main.append(pre+'_'+hd2[i])
+			head_main.append("{}_{}".format(pre,hd2[i]))
 	return head_main;
 
 ## method the check if already the project is been flagged
 def check_flag(p_path):
 	sam_cnt, sam_nm = (0, [])
 	## gets only the directories i.e. samples from project folder ##
-	sample_dir = [h for h in os.listdir(p_path) if not os.path.isfile(p_path+'/'+h)]
+	sample_dir = [h for h in os.listdir(p_path) if not os.path.isfile("{}/{}".format(p_path,h))]
 	for sample in sample_dir:
-		flag = p_path+'/'+sample+'/'+'FINISHED_AND_DELIVERED'
+		flag = os.path.join(p_path,sample,'FINISHED_AND_DELIVERED')
 		if not os.path.exists(flag):
 			sam_cnt = sam_cnt+1
 			sam_nm.append(sample)
@@ -57,47 +69,14 @@ def check_flag(p_path):
 		status = 'some_marked'
 	return status,sam_nm;
 
-## setting up client document for google docs
-client = gdata.spreadsheet.service.SpreadsheetsService()
-client.email = gdoc_mail
-client.password = gdoc_pass
-client.source = "Touching finished projects"
-client.ProgrammaticLogin()
-
-## setting key and title for the spreadsheet and worksheet
-sp_key = sys.argv[2]
-wk_nm = 'Ongoing'
-search1 = 'all raw-data delivered.*sign'
-search2 = 'all raw-data delivered.*date'
-search3 = 'project name'
-fCnt = 0
-
-print "Fetching worksheet from google drive..." ##log
-
-## making a query and retrieving the worksheet with exact name
-wP = {'title':wk_nm, 'title-exact':'True'}
-wQ = gdata.spreadsheet.service.DocumentQuery(params=wP)
-wk_sheets = client.GetWorksheetsFeed(key=sp_key, query=wQ)
-
-## second check to make sure proceeding with correct worksheet
-for wk in wk_sheets.entry:
-	if wk.title.text == wk_nm:
-		wk_main = wk
-		break
+## getting the spreadsheet from given name and appropriate worksheet
+credentials = get_credentials(config['gCred_file'])
+ssheet = SpreadSheet(credentials,config['ssheet_nm'])
+wksheet = ssheet.get_worksheet(config['wksheet_nm'])
+cell_feed = ssheet.get_cell_feed(wksheet)
 
 print "**** DONE ****\n" ##log
-print "Parsing the cell feed and collecting information..." ##log
-
-## setting cell query and getting cell's feed as object
-wk_id = wk_main.id.text.split('/')[-1]
-rw_st, rw_en = ('1', wk_main.row_count.text)
-col_st, col_en =  ('1', wk_main.col_count.text)
-cell_P = {'min-row': rw_st, 'max-row': rw_en,
-          'min-col': col_st, 'max-col': col_en,
-          'return-empty': 'True'
-          }
-cell_Q = gdata.spreadsheet.service.CellQuery(params=cell_P)
-cell_feed = client.GetCellsFeed(key=sp_key, wksht_id=wk_id, query=cell_Q)
+print "Parsing worksheet and obtaining information..." ##log
 
 ## iterating through cell's content and gives list of prject signed delivered
 col_tot = int(cell_feed.col_count.text)
@@ -124,28 +103,30 @@ for cell in cell_feed.entry:
 		row, ck = ([], 0)
 
 print "**** DONE ****\n" ##log	
-print str(len(projects_done))+" projects are marked as deliverd in GPL" ##log
+print "{} projects are marked as deliverd in GPL".format(str(len(projects_done))) ##log
 print "Starting to touch-finished for unflagged projects\n" ##log
-print "Project\tNum_of_Samples" ##log
+print "Project\tNum_of_Samples\tDelivered_date\tDelivered_by" ##log
 
 ## from the obtained list project unflagged are flagged
-fold_path = 'path/for/uppmax/projects/here/'
+upp_path = config['upp_path']
 for p in projects_done:
-	pd = fold_path+'/'+p
-	if os.path.exists(pd):
-		flag_status,samples_unmarked = check_flag(pd)
+	proj, person, deliv_date = p
+	uP = os.path.join(upp_path,proj)
+	if os.path.exists(uP):
+		flag_status,samples_unmarked = check_flag(uP)
 		if flag_status != 'full_marked':
 			for s in samples_unmarked:
-				subprocess.call('pm production touch-finished '+p+' -S '+s+' --force --quiet', shell=True)
+				cmd = subprocess.check_call(['pm','production','touch-finished',proj,'-S',s,'--force','--quiet'])
 			fCnt = fCnt+1
-			print p+'\t'+str(len(samples_unmarked)) ##log
+			print "{}\t{}\t{}\t{}".format(proj,str(len(samples_unmarked)),deliv_date,person) ##log
 	else:
-		print "RUN TERMINATIN: project directory not found for "+p
+		print "RUN TERMINATIN: project directory not found for {}".format(proj) ##log
+		raise SystemExit
 
-##log
+## log
 print "\n*** Touch done ****"
 print "\nRUN SUMMARY:"
 print "------------"
-print "Project marked delivered in GPL: "+str(len(proj_ls))
-print "No. of project already flagged: "+str(len(proj_ls)-fCnt)
-print "No. of project flagged in this run: "+str(fCnt)+"\n"
+print "Project marked delivered in GPL: {}".format(str(len(projects_done)))
+print "No. of project already flagged: {}".format(str(len(projects_done)-fCnt))
+print "No. of project flagged in this run: {}\n".format(str(fCnt))
