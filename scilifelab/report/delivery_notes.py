@@ -332,7 +332,9 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format(s["barcode_name"], s["lane"], s_param["phix_error_rate"], err_stat, s_param["avg_quality_score"], qv_stat))
 
         # Update/set remaning sample run parameters, falling back on project defaults if *key* is missing
-        s_param['ordered_amount'] = s_param.get('ordered_amount', p_con.get_ordered_amount(project_name))
+        s_param['ordered_amount'] = s_param.get('ordered_amount', 
+                                                p_con.get_ordered_amount(project_name,
+                                                                         samples=p_con.get_entry(project_name,'samples')))
         s_param['customer_reference'] = s_param.get('customer_reference', project.get('customer_reference'))
         s_param['uppnex_project_id'] = s_param.get('uppnex_project_id', project.get('uppnex_id'))
 
