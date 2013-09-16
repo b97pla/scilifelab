@@ -6,6 +6,7 @@ import base64
 import argparse
 import datetime
 import subprocess
+import ConfigParser
 import gdata
 import gdata.docs.service
 import gdata.spreadsheet.service
@@ -26,10 +27,14 @@ t = str(datetime.datetime.utcnow().isoformat()).split('.')[0]
 ##looks for config file and gets the values needed for the run
 config_file = args.Config_file
 if os.path.exists(config_file):
-	file_config = open(config_file,'r')
-	for line in file_config.readlines():
-		vals = line.strip().split(':')
-		config[vals[0]] = vals[1]
+	config_parse = ConfigParser.RawConfigParser()	
+	file_conf = config_parse.read(config_file)
+	for item in config_parse.items('production'):
+		if item[0] == "root":
+			config['upp_path'] = item[1]
+	for item in config_parse.items('gdocs'):
+		if re.search('credential|gpl',item[0]):
+			config[item[0]] = item[1]
 else:
 	print "\nConfig file doesn't exist, Provide valid file\n"
 	raise SystemExit
@@ -70,9 +75,9 @@ def check_flag(p_path):
 	return status,sam_nm;
 
 ## getting the spreadsheet from given name and appropriate worksheet
-credentials = get_credentials(config['gCred_file'])
-ssheet = SpreadSheet(credentials,config['ssheet_nm'])
-wksheet = ssheet.get_worksheet(config['wksheet_nm'])
+credentials = get_credentials(config['credentials_file'])
+ssheet = SpreadSheet(credentials,config['gpl_spreadsheet'])
+wksheet = ssheet.get_worksheet(config['gpl_worksheet'])
 cell_feed = ssheet.get_cell_feed(wksheet)
 
 print "**** DONE ****\n" ##log
@@ -120,7 +125,7 @@ for p in projects_done:
 			fCnt = fCnt+1
 			print "{}\t{}\t{}\t{}".format(proj,str(len(samples_unmarked)),deliv_date,person) ##log
 	else:
-		print "RUN TERMINATIN: project directory not found for {}".format(proj) ##log
+		print "\nRUN TERMINATING: project directory not found for {}\n".format(proj) ##log
 		raise SystemExit
 
 ## log
