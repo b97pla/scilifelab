@@ -94,7 +94,7 @@ def _get_bc_count(sample_name, bc_count, sample_run):
 
 
 def _assert_flowcell_format(flowcell):
-    """Assert name of flowcell: "[A-Z0-9]+XX"
+    """Assert name of flowcell: "[A-Z0-9\-]+"
 
     :param flowcell: flowcell id
 
@@ -103,7 +103,7 @@ def _assert_flowcell_format(flowcell):
     if flowcell is None:
         # Can this really be right?!?
         return True
-    if not re.match("[A-Z0-9]+XX$", flowcell):
+    if not re.match("[A-Z0-9\-]+$", flowcell):
         return False
     return True
 
@@ -247,12 +247,13 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         }
     # key mapping from sample_run_metrics to parameter keys
     srm_to_parameter = {"project_name":"sample_prj", "FC_id":"flowcell",
-                        "scilifelab_name":"barcode_name", "start_date":"date", "rounded_read_count":"bc_count"}
+                        "scilifelab_name":"barcode_name", "start_date":"date", 
+                        "rounded_read_count":"bc_count", "lane": "lane"}
 
     LOG.debug("got parameters {}".format(parameters))
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
     if not _assert_flowcell_format(flowcell):
-        LOG.warn("Wrong flowcell format {}; skipping. Please use the flowcell id (format \"[A-Z0-9]+XX\")".format(flowcell) )
+        LOG.warn("Wrong flowcell format {}; skipping. Please use the flowcell id (format \"[A-Z0-9\-]+\")".format(flowcell) )
         return output_data
     output_data = _update_sample_output_data(output_data, cutoffs)
 
@@ -331,7 +332,9 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format(s["barcode_name"], s["lane"], s_param["phix_error_rate"], err_stat, s_param["avg_quality_score"], qv_stat))
 
         # Update/set remaning sample run parameters, falling back on project defaults if *key* is missing
-        s_param['ordered_amount'] = s_param.get('ordered_amount', p_con.get_ordered_amount(project_name))
+        s_param['ordered_amount'] = s_param.get('ordered_amount', 
+                                                p_con.get_ordered_amount(project_name,
+                                                                         samples=p_con.get_entry(project_name,'samples')))
         s_param['customer_reference'] = s_param.get('customer_reference', project.get('customer_reference'))
         s_param['uppnex_project_id'] = s_param.get('uppnex_project_id', project.get('uppnex_id'))
 

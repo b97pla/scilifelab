@@ -413,6 +413,21 @@ class TestDataDelivery(unittest.TestCase):
             self.assertEqual(obs_result,
                              exp_result,
                              "Did not get expected final name ({:s}) for file name {:s}".format(exp_result,test_fname))
+        
+        # Try without the _index part of file name
+        sample_name_noindex = "P101_150"
+        test_names = [("1_{}_{}_1_nophix_1_fastq.txt.gz".format(date,fcid),
+                       "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name_noindex)),
+                      ("{}_CGATGT_L001_R1_001.fastq.gz".format(sample_name_noindex),
+                       "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name_noindex)),
+                      ("{}_NoIndex_L001_R2_001.fastq.gz".format(sample_name_noindex),
+                       "1_{}_{}_{}_2.fastq.gz".format(date,fcid,sample_name_noindex))]
+        
+        for test_fname, exp_result in test_names:
+            obs_result = create_final_name(test_fname,date,fcid,sample_name_noindex)
+            self.assertEqual(obs_result,
+                             exp_result,
+                             "Did not get expected final name ({:s}) for file name {:s}".format(exp_result,test_fname))
     
         # Try some illegal file names and assert that they raise exceptions
         test_names = ["1_{}_{}_1_nophix_1_fastq.gz".format(date,fcid),

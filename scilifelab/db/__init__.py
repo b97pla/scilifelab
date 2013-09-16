@@ -93,7 +93,7 @@ class Couch(Database):
             return
         self.log.debug("retrieving field entry in field '{}' for name '{}'".format(field, name))
         if self.name_view.get(name, None) is None:
-            self.log.warn("no field '{}' for name '{}'".format(field, name))
+            self.log.warn("no entry '{}' in {}".format(name, self.db))
             return None
         doc = self._doc_type(**self.db.get(self.name_view.get(name)))
         if field:
