@@ -588,13 +588,17 @@ class RunMetricsController(AbstractBaseController):
         Extract instrument type and run mode from runParameter data
         """
         
-        runParameters = fc_doc.get("RunParameters",{}).get("Setup",{})
+        runParameters = fc_doc.get("RunParameters",{})
+        if "RunID" not in runParameters:
+            runParameters = runParameters.get("Setup",{})
         run_data = {}
-        if "ApplicationVersion" in runParameters:
-            if int(runParameters['ApplicationVersion'][0]) > 1:
+        if runParameters.get("ApplicationName","") == "HiSeq Control Software":
+            if int(runParameters.get('ApplicationVersion','1')[0]) > 1:
                 run_data["InstrumentType"] = "HiSeq2500"
             else:
                 run_data["InstrumentType"] = "HiSeq2000"
+        elif "MCSVersion" in runParameters:
+             run_data["InstrumentType"] = "MiSeq"
         if "RunMode" in runParameters:
             run_data["RunMode"] = runParameters["RunMode"]
             
@@ -639,13 +643,10 @@ class RunMetricsController(AbstractBaseController):
         if len(run_data) == 0:
             self.log.warn("No runParameter data for flowcell {}".format(fcid))
         
-        out_data = [[self.pargs.flowcell,
-                     run_data.get("InstrumentType","HiSeq2000"),
-                     run_data.get("RunMode","High Output")]]
+        out_data = []
         
         # Extract the project names
         projects = set([proj[0].replace("__",".") for data in ssheet_data.values() for proj in data.values()])
-    
         # Extract application for each project
         for project in projects:    
             self.log.debug("Fetching project data document for project {}".format(project))
@@ -656,7 +657,7 @@ class RunMetricsController(AbstractBaseController):
         
             application = pdoc.get("application","N/A")
             type = pdoc.get("type","Check GPL")
-            out_data.append([project,application,type])
+            out_data.append([self.pargs.flowcell,project,application,type,'',"{} {}".format(run_data.get("InstrumentType",""),run_data.get("RunMode",""))])
         
         self.app._output_data['stdout'].write("\n".join(["\t".join([str(r) for r in row]) for row in out_data]))
                
