@@ -6,6 +6,7 @@ import ast
 import json
 import math
 import csv
+import yaml
 from cStringIO import StringIO
 from collections import Counter
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, calc_avg_qv
@@ -17,43 +18,21 @@ import scilifelab.log
 
 LOG = scilifelab.log.minimal_logger(__name__)
 
-# Instrument configurations for insertion into report
-instrument = {
-    'SN1025': {
-        'instrument_alias':'Smeagol',
-        'instrument' : 'HiSeq 2000',
-        },
-    'sN188': {
-        'instrument_alias':'Eowyn',# ?
-        'instrument' : 'HiSeq 2000',
-        },
-    'SN7001298': {
-        'instrument_alias':'Deagol',
-        'instrument' : 'HiSeq 2000',
-        },
-    'SN7001301': {
-        'instrument_alias':'Eomer',
-        'instrument' : 'HiSeq 2500',
-        },
-    'SN7001362': {
-        'instrument_alias':'Aragorn',
-        'instrument' : 'HiSeq 2500',
-        },
-    'default': {
-        'instrument_alias':'',
-        'instrument' : 'NN',
-        },
-    'M00275' : {
-        'instrument_alias':'Gloin',
-        'instrument' : 'MiSeq 2500',
-        }
-    }
 # Software versions used in data production. Instrument specific?
 software_versions = {
     'baseconversion_version' : 'OLB v1.9',
     'casava_version' : 'CASAVA v1.8.2'
     }
 
+def _parse_instrument_config(cfile):
+    """Parse a supplied yaml file with instrument ids and associated metadata and return a list of dicts
+    """
+    if cfile is None or not os.path.exists(cfile):
+        LOG.warn("No instrument config file supplied, will use default value")
+        return [{'instrument_id': 'default', 'instrument_alias': 'NN', 'instrument_version': 'NN'}]
+
+    with open(cfile) as fh:
+        return yaml.load(fh)
 
 # http://stackoverflow.com/questions/3154460/python-human-readable-large-numbers
 def _round_read_count_in_millions(n):
@@ -115,16 +94,16 @@ def _get_bc_count(sample_name, bc_count, sample_run):
 
 
 def _assert_flowcell_format(flowcell):
-    """Assert name of flowcell: "[A-Z0-9]+XX"
+    """Assert name of flowcell: "[A-Z0-9\-]+"
 
     :param flowcell: flowcell id
-    
+
     :returns: boolean
     """
     if flowcell is None:
         # Can this really be right?!?
         return True
-    if not re.match("[A-Z0-9]+XX$", flowcell):
+    if not re.match("[A-Z0-9\-]+$", flowcell):
         return False
     return True
 
@@ -182,7 +161,7 @@ def _update_sample_output_data(output_data, cutoffs):
     output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format("=============", "====", "=========", "===========", "=====", "========"))
     return output_data
 
-def _set_project_sample_dict(project_sample_item):
+def _set_project_sample_dict(project_sample_item, source):
     """Set a project sample dict, mapping a project sample to sample run metrics if present in project summary.
 
     :param project_sample_item: a project sample item
@@ -190,19 +169,45 @@ def _set_project_sample_dict(project_sample_item):
     :returns: project_sample_d or empty dict
     """
     project_sample_d = {}
-    if "library_prep" in project_sample_item.keys():
-        project_sample_d = {x:y for d in [v.get("sample_run_metrics", {}) for k,v in project_sample_item["library_prep"].iteritems()] for x,y in d.iteritems()}
+
+    #The structure of the database has changed for projects opened after July 1st
+    #2013 (document 10294_01 for more details)
+    if source == 'lims':
+        LOG.debug("This project has LIMS as source of information")
+        if "library_prep" in project_sample_item.keys():
+            sample_run_metrics = {k:v.get("sample_run_metrics", {}) for k,v in \
+                                    project_sample_item["library_prep"].iteritems()}
+            project_sample_d = {}
+            for fc in sample_run_metrics.items():
+                fc, metrics = fc
+                for k, v in metrics.iteritems():
+                    sample_run_metrics = v.get('sample_run_metrics_id', '')
+                    if sample_run_metrics:
+                        project_sample_d[k] = v['sample_run_metrics_id']
+                    else:
+                        LOG.warn("No sample_run_metrics information for sample '{}'".format(project_sample_item))
+        else:
+            sample_run_metrics = project_sample_item.get("sample_run_metrics", {})
+            project_sample_d = {metrics[0]:metrics[1]['sample_run_metrics_id'] \
+                                    for metrics in sample_run_metrics.items()}
+            if not project_sample_item.get("sample_run_metrics", {}):
+                LOG.warn("No sample_run_metrics information for sample '{}'".format(project_sample_item))
     else:
-        project_sample_d = {x:y for x,y in project_sample_item.get("sample_run_metrics", {}).iteritems()}
-        if not project_sample_item.get("sample_run_metrics", {}):
-            LOG.warn("No sample_run_metrics information for sample '{}'".format(project_sample_item))
+        if "library_prep" in project_sample_item.keys():
+            project_sample_d = {x:y for d in [v.get("sample_run_metrics", {}) \
+                    for k,v in project_sample_item["library_prep"].iteritems()] \
+                        for x,y in d.iteritems()}
+        else:
+            project_sample_d = {x:y for x,y in project_sample_item.get("sample_run_metrics", {}).iteritems()}
+            if not project_sample_item.get("sample_run_metrics", {}):
+                LOG.warn("No sample_run_metrics information for sample '{}'".format(project_sample_item))
     return project_sample_d
 
 
 def sample_status_note(project_name=None, flowcell=None, username=None, password=None, url=None,
                        ordered_million_reads=None, uppnex_id=None, customer_reference=None, bc_count=None,
                        project_alias=[], projectdb="projects", samplesdb="samples", flowcelldb="flowcells",
-                       phix=None, **kw):
+                       phix=None, is_paired=True, **kw):
     """Make a sample status note. Used keywords:
 
     :param project_name: project name
@@ -215,13 +220,17 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
     :param customer_reference: customer project name
     :param project_alias: project alias name
     :param phix: phix error rate
+    :param is_paired: True if run is paired-end, False for single-end
     """
     # Cutoffs
     cutoffs = {
         "phix_err_cutoff" : 2.0,
         "qv_cutoff" : 30,
         }
-    
+
+    instrument = _parse_instrument_config(os.path.expanduser(kw.get("instrument_config","")))
+    instrument_dict = {i['instrument_id']: i for i in instrument}
+
     # parameters
     parameters = {
         "project_name" : None,
@@ -234,15 +243,17 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         "pct_q30_bases" : None,
         "success" : None,
         "run_mode":None,
+        "is_paired":True
         }
     # key mapping from sample_run_metrics to parameter keys
-    srm_to_parameter = {"project_name":"sample_prj", "FC_id":"flowcell", 
-                        "scilifelab_name":"barcode_name", "start_date":"date", "rounded_read_count":"bc_count"}
-    
+    srm_to_parameter = {"project_name":"sample_prj", "FC_id":"flowcell",
+                        "scilifelab_name":"barcode_name", "start_date":"date", 
+                        "rounded_read_count":"bc_count", "lane": "lane"}
+
     LOG.debug("got parameters {}".format(parameters))
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
     if not _assert_flowcell_format(flowcell):
-        LOG.warn("Wrong flowcell format {}; skipping. Please use the flowcell id (format \"[A-Z0-9]+XX\")".format(flowcell) )
+        LOG.warn("Wrong flowcell format {}; skipping. Please use the flowcell id (format \"[A-Z0-9\-]+\")".format(flowcell) )
         return output_data
     output_data = _update_sample_output_data(output_data, cutoffs)
 
@@ -257,6 +268,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
 
     # Get project
     project = p_con.get_entry(project_name)
+    source = p_con.get_info_source(project_name)
     if not project:
         LOG.warn("No such project '{}'".format(project_name))
         return output_data
@@ -266,7 +278,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
     if len(sample_run_list) == 0:
         LOG.warn("No samples for project '{}', flowcell '{}'. Maybe there are no sample run metrics in statusdb?".format(project_name, flowcell))
         return output_data
-    
+
     # Set options
     ordered_million_reads = _literal_eval_option(ordered_million_reads)
     bc_count = _literal_eval_option(bc_count)
@@ -285,12 +297,16 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         fc = "{}_{}".format(s.get("date"), s.get("flowcell"))
         # Get instrument
         try:
-            s_param.update(instrument[fc_con.get_instrument(str(fc))])
+            s_param.update(instrument_dict[fc_con.get_instrument(str(fc))])
         except:
             LOG.warn("Failed to set instrument and software versions for flowcell {} in report due to missing RunInfo -> Instrument field in statusdb. Either rerun 'pm qc update-qc' or search-and-replace 'NN' in the sample report.".format(fc))
-            s_param.update(instrument['default'])
+            s_param.update(instrument_dict['default'])
         # Get run mode
         s_param["run_mode"] = fc_con.get_run_mode(str(fc))
+        s_param["is_paired"] = fc_con.is_paired_end(str(fc))
+        if s_param["is_paired"] is None:
+            LOG.warn("Could not determine run setup for flowcell {}. Will assume paired-end.".format(fc))
+            s_param["is_paired"] = True
         s_param.update(software_versions)
         s_param["phix_error_rate"] = fc_con.get_phix_error_rate(str(fc), s["lane"])
         if phix:
@@ -298,7 +314,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         # Get quality score from demultiplex stats, if that fails
         # (which it shouldn't), fall back on fastqc data.
         (avg_quality_score, pct_q30_bases) = fc_con.get_barcode_lane_statistics(project_name, s.get("barcode_name"), fc, s["lane"])
-        s_param['avg_quality_score'] = avg_quality_score if avg_quality_score else calc_avg_qv(s) 
+        s_param['avg_quality_score'] = avg_quality_score if avg_quality_score else calc_avg_qv(s)
         if not s_param['avg_quality_score']:
             LOG.warn("Setting average quality failed for sample {}, id {}".format(s.get("name"), s.get("_id")))
         s_param['pct_q30_bases'] = pct_q30_bases
@@ -316,7 +332,9 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format(s["barcode_name"], s["lane"], s_param["phix_error_rate"], err_stat, s_param["avg_quality_score"], qv_stat))
 
         # Update/set remaning sample run parameters, falling back on project defaults if *key* is missing
-        s_param['ordered_amount'] = s_param.get('ordered_amount', p_con.get_ordered_amount(project_name))
+        s_param['ordered_amount'] = s_param.get('ordered_amount', 
+                                                p_con.get_ordered_amount(project_name,
+                                                                         samples=p_con.get_entry(project_name,'samples')))
         s_param['customer_reference'] = s_param.get('customer_reference', project.get('customer_reference'))
         s_param['uppnex_project_id'] = s_param.get('uppnex_project_id', project.get('uppnex_id'))
 
@@ -338,7 +356,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
             LOG.debug("project sample run metrics mapping found: '{}' : '{}'".format(s["name"], project_sample["sample_name"]))
             project_sample_item = project_sample['project_sample']
             # Set project_sample_d: a dictionary mapping from sample run metrics name to sample run metrics database id
-            project_sample_d = _set_project_sample_dict(project_sample_item)
+            project_sample_d = _set_project_sample_dict(project_sample_item, source)
             if not project_sample_d:
                 LOG.warn("No sample_run_metrics information for sample '{}', barcode name '{}', id '{}'\n\tProject summary information {}".format(s["name"], s["barcode_name"], s["_id"], project_sample))
             # Check if sample run metrics name present in project database: if so, verify that database ids are consistent
@@ -421,7 +439,7 @@ def _set_sample_table_values(sample_name, project_sample, barcode_seq, ordered_m
     vals['BarcodeSeq'] = barcode_seq
     vals.update({k:"N/A" for k in vals.keys() if vals[k] is None or vals[k] == ""})
     return vals
-    
+
 def project_status_note(project_name=None, username=None, password=None, url=None,
                         use_ps_map=True, use_bc_map=False, check_consistency=False,
                         ordered_million_reads=None, uppnex_id=None, customer_reference=None,
@@ -449,30 +467,30 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
     :param include_all_samples: include all samples in report
     :param flat_table: Just create a simple tab-separated version of the table instead of the fancy pdf
     """
-    
+
     # parameters
     parameters = {
         "project_name" : project_name,
         "finished" : "Not finished, or cannot yet assess if finished.",
         }
-    
+
     output_data, sample_table, param = _project_status_note_table(project_name, username, password, url,
                                                                   use_ps_map, use_bc_map, check_consistency,
-                                                                  ordered_million_reads, uppnex_id, 
-                                                                  customer_reference, exclude_sample_ids, 
-                                                                  project_alias, sample_aliases, projectdb, 
+                                                                  ordered_million_reads, uppnex_id,
+                                                                  customer_reference, exclude_sample_ids,
+                                                                  project_alias, sample_aliases, projectdb,
                                                                   samplesdb, flowcelldb, include_all_samples,
                                                                   parameters, **kw)
-    
+
     if not flat_table:
         # Set report paragraphs
         paragraphs = project_note_paragraphs()
         headers = project_note_headers()
-    
+
         paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
         make_note("{}_project_summary.pdf".format(project_name), headers, paragraphs, **param)
         make_rest_note("{}_project_summary.rst".format(project_name), sample_table=sample_table, report="project_report", **param)
-    
+
     else:
         # Write tab-separated output
         sample_table[0].insert(0,'ProjectID')
@@ -486,12 +504,12 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
                 data = [str(sample[col]) for col in table_cols]
                 csvw.writerow(data)
                 output_data['stdout'].write("{}\n".format("\t".join(data)))
-        
+
     param.update({k:"N/A" for k in param.keys() if param[k] is None or param[k] ==  ""})
     output_data["debug"].write(json.dumps({'param':param, 'table':sample_table}))
 
     return output_data
-    
+
 
 def _project_status_note_table(project_name=None, username=None, password=None, url=None,
                                use_ps_map=True, use_bc_map=False, check_consistency=False,
@@ -504,13 +522,15 @@ def _project_status_note_table(project_name=None, username=None, password=None, 
     ps_to_parameter = {"scilife_name":"scilife_name", "customer_name":"customer_name", "project_name":"project_name"}
     # mapping project sample to table
     table_keys = ['ScilifeID', 'SubmittedID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status']
-    
+
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
     # Connect and run
     s_con = SampleRunMetricsConnection(dbname=samplesdb, username=username, password=password, url=url)
     fc_con = FlowcellRunMetricsConnection(dbname=flowcelldb, username=username, password=password, url=url)
     p_con = ProjectSummaryConnection(dbname=projectdb, username=username, password=password, url=url)
 
+    #Get the information source for this project
+    source = p_con.get_info_source(project_name)
 
     # Get project summary from project database
     sample_aliases = _literal_eval_option(sample_aliases, default={})
@@ -542,7 +562,7 @@ def _project_status_note_table(project_name=None, username=None, password=None, 
     # Google docs summary table to use the P names
     sample_dict = prj_summary['samples']
     param.update({key:prj_summary.get(ps_to_parameter[key], None) for key in ps_to_parameter.keys()})
-    param["ordered_amount"] = param.get("ordered_amount", p_con.get_ordered_amount(project_name))
+    param["ordered_amount"] = param.get("ordered_amount", p_con.get_ordered_amount(project_name, samples=sample_dict))
     param['customer_reference'] = param.get('customer_reference', prj_summary.get('customer_reference'))
     param['uppnex_project_id'] = param.get('uppnex_project_id', prj_summary.get('uppnex_id'))
 
@@ -561,7 +581,7 @@ def _project_status_note_table(project_name=None, username=None, password=None, 
     samples_excluded = []
     all_passed = True
     last_library_preps = p_con.get_latest_library_prep(project_name)
-    last_library_preps_srm = [x for l in last_library_preps.values() for x in l] 
+    last_library_preps_srm = [x for l in last_library_preps.values() for x in l]
     LOG.debug("Looping through sample map that maps project sample names to sample run metrics ids")
     for k,v in samples.items():
         LOG.debug("project sample '{}' maps to '{}'".format(k, v))
@@ -574,7 +594,7 @@ def _project_status_note_table(project_name=None, username=None, password=None, 
                     continue
         else:
             pass
-                    
+
         if re.search("Unexpected", k):
             continue
         barcode_seq = s_con.get_entry(k, "sequence")
@@ -596,7 +616,7 @@ def _project_status_note_table(project_name=None, username=None, password=None, 
             continue
         project_sample = sample_dict[sample]
         # Set project_sample_d: a dictionary mapping from sample run metrics name to sample run metrics database id
-        project_sample_d = _set_project_sample_dict(project_sample)
+        project_sample_d = _set_project_sample_dict(project_sample, source)
         if project_sample_d:
             for k,v in project_sample_d.iteritems():
                 barcode_seq = s_con.get_entry(k, "sequence")

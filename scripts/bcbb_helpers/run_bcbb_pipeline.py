@@ -8,10 +8,10 @@ import subprocess
 import copy
 import tempfile
 import argparse
-import bcbio.solexa.flowcell
 import bcbio.solexa.samplesheet
 from bcbio.pipeline.config_loader import load_config
 from scilifelab.db.statusdb import ProjectSummaryConnection
+from scilifelab.bcbio.qc import FlowcellRunMetricsParser
 
 # The directory where CASAVA has written the demuxed output
 CASAVA_OUTPUT_DIR = "Unaligned"
@@ -436,7 +436,15 @@ def parse_casava_directory(fc_dir):
     projects = []
     
     fc_dir = os.path.abspath(fc_dir)
-    fc_name, fc_date = bcbio.solexa.flowcell.get_flowcell_info(fc_dir)
+    parser = FlowcellRunMetricsParser(fc_dir)
+    run_info = parser.parseRunInfo()
+    runparams = parser.parseRunParameters()
+        
+    fc_name = run_info.get('Flowcell',None)
+    fc_date = run_info.get('Date',None)
+    fc_pos = runparams.get('FCPosition','')
+    assert fc_name is not None and fc_date is not None, "Could not parse flowcell name and flowcell date"
+    
     unaligned_dir_pattern = os.path.join(fc_dir,"{}*".format(CASAVA_OUTPUT_DIR))
     basecall_stats_dir_pattern = os.path.join(unaligned_dir_pattern,"Basecall_Stats_*")
     basecall_stats_dir = [os.path.relpath(d,fc_dir) for d in glob.glob(basecall_stats_dir_pattern)]
@@ -462,7 +470,7 @@ def parse_casava_directory(fc_dir):
                          'project_name': project_name, 
                          'samples': project_samples})
     
-    return {'fc_dir': fc_dir, 'fc_name': fc_name, 'fc_date': fc_date, 'basecall_stats_dir': basecall_stats_dir, 'projects': projects}
+    return {'fc_dir': fc_dir, 'fc_name': '{}{}'.format(fc_pos,fc_name), 'fc_date': fc_date, 'basecall_stats_dir': basecall_stats_dir, 'projects': projects}
     
 def has_casava_output(fc_dir):
     try:
@@ -474,14 +482,13 @@ def has_casava_output(fc_dir):
     return False
 
 def report_to_gdocs(fc_dir, post_process_config_file):
-    # Rename any existing run_info.yaml as it will interfere with gdocs upload
-    run_info = os.path.join(fc_dir, "run_info.yaml")
-    if os.path.exists(run_info):
-        os.rename(run_info, "{}.bak".format(run_info))
+    """Upload the run results to Google Docs using pm"""
+    
     # Call the report_to_gdocs script
-    cmd = ["report_to_gdocs.py",
-            os.path.basename(os.path.abspath(fc_dir)),
-            post_process_config_file]
+    cmd = ["pm",
+           "report",
+           "report-to-gdocs",
+            "--run-id={}".format(os.path.basename(os.path.abspath(fc_dir)))]
     subprocess.check_call(cmd)
 
 if __name__ == "__main__":

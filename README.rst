@@ -1,6 +1,6 @@
 Scilifelab modules
 ==================
-
+           
 Installation
 ------------
 
@@ -36,7 +36,7 @@ Documentation output is found in ``build``.
 Running the tests
 -----------------
 
-The modules are shipped with a number of unit tests located in the
+The modules are shipped with a number of unit tests, located in the
 `tests` directory. To run a test, issue the command
 
 .. code:: bash

@@ -39,7 +39,7 @@ f=open("RSeQC_"+name+"_rd.sh",'w')
 
 print >>f, """#!/bin/bash -l
 #SBATCH -A a2012043 
-#SBATCH -p node
+#SBATCH -p core
 #SBATCH -t 50:00:00
 #SBATCH -e RSeQC_rd_{0}.err
 #SBATCH -o RSeQC_rd_{0}.out

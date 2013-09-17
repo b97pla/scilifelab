@@ -1,6 +1,7 @@
 #!/bin/bash -l
 #SBATCH -A a2012043
-#SBATCH -p node
+#SBATCH -p core
+#SBATCH -n 4
 #SBATCH -t 40:00:00
 #SBATCH -J merge
 #SBATCH -e merge.err
