@@ -22,7 +22,7 @@ LOG = scilifelab.log.minimal_logger(__name__)
 # Software versions used in data production. Instrument specific?
 software_versions = {
     'basecall_software': 'RTA',
-    'demultiplex_software' : 'configureBclToFastq.pl',
+    'demultiplex_software' : 'bcl2fastq',
     }
 
 def _parse_instrument_config(cfile):
@@ -252,6 +252,15 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
                            'Error rate (%)']
     sample_table = [sample_table_header]
     
+    snt_header = ['SciLifeLab ID','Submitted ID']
+    sample_name_table = [snt_header]
+    
+    syt_header = ['SciLifeLab ID','Lane','Barcode','Read count']
+    sample_yield_table = [syt_header]
+    
+    sqt_header = ['SciLifeLab ID','Lane','Barcode','Q>=30 (%)','Avg Q','PhiX error rate (%)']
+    sample_quality_table = [sqt_header]
+    
     # Connect and run
     s_con = SampleRunMetricsConnection(dbname=samplesdb, username=username, password=password, url=url)
     fc_con = FlowcellRunMetricsConnection(dbname=flowcelldb, username=username, password=password, url=url)
@@ -285,11 +294,13 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
     fc = "{}_{}".format(fc_param["start_date"], flowcell)
     
     # Get instrument
-    try:
-        fc_param.update(instrument_dict[fc_con.get_instrument(str(fc))])
-    except:
-        LOG.warn("Failed to set instrument and software versions for flowcell {} in report due to missing RunInfo -> Instrument field in statusdb. Either rerun 'pm qc update-qc' or search-and-replace 'NN' in the sample report.".format(fc))
-        fc_param.update(instrument_dict['default'])
+    #try:
+    #    fc_param.update(instrument_dict[fc_con.get_instrument(str(fc))])
+    #except:
+    #    LOG.warn("Failed to set instrument and software versions for flowcell {} in report due to missing RunInfo -> Instrument field in statusdb. Either rerun 'pm qc update-qc' or search-and-replace 'NN' in the sample report.".format(fc))
+    #    fc_param.update(instrument_dict['default'])
+    fc_param['instrument_version'] = fc_con.get_instrument_type(str(fc))
+    
     # Get run mode
     fc_param["run_mode"] = fc_con.get_run_mode(str(fc))
     fc_param["is_paired"] = fc_con.is_paired_end(str(fc))
@@ -299,8 +310,8 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
     # FIXME: parse this from configs
     fc_param.update(software_versions)
     demux_software = fc_con.get_demultiplex_software(str(fc))
-    fc_param["basecaller_version"] = demux_software.get(fc_param["basecall_software"],"")
-    fc_param["demultiplex_version"] = demux_software.get(fc_param["demultiplex_software"],"CASAVA v1.8.3")
+    fc_param["basecaller_version"] = demux_software.get(fc_param["basecall_software"],None)
+    fc_param["demultiplex_version"] = demux_software.get(fc_param["demultiplex_software"],"1.8.3")
     fc_param.update()
     fc_param["clustered"] = fc_con.get_clustered(str(fc))
     fc_param["run_setup"] = fc_con.get_run_setup(str(fc))
@@ -348,18 +359,12 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
             LOG.info("or 'pm qc update --sample_prj PROJECT_NAME --names BARCODE_TO_SAMPLE_MAP to update project sample names.")
             LOG.info("Please refer to the pm documentation for examples.")
             query_ok(force=kw.get("force", False))
-
-        sample_table_row = ["" for i in range(len(sample_table[-1]))]
-        sample_table_row[0] = s.get("barcode_name", None)
-        sample_table_row[1] = s.get("customer_name", None)
-        sample_table_row[2] = s.get("lane",None)
-        sample_table_row[3] = s.get("sequence",None)
         
         # Get read counts, possible overridden on the command line
         if bc_count:
-            sample_table_row[4] = _round_read_count_in_millions(_get_bc_count(s["barcode_name"], bc_count, s))
+            read_count = _round_read_count_in_millions(_get_bc_count(s["barcode_name"], bc_count, s))
         else:
-            sample_table_row[4] = _round_read_count_in_millions(s.get("bc_count",None))
+            read_count = _round_read_count_in_millions(s.get("bc_count",None))
         
         # Get quality score from demultiplex stats, if that fails
         # (which it shouldn't), fall back on fastqc data.
@@ -371,16 +376,20 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         if not pct_q30_bases:
             LOG.warn("Setting % of >= Q30 Bases (PF) failed for sample {}, id {}".format(s.get("name"), s.get("_id")))
         
-        sample_table_row[5] = avg_quality_score
-        sample_table_row[6] = pct_q30_bases
-        
         # Get phix error rate, possible overridden on the command line
         if phix:
-            sample_table_row[7] = _get_phix_error_rate(s["lane"], phix)
+            phix = _get_phix_error_rate(s["lane"], phix)
         else:
-            sample_table_row[7] = fc_con.get_phix_error_rate(str(fc), s["lane"]) 
+            phix = fc_con.get_phix_error_rate(str(fc), s["lane"]) 
         
-        sample_table.append(sample_table_row)
+        scilifeid = s.get("barcode_name", None)
+        customerid = s.get("customer_name", None)
+        lane = s.get("lane",None)
+        barcode = s.get("sequence",None)
+        
+        sample_name_table.append([scilifeid,customerid])
+        sample_yield_table.append([scilifeid,lane,barcode,read_count])
+        sample_quality_table.append([scilifeid,lane,barcode,pct_q30_bases,avg_quality_score,phix])
         
         # Compare phix error and qv to cutoffs
         #err_stat = "OK"
@@ -393,19 +402,27 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         #    qv_stat = "LOW"
         #output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format(s["barcode_name"], s["lane"], s_param["phix_error_rate"], err_stat, s_param["avg_quality_score"], qv_stat))
 
-    # Sort the table by smaple and lane
-    sample_table = [sample_table[0]] + sorted(sample_table[1:], key=operator.itemgetter(0,2))
+    # Sort the tables by smaple and lane
+    snt = [sample_name_table[0]] 
+    for n in sorted(sample_name_table[1:], key=operator.itemgetter(0,1)): 
+        if n not in snt:
+            snt.append(n)
+    sample_name_table = snt
+    sample_yield_table = [sample_yield_table[0]] + sorted(sample_yield_table[1:], key=operator.itemgetter(0,2,3))
+    sample_quality_table = [sample_quality_table[0]] + sorted(sample_quality_table[1:], key=operator.itemgetter(0,2,3))
 
     # Write final output to reportlab and rst files
     output_data["debug"].write(json.dumps({'s_param': [fc_param], 'sample_runs':{s["name"]:s["barcode_name"] for s in sample_run_list}}))
     
     # Set up paragraphs
-    paragraphs = sample_note_paragraphs()
-    paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
-    headers = sample_note_headers()
+    #paragraphs = sample_note_paragraphs()
+    #paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
+    #headers = sample_note_headers()
 
-    make_note(fc_param["pdffile"], headers, paragraphs, **fc_param)
-    make_rest_note(fc_param["rstfile"], sample_table=sample_table, report="sample_report", **fc_param)
+    #make_note(fc_param["pdffile"], headers, paragraphs, **fc_param)
+    make_rest_note(fc_param["rstfile"], 
+                   tables={'name': sample_name_table, 'yield': sample_yield_table, 'quality': sample_quality_table}, 
+                   report="sample_report", **fc_param)
     
     return output_data
 

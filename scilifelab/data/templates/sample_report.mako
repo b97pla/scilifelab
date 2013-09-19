@@ -33,27 +33,37 @@ Flow cell id
 
 ${FC_id}
 
-Lane
-^^^^
-
-${lane}
-
 Sequence data directory
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 /proj/${uppnex_project_id}/INBOX/${project_name}/[SciLifeLab ID]/${start_date}_${FC_id}
 
 Samples
-^^^^^^
+^^^^^^^
 
-${sample_table}
+.. table:: **Sample names** Name conversion between SciLifeLab sample ID and the submitted sample ID 
 
+${sample_name_table}
+
+Yield
+^^^^^
+
+.. table:: **Sample yield** The number of million reads or read pairs resulting from the sequencing  
+
+${sample_yield_table}
+
+Quality
+^^^^^^^
+
+.. table:: **Sample quality** The reported sample quality and lane-wise PhiX error rate 
+
+${sample_quality_table}
+    
 Method
 ^^^^^^
 
-Clustered on ${'cBot' if not clustered == "OnBoardClustering" else 'board'} and 
-sequenced on ${instrument_version} in ${'high output' if not run_mode == 'RapidRun' else 'rapid'} mode 
-according to manufacturer's instructions. The sequencing setup was ${run_setup}bp. 
-Basecalling was performed on instrument with ${basecall_software} v${basecaller_version}. 
-Demultiplexing and fastq conversion were done using ${demultiplex_version}.
+Sequenced on Illumina ${instrument_version}${' in {} mode'.format('high output' if not run_mode == 'RapidRun' else 'rapid') if not instrument_version == 'MiSeq' else ''} according to manufacturer's instructions. 
+The sequencing setup was ${run_setup}bp. 
+Basecalling was performed on the instrument using ${basecall_software}${' v{}'.format(basecaller_version) if basecaller_version else ''}. 
+Bcl to fastq conversion and demultiplexing was performed using ${demultiplex_software}${' v{}'.format(demultiplex_version) if demultiplex_version else ''} from the CASAVA software suite.
 The quality scale is Sanger / phred33 / Illumina 1.8+.

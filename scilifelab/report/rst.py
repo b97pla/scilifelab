@@ -1,5 +1,6 @@
 """rst module for generating reports."""
 import os
+import re
 import texttable as tt
 from datetime import datetime
 from scilifelab.log import minimal_logger
@@ -56,18 +57,67 @@ def _install_makefile(path, **kw):
     if not os.path.exists(os.path.join(path, "Makefile")):
         with open(os.path.join(path, "Makefile"), "w") as fh:
             fh.write(_render(rst_templates['make'], **kw))
+
+def indent_texttable_for_rst(ttab, indent=4, add_spacing=True):
+    """Texttable needs to be indented for rst.
+
+    :param ttab: texttable object
+    :param indent: indentation (should be 4 *spaces* for rst documents)
+    :param add_spacing_row: add additional empty row below class directives
+
+    :returns: reformatted texttable object as string
+    """
+    output = ttab.draw()
+    new_output = []
+    for row in output.split("\n"):
+        new_output.append(" " * indent + row)
+        if re.search('.. class::', row):
+            new_row = [" " if x != "|" else x for x in row]
+            new_output.append(" " * indent + "".join(new_row))
+    return "\n".join(new_output)
     
-def make_rst_sample_table(data):
-    """Format sample table"""
-    if data is None:
+def col_widths(data):
+    if not data or len(data) == 0:
+        return []
+    wd = [0 for i in xrange(len(data[0]))]
+    for row in data:
+        for i in xrange(len(row)):
+            wd[i] = max(len(str(row[i])),wd[i])
+    return wd
+
+def make_rst_sample_name_table(data):
+    """Format sample name table"""
+    if data is None or len(data) == 0:
+        return ""
+    else:
+        tab_tt = tt.Texttable()
+        tab_tt.add_rows(data)
+        tab_tt.set_cols_width(col_widths(data))
+        return indent_texttable_for_rst(tab_tt)
+
+def make_rst_sample_yield_table(data):
+    """Format sample name table"""
+    if data is None or len(data) == 0:
         return ""
     else:
         tab_tt = tt.Texttable()
         tab_tt.set_precision(2)
         tab_tt.add_rows(data)
-        return tab_tt.draw()
+        tab_tt.set_cols_width(col_widths(data))
+        return indent_texttable_for_rst(tab_tt)
 
-def make_rest_note(outfile, sample_table=None, outdir="rst", report="sample_report", **kw):
+def make_rst_sample_quality_table(data):
+    """Format sample name table"""
+    if data is None or len(data) == 0:
+        return ""
+    else:
+        tab_tt = tt.Texttable()
+        tab_tt.set_precision(2)
+        tab_tt.add_rows(data)
+        tab_tt.set_cols_width(col_widths(data))
+        return indent_texttable_for_rst(tab_tt)
+
+def make_rest_note(outfile, tables={}, outdir="rst", report="sample_report", **kw):
     """Make reSt-formatted note.
 
     :param outfile: outfile name
@@ -83,7 +133,9 @@ def make_rest_note(outfile, sample_table=None, outdir="rst", report="sample_repo
                'project_lc':kw.get('project_name'),
                'author':'N/A',
                'description':'N/A',
-               'sample_table':make_rst_sample_table(sample_table),
+               'sample_name_table':make_rst_sample_name_table(tables.get('name',None)),
+               'sample_yield_table':make_rst_sample_yield_table(tables.get('yield',None)),
+               'sample_quality_table':make_rst_sample_quality_table(tables.get('quality',None)),
                'stylefile': os.path.join(TEMPLATEPATH, "rst", "scilife.txt"),
                'sll_logo_small':sll_logo_small,
                })
