@@ -231,31 +231,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
 
     instrument = _parse_instrument_config(os.path.expanduser(kw.get("instrument_config","")))
     instrument_dict = {i['instrument_id']: i for i in instrument}
-<<<<<<< HEAD
-    
-=======
 
-    # parameters
-    parameters = {
-        "project_name" : None,
-        "start_date" : None,
-        "FC_id" : None,
-        "scilifelab_name" : None,
-        "rounded_read_count" : None,
-        "phix_error_rate" : None,
-        "avg_quality_score" : None,
-        "pct_q30_bases" : None,
-        "success" : None,
-        "run_mode":None,
-        "is_paired":True
-        }
-    # key mapping from sample_run_metrics to parameter keys
-    srm_to_parameter = {"project_name":"sample_prj", "FC_id":"flowcell",
-                        "scilifelab_name":"barcode_name", "start_date":"date", 
-                        "rounded_read_count":"bc_count", "lane": "lane"}
-
-    LOG.debug("got parameters {}".format(parameters))
->>>>>>> 341a298d53b2842c4b649fa944019a451b477331
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
     if not _assert_flowcell_format(flowcell):
         LOG.warn("Wrong flowcell format {}; skipping. Please use the flowcell id (format \"[A-Z0-9\-]+\")".format(flowcell) )
@@ -293,7 +269,6 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
     if len(sample_run_list) == 0:
         LOG.warn("No samples for project '{}', flowcell '{}'. Maybe there are no sample run metrics in statusdb?".format(project_name, flowcell))
         return output_data
-<<<<<<< HEAD
     
     # Peek at the samples to create the abbreviated run id
     # Create a dict with the flowcell level information
@@ -346,80 +321,6 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
     for s in sample_run_list: 
         LOG.debug("working on sample '{}', sample run metrics name '{}', id '{}'".format(s.get("barcode_name", None), s.get("name", None), s.get("_id", None)))
         
-=======
-
-    # Set options
-    ordered_million_reads = _literal_eval_option(ordered_million_reads)
-    bc_count = _literal_eval_option(bc_count)
-    phix = _literal_eval_option(phix)
-
-    # Count number of times a sample has been run on a flowcell; if several, make lane-specific reports
-    sample_count = Counter([x.get("barcode_name") for x in sample_run_list])
-
-    # Loop samples and collect information
-    s_param_out = []
-    for s in sample_run_list:
-        s_param = {}
-        LOG.debug("working on sample '{}', sample run metrics name '{}', id '{}'".format(s.get("barcode_name", None), s.get("name", None), s.get("_id", None)))
-        s_param.update(parameters)
-        s_param.update({key:s[srm_to_parameter[key]] for key in srm_to_parameter.keys()})
-        fc = "{}_{}".format(s.get("date"), s.get("flowcell"))
-        # Get instrument
-        try:
-            s_param.update(instrument_dict[fc_con.get_instrument(str(fc))])
-        except:
-            LOG.warn("Failed to set instrument and software versions for flowcell {} in report due to missing RunInfo -> Instrument field in statusdb. Either rerun 'pm qc update-qc' or search-and-replace 'NN' in the sample report.".format(fc))
-            s_param.update(instrument_dict['default'])
-        # Get run mode
-        s_param["run_mode"] = fc_con.get_run_mode(str(fc))
-        s_param["is_paired"] = fc_con.is_paired_end(str(fc))
-        if s_param["is_paired"] is None:
-            LOG.warn("Could not determine run setup for flowcell {}. Will assume paired-end.".format(fc))
-            s_param["is_paired"] = True
-        s_param.update(software_versions)
-        s_param["phix_error_rate"] = fc_con.get_phix_error_rate(str(fc), s["lane"])
-        if phix:
-            s_param["phix_error_rate"] = _get_phix_error_rate(s["lane"], phix)
-        # Get quality score from demultiplex stats, if that fails
-        # (which it shouldn't), fall back on fastqc data.
-        (avg_quality_score, pct_q30_bases) = fc_con.get_barcode_lane_statistics(project_name, s.get("barcode_name"), fc, s["lane"])
-        s_param['avg_quality_score'] = avg_quality_score if avg_quality_score else calc_avg_qv(s)
-        if not s_param['avg_quality_score']:
-            LOG.warn("Setting average quality failed for sample {}, id {}".format(s.get("name"), s.get("_id")))
-        s_param['pct_q30_bases'] = pct_q30_bases
-        if not s_param['pct_q30_bases']:
-            LOG.warn("Setting % of >= Q30 Bases (PF) failed for sample {}, id {}".format(s.get("name"), s.get("_id")))
-        # Compare phix error and qv to cutoffs
-        err_stat = "OK"
-        qv_stat = "OK"
-        if s_param["phix_error_rate"] > cutoffs["phix_err_cutoff"]:
-            err_stat = "HIGH"
-        elif s_param["phix_error_rate"] == -1:
-            err_stat = "N/A"
-        if s_param["avg_quality_score"] < cutoffs["qv_cutoff"]:
-            qv_stat = "LOW"
-        output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format(s["barcode_name"], s["lane"], s_param["phix_error_rate"], err_stat, s_param["avg_quality_score"], qv_stat))
-
-        # Update/set remaning sample run parameters, falling back on project defaults if *key* is missing
-        s_param['ordered_amount'] = s_param.get('ordered_amount', 
-                                                p_con.get_ordered_amount(project_name,
-                                                                         samples=p_con.get_entry(project_name,'samples')))
-        s_param['customer_reference'] = s_param.get('customer_reference', project.get('customer_reference'))
-        s_param['uppnex_project_id'] = s_param.get('uppnex_project_id', project.get('uppnex_id'))
-
-        # Override database settings if options passed at command line
-        if ordered_million_reads:
-            s_param["ordered_amount"] = _get_ordered_million_reads(s["barcode_name"], ordered_million_reads)
-        if bc_count:
-            s_param["rounded_read_count"] = _round_read_count_in_millions(_get_bc_count(s["barcode_name"], bc_count, s))
-        else:
-            s_param["rounded_read_count"] = _round_read_count_in_millions(s_param["rounded_read_count"])
-        if uppnex_id:
-            s_param["uppnex_project_id"] = uppnex_id
-        if customer_reference:
-            s_param["customer_reference"] = customer_reference
-
->>>>>>> 341a298d53b2842c4b649fa944019a451b477331
         # Get the project sample name corresponding to the sample run
         project_sample = p_con.get_project_sample(project_name, s.get("project_sample_name", None))
         if project_sample:
