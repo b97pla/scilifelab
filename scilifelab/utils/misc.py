@@ -4,6 +4,7 @@ import os
 import re
 import contextlib
 import itertools
+import hashlib
 import scilifelab.log
 
 LOG = scilifelab.log.minimal_logger(__name__)
@@ -192,3 +193,9 @@ def prune_option_list(opts, keys):
         if k in opt_d:
             del opt_d[k]
     return [k for item in opt_d.iteritems() for k in item]
+
+def md5sum(infile):
+    """Calculate the md5sum of a file
+    """
+    return hashlib.md5(open(infile, 'rb').read()).hexdigest()
+

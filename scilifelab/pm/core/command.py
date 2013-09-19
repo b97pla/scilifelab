@@ -162,7 +162,7 @@ class CommandHandler(handler.CementBaseHandler):
             deliver_fn(src, tgt)
         return self.dry("{} file {} to {}".format(deliver_fn.__name__, src, tgt), runpipe) 
 
-    def write(self, fn, data=None):
+    def write(self, fn, data=None, overwrite=False):
         """Wrapper for writing data to a file.
 
         :param fn: file name <str>
@@ -171,7 +171,7 @@ class CommandHandler(handler.CementBaseHandler):
         def runpipe():
             if fn is None:
                 return
-            if os.path.exists(fn):
+            if os.path.exists(fn) and not overwrite:
                 self.app.log.warn("not overwriting existing file {}".format(fn))
                 return
             with open (fn, "w") as fh:
@@ -228,3 +228,30 @@ class CommandHandler(handler.CementBaseHandler):
                     self.app.log.warn("Couldn't create link {} -> {}".format(tgt, src))
                     pass
         return self.dry("creating link {} -> {}".format(tgt, src), runpipe)
+
+    def chown(self, fname, uid=-1, gid=-1):
+        """Wrapper for changing ownership of a file
+        
+        :param fname: file name
+        :param uid: uid to set (-1 for unchanged)
+        :param gid: gid to set (-1 for unchanged)
+        """
+        def runpipe():
+            if not os.path.exists(fname):
+                self.app.log.warn("not changing ownership of non-existant file {}".format(fname))
+                return
+            os.chown(fname,uid,gid)
+        return self.dry("changing ownership of file {}".format(fname), runpipe)
+
+    def chmod(self, fname, mode):
+        """Wrapper for changing the mode of a file
+        
+        :param fname: file name
+        :param mode: numeric mode to set
+        """
+        def runpipe():
+            if not os.path.exists(fname):
+                self.app.log.warn("not changing mode of non-existant file {}".format(fname))
+                return
+            os.chmod(fname,mode)
+        return self.dry("changing mode of file {}".format(fname), runpipe)
