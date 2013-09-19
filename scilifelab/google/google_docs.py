@@ -184,6 +184,30 @@ class SpreadSheet(GoogleConnection):
     
         return True
 
+    def update_row(self, wsheet, row, data):
+        """Update the columns at the given row index (1-based) with the supplied data, starting from column 1 (1-based)
+        """
+        # Get the keys
+        ss_key = self.get_key(self.ssheet)
+        ws_key = self.get_key(wsheet)
+    
+        try:
+            for col, value in enumerate(data):
+                self.client.UpdateCell(row,col+1,value,ss_key,ws_key)
+        except:
+            return False
+        return True
+
+    def get_row_index(self, wsheet, data, offset=1):
+        """Find the index (1-based) of the first row where the columns match the entries in the supplied data list
+        Returns -1 if the data was not found
+        """
+        rows = self.get_cell_content(wsheet,row_start=offset,col_start=1,row_end=0,col_end=len(data))
+        for i, row in enumerate(rows):
+            if len(row) >= len(data) and row[0:len(data)] == data:
+                return offset+i 
+        return -1    
+
     def get_cell_content(self, wsheet, row_start=0, col_start=0, row_end=0, col_end=0):
         """Get the text contents of the cells from the supplied spreadsheet and
         worksheet and from the specified cell range as a two-dimensional list.

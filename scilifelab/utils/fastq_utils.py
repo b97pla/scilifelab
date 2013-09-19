@@ -1,6 +1,7 @@
 """Utilities for handling FastQ data"""
 import gzip
 import os
+import re
 from scilifelab.illumina.hiseq import HiSeqRun
          
 class FastQParser:
@@ -231,8 +232,35 @@ def demultiplex_fastq(outdir, samplesheet, fastq1, fastq2=None):
     
     return outfiles
 
+  
+def create_final_name(fname, date, fc_id, sample_name):
+    """Create the final name of the delivered file
+    """
     
-    
+     # Split the file name according to CASAVA convention
+    m = re.match(r'(\S+?)_(?:[ACGTN\-]+|NoIndex|Undetermined)_L0*(\d+)_R(\d)_\d+\.fastq(.*)', fname)
+    if m is not None:
+        lane = m.group(2)
+        read = m.group(3)
+        ext = m.group(4)
+    else:
+        # Split the file name according to bcbb convention
+        m = re.match(r'(\d+)_(\d+)_([^_]+)_(\d+)_(?:nophix_)?(\d+)_fastq.txt(.*)', fname)
+        if m is None:
+            raise ValueError("Could not parse file name {:s} correctly!".format(fname))
+        lane = m.group(1)
+        read = m.group(5)
+        ext = m.group(6)
+            
+    dest_file_name = "{:s}.fastq{:s}".format("_".join([lane,
+                                                       date,
+                                                       fc_id,
+                                                       sample_name,
+                                                       read]),
+                                             ext.replace('..','.'))
+    return dest_file_name
+
+
     
     
     

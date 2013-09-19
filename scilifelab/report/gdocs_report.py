@@ -21,8 +21,8 @@ def _column_mapping():
                ["", "Read pairs (Mbases)"],
                ["# Reads", "Total reads"],
                ["Index", "Barcode sequence"],
-               ["% of >= Q30 Bases (PF)", "Q30"],
-               ["Mean Quality Score (PF)", "Mean quality"],
+               ["% of >= Q30 Bases (PF)", "% of >= Q30 Bases (PF)"],
+               ["Mean Quality Score (PF)", "Mean Quality Score (PF)"],
                ["% Perfect Index Reads", "% Perfect Index Reads"],
                ["% One Mismatch Reads (Index)", "% One Mismatch Reads (Index)"],
                ["Yield (Mbases)", "Yield (Mbases)"],
@@ -96,6 +96,9 @@ def upload_to_gdocs(fcdir, credentials_file=None, gdocs_folder=None):
         ssheet_name = "{}_sequencing_results".format(project)
         ssheet = SpreadSheet(credentials,ssheet_name)
         ssheet.move_to_folder(gdocs_folder)
+        # Truncate the summary worksheet so that it won't show the wrong information in case upload fails
+        write_flowcell_metrics([], ssheet, "Summary")
+        project_samples = summarize_project(ssheet,{wsheet_name: project_samples})
         write_flowcell_metrics(project_samples, ssheet, wsheet_name)
         
         # Create the summary over all worksheets in the project
@@ -104,36 +107,36 @@ def upload_to_gdocs(fcdir, credentials_file=None, gdocs_folder=None):
     
     return output_data
 
-def summarize_project(ssheet):
+def summarize_project(ssheet, project_data={}):
     """Parse the flowcell worksheets for a project and sum the counts for each sample
     """
     
-    project_data = {}
-    # Get the feed of all worksheets
-    for wsheet in ssheet.get_worksheets_feed().entry:
-        wsheet_title = wsheet.title.text
+    # If the data to be summarized was not supplied, get the feed of all worksheets
+    if len(project_data) == 0:
+        for wsheet in ssheet.get_worksheets_feed().entry:
+            wsheet_title = wsheet.title.text
+            
+            # Skip a QC worksheet
+            if wsheet_title.endswith("_QC"):
+                continue
+            
+            # Skip a worksheet if it doesn't have the [DATE]_[FCID] name pattern
+            s = wsheet_title.split("_")
+            if len(s) != 2:
+                continue
+            try:
+                datetime.datetime.strptime(s[0],'%y%m%d')
+            except ValueError:
+                continue
+            
+            # Get the worksheet contents
+            wsheet_data = ssheet.get_cell_content(wsheet)
+            project_data[wsheet_title] = []
+            
+            # Convert the data into a dictionary
+            for row in wsheet_data[1:]:
+                project_data[wsheet_title].append(dict(zip(wsheet_data[0],row)))
         
-        # Skip a QC worksheet
-        if wsheet_title.endswith("_QC"):
-            continue
-        
-        # Skip a worksheet if it doesn't have the [DATE]_[FCID] name pattern
-        s = wsheet_title.split("_")
-        if len(s) != 2:
-            continue
-        try:
-            datetime.datetime.strptime(s[0],'%y%m%d')
-        except ValueError:
-            continue
-        
-        # Get the worksheet contents
-        wsheet_data = ssheet.get_cell_content(wsheet)
-        project_data[wsheet_title] = []
-        
-        # Convert the data into a dictionary
-        for row in wsheet_data[1:]:
-            project_data[wsheet_title].append(dict(zip(wsheet_data[0],row)))
-    
     summary = {}
     header = _column_header()
     
@@ -150,7 +153,10 @@ def summarize_project(ssheet):
             if 'Project name' in sample:
                 sample_summary['Project name'] = sample['Project name']
             
-            sample_summary['Lane'] = sample_summary.get('Lane',"").split(";") + ["{}-{}".format(wsheet,sample.get('Lane',''))]
+            sample_summary['Description'] = sample_summary.get('Description',"").split(";") + [sample.get('Description','')]
+            sample_summary['Description'] = ";".join([s for s in sample_summary['Description'] if len(s) > 0])
+            
+            sample_summary['Lane'] = sample_summary.get('Lane',"").split(";") + [sample.get('Lane','')]
             sample_summary['Lane'] = ";".join([s for s in sample_summary['Lane'] if len(s) > 0])
             
             sample_summary['Total reads'] = sample_summary.get('Total reads',0) + int(sample.get('Total reads',sample.get('Read (pair) count',0)))
@@ -255,11 +261,11 @@ def collect_metrics(path):
         return {}
     
     # Insert a dummy character as the parse method expects a flowcell position
-    metrics = parser.parse_demultiplex_stats_htm("X{}".format(fcid))
+    metrics = parser.parse_demultiplex_stats_htm(fcid)
     metrics['RunInfo'] = run_info
     
     # Get the undemultiplexed indexes
-    undemux = parser.parse_undemultiplexed_barcode_metrics("X{}".format(fcid))
+    undemux = parser.parse_undemultiplexed_barcode_metrics(fcid)
     metrics['Undemultiplexed'] = undemux
     
     return metrics

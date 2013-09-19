@@ -1,5 +1,6 @@
 """Reportlab module for generating pdf documents"""
 import os
+import unicodedata
 from datetime import datetime
 from pyPdf import PdfFileWriter, PdfFileReader
 from collections import OrderedDict
@@ -37,19 +38,20 @@ def sample_note_paragraphs():
 of your samples on one flowcell. If your samples have been sequenced on multiple flowcells, you will receive one delivery note for each flowcell.
 You will also receive a project sample note summarizing the progress of your project."""))
     
-    paragraphs["Project name"] = dict(style=h3, 
+    paragraphs["Project name"] = dict(style=h3,
                                       tpl=Template("${project_name} ${'({})'.format(customer_reference) if customer_reference not in ['', 'N/A'] else ''}"))
-    
-    paragraphs["UPPNEX project id"] = dict(style=h3, 
+
+    paragraphs["UPPNEX project id"] = dict(style=h3,
                                            tpl=Template("${uppnex_project_id}"))
-    
-    paragraphs["Flow cell id"] = dict(style=h3, 
+
+    paragraphs["Flow cell id"] = dict(style=h3,
                                       tpl=Template("${FC_id}"))
     
     paragraphs["Sequence data directory"] = dict(style=h3, 
                                                  tpl=Template("/proj/${uppnex_project_id}/INBOX/${project_name}/[SciLifeLab ID]/${start_date}_${FC_id}"))
     
     paragraphs["Samples"] = dict(style=h3, tpl=Template(""))
+
 
     paragraphs["Method"] = dict(style=h3,
                                 tpl = Template("""Clustered on ${'cBot' if not clustered == "OnBoardClustering" else 'board'} and 
@@ -58,7 +60,6 @@ according to manufacturer's instructions. The sequencing setup was ${run_setup}b
 Basecalling was performed on instrument with ${basecall_software} v${basecaller_version}. 
 Demultiplexing and fastq conversion were done using ${demultiplex_version}.
 The quality scale is Sanger / phred33 / Illumina 1.8+."""))
-    
     return paragraphs
 
 def sample_note_headers():
@@ -82,8 +83,8 @@ def make_sample_table(data,  header_size=8, row_size=8, **kw):
         
     if not kw.get("rowHeights", None):
         rowHeights = len(data)*[0.25*inch]
-    t=Table(data, colWidths, rowHeights) 
-    
+    t=Table(data, colWidths, rowHeights)
+
     t.setStyle(TableStyle([
                            ('VALIGN',(0,0),(-1,-1),'BOTTOM'),
                            ('ALIGN',(1,0),(-1,-1),'CENTER'),
@@ -101,17 +102,17 @@ def project_note_paragraphs():
     """Get paragraphs for project notes."""
     paragraphs = OrderedDict()
     paragraphs["Project name"] = dict(style=h3, tpl=Template("${project_name} ${'({})'.format(customer_reference) if customer_reference not in ['','N/A'] else ''}"))
-    
+
     paragraphs["UPPNEX project id"] = dict(style=h3, tpl=Template("${uppnex_project_id}"))
-    
+
     paragraphs["Sequence data directories"] = dict(style=h3, tpl=Template("/proj/${uppnex_project_id}/INBOX/${project_name}/"))
 
     paragraphs["Samples"] = dict(style=h3, tpl=Template(""))
-    
+
     paragraphs["Comments"] = dict(style=h3, tpl=Template("${finished}"))
-    
+
     paragraphs["Information"] = OrderedDict()
-    
+
     paragraphs["Information"]["Naming conventions"] = dict(
         style=h4,
         tpl=Template("""The data is delivered in fastq format using Illumina 1.8
@@ -119,7 +120,7 @@ quality scores. There will be one file for the forward reads and
 one file for the reverse reads. More information on our naming
 conventions can be found at
 http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf."""))
-    
+
     paragraphs["Information"]["Data access at UPPMAX"] = dict(
         style=h4,
         tpl=Template("""Data from the sequencing will be uploaded to the UPPNEX (UPPMAX Next
@@ -129,13 +130,13 @@ please contact SciLifeLab genomics_support@scilifelab.se. If you have
 questions regarding UPPNEX, please contact support@uppmax.uu.se.
 Information on how to access your data can be found at
 http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf."""))
-    
+
     paragraphs["Information"]["Acknowledgement"] = dict(
         style=h4,
-        tpl=Template("""In publications based on data from the work covered by 
-this contract, the authors must acknowledge SciLifeLab, NGI and Uppmax: \"The 
-authors would like to acknowledge support from Science for Life Laboratory, 
-the National Genomics Infrastructure, NGI, and Uppmax for providing assistance 
+        tpl=Template("""In publications based on data from the work covered by
+this contract, the authors must acknowledge SciLifeLab, NGI and Uppmax: \"The
+authors would like to acknowledge support from Science for Life Laboratory,
+the National Genomics Infrastructure, NGI, and Uppmax for providing assistance
 in massive parallel sequencing and computational infrastructure.\"""" ))
     return paragraphs
 
@@ -165,6 +166,12 @@ def make_note(outfile, headers, paragraphs, **kw):
     :param kw: keyword arguments for formatting
     """
     story = [Paragraph(x, headers[x]) for x in headers.keys()]
+
+    #Reportlab does not allow non-ascii characters. This normalizes the string.
+    for k, v in kw.iteritems():
+        if type(v) == unicode:
+            LOG.debug('Param %s' % kw[k])
+            kw[k] = unicodedata.normalize('NFKD', v).encode('ascii', 'ignore')
 
     for headline, paragraph in paragraphs.items():
         story.append(Paragraph(headline, paragraph.get("style", h3)))

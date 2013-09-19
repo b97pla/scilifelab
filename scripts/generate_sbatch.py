@@ -79,6 +79,7 @@ hours           = opts.hours
 conffile        = opts.conffile
 fpath           = opts.fpath
 single		= opts.single
+print single
 
 proj_ID         = sys.argv[2]
 refpath         = sys.argv[3]
@@ -135,8 +136,11 @@ for f in flist:
                         if not file_info.has_key(lane_run):
                                 file_info[lane_run]={}
                         if not file_info[lane_run].has_key(tag):
-                                file_info[lane_run][tag]=[]
-                        file_info[lane_run][tag].append(fname)
+                                file_info[lane_run][tag]={}
+			if (fname.split('.fastq')[0][-1] == "1"):
+                        	file_info[lane_run][tag]['R1']=fname
+			else:
+				file_info[lane_run][tag]['R2']=fname
         except:
                 sys.exit('files missing? '+fname)
 print file_info.keys()
@@ -172,14 +176,16 @@ for lane in file_info:
                 make_fai=''
 
         ## trying to get average fragemnt length from couchDB
-	if single:
-		R1 = fpath+'/'+file_info[lane][samp][0]
+	if single is True:
+		R1 = fpath+'/'+file_info[lane][samp]['R1']
 		R2 = ''
 		innerdist = ''
 		innnerdistflagg = ''
 	else:
-		R1 = fpath+'/'+file_info[lane][samp][0]
-		R2 = fpath+'/'+file_info[lane][samp][1]
+		R1 = fpath+'/'+file_info[lane][samp]['R1']
+		R2 = fpath+'/'+file_info[lane][samp]['R2']
+		print R1
+		print R2
 		innnerdistflagg = '-r'
         	try:
                 	size = get_size(samp,info)

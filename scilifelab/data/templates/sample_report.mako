@@ -33,6 +33,11 @@ Flow cell id
 
 ${FC_id}
 
+Lane
+^^^^
+
+${lane}
+
 Sequence data directory
 ^^^^^^^^^^^^^^^^^^^^^^^
 

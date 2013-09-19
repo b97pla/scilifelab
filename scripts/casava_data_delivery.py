@@ -48,7 +48,7 @@ def create_final_name(fname, date, fc_id, sample_name):
     """
     
      # Split the file name according to CASAVA convention
-    m = re.match(r'(\S+?)_[ACGTN\-]+_L0*(\d+)_R(\d)_\d+\.fastq(.*)', fname)
+    m = re.match(r'(\S+?)_(?:[ACGTN\-]+|NoIndex|Undetermined)_L0*(\d+)_R(\d)_\d+\.fastq(.*)', fname)
     if m is not None:
         lane = m.group(2)
         read = m.group(3)
@@ -401,6 +401,8 @@ class TestDataDelivery(unittest.TestCase):
                        "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name)),
                       ("{}_CGATGT_L001_R1_001.fastq.gz".format(sample_name),
                        "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name)),
+                      ("{}_NoIndex_L001_R2_001.fastq.gz".format(sample_name),
+                       "1_{}_{}_{}_2.fastq.gz".format(date,fcid,sample_name)),
                       ("{}_CGATGT_L001_R1_001.fastq..gz".format(sample_name),
                        "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name)),
                       ("{}_CGATGT_L001_R1_001.fastq".format(sample_name),
@@ -408,6 +410,21 @@ class TestDataDelivery(unittest.TestCase):
         
         for test_fname, exp_result in test_names:
             obs_result = create_final_name(test_fname,date,fcid,sample_name)
+            self.assertEqual(obs_result,
+                             exp_result,
+                             "Did not get expected final name ({:s}) for file name {:s}".format(exp_result,test_fname))
+        
+        # Try without the _index part of file name
+        sample_name_noindex = "P101_150"
+        test_names = [("1_{}_{}_1_nophix_1_fastq.txt.gz".format(date,fcid),
+                       "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name_noindex)),
+                      ("{}_CGATGT_L001_R1_001.fastq.gz".format(sample_name_noindex),
+                       "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name_noindex)),
+                      ("{}_NoIndex_L001_R2_001.fastq.gz".format(sample_name_noindex),
+                       "1_{}_{}_{}_2.fastq.gz".format(date,fcid,sample_name_noindex))]
+        
+        for test_fname, exp_result in test_names:
+            obs_result = create_final_name(test_fname,date,fcid,sample_name_noindex)
             self.assertEqual(obs_result,
                              exp_result,
                              "Did not get expected final name ({:s}) for file name {:s}".format(exp_result,test_fname))
@@ -419,7 +436,18 @@ class TestDataDelivery(unittest.TestCase):
         for test_name in test_names:
             with self.assertRaises(ValueError):
                 create_final_name(test_name,date,fcid,sample_name)
-            
+        
+        # Try a file with undetermined reads
+        sample_name = "lane1"
+        test_names = [("{}_Undetermined_L001_R1_001.fastq.gz".format(sample_name),
+                       "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name)),]    
+        for test_fname, exp_result in test_names:
+            obs_result = create_final_name(test_fname,date,fcid,sample_name)
+            self.assertEqual(obs_result,
+                             exp_result,
+                             "Did not get expected final name ({:s}) for file name {:s}".format(exp_result,test_fname))
+    
+        
     def test_get_file_copy_list(self):
         """Get list of files to copy and the destinations
         """

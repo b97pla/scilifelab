@@ -8,10 +8,10 @@ import subprocess
 import copy
 import tempfile
 import argparse
-import bcbio.solexa.flowcell
 import bcbio.solexa.samplesheet
 from bcbio.pipeline.config_loader import load_config
 from scilifelab.db.statusdb import ProjectSummaryConnection
+from scilifelab.bcbio.qc import FlowcellRunMetricsParser
 
 # The directory where CASAVA has written the demuxed output
 CASAVA_OUTPUT_DIR = "Unaligned"
@@ -26,12 +26,12 @@ PROCESS_YAML = True
 # If True, will assign the distributed master process and workers to a separate RabbitMQ queue for each flowcell 
 FC_SPECIFIC_AMPQ = True
 
-def main(post_process_config_file, fc_dir, run_info_file=None, only_run=False, only_setup=False, ignore_casava=False):
+def main(post_process_config_file, fc_dir, run_info_file=None, only_run=False, only_setup=False, ignore_casava=False, process_project=[], process_sample=[]):
     
     run_arguments = [[os.getcwd(),post_process_config_file,fc_dir,run_info_file]]
     if has_casava_output(fc_dir) and not ignore_casava:
         if not only_run:
-            run_arguments = setup_analysis_directory_structure(post_process_config_file, fc_dir, run_info_file)
+            run_arguments = setup_analysis_directory_structure(post_process_config_file, fc_dir, run_info_file, process_project, process_sample)
              
     else:
         if not only_run:
@@ -142,7 +142,7 @@ def setup_analysis(post_process_config, archive_dir, run_info_file):
             
     return [[os.getcwd(),post_process_config,archive_dir,run_info_file]]   
         
-def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_config_file):
+def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_config_file, process_project=[], process_sample=[]):
     """Parse the CASAVA 1.8+ generated flowcell directory and create a 
        corresponding directory structure suitable for bcbb analysis,
        complete with sample-specific and project-specific configuration files.
@@ -180,16 +180,26 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
     
     # Iterate over the projects in the flowcell directory
     for project in fc_dir_structure.get('projects',[]):
-        # Create a project directory if it doesn't already exist
+        
+        # If we only want to run the analysis for a particular project, skip if this is not it
         project_name = project['project_name']
+        if len(process_project) > 0 and project_name not in process_project:
+            continue
+        
+        # Create a project directory if it doesn't already exist
         project_dir = os.path.join(analysis_dir,project_name)
         if not os.path.exists(project_dir):
             os.mkdir(project_dir,0770)
         
         # Iterate over the samples in the project
         for sample_no, sample in enumerate(project.get('samples',[])):
-            # Create a directory for the sample if it doesn't already exist
+            
+            # If we only want to run the analysis for a particular sample, skip if this is not it
             sample_name = sample['sample_name'].replace('__','.')
+            if len(process_sample) > 0 and sample_name not in process_sample:
+                continue
+            
+            # Create a directory for the sample if it doesn't already exist
             sample_dir = os.path.join(project_dir,sample_name)
             if not os.path.exists(sample_dir):
                 os.mkdir(sample_dir,0770)
@@ -436,7 +446,15 @@ def parse_casava_directory(fc_dir):
     projects = []
     
     fc_dir = os.path.abspath(fc_dir)
-    fc_name, fc_date = bcbio.solexa.flowcell.get_flowcell_info(fc_dir)
+    parser = FlowcellRunMetricsParser(fc_dir)
+    run_info = parser.parseRunInfo()
+    runparams = parser.parseRunParameters()
+        
+    fc_name = run_info.get('Flowcell',None)
+    fc_date = run_info.get('Date',None)
+    fc_pos = runparams.get('FCPosition','')
+    assert fc_name is not None and fc_date is not None, "Could not parse flowcell name and flowcell date"
+    
     unaligned_dir_pattern = os.path.join(fc_dir,"{}*".format(CASAVA_OUTPUT_DIR))
     basecall_stats_dir_pattern = os.path.join(unaligned_dir_pattern,"Basecall_Stats_*")
     basecall_stats_dir = [os.path.relpath(d,fc_dir) for d in glob.glob(basecall_stats_dir_pattern)]
@@ -462,7 +480,7 @@ def parse_casava_directory(fc_dir):
                          'project_name': project_name, 
                          'samples': project_samples})
     
-    return {'fc_dir': fc_dir, 'fc_name': fc_name, 'fc_date': fc_date, 'basecall_stats_dir': basecall_stats_dir, 'projects': projects}
+    return {'fc_dir': fc_dir, 'fc_name': '{}{}'.format(fc_pos,fc_name), 'fc_date': fc_date, 'basecall_stats_dir': basecall_stats_dir, 'projects': projects}
     
 def has_casava_output(fc_dir):
     try:
@@ -499,9 +517,10 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--only-setup", dest="only_setup", action="store_true", default=False, help="Setup the analysis directory but don't start the pipeline")
     parser.add_argument("-i", "--ignore-casava", dest="ignore_casava", action="store_true", default=False, help="Ignore any Casava 1.8+ file structure and just assume the pre-casava pipeline setup")
     parser.add_argument("-g", "--no-google-report", dest="no_google_report", action="store_true", default=False, help="Don't upload any demultiplex statistics to Google Docs")
+    parser.add_argument("--process-project", dest="process_project", action="store", default=[], nargs='+', help="Only setup and run analysis for the specified list of projects")
+    parser.add_argument("--process-sample", dest="process_sample", action="store", default=[], nargs='+', help="Only setup and run analysis for the specified list of samples")
     args = parser.parse_args()
-        
-    main(args.config,args.fcdir,args.custom_config,args.only_run,args.only_setup,args.ignore_casava)
+    main(args.config,args.fcdir,args.custom_config,args.only_run,args.only_setup,args.ignore_casava,args.process_project,args.process_sample)
     if not args.no_google_report:
         report_to_gdocs(args.fcdir, args.config)
 

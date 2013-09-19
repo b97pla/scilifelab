@@ -26,9 +26,9 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
 	     'min_m_reads_per_sample_ordered': '',
 	     'no_of_samples': '',
              'entity_type': 'project_summary',
-             'uppnex_id': '',                 
+             'uppnex_id': '',
              'samples': {},
-             'project_name': project_name, 
+             'project_name': project_name,
 	     'project_id':'',
              '_id': key}
 
@@ -38,7 +38,7 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
 	if p.project_name is None:
 		p = pmeta.ProjectMetaData(project_name_swe, config)
 	if p.project_name is None:
-		logger.warning('Google Document Genomics Project list: %s not found' % project_name) 
+		logger.warning('Google Document Genomics Project list: %s not found' % project_name)
 	else:
 		if p.min_reads_per_sample.strip() != '':
                 	try: obj['min_m_reads_per_sample_ordered'] = round(float(p.min_reads_per_sample),2)
@@ -50,6 +50,7 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
 		obj['application'] = p.application
 		obj['customer_reference'] = p.customer_reference
 		obj['project_id']='P' + p.project_id
+		obj['type']=p.type
 
 	### 20132
 	info = get_20132_info(client,project_name_swe)
@@ -61,7 +62,7 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
                         cust_name = info[key]
 			incoming_QC_status = 'F' if 'F' in prep else 'P'
 			try:
-				obj['samples'][scilife_name] = {'customer_name': cust_name, 
+				obj['samples'][scilife_name] = {'customer_name': cust_name,
 								'scilife_name': scilife_name,
 								'incoming_QC_status': incoming_QC_status}
 			except:
@@ -90,7 +91,7 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
                                                                		'incoming_QC_status': incoming_QC_status}
         except:
                 pass
-        ### Get _id for sample_run_metrics 
+        ### Get _id for sample_run_metrics
         info = find_samp_from_view(samp_db, project_name)
         if len(info.keys()) > 0:
                 logger.debug('sample_run_metrics found on couchdb for project %s' % project_name)
@@ -114,7 +115,7 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
 	### 20135
 	if WS_projects.has_key(project_name):
 		logger.debug('project run on Work Set')
-		info = WS_projects[project_name]	
+		info = WS_projects[project_name]
 	else:
 		info={}
 	info = get_20135_info(client,project_name_swe, info)
@@ -133,12 +134,20 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
                         if obj['samples'].has_key(striped_scilife_name):
                                 if obj['samples'][striped_scilife_name].has_key("library_prep"):
                                         if obj['samples'][striped_scilife_name]["library_prep"].has_key(prep):
-                                                obj['samples'][striped_scilife_name]["library_prep"][prep]["average_size_bp"]=Av_sice
-                                                obj['samples'][striped_scilife_name]["library_prep"][prep]["prep_status"]=prep_status
+						if (Av_sice != '-') and (Av_sice != ''):
+                                                	obj['samples'][striped_scilife_name]["library_prep"][prep]["average_size_bp"]=Av_sice
+						if (prep_status != '-') and (prep_status != ''):
+                                                	obj['samples'][striped_scilife_name]["library_prep"][prep]["prep_status"]=prep_status
                                         else:
-                                                obj['samples'][striped_scilife_name]["library_prep"][prep]={"average_size_bp":Av_sice,"prep_status":prep_status}
+						if (Av_sice != '-') and (Av_sice != ''):
+                                                	obj['samples'][striped_scilife_name]["library_prep"][prep]={"average_size_bp":Av_sice}
+						if (prep_status != '-') and (prep_status != ''):
+							obj['samples'][striped_scilife_name]["library_prep"][prep]["prep_status"]=prep_status
                                 else:
-                                        obj['samples'][striped_scilife_name]["library_prep"]={prep:{"average_size_bp":Av_sice,"prep_status":prep_status}}
+					if (Av_sice != '-') and (Av_sice != ''):
+                                        	obj['samples'][striped_scilife_name]["library_prep"]={prep:{"average_size_bp":Av_sice}}
+					if (prep_status != '-') and (prep_status != ''):
+						obj['samples'][striped_scilife_name]["library_prep"][prep]["prep_status"]=prep_status
       	return obj
 
 
@@ -151,7 +160,7 @@ def my_logging(log_file):
         # file handler
         fh = logging.FileHandler(log_file)
         fh.setLevel(logging.INFO)
-        
+
         # console handler
         ch = logging.StreamHandler()
         ch.setLevel(logging.DEBUG)
@@ -200,23 +209,26 @@ def save_couchdb_obj(db, obj):
     dbobj = db.get(obj['_id'])
     time_log = datetime.utcnow().isoformat() + "Z"
     if dbobj is None:
-        obj["creation_time"] = time_log 
-        obj["modification_time"] = time_log 
-        db.save(obj)
-	return 'Created'
+        #obj["creation_time"] = time_log
+        #obj["modification_time"] = time_log
+        #db.save(obj)   
+        return None
+    elif dbobj.has_key('source'):
+        if dbobj['source']=='lims':
+            return None
     else:
         obj["_rev"] = dbobj.get("_rev")
-	del dbobj["modification_time"]
-	obj["creation_time"] = dbobj["creation_time"]
-        if not comp_obj(obj, dbobj):    
-            obj["modification_time"] = time_log 
+        del dbobj["modification_time"]
+        obj["creation_time"] = dbobj["creation_time"]
+        if not comp_obj(obj, dbobj):
+            obj["modification_time"] = time_log
             db.save(obj)
-	    return 'Uppdated'
-    return None 
+            return 'Uppdated'
+    return 'Not uppdated'
 
 def comp_obj(obj, dbobj):
-	for key in dbobj:
-		if (obj.has_key(key)):
+	for key in obj:
+		if (dbobj.has_key(key)):
 			if (obj[key] != dbobj[key]):
 	                     return False
 	     	else:
@@ -278,7 +290,7 @@ def get_20158_info(client, project_name_swe):
                     "05": ["Sample name (from Project read counts)", "Total number","Sheet1",
                           "Based on total number of reads","Based on total number of reads after mapping and duplicate removal"],
                     "06": ["Sample name (from Project read counts)", "Total number","Sheet1",
-                          "Based on total number of reads","Based on total number of reads after mapping and duplicate removal"]}			
+                          "Based on total number of reads","Based on total number of reads after mapping and duplicate removal"]}
         info = {}
         feed = bcbio.google.spreadsheet.get_spreadsheets_feed(client, project_name_swe + '_20158', False)
         if len(feed.entry) != 0:
@@ -410,7 +422,7 @@ def strip_scilife_name(names):
         preps = 'F_BCDE'
         for name_init in names:
 		prep = ''
-		indexes = ['_index','_rpi','_agilent','_mondrian','_haloht','_halo','_sureselect','_dual','_hht','_ss','_i','_r','_a','_m','_h']
+		indexes = ['_nxdual','_index','_rpi','_agilent','_mondrian','_haloht','_halo','_sureselect','_dual','_hht','_ss','_i','_r','_a','_m','_h']
 		name = name_init.replace('-', '_').replace(' ', '')
 		for i in indexes:
 			name=name.split(i)[0]
@@ -425,40 +437,46 @@ def strip_scilife_name(names):
 
 
 def  main(client, CONFIG, URL, proj_ID, all_projects, GPL ):
-	couch = couchdb.Server("http://" + URL)
-       	samp_db = couch['samples']
-        proj_db = couch['projects']
-	info = None
-	WS_projects = get_WS_info(client)
-        if all_projects:
-		content, ws_key, ss_key = get_google_document("Genomics Project list", GPL, client) 	
-		row_ind, col_ind = get_column(content, 'Project name')
-		for j, row in enumerate(content):
-      			try:
-	        		proj_ID = str(row[col_ind]).strip().split(' ')[0]
-				if (proj_ID != '') & (j > row_ind + 2):
-                       			obj = get_proj_inf(WS_projects,proj_ID, samp_db, proj_db, client, CONFIG)
-        				if obj['samples'].keys() != []:
-                				info = save_couchdb_obj(proj_db, obj)
-						if info:
-							logger.info('CouchDB: %s %s %s' % (obj['_id'], obj['project_name'], info))
-			except:
-				pass		
-	elif proj_ID is not None:
-	        obj = get_proj_inf(WS_projects,proj_ID, samp_db, proj_db, client, CONFIG)
-        	if obj['samples'].keys() != []:
-                	info = save_couchdb_obj(proj_db, obj)
-	else:
-		logger.debug('Argument error')
-	if info:
-		logger.info('CouchDB: %s %s %s' % (obj['_id'], obj['project_name'], info))
+    print proj_ID
+    couch = couchdb.Server("http://" + URL)
+    samp_db = couch['samples']
+    proj_db = couch['projects']
+    info = None
+    WS_projects = get_WS_info(client)
+    if all_projects:
+        content, ws_key, ss_key = get_google_document("Genomics Project list", GPL, client)
+        row_ind, col_ind = get_column(content, 'Project name')
+        for j, row in enumerate(content):
+            try:
+                proj_ID = str(row[col_ind]).strip().split(' ')[0]
+                if (proj_ID != '') & (j > row_ind + 2):
+                    obj = get_proj_inf(WS_projects,proj_ID, samp_db, proj_db, client, CONFIG)
+                    if obj['samples'].keys() != []:
+                        info = save_couchdb_obj(proj_db, obj)
+                        if info:
+                            logger.info('CouchDB: %s %s %s' % (obj['_id'], obj['project_name'], info))
+                        else:
+                            logger.info('CouchDB: %s %s Not uppdated. Project might be opened after first of july' % (obj['_id'], obj['project_name']))
+            except:
+                pass
+    elif proj_ID is not None:
+        print proj_ID
+        obj = get_proj_inf(WS_projects,proj_ID, samp_db, proj_db, client, CONFIG)
+        if obj['samples'].keys() != []:
+            info = save_couchdb_obj(proj_db, obj)
+    else:
+        logger.debug('Argument error')
+    if info:
+        logger.info('CouchDB: %s %s %s' % (obj['_id'], obj['project_name'], info))
+    else:
+        logger.info('Project opened after first of jul? Load with project_summary_uppoad_LIMS.py')
 
 if __name__ == '__main__':
     	usage = """Usage:	python project_summary_upload.py [options]
 
 Options (Only one option is acceptab):
 	-a,			upploads all projects in genomics project list into couchDB
-     	-p <project_ID>,	upploads the project <project_ID> into couchDB                                         
+     	-p <project_ID>,	upploads the project <project_ID> into couchDB
 	-g <GPL_sheet>,		specify sheet in GPL if not Ongoing (default)
 """
     	parser = OptionParser(usage=usage)
