@@ -241,25 +241,6 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
     # Set options
     bc_count = _literal_eval_option(bc_count)
     phix = _literal_eval_option(phix)
-
-    sample_table_header = ['SciLifeLab ID', 
-                           'Submitted ID', 
-                           'Lane', 
-                           'Barcode', 
-                           'Read{}s'.format(' pair' if is_paired else ''), 
-                           'Avg Q', 
-                           '>=Q30 (%)', 
-                           'Error rate (%)']
-    sample_table = [sample_table_header]
-    
-    snt_header = ['SciLifeLab ID','Submitted ID']
-    sample_name_table = [snt_header]
-    
-    syt_header = ['SciLifeLab ID','Lane','Barcode','Read count']
-    sample_yield_table = [syt_header]
-    
-    sqt_header = ['SciLifeLab ID','Lane','Barcode','Q>=30 (%)','Avg Q','PhiX error rate (%)']
-    sample_quality_table = [sqt_header]
     
     # Connect and run
     s_con = SampleRunMetricsConnection(dbname=samplesdb, username=username, password=password, url=url)
@@ -323,6 +304,17 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         fc_param["customer_reference"] = customer_reference
     else:
         fc_param['customer_reference'] = project.get('customer_reference')
+    
+    # Create the tables
+    snt_header = ['SciLifeLab ID','Submitted ID']
+    sample_name_table = [snt_header]
+    
+    syt_header = ['SciLifeLab ID','Lane','Barcode']
+    syt_header.append('Read{}s (M)'.format(' pair' if fc_param['is_paired'] else ''))
+    sample_yield_table = [syt_header]
+    
+    sqt_header = ['SciLifeLab ID','Lane','Barcode','Q>=30 (%)','Avg Q','PhiX error rate (%)']
+    sample_quality_table = [sqt_header]
     
     # Loop samples and build the sample information table
     for s in sample_run_list: 

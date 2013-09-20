@@ -110,16 +110,18 @@ Data delivery
 :File format: FASTQ
 :Quality scale: Sanger / phred33 / Illumina 1.8+
 
-Sequence reads in FASTQ format have been delivered to the INBOX of the UPPNEX account associated with your project. Data for each sample is placed under its own subfolder in the project path.
+Sequence reads in FASTQ format, compressed with gzip, have been delivered to the INBOX of the UPPNEX account associated with your project. Data for each sample is placed under its own subfolder in the project path.
 Under each sample folder, the data is further organized according to flowcell. Since this is a ${'paired' if is_paired else 'single'} end run, there will be ${'two files' if is_paired else 'one file'} 
 for each sample and lane${', one for the forward read and one for the reverse read' if is_paired else ''}. The quality scale is Sanger / phred33 / Illumina 1.8+.
 
 The FASTQ file names are constructed according to the convention: 
 
-  [Lane]_[Start date]_${'[Flowcell position]' if not instrument_version == 'MiSeq' else ''}[Flowcell id]_[SciLifeLab ID]_[Read no].fastq.gz
+- [Lane]_[Start date]_${'[Flowcell position]' if not instrument_version == 'MiSeq' else ''}[Flowcell id]_[SciLifeLab ID]_[Read no].fastq.gz
 
-Please refer to the `Sequencing FAQ`_ for detailed instructions on how to log in and access your files.
+Please refer to the `Sequencing FAQ`_ for detailed instructions on how to log in and access your files. If you have problems to access your data, please contact genomics_support@scilifelab.se. If you have
+questions regarding UPPNEX, please contact support@uppmax.uu.se.
 
 .. _Sequencing FAQ: http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf
+
 
 
