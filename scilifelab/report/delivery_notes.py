@@ -287,34 +287,30 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         fc_param["start_date"] = sample_run_list[i].get("date","")
         i += 1
     
-    fc_param["FC_id"] = flowcell
     fc_param["project_name"] = project_name
     fc_param["pdffile"] = "{}_{}_{}_flowcell_summary.pdf".format(project_name, fc_param["start_date"], flowcell)
     fc_param["rstfile"] = "{}.rst".format(os.path.splitext(fc_param["pdffile"])[0])
     fc = "{}_{}".format(fc_param["start_date"], flowcell)
+    fc_param["FC_id"] = fc_con.get_run_info(fc).get("Flowcell","N/A")
+    fc_param["FC_position"] = fc_con.get_run_parameters(fc).get("FCPosition","N/A")
     
     # Get instrument
-    #try:
-    #    fc_param.update(instrument_dict[fc_con.get_instrument(str(fc))])
-    #except:
-    #    LOG.warn("Failed to set instrument and software versions for flowcell {} in report due to missing RunInfo -> Instrument field in statusdb. Either rerun 'pm qc update-qc' or search-and-replace 'NN' in the sample report.".format(fc))
-    #    fc_param.update(instrument_dict['default'])
-    fc_param['instrument_version'] = fc_con.get_instrument_type(str(fc))
-    
+    fc_param['instrument_version'] = fc_con.get_instrument_type(fc)
+    fc_param['instrument_id'] = fc_con.get_instrument(fc)
     # Get run mode
-    fc_param["run_mode"] = fc_con.get_run_mode(str(fc))
-    fc_param["is_paired"] = fc_con.is_paired_end(str(fc))
+    fc_param["run_mode"] = fc_con.get_run_mode(fc)
+    fc_param["is_paired"] = fc_con.is_paired_end(fc)
     if fc_param["is_paired"] is None:
         LOG.warn("Could not determine run setup for flowcell {}. Will assume paired-end.".format(fc))
         fc_param["is_paired"] = True
     # FIXME: parse this from configs
     fc_param.update(software_versions)
-    demux_software = fc_con.get_demultiplex_software(str(fc))
+    demux_software = fc_con.get_demultiplex_software(fc)
     fc_param["basecaller_version"] = demux_software.get(fc_param["basecall_software"],None)
     fc_param["demultiplex_version"] = demux_software.get(fc_param["demultiplex_software"],"1.8.3")
     fc_param.update()
-    fc_param["clustered"] = fc_con.get_clustered(str(fc))
-    fc_param["run_setup"] = fc_con.get_run_setup(str(fc))
+    fc_param["clustered"] = fc_con.get_clustered(fc)
+    fc_param["run_setup"] = fc_con.get_run_setup(fc)
     
     # Get uppnex id, possible overridden on the command line
     if uppnex_id:
@@ -380,7 +376,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         if phix:
             phix = _get_phix_error_rate(s["lane"], phix)
         else:
-            phix = fc_con.get_phix_error_rate(str(fc), s["lane"]) 
+            phix = fc_con.get_phix_error_rate(fc, s["lane"]) 
         
         scilifeid = s.get("barcode_name", None)
         customerid = s.get("customer_name", None)
@@ -390,17 +386,6 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         sample_name_table.append([scilifeid,customerid])
         sample_yield_table.append([scilifeid,lane,barcode,read_count])
         sample_quality_table.append([scilifeid,lane,barcode,pct_q30_bases,avg_quality_score,phix])
-        
-        # Compare phix error and qv to cutoffs
-        #err_stat = "OK"
-        #qv_stat = "OK"
-        #if s_param["phix_error_rate"] > cutoffs["phix_err_cutoff"]:
-        #    err_stat = "HIGH"
-        #elif s_param["phix_error_rate"] == -1:
-        #    err_stat = "N/A"
-        #if s_param["avg_quality_score"] < cutoffs["qv_cutoff"]:
-        #    qv_stat = "LOW"
-        #output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format(s["barcode_name"], s["lane"], s_param["phix_error_rate"], err_stat, s_param["avg_quality_score"], qv_stat))
 
     # Sort the tables by smaple and lane
     snt = [sample_name_table[0]] 
@@ -413,13 +398,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
 
     # Write final output to reportlab and rst files
     output_data["debug"].write(json.dumps({'s_param': [fc_param], 'sample_runs':{s["name"]:s["barcode_name"] for s in sample_run_list}}))
-    
-    # Set up paragraphs
-    #paragraphs = sample_note_paragraphs()
-    #paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
-    #headers = sample_note_headers()
 
-    #make_note(fc_param["pdffile"], headers, paragraphs, **fc_param)
     make_rest_note(fc_param["rstfile"], 
                    tables={'name': sample_name_table, 'yield': sample_yield_table, 'quality': sample_quality_table}, 
                    report="sample_report", **fc_param)

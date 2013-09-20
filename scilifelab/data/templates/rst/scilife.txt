@@ -214,7 +214,7 @@
 
     attribution:
       parent: bodytext
-      alignment: TA_RIGHT
+      alignment: TA_LEFT
 
     figure:
       parent: bodytext
@@ -451,6 +451,20 @@
              [LINEABOVE, [0,1], [-1,1], 1, black]
 
 
+    sample-table:
+      spaceBefore:6
+      spaceAfter:0
+      alignment: TA_CENTER
+      commands: []
+             [VALIGN, [0,0], [-1,-1], BOTTOM]
+             [ALIGN,  [1,0], [-1,-1], RIGHT]
+             [ALIGN, [0,0], [0,-1], LEFT]
+             [FONTSIZE, [0,0], [-1,0], 11]
+             [FONTSIZE, [0,1], [-1,-1], 9]
+             [LINEABOVE, [0,1], [-1,1], 1, black]
+             [ROWBACKGROUNDS, [0,0], [-1,-1], [#F3F3F3]]
+
+
 
     table-title:
       parent : heading4
@@ -470,7 +484,7 @@
     table-body:
       parent : normal
       fontSize: 90%
-
+	  
     dedication:
       parent : normal
 
@@ -583,7 +597,7 @@
         commands: []
             [VALIGN, [ 0, 0 ], [ -1, -1 ], TOP ]
             [TOPPADDING, [ 0, 0 ], [ -1, -1 ], 0 ]
-        colWidths: [3cm, null]
+        colWidths: [4cm, null]
         spaceBefore: 6
 
     option-list:

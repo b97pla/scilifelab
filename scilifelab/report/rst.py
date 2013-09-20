@@ -18,6 +18,7 @@ now = datetime.now()
 FILEPATH=os.path.dirname(os.path.realpath(__file__))
 sll_logo = os.path.join(FILEPATH, os.pardir, "data", "grf", "sll_logo.gif")
 sll_logo_small = os.path.join(FILEPATH, os.pardir, "data", "grf", "sll_logo_small.gif")
+ngi_logo_medium = os.path.join(FILEPATH, os.pardir, "data", "grf", "NGI-medium-transp.png")
 
 TEMPLATEPATH=os.path.join(FILEPATH, os.pardir, "data", "templates")
 
@@ -117,6 +118,15 @@ def make_rst_sample_quality_table(data):
         tab_tt.set_cols_width(col_widths(data))
         return indent_texttable_for_rst(tab_tt)
 
+def make_logo_table():
+    """Format the logo table
+    """
+    data = [['.. image:: {}\n   :width: 100%'.format(ngi_logo_medium),'.. image:: {}'.format(sll_logo_small)]]
+    tab_tt = tt.Texttable(max_width=0)
+    tab_tt.set_deco(tab_tt.BORDER | tab_tt.VLINES | tab_tt.HLINES)
+    tab_tt.add_rows(data)
+    return indent_texttable_for_rst(tab_tt)
+
 def make_rest_note(outfile, tables={}, outdir="rst", report="sample_report", **kw):
     """Make reSt-formatted note.
 
@@ -133,11 +143,11 @@ def make_rest_note(outfile, tables={}, outdir="rst", report="sample_report", **k
                'project_lc':kw.get('project_name'),
                'author':'N/A',
                'description':'N/A',
+               'logo_table': make_logo_table(),
                'sample_name_table':make_rst_sample_name_table(tables.get('name',None)),
                'sample_yield_table':make_rst_sample_yield_table(tables.get('yield',None)),
                'sample_quality_table':make_rst_sample_quality_table(tables.get('quality',None)),
                'stylefile': os.path.join(TEMPLATEPATH, "rst", "scilife.txt"),
-               'sll_logo_small':sll_logo_small,
                })
     if not os.path.exists(rst_path):
         os.makedirs(rst_path)
