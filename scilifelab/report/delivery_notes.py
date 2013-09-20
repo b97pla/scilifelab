@@ -8,6 +8,7 @@ import math
 import csv
 import yaml
 import operator
+import texttable
 from cStringIO import StringIO
 from collections import Counter
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, calc_avg_qv
@@ -441,6 +442,71 @@ def _set_sample_table_values(sample_name, project_sample, barcode_seq, ordered_m
     vals['BarcodeSeq'] = barcode_seq
     vals.update({k:"N/A" for k in vals.keys() if vals[k] is None or vals[k] == ""})
     return vals
+
+def data_delivery_note(**kw):
+    """Create an easily parseable information file with information about the data delivery
+    """
+    output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
+    
+    project_name = kw.get('project_name',None)
+    flowcell = kw.get('flowcell',None)
+    LOG.debug("Generating data delivery note for project {}{}.".format(project_name,' and flowcell {}'.format(flowcell if flowcell else '')))
+    
+    # Get a connection to the project and sample databases
+    p_con = ProjectSummaryConnection(**kw)
+    assert p_con, "Could not connect to project database"
+    s_con = SampleRunMetricsConnection(**kw)
+    assert s_con, "Could not connect to sample database"
+    
+    # Get the entry for the project and samples from the database
+    LOG.debug("Fetching samples from sample database")
+    samples = s_con.get_samples(sample_prj=project_name, fc_id=flowcell)
+    LOG.debug("Got {} samples from database".format(len(samples)))
+    
+    # Get the customer sample names from the project database
+    LOG.debug("Fetching samples from project database")
+    project_samples = p_con.get_entry(project_name, "samples")
+    customer_names = {sample_name:sample.get('customer_name','N/A') for sample_name, sample in project_samples.items()}
+    
+    data = [['SciLifeLab ID','Submitted ID','Flowcell','Lane','Barcode','Read','Path','MD5','Size (bytes)','Timestamp']]
+    for sample in samples:
+        sname = sample.get('project_sample_name','N/A')
+        cname = customer_names.get(sname,'N/A')
+        fc = sample.get('flowcell','N/A')
+        lane = sample.get('lane','N/A')
+        barcode = sample.get('sequence','N/A')
+        if 'raw_data_delivery' not in sample:
+            data.append([sname,cname,'','','','','','','',''])
+            continue
+        delivery = sample['raw_data_delivery']
+        tstamp = delivery.get('timestamp','N/A')
+        for read, file in delivery.get('files',{}).items():
+            data.append([sname,
+                         cname,
+                         fc,
+                         lane,
+                         barcode,
+                         read,
+                         file.get('path','N/A'),
+                         file.get('md5','N/A'),
+                         file.get('size_in_bytes','N/A'),
+                         tstamp,])
+    
+    # Write the data to a csv file
+    outfile = "{}{}_data_delivery.csv".format(project_name,'_{}'.format(flowcell) if flowcell else '')
+    LOG.debug("Writing delivery data to {}".format(outfile))
+    with open(outfile,"w") as outh:
+        csvw = csv.writer(outh)
+        for row in data:
+            csvw.writerow(row)
+    
+    # Write Texttable formatted output to stdout
+    tt = texttable.Texttable(180)
+    tt.add_rows(data)
+    output_data['stdout'].write(tt.draw())
+        
+    return output_data
+    
 
 def project_status_note(project_name=None, username=None, password=None, url=None,
                         use_ps_map=True, use_bc_map=False, check_consistency=False,
