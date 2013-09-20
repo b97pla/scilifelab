@@ -371,7 +371,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         else:
             phix = fc_con.get_phix_error_rate(fc, s["lane"]) 
         
-        scilifeid = s.get("barcode_name", None)
+        scilifeid = s.get("project_sample_name", None)
         customerid = s.get("customer_name", None)
         lane = s.get("lane",None)
         barcode = s.get("sequence",None)
