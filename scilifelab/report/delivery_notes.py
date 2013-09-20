@@ -466,23 +466,29 @@ def data_delivery_note(**kw):
     project_samples = p_con.get_entry(project_name, "samples")
     customer_names = {sample_name:sample.get('customer_name','N/A') for sample_name, sample in project_samples.items()}
     
-    data = [['SciLifeLab ID','Submitted ID','Timestamp','Read','Path','MD5','Size (bytes)']]
+    data = [['SciLifeLab ID','Submitted ID','Flowcell','Lane','Barcode','Read','Path','MD5','Size (bytes)','Timestamp']]
     for sample in samples:
         sname = sample.get('project_sample_name','N/A')
         cname = customer_names.get(sname,'N/A')
+        fc = sample.get('flowcell','N/A')
+        lane = sample.get('lane','N/A')
+        barcode = sample.get('sequence','N/A')
         if 'raw_data_delivery' not in sample:
-            data.append([sname,cname,'','','','',''])
+            data.append([sname,cname,'','','','','','','',''])
             continue
         delivery = sample['raw_data_delivery']
         tstamp = delivery.get('timestamp','N/A')
         for read, file in delivery.get('files',{}).items():
             data.append([sname,
                          cname,
-                         tstamp,
+                         fc,
+                         lane,
+                         barcode,
                          read,
                          file.get('path','N/A'),
                          file.get('md5','N/A'),
-                         file.get('size_in_bytes','N/A')])
+                         file.get('size_in_bytes','N/A'),
+                         tstamp,])
     
     # Write the data to a csv file
     outfile = "{}{}_data_delivery.csv".format(project_name,'_{}'.format(flowcell) if flowcell else '')
