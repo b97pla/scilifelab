@@ -12,7 +12,7 @@ from scilifelab.report import sequencing_success
 from scilifelab.report.rl import *
 from scilifelab.report.qc import application_qc, fastq_screen, QC_CUTOFF
 from scilifelab.bcbio.run import find_samples
-from scilifelab.report.delivery_notes import sample_status_note, project_status_note
+from scilifelab.report.delivery_notes import sample_status_note, project_status_note, data_delivery_note
 from scilifelab.report.best_practice import best_practice_note, SEQCAP_KITS
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, get_scilife_to_customer_name
 from scilifelab.utils.misc import query_yes_no, filtered_walk, md5sum
@@ -191,7 +191,7 @@ class DeliveryController(AbstractBaseController):
             for f in files:
                 m = md5sum(f[0])
                 mfile = "{}.md5".format(f[1])
-                md5.append([m,mfile])
+                md5.append([m,mfile,f[2]])
                 self.log.debug("md5sum for source file {}: {}".format(f[0],m))
                 
             # transfer files
@@ -200,7 +200,7 @@ class DeliveryController(AbstractBaseController):
             
             # write the md5sum to a file at the destination and verify the transfer
             passed = True
-            for m, mfile in md5:
+            for m, mfile, read in md5:
                 dstfile = os.path.splitext(mfile)[0]
                 self.log.debug("Writing md5sum to file {}".format(mfile))
                 self.app.cmd.write(mfile,"{}  {}".format(m,os.path.basename(dstfile)),True)
@@ -229,7 +229,10 @@ class DeliveryController(AbstractBaseController):
             if passed:
                 self.log.info("Logging delivery to StatusDB document {}".format(id))
                 sample['raw_data_delivery'] = {'timestamp': utc_time(),
-                                               'files': [{'md5': m, 'path': os.path.splitext(mfile)[0], 'size_in_bytes': os.path.getsize(os.path.splitext(mfile)[0])} for m, mfile in md5],
+                                               'files': {'R{}'.format(read):{
+                                                                             'md5': m, 
+                                                                             'path': os.path.splitext(mfile)[0], 
+                                                                             'size_in_bytes': os.path.getsize(os.path.splitext(mfile)[0])} for m, mfile, read in md5},
                                                }
                 self.log.debug("Saving delivery in StatusDB document {}".format(id))
                 self._save(s_con,sample)
@@ -258,6 +261,7 @@ class DeliveryController(AbstractBaseController):
             
             date = sample.get("date","NA")
             fcid = sample.get("flowcell","NA")
+            lane = sample.get("lane","")
             runname = "{}_{}".format(date,fcid)
             seqdir = os.path.join(proj_base_dir,dname,runname)
             dstdir = os.path.join(dest_proj_path, dname, runname)
@@ -265,17 +269,21 @@ class DeliveryController(AbstractBaseController):
                 self.log.warn("Sample and flowcell directory {} does not exist. Skipping sample".format(seqdir))
                 continue
             
-            fname_pattern = "{}_{}_L00{}_R*.fastq.gz".format(dname,sample.get("sequence","*"),sample.get("lane","?"))
-            for file in glob.glob(os.path.join(seqdir,fname_pattern)):
-                if os.path.exists(os.path.splitext(file)[0]):
-                    self.log.warn("Both compressed and non-compressed versions of {:s} exists! " \
-                                      "Is compression/decompression in progress? Will deliver compressed version " \
-                                      "but you should make sure that the delivered files are complete!".format(file))
+            for read in [1,2]:
+                # Locate the source file, allow a wildcard to accommodate sample names with index
+                fname = "{}*_{}_L00{}_R{}_001.fastq.gz".format(sname,sample.get("sequence",""),sample.get("lane",""),str(read))
+                file = glob.glob(os.path.join(seqdir,fname))
+                if len(file) != 1:
+                    if read == 1:
+                        self.log.warn("Did not find expected fastq file {} in folder {}".format(fname,seqdir))
                     continue
-                dstfile = create_final_name(os.path.basename(file),date,fcid,dname)
+                file = file[0]
+                
+                # Construct the destination file name according to the convention
+                dstfile = "{}_{}_{}_{}_{}.fastq.gz".format(lane,date,fcid,sname,str(read))
                 if sample.get('_id') not in to_copy:
                     to_copy[sample.get('_id')] = [] 
-                to_copy[sample.get('_id')].append([file,os.path.join(dest_proj_path,dname,runname,dstfile)])
+                to_copy[sample.get('_id')].append([file,os.path.join(dest_proj_path,sname,runname,dstfile),read])
     
         return to_copy
 
@@ -441,6 +449,16 @@ class DeliveryReportController(AbstractBaseController):
         kw = vars(self.pargs)
         kw.update({"samplesdb":self.app.config.get("db", "samples"), "flowcelldb":self.app.config.get("db", "flowcells"), "projectdb":self.app.config.get("db", "projects")})
         out_data = project_status_note(**kw)
+        self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
+        self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
+        self.app._output_data['debug'].write(out_data['debug'].getvalue())
+        
+    @controller.expose(help="Make data delivery note")
+    def data_delivery(self):
+        if not self._check_pargs(["project_name"]):
+            return
+        kw = vars(self.pargs)
+        out_data = data_delivery_note(**kw)
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
         self.app._output_data['debug'].write(out_data['debug'].getvalue())
