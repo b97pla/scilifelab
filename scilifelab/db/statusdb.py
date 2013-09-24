@@ -441,41 +441,78 @@ class FlowcellRunMetricsConnection(Couch):
 
         return sum(phix_r)/len(phix_r)
 
+    def get_run_parameters(self, name):
+        """Get the run parameters dictionary
+        """
+        rp = self.get_entry(name,"RunParameters")
+        if not rp:
+            return {}
+        # Some older versions of software had an additional key "Setup", under which the information was kept 
+        if not "RunID" in rp:
+            rp = rp.get("Setup",rp)
+        return rp
+
+    def get_run_info(self, name):
+        """Get the RunInfo dictionary
+        """
+        ri = self.get_entry(name,"RunInfo")
+        if not ri:
+            return {}
+        return ri
+
+    def get_instrument_type(self, name):
+        """Get the instrument type e.g. HiSeq2500, MiSeq
+        """
+        rp = self.get_run_parameters(name)
+        if rp.get("ApplicationName","") == "HiSeq Control Software":
+            if int(rp.get('ApplicationVersion','1')[0]) > 1:
+                return "HiSeq2500"
+            return "HiSeq2000"
+        if "MCSVersion" in rp:
+            return "MiSeq"
+        return "NA"
+
     def get_instrument(self, name):
         """Get instrument id"""
-        fc = self.get_entry(name)
-        if not fc:
-            return None
-        instrument = fc.get('RunInfo', {}).get('Instrument', None)
+        instrument = self.get_run_info(name).get('Instrument', None)
         if not instrument:
-            instrument = fc.get('RunParameters', {}).get('Setup', {}).get('ScannerID', None)
+            instrument = self.get_run_parameters(name).get('ScannerID', None)
         return instrument
 
     def get_run_mode(self, name):
         """Get run mode"""
-        fc = self.get_entry(name)
-        if not fc:
-            return None
-        run_mode = fc.get('RunParameters', {}).get('Setup', {}).get('RunMode', None)
+        run_mode = self.get_run_parameters(name).get('RunMode', None)
         return run_mode
 
     def is_paired_end(self, name):
         """Get paired end status"""
+        reads = self.get_run_info(name).get('Reads', [])
+        return len([read for read in reads if str(read.get('IsIndexedRead','N')) == 'N']) == 2
+    
+    def get_clustered(self, name):
+        """Get clustering setup"""
+        return self.get_run_parameters(name).get('ClusteringChoice', None)
+        
+    def get_run_setup(self, name):
+        """Get run setup"""
         fc = self.get_entry(name)
         if not fc:
             return None
-        reads = fc.get('RunInfo', {}).get('Reads', [])
-        return len([read for read in reads if read.get('IsIndexedRead','N') == 'N']) == 2
-
-    def is_dual_index(self, name):
-        """Get paired end status"""
+        return fc.get('run_setup', None)
+        
+    def get_demultiplex_software(self, name):
+        """Get the software listed in demultiplex config"""
         fc = self.get_entry(name)
         if not fc:
             return None
-        reads = fc.get('RunInfo', {}).get('Reads', [])
-        return len([read for read in reads if read.get('IsIndexedRead','N') == 'Y']) == 2
-
-
+        software = {}
+        for config in fc.get('DemultiplexConfig',{}).values():
+             config = config.get('Software',None)
+             while config:
+                 software[config['Name']] = config['Version']
+                 config = config.get('Software',None)
+        return software
+    
 class ProjectSummaryConnection(Couch):
     _doc_type = ProjectSummaryDocument
     _update_fn = update_fn
