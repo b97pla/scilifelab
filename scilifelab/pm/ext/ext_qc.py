@@ -4,6 +4,7 @@ import csv
 import yaml
 import ast
 import itertools
+import numpy
 from collections import defaultdict
 
 from cement.core import backend, controller, handler, hook
@@ -313,6 +314,167 @@ class RunMetricsController(AbstractBaseController):
                 if project_sample:
                     obj["project_sample_name"] = project_sample['sample_name']
                 dry("Saving object {}".format(repr(obj)), s_con.save(obj))
+
+    @controller.expose(help="Perform a multiplex QC")
+    def flowcell_qc(self):
+        
+        out_data = []
+        
+        if not self._check_pargs(['flowcell']):
+            return
+        
+        pct_undetermined_single_index = 0.05
+        pct_undetermined_dual_index = 0.1
+        unexpected_index_hard_limit = 1e6
+        
+        flowcell = self.app.pargs.flowcell
+        fcid = flowcell.split('_')
+        fcid = "{}_{}".format(fcid[0],fcid[-1])
+        kw = vars(self.app.pargs)
+        
+        # Get a connection to the flowcell database and fetch the corresponding document
+        self.log.debug("Connecting to flowcell database")
+        fc_con = FlowcellRunMetricsConnection(**kw)
+        self.log.debug("Fetching run metrics entry for flowcell {}".format(fcid))
+        fc_doc = fc_con.get_entry(fcid)
+        if not fc_doc:
+            self.log.warn("Could not fetch run metrics entry for flowcell {}".format(fcid))
+            return
+        
+        # Get the indexing setup
+        is_dual = fc_con.is_dual_index(fcid)
+        
+        # Get the yield per sample from the Demultiplex_Stats
+        self.log.debug("Getting yield for flowcell {}".format(flowcell))
+        sample_yield = self._get_yield_per_sample(fc_doc, read_pairs=False)
+        
+        # Get the yield per lane from the Demultiplex_Stats
+        self.log.debug("Getting lane yield for flowcell {}".format(flowcell))
+        lane_yield = self._get_yield_per_lane(fc_doc, read_pairs=False)
+        lanes = lane_yield.keys()
+        
+        # Check that the number of undetermined reads in each lane is below 10% of the total yield for the lane
+        for lane, reads in lane_yield.items():
+            status = "WARN"
+            key = "{}_{}".format(lane,"Undetermined")
+            undetermined = sum([counts.get(key,[0])[0] for counts in sample_yield.values()])
+            cutoff = pct_undetermined_dual_index*reads if is_dual else pct_undetermined_single_index*reads
+            if undetermined < cutoff:
+                status = "PASS"
+            out_data.append([status,"Undemultiplexed reads",lane,undetermined,"[Undetermined < {}]".format(cutoff)])
+        
+        # Check that no overrepresented index sequence exists in undemultiplexed output
+        self.log.debug("Fetching undemultiplexed barcode data for flowcell {}".format(flowcell))
+        undemux_data = self._get_undetermined_index_counts(fc_doc)
+        if len(undemux_data) == 0:
+            self.log.warn("No undemultiplexed barcode data available for flowcell {}".format(flowcell))
+        
+        for lane, counts in undemux_data.items():
+            sample_yields = numpy.array([data[0] for y in sample_yield.values() for key, data in y.items() if key.split("_")[0] == lane and not key.split("_")[-1] == "Undetermined"])
+            # Set the lower cutoff to the minimum of the config cutoff or 2 std deviations from the mean of all samples in the lane
+            cutoff = min(numpy.mean(sample_yields) - 2*numpy.std(sample_yields), unexpected_index_hard_limit)
+            status_arr = []
+            status = "WARN"
+            count = -1
+            for i in range(len(counts)):
+                status_arr.append(["WARN",int(counts[i][0])])
+                if status_arr[-1][1] < cutoff or len([c for c in counts[i][1] if c == 'N']) > (1 + 1*is_dual):
+                    status_arr[-1][0] = "PASS"
+            if len(status_arr) > 0:
+                status = "PASS" if len([s for s in status_arr if s[0] == "WARN"]) == 0 else "WARN"
+                count = max([s[1] for s in status_arr if s[0] == status])
+            out_data.append([status,"Index",lane,count,"[Unexpected index < {}]".format(cutoff)])
+        
+        print("\n".join(["\t".join([str(r) for r in row]) for row in out_data]))
+        return
+          
+        # Get the number of samples in the pools from the Demultiplex_Stats
+        self.log.debug("Getting lane pool sizes for flowcell {}".format(fcid))
+        pool_size = self._get_pool_size(fc_doc)
+        
+        # Get the sample information from the csv samplesheet
+        self.log.debug("Getting csv samplesheet data for flowcell {}".format(fcid))
+        ssheet_samples = self._get_samplesheet_sample_data(fc_doc)
+        if len(ssheet_samples) == 0: 
+            self.log.warn("No samplesheet data available for flowcell {}".format(fcid))
+        
+        # Verify that all samples in samplesheet have reported metrics
+        for id in ssheet_samples.keys():
+            for key in ssheet_samples[id].keys():
+                lane, index = key.split("_")
+                project = ssheet_samples[id][key][0]
+                if id not in sample_yield or \
+                key not in sample_yield[id]: 
+                    self.log.warn("Sample {} from project {} is in samplesheet but no yield was reported in " \
+                                  "Demultiplex_Stats.htm for lane {} and index {}".format(id,
+                                                                                          project,
+                                                                                          lane,
+                                                                                          index))
+                    continue
+                sample_yield[id][key].append('verified')
+        
+        # Check that all samples in Demultiplex_Stats have entries in Samplesheet
+        for id in sample_yield.keys():
+            for key in sample_yield[id].keys():
+                lane, index = key.split("_")
+                if "verified" not in sample_yield[id][key] and \
+                index != "Undetermined":
+                    self.log.warn("Sample {} from project {}, with index {} on lane {} is in Demultiplex_Stats " \
+                                  "but no corresponding entry is present in SampleSheet".format(id,
+                                                                                                sample_yield[id][key][1],
+                                                                                                index,
+                                                                                                lane))
+                        
+        # Check the PhiX error rate for each lane
+        self.log.debug("Getting PhiX error rates for flowcell {}".format(fcid))
+        for lane in lanes:
+            status = "N/A"
+            err_rate = fc_con.get_phix_error_rate(fcid,lane)
+            if err_rate < 0:
+                self.log.warn("Could not get PhiX error rate for lane {} on flowcell {}".format(lane,fcid))
+            elif err_rate <= MIN_PHIX_ERROR_RATE or err_rate > MAX_PHIX_ERROR_RATE:
+                status = "FAIL"
+            else:
+                status = "PASS"
+            out_data.append([status,
+                             "PhiX error rate",
+                             lane,
+                             err_rate,
+                             "{} < PhiX e (%) <= {}".format(MIN_PHIX_ERROR_RATE,
+                                                            MAX_PHIX_ERROR_RATE)])
+        
+        # Check the %>=Q30 value for each sample
+        sample_quality = self._get_quality_per_sample(fc_doc)
+        for id in sample_quality.keys():
+            for key in sample_quality[id].keys():
+                lane, index = key.split("_")
+                status = "FAIL"
+                if float(sample_quality[id][key][0]) >= MIN_GTQ30:
+                    status = "PASS"
+                out_data.append([status,"Sample quality",lane,sample_quality[id][key][2],id,sample_quality[id][key][0],"[%>=Q30 >= {}%]".format(MIN_GTQ30)])
+                
+        # Check that each lane received the minimum amount of reads
+        for lane, reads in lane_yield.items():
+            status = "FAIL"
+            if reads >= EXPECTED_LANE_YIELD:
+                status = "PASS"
+            out_data.append([status,"Lane yield",lane,reads,"[Yield >= {}]".format(EXPECTED_LANE_YIELD)])
+                
+        # Check that all samples in the pool have received a minimum number of reads
+        for id in sample_yield.keys():
+            for key in sample_yield[id].keys():
+                lane, index = key.split("_")
+                if index == "Undetermined":
+                    continue
+                
+                status = "FAIL"
+                mplx_min = int(0.5*EXPECTED_LANE_YIELD/pool_size[lane])
+                if sample_yield[id][key][0] >= mplx_min:
+                    status = "PASS"
+                out_data.append([status,"Sample yield",lane,sample_yield[id][key][1],id,sample_yield[id][key][0],"[Yield >= {}]".format(mplx_min)])
+              
+        self.app._output_data['stdout'].write("\n".join(["\t".join([str(r) for r in row]) for row in out_data]))
+
 
     @controller.expose(help="Perform a multiplex QC")
     def multiplex_qc(self):

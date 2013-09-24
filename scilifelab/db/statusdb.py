@@ -465,7 +465,15 @@ class FlowcellRunMetricsConnection(Couch):
         if not fc:
             return None
         reads = fc.get('RunInfo', {}).get('Reads', [])
-        return len([read for read in reads if read.get('IsIndexedRun','N') == 'N']) == 1
+        return len([read for read in reads if read.get('IsIndexedRead','N') == 'N']) == 2
+
+    def is_dual_index(self, name):
+        """Get paired end status"""
+        fc = self.get_entry(name)
+        if not fc:
+            return None
+        reads = fc.get('RunInfo', {}).get('Reads', [])
+        return len([read for read in reads if read.get('IsIndexedRead','N') == 'Y']) == 2
 
 
 class ProjectSummaryConnection(Couch):
