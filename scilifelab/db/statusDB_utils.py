@@ -68,9 +68,10 @@ def find_samp_from_view(samp_db, proj_name):
 def find_flowcell_from_view(flowcell_db, flowcell_name):
     view = flowcell_db.view('names/id_to_name')
     for doc in view:
-        id = doc.value.split('_')[1]
-        if (id == flowcell_name):
-            return doc.key
+        if doc.value:
+            id = doc.value.split('_')[1]
+            if (id == flowcell_name):
+                return doc.key
 
 def find_sample_run_id_from_view(samp_db,sample_run):
     view = samp_db.view('names/id_to_name')

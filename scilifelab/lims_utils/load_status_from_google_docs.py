@@ -40,6 +40,9 @@ def strip_index(name):
     name = name.replace('-', '_').replace(' ', '')
     for i in indexes:
         name=name.split(i)[0]
+    preps='FBCDE'
+    for prep in preps:
+        name=name.rstrip(prep)
     return name
 
 def get_20158_info(credentials, project_name_swe):
@@ -69,7 +72,8 @@ def get_20158_info(credentials, project_name_swe):
             P_NP_duprem_colindex=''
         for j, row in enumerate(content):
             if (j > row_ind):
-                try:
+                #try:
+                if 1==1:
                     sci_name = str(row[scilife_names_colindex]).strip()
                     striped_name = strip_index(sci_name)
                     no_reads = str(row[No_reads_sequenced_colindex]).strip()
@@ -78,8 +82,8 @@ def get_20158_info(credentials, project_name_swe):
                     else:
                         status = str(row[P_NP_colindex]).strip()
                     info[striped_name] = [status,no_reads]
-                except:
-                    pass
+                #except:
+                 #   pass
     return info
 
 def get(project_ID):
