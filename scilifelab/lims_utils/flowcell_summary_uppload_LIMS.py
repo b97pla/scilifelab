@@ -24,13 +24,16 @@ def  main(flowcell, all_flowcells,days,conf):
     couch = load_couch_server(conf)
     fc_db = couch['flowcells']
     if all_flowcells:
-        flowcells = lims.get_processes(type = 'Illumina Sequencing (Illumina SBS) 4.0')
+        flowcells = lims.get_processes(type = ['Illumina Sequencing (Illumina SBS) 4.0','MiSeq Run (MiSeq) 4.0'])
         for fc in flowcells:
             try:
                 closed = date(*map(int, fc.date_run.split('-')))
                 delta = today-closed
-                if delta.days < days and dict(fc.udf.items()).has_key('Flow Cell Position') and dict(fc.udf.items()).has_key('Flow Cell ID'):
-                    flowcell_name = dict(fc.udf.items())['Flow Cell Position'] + dict(fc.udf.items())['Flow Cell ID']
+                if delta.days < days and dict(fc.udf.items()).has_key('Flow Cell ID'):
+                    if '-' in dict(fc.udf.items())['Flow Cell ID']:
+                        flowcell_name = dict(fc.udf.items())['Flow Cell ID']
+                    elif dict(fc.udf.items()).has_key('Flow Cell Position'):
+                        flowcell_name = dict(fc.udf.items())['Flow Cell Position'] + dict(fc.udf.items())['Flow Cell ID']
                     key = find_flowcell_from_view(fc_db, flowcell_name)
                     if key:
                         dbobj = fc_db.get(key)
@@ -41,10 +44,14 @@ def  main(flowcell, all_flowcells,days,conf):
                 pass
     elif flowcell is not None:
         try:
-            flowcell_name = flowcell[1:len(flowcell)]
-            flowcell_position = flowcell[0]
-            fc = lims.get_processes(type = 'Illumina Sequencing (Illumina SBS) 4.0', udf = {'Flow Cell ID' : flowcell_name, 'Flow Cell Position' : flowcell_position})[0]
-            key = find_flowcell_from_view(fc_db, flowcell)
+            if '-' in flowcell:
+                flowcell_name = flowcell
+                fc = lims.get_processes(type = 'MiSeq Run (MiSeq) 4.0', udf = {'Flow Cell ID' : flowcell_name})[0]
+            else:
+                flowcell_name = flowcell[1:len(flowcell)]
+                flowcell_position = flowcell[0]
+                fc = lims.get_processes(type = 'Illumina Sequencing (Illumina SBS) 4.0', udf = {'Flow Cell ID' : flowcell_name, 'Flow Cell Position' : flowcell_position})[0]
+            key = find_flowcell_from_view(fc_db, flowcell_name)
             if key:
                 dbobj = fc_db.get(key)
                 dbobj["illumina"]["run_summary"] = get_sequencing_info(fc)
