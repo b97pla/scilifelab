@@ -77,7 +77,9 @@ Basecalling was performed on the instrument using ${basecall_software}${' v{}'.f
 Yield
 ~~~~~
 
-The sequencing yield is reported for each sample and lane and/or barcode. 
+The sequencing yield is reported for each sample and lane and/or barcode.
+${"Since this sequencing is of a library prepared and pooled by you, we can only guarantee that the total yield for the lane meets our standards. " if application == 'Finished library' else "Note that a sample may have been sequenced on multiple flowcells but this report only contains the results from one flowcell."}
+If the total yield for a ${"lane" if application == 'Finished library' else "sample"} does not reach the ordered amount in the first sequencing run, we will usually do a second run.  
  
 .. table:: **Table 2.** The number of million read${' pair' if is_paired else ''}s resulting from this sequencing run
 
@@ -89,8 +91,11 @@ ${sample_yield_table}
 Quality
 ~~~~~~~
 
-The quality reported in Table 3 is the percentage of bases with a quality score of 30 or above (Q>=30), the average quality score over all bases (Avg Q) and the
-lane-wise sequencing error rate, estimated from sequencing and mapping of a PhiX spike-in (PhiX error rate).   
+The quality reported in Table 3 is the percentage of bases with a quality score of 30 or above (Q30), the average quality score over all bases (Avg Q) and the
+lane-wise sequencing error rate, estimated from sequencing and mapping of a PhiX spike-in (PhiX error rate). We guarantee a lane-wise PhiX error rate below ${phix_cutoff}% 
+and if the error rate for a lane exceeds this threshold, it will be re-run. The Q30-value that we accept depends on the sequencing platform and number of cycles sequenced but
+should typically be above 75-85%. If the Q30 value for a sample is low, we will troubleshoot and try to determine the cause. Note that we don't take any responsibility for sample-related
+quality issues for libraries prepared by the customer. 
 
 .. table:: **Table 3.** The reported sample quality and lane-wise PhiX error rate
 

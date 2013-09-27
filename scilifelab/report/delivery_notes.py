@@ -209,7 +209,7 @@ def _set_project_sample_dict(project_sample_item, source):
 def sample_status_note(project_name=None, flowcell=None, username=None, password=None, url=None,
                        ordered_million_reads=None, uppnex_id=None, customer_reference=None, bc_count=None,
                        project_alias=[], projectdb="projects", samplesdb="samples", flowcelldb="flowcells",
-                       phix=None, is_paired=True, **kw):
+                       phix=None, is_paired=True, config=None, **kw):
     """Make a sample status note. Used keywords:
 
     :param project_name: project name
@@ -226,7 +226,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
     """
     # Cutoffs
     cutoffs = {
-        "phix_err_cutoff" : 2.0,
+        "phix_err_cutoff" : float(config.get("qc","phix_error_rate_threshold")),
         "qv_cutoff" : 30,
         }
 
@@ -270,12 +270,13 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         i += 1
     
     fc_param["project_name"] = project_name
+    fc_param["application"] = project.get("application","")
     fc_param["pdffile"] = "{}_{}_{}_flowcell_summary.pdf".format(project_name, fc_param["start_date"], flowcell)
     fc_param["rstfile"] = "{}.rst".format(os.path.splitext(fc_param["pdffile"])[0])
     fc = "{}_{}".format(fc_param["start_date"], flowcell)
     fc_param["FC_id"] = fc_con.get_run_info(fc).get("Flowcell","N/A")
     fc_param["FC_position"] = fc_con.get_run_parameters(fc).get("FCPosition","N/A")
-    
+    fc_param["phix_cutoff"] = cutoffs["phix_err_cutoff"]
     # Get instrument
     fc_param['instrument_version'] = fc_con.get_instrument_type(fc)
     fc_param['instrument_id'] = fc_con.get_instrument(fc)
@@ -314,7 +315,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
     syt_header.append('Read{}s (M)'.format(' pair' if fc_param['is_paired'] else ''))
     sample_yield_table = [syt_header]
     
-    sqt_header = ['SciLifeLab ID','Lane','Barcode','Q>=30 (%)','Avg Q','PhiX error rate (%)']
+    sqt_header = ['SciLifeLab ID','Lane','Barcode','Q30 (%)','Avg Q','PhiX error rate (%)']
     sample_quality_table = [sqt_header]
     
     # Loop samples and build the sample information table
