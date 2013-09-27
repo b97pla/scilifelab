@@ -489,6 +489,11 @@ class FlowcellRunMetricsConnection(Couch):
         reads = self.get_run_info(name).get('Reads', [])
         return len([read for read in reads if str(read.get('IsIndexedRead','N')) == 'N']) == 2
     
+    def is_dual_index(self, name):
+        """Get dual index status"""
+        reads = self.get_run_info(name).get('Reads', [])
+        return len([read for read in reads if str(read.get('IsIndexedRead','N')) == 'Y']) == 2
+    
     def get_clustered(self, name):
         """Get clustering setup"""
         return self.get_run_parameters(name).get('ClusteringChoice', None)

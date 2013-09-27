@@ -341,18 +341,18 @@ class RunMetricsController(AbstractBaseController):
         instr_type = fc_con.get_instrument_type(fcid)
         if instr_type == 'MiSeq':
             expected_lane_yield = self.app.config.get("qc","miseq_lane_yield") or 10e6
-        elif instr_type.beginswith('HiSeq'):
+        elif instr_type.startswith('HiSeq'):
             run_mode = fc_con.get_run_mode(fcid)
             if run_mode == 'RapidRun':
                 expected_lane_yield = self.app.config.get("qc","hiseq_rm_lane_yield") or 114e6
             else:
                 expected_lane_yield = self.app.config.get("qc","hiseq_ho_lane_yield") or 143e6
-                
+        expected_lane_yield = int(expected_lane_yield)
         
-        pct_undetermined_single_index = self.app.config.get("qc","pct_undetermined_single_index") or 0.05
-        pct_undetermined_dual_index = self.app.config.get("qc","pct_undetermined_dual_index") or 0.1
-        unexpected_index_hard_limit = self.app.config.get("qc","unexpected_index_hard_limit") or 1e6
-        min_sample_yield_pct = self.app.config.get("qc","min_sample_yield_pct") or 0.05
+        pct_undetermined_single_index = float(self.app.config.get("qc","pct_undetermined_single_index"))
+        pct_undetermined_dual_index = float(self.app.config.get("qc","pct_undetermined_dual_index"))
+        unexpected_index_hard_limit = int(self.app.config.get("qc","unexpected_index_hard_limit"))
+        min_sample_yield_pct = float(self.app.config.get("qc","min_sample_yield_pct"))
             
         # Get the indexing setup
         is_dual = fc_con.is_dual_index(fcid)
@@ -365,26 +365,27 @@ class RunMetricsController(AbstractBaseController):
         self.log.debug("Getting lane yield for flowcell {}".format(flowcell))
         lane_yield = self._get_yield_per_lane(fc_doc, read_pairs=False)
         lanes = lane_yield.keys()
-        
         # Get the per-lane cutoff for undetermined reads 
         cutoff = {}
-        for lane, reads in lane_yield.values():
-            cutoff[lane] = pct_undetermined_dual_index*reads if is_dual else pct_undetermined_single_index*reads
-        qc_undetermined = _undetermined_qc(lane_yield,cutoff)
+        for lane, reads in lane_yield.items():
+            cutoff[lane] = int(pct_undetermined_dual_index*reads if is_dual else pct_undetermined_single_index*reads)
+        import pdb; pdb.set_trace()
+        qc_undetermined = self._undetermined_qc(sample_yield,cutoff)
     
         # Get the per-lane cutoff for unexpected indexes
+        undemux_data = self._get_undetermined_index_counts(fc_doc)
         cutoff = {}
         for lane in lanes:
     	    sample_yields = numpy.array([data[0] for y in sample_yield.values() for key, data in y.items() if key.split("_")[0] == lane and not key.split("_")[-1] == "Undetermined"])
     	    cutoff[lane] = min(numpy.mean(sample_yields) - 2*numpy.std(sample_yields), unexpected_index_hard_limit)
-        qc_unexpected_index = _unexpected_index_qc(undemux_data,cutoff,is_dual)        
+        qc_unexpected_index = self._unexpected_index_qc(undemux_data,cutoff,is_dual)        
         
         # Get the sample yield qc
         min_sample_yield = int(min_sample_yield_pct*expected_lane_yield)
-        qc_sample_yield = _sample_yield_qc(sample_yield,min_sample_yield)
+        qc_sample_yield = self._sample_yield_qc(sample_yield,min_sample_yield)
 
         # Check that each lane received the minimum amount of reads
-        qc_lane_yield = _lane_yield_qc(lane_yield,expected_lane_yield)
+        qc_lane_yield = self._lane_yield_qc(lane_yield,expected_lane_yield)
         
         out_data = qc_undetermined + qc_unexpected_index + qc_sample_yield + qc_lane_yield
         print("\n".join(["\t".join([str(r) for r in row]) for row in out_data]))
@@ -458,40 +459,40 @@ class RunMetricsController(AbstractBaseController):
         self.app._output_data['stdout'].write("\n".join(["\t".join([str(r) for r in row]) for row in out_data]))
 
 
-    def _undetermined_qc(lane_yield, cutoff):
+    def _undetermined_qc(self, sample_yield, cutoff):
         """Check that the number of undetermined reads in each lane is below 10% of the total yield for the lane
         """
         
         status_arr = []
-        for key in sample_yield.values().keys():
-	    lane, index = key.split("_")
-	    if not index == "Undetermined":
-	        continue
-	    yield = int(sample_yield[id][key][0])
-            status_arr.append(["PASS" if yield < cutoff[int(lane)] else "WARN",
-                               "Undemultiplexed reads",
-                               lane,
-                               yield,
-                               "[Undetermined < {}]".format(cutoff)])
+        for id in sample_yield.keys():
+            for key in sample_yield[id].keys(): 
+                lane, index = key.split("_")
+                if not index == "Undetermined":
+                    continue
+                yld = int(sample_yield[id][key][0])
+                status_arr.append(["PASS" if yld < cutoff[lane] else "WARN",
+                                   "Undemultiplexed reads",
+                                   lane,
+                                   yld,
+                                   "[Undetermined < {}]".format(cutoff[lane])])
         return status_arr
                 
-    def _unexpected_index_qc(undemux_data, cutoff, is_dual):
+    def _unexpected_index_qc(self, undemux_data, cutoff, is_dual):
         """Check that the lanes don't contain any overrepresented unexpected indexes
         """
-        
         status_arr = []
         for lane, counts in undemux_data.items():
             # Set the lower cutoff to the minimum of the config cutoff or 2 std deviations from the mean of all samples in the lane
             for count in counts:
-            	yield = int(count[0])
-                status_arr.append(["PASS" if yield < cutoff[lane] or len([c for c in count[1] if c == 'N']) > (1 + 1*is_dual) else "WARN,
+                yld = int(count[0])
+                status_arr.append(["PASS" if yld < cutoff[lane] or len([c for c in count[1] if c == 'N']) > (1 + 1*is_dual) else "WARN",
                                    "Index",
                                    lane,
-                                   yield,
-                                   "[Unexpected index < {}]".format(cutoff)])
+                                   yld,
+                                   "[Unexpected index < {}]".format(cutoff[lane])])
         return status_arr
             
-    def _sample_yield_qc(sample_yield, cutoff):
+    def _sample_yield_qc(self, sample_yield, cutoff):
 	"""Check that all samples in the pool have received a minimum number of reads
 	"""
 	
@@ -501,31 +502,29 @@ class RunMetricsController(AbstractBaseController):
 		lane, index = key.split("_")
 		if index == "Undetermined":
 		    continue
-		yield = int(sample_yield[id][key][0])
+		yld = int(sample_yield[id][key][0])
 		project = sample_yield[id][key][1]
-		status_arr.append(["PASS" if yield >= cutoff else "WARN",
+		status_arr.append(["PASS" if yld >= cutoff else "WARN",
 		                   "Sample yield",
 		                   lane,
 		                   id,
 		                   index,
 		                   project,
-		                   yield,
+		                   yld,
 		                   "[Yield >= {}]".format(cutoff)])
 	return status_arr
 	
-    def _lane_yield_qc(lane_yield, cutoff):
+    def _lane_yield_qc(self, lane_yield, cutoff):
         """Check that the yield in each lane is sufficient
         """
-        
         status_arr = []
-	for lane, reads in lane_yield.items():
-	    status_arr.append(["PASS" if reads >= cutoff else "WARN",
-	                       "Lane yield",
-	                       lane,
-	                       reads,
-	                       "[Yield >= {}]".format(cutoff)])
+        for lane, reads in lane_yield.items():
+            status_arr.append(["PASS" if reads >= cutoff else "WARN",
+                               "Lane yield",
+                               lane,
+                               reads,
+                               "[Yield >= {}]".format(cutoff)])
         return status_arr
-
 
     @controller.expose(help="Perform a multiplex QC")
     def multiplex_qc(self):
