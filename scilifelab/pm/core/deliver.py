@@ -17,7 +17,6 @@ from scilifelab.report.best_practice import best_practice_note, SEQCAP_KITS
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, get_scilife_to_customer_name
 from scilifelab.utils.misc import query_yes_no, filtered_walk, md5sum
 from scilifelab.report.gdocs_report import upload_to_gdocs
-from scilifelab.utils.fastq_utils import create_final_name
 from scilifelab.utils.timestamp import utc_time
 
 BCBIO_EXCLUDE_DIRS = ['realign-split', 'variants-split', 'tmp', 'tx', 'fastqc', 'fastq_screen', 'alignments', 'nophix']
@@ -232,11 +231,21 @@ class DeliveryController(AbstractBaseController):
                                                'files': {'R{}'.format(read):{
                                                                              'md5': m, 
                                                                              'path': os.path.splitext(mfile)[0], 
-                                                                             'size_in_bytes': os.path.getsize(os.path.splitext(mfile)[0])} for m, mfile, read in md5},
+                                                                             'size_in_bytes': self._getsize(os.path.splitext(mfile)[0])} for m, mfile, read in md5},
                                                }
                 self.log.debug("Saving delivery in StatusDB document {}".format(id))
                 self._save(s_con,sample)
         
+    def _getsize(self, file):
+        """Wrapper around getsize
+        """
+        size = -1
+        try:
+            size = os.path.getsize(file)
+        except OSError:
+            pass
+        return size
+    
     def _save(self, con, obj):
         """Dry-run aware wrapper around statusdb save
         """

@@ -180,6 +180,8 @@ def main():
     parser.add_argument('uppmax_id', action='store', help="UPPMAX project id to deliver to, e.g. b2012001")
     args = parser.parse_args()
 
+    print("""\n****** Deprication ******\nPlease note that this script is deprecated and the functionality has been replaced by 'pm deliver raw-data'\n""")
+    
     if not args.project_name in os.listdir(args.caspath): 
         print("Could not find project. Check directory listing:")
         for f in os.listdir(args.caspath): 
