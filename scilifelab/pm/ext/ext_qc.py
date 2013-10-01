@@ -346,6 +346,9 @@ class RunMetricsController(AbstractBaseController):
             self.log.warn("Could not fetch run metrics entry for flowcell {}".format(fcid))
             return
    
+        # Adjust the read pairs variable according to the run setup
+        read_pairs = fc_con.is_paired_end(fcid) 
+        
         # Get the yield per sample from the Demultiplex_Stats
         self.log.debug("Getting yield for flowcell {}".format(fcid))
         sample_yield = self._get_yield_per_sample(fc_doc, read_pairs)
