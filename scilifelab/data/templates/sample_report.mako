@@ -18,13 +18,11 @@ Description
 
 This is a raw data delivery note containing detailed information about the sequencing 
 of samples on one flowcell. If your samples have been sequenced on multiple flowcells, you will receive separate delivery notes for each flowcell.
-You will also receive a project status note summarizing the progress of your project.
+You will also receive a project status note summarizing the overall progress of your project.
 
-- **Table 1** shows the translation between the internal SciLifeLab ID given to each sample and the sample ID submitted together with the samples.
-- **Table 2** shows a breakdown of the sequencing yield, in million read${' pair' if is_paired else ''}s for each sample and lane. Note that if a sample has been 
-  run on multiple lanes on this flowcell and/or has been multiplexed using different barcode sequences, the sample will have one entry for each lane 
-  and/or barcode.
-- **Table 3** shows the reported quality for each sample.
+- The 'Project summary' section contains a brief overview of the project and the mapping between the sample names submitted together with the samples and the internal SciLifeLab IDs assigned to the samples by us (Table 1).  
+- The 'Sequencing summary' section contains a brief overview of the sequencing setup as well as more detailed information regarding the sequencing yields (Table 2a and Table 2b) and quality of the reads (Table 3)
+- The 'Data delivery' sections contains basic information about the file formats, naming convention and paths to the delivered files.
 
 Please don't hesitate to contact genomics_support@scilifelab.se if you have any questions or comments.
 
@@ -40,6 +38,9 @@ Project summary
 :Project name: ${project_name}
 :Customer reference: ${'{}'.format(customer_reference) if customer_reference not in ['', 'N/A'] else 'N/A'}
 :UPPNEX project id: ${uppnex_project_id}
+:Application: ${application}
+##:Sequencing lanes ordered: ${lanes_ordered}
+##:Number of samples: ${no_samples}
 
 Upon arrival, the samples are assigned internal SciLifeLab IDs which are used in our documentation and processing. Table 1 specifies the translation between 
 sample names submitted by the customer and the internal SciLifeLab ID. 
@@ -77,27 +78,52 @@ Basecalling was performed on the instrument using ${basecall_software}${' v{}'.f
 Yield
 ~~~~~
 
-The sequencing yield is reported for each sample and lane and/or barcode.
-${"Since this sequencing is of a library prepared and pooled by you, we can only guarantee that the total yield for the lane meets our standards. " if application == 'Finished library' else "Note that a sample may have been sequenced on multiple flowcells but this report only contains the results from one flowcell."}
-If the total yield for a ${"lane" if application == 'Finished library' else "sample"} does not reach the ordered amount in the first sequencing run, we will usually do a second run.  
+The yield for each lane on the flowcell is reported in Table 2a and the yield for each sample and lane is reported in Table 2b.
+
+% if application == 'Finished library':
+Since the sequenced library was prepared and pooled by the customer, we can only guarantee the total yield for the lane but not for individual samples in the pool. 
+If the total yield (including undemultiplexed reads) does not reach ${lane_yield_cutoff}M in the first sequencing run, we will usually do a second run.
+This may not be the case if, for example, the low yield is due to a problem with the library.
+% endif
  
-.. table:: **Table 2.** The number of million read${' pair' if is_paired else ''}s resulting from this sequencing run
+.. table:: **Table 2a.** The total number of read${' pair' if is_paired else ''}s (in millions) in each lane.${' An asterisk (*) next to a value indicates a yield less than what we guarantee.' if application == 'Finished library' else ''}
+
+
+  .. class:: sample-table  
+
+${lane_yield_table}
+
+% if not application == 'Finished library':
+Note that a sample may have been sequenced on multiple flowcells but this report only contains the results from one flowcell.
+If the total yield for a sample does not reach the ordered amount in the first sequencing run, we will usually do a second run. 
+This may not be the case if, for example, the sample failed the incoming QC checks. 
+% endif 
+ 
+.. table:: **Table 2a.** The number of read${' pair' if is_paired else ''}s (in millions) for each sample and lane
 
   .. class:: sample-table  
 
 ${sample_yield_table}
 
-
 Quality
 ~~~~~~~
 
-The quality reported in Table 3 is the percentage of bases with a quality score of 30 or above (Q30), the average quality score over all bases (Avg Q) and the
-lane-wise sequencing error rate, estimated from sequencing and mapping of a PhiX spike-in (PhiX error rate). We guarantee a lane-wise PhiX error rate below ${phix_cutoff}% 
-and if the error rate for a lane exceeds this threshold, it will be re-run. The Q30-value that we accept depends on the sequencing platform and number of cycles sequenced but
-should typically be above 75-85%. If the Q30 value for a sample is low, we will troubleshoot and try to determine the cause. Note that we don't take any responsibility for sample-related
-quality issues for libraries prepared by the customer. 
+To asses the quality of the sequencing, we look at the sample-independent error rate (PhiX) and the sample-specific quality values reported by the instrument (Q30).
+If any of these values fail to meet our requirements, we will investigate the problem and may re-run the affected sample(s). 
 
-.. table:: **Table 3.** The reported sample quality and lane-wise PhiX error rate
+% if application == 'Finished library':
+Note that when the libraries were prepared by the customer, we can only give guarantees for the sample-independent error rate (PhiX).
+%endif
+
+We guarantee a lane-wise PhiX error rate of ${phix_cutoff}% or below${' (averaged across the forward and reverse reads)' if is_paired else ''}.
+ 
+The cutoff for the sample-specific error rate will depend on the sequencing platform, run mode and number of cycles. 
+For ${run_setup} cycles on a Illumina ${instrument_version}${' in {} mode'.format('high output' if not run_mode == 'RapidRun' else 'rapid') if not instrument_version == 'MiSeq' else ''},
+we require the Q30 to be ${sample_q30_cutoff}% or above.  
+
+The Q30 value represents the percentage of bases with a quality value of 30 or above.
+ 
+.. table:: **Table 3.** The reported sample-specific average quality, Q30 and lane-wise PhiX error rate. An asterisk (*) next to a value indicates a quality below our requirements.
 
   .. class:: sample-table 
 

@@ -91,9 +91,8 @@ def make_rst_sample_name_table(data):
     if data is None or len(data) == 0:
         return ""
     else:
-        tab_tt = tt.Texttable()
+        tab_tt = tt.Texttable(max_width=0)
         tab_tt.add_rows(data)
-        tab_tt.set_cols_width(col_widths(data))
         return indent_texttable_for_rst(tab_tt)
 
 def make_rst_sample_yield_table(data):
@@ -101,10 +100,19 @@ def make_rst_sample_yield_table(data):
     if data is None or len(data) == 0:
         return ""
     else:
-        tab_tt = tt.Texttable()
+        tab_tt = tt.Texttable(max_width=0)
         tab_tt.set_precision(2)
         tab_tt.add_rows(data)
-        tab_tt.set_cols_width(col_widths(data))
+        return indent_texttable_for_rst(tab_tt)
+
+def make_rst_lane_yield_table(data):
+    """Format sample name table"""
+    if data is None or len(data) == 0:
+        return ""
+    else:
+        tab_tt = tt.Texttable(max_width=0)
+        tab_tt.set_precision(2)
+        tab_tt.add_rows(data)
         return indent_texttable_for_rst(tab_tt)
 
 def make_rst_sample_quality_table(data):
@@ -112,10 +120,9 @@ def make_rst_sample_quality_table(data):
     if data is None or len(data) == 0:
         return ""
     else:
-        tab_tt = tt.Texttable()
+        tab_tt = tt.Texttable(max_width=0)
         tab_tt.set_precision(2)
         tab_tt.add_rows(data)
-        tab_tt.set_cols_width(col_widths(data))
         return indent_texttable_for_rst(tab_tt)
 
 def make_logo_table():
@@ -145,7 +152,8 @@ def make_rest_note(outfile, tables={}, outdir="rst", report="sample_report", **k
                'description':'N/A',
                'logo_table': make_logo_table(),
                'sample_name_table':make_rst_sample_name_table(tables.get('name',None)),
-               'sample_yield_table':make_rst_sample_yield_table(tables.get('yield',None)),
+               'sample_yield_table':make_rst_sample_yield_table(tables.get('sample_yield',None)),
+               'lane_yield_table':make_rst_lane_yield_table(tables.get('lane_yield',None)),
                'sample_quality_table':make_rst_sample_quality_table(tables.get('quality',None)),
                'stylefile': os.path.join(TEMPLATEPATH, "rst", "scilife.txt"),
                })

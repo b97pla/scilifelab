@@ -390,11 +390,27 @@ class FlowcellRunMetricsConnection(Couch):
         super(FlowcellRunMetricsConnection, self).__init__(**kwargs)
         self.db = self.con[dbname]
         self.name_view = {k.key:k.id for k in self.db.view("names/name", reduce=False)}
-	self.stat_view = {k.key:k.value for k in self.db.view("names/Barcode_lane_stat", reduce=False)}
-
+        self.stat_view = {k.key:k.value for k in self.db.view("names/Barcode_lane_stat", reduce=False)}
+        
     def set_db(self):
         """Make sure we don't change db from flowcells"""
         pass
+
+    def get_flowcell_by_id(self, flowcell_id):
+        """Get a flowcell document based on just the unique flowcell identifier
+        (e.g. AABC123CXX). Will throw an exception if more than one document match.
+        """
+        names = []
+        for fcname in self.name_view.keys():
+            if not fcname:
+                continue
+            if fcname.endswith(flowcell_id):
+                names.append(fcname)
+        if len(names) > 1:
+            raise ValueError("Multiple documents found matching flowcell id {}".format(flowcell_id))
+        if len(names) == 0:
+            names.append(flowcell_id)
+        return self.get_entry(names[0])
 
     def get_barcode_lane_statistics(self, project_id, sample_id, flowcell, lane):
 	"""Get Mean Quality Score (PF) and % of >= Q30 Bases (PF) for
@@ -484,10 +500,21 @@ class FlowcellRunMetricsConnection(Couch):
         run_mode = self.get_run_parameters(name).get('RunMode', None)
         return run_mode
 
+    def num_cycles(self, name):
+        """Get the number of cycles
+        """
+        reads = self.get_run_info(name).get('Reads', [])
+        return max([int(read.get('NumCycles',0)) for read in reads if str(read.get('IsIndexedRead','N')) == 'N'])
+
     def is_paired_end(self, name):
         """Get paired end status"""
         reads = self.get_run_info(name).get('Reads', [])
         return len([read for read in reads if str(read.get('IsIndexedRead','N')) == 'N']) == 2
+
+    def is_dual_index(self, name):
+        """Get index setup"""
+        reads = self.get_run_info(name).get('Reads', [])
+        return len([read for read in reads if str(read.get('IsIndexedRead','N')) == 'Y']) == 2
     
     def get_clustered(self, name):
         """Get clustering setup"""
@@ -512,6 +539,34 @@ class FlowcellRunMetricsConnection(Couch):
                  software[config['Name']] = config['Version']
                  config = config.get('Software',None)
         return software
+    
+    def get_start_date(self, name):
+        """Get start date"""
+        return self.get_run_parameters(name).get('RunStartDate')
+    
+    def get_lane_yields(self, name, project_name=None):
+        """Get the total count for all lanes. If a project_name is supplied, only return the counts for the lanes
+        that contain samples from this project"""
+        fc = self.get_entry(name)
+        yields = {}
+        projects = {}
+        for sample in fc.get("illumina",{}).get("Demultiplex_Stats",{}).get("Barcode_lane_statistics",[]):
+            lane = sample.get("Lane")
+            if lane not in yields:
+                yields[lane] = 0
+                projects[lane] = []
+            yields[lane] += int(sample.get("# Reads","0").replace(",",""))
+            projects[lane] = list(set(projects[lane] + [sample.get("Project").replace("__",".")]))
+        
+        # Correct for read pairs
+        if self.is_paired_end(name):
+            yields = {k:int(v/2) for k,v in yields.items()}
+        
+        # Only return lanes containing the project
+        if project_name:
+            yields = {k:v for k,v in yields.items() if project_name in projects[k]}
+            
+        return yields
     
 class ProjectSummaryConnection(Couch):
     _doc_type = ProjectSummaryDocument
