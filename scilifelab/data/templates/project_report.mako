@@ -1,3 +1,7 @@
+.. footer::
+
+   \#\#\#Page\#\#\#
+
 .. image:: ${sll_logo_small}
    :align: right
 
@@ -5,11 +9,13 @@
 Project status note
 ===================
 
-SciLifeLab Stockholm
---------------------
-
 ${date}
------------------
+---------------------------------
+
+Description
+^^^^^^^^^^^
+
+This is a project status note containing an overview of the status of your project to date. If your You will receive a new status update
 
 Project name
 ^^^^^^^^^^^^
