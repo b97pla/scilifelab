@@ -102,7 +102,7 @@ def upload_to_gdocs(fcdir, credentials_file=None, gdocs_folder=None):
         write_flowcell_metrics(project_samples, ssheet, wsheet_name)
         
         # Create the summary over all worksheets in the project
-        summary_samples = summarize_project(ssheet,{})
+        summary_samples = summarize_project(ssheet)
         write_flowcell_metrics(summary_samples, ssheet, "Summary")
     
     return output_data
