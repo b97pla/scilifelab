@@ -88,7 +88,6 @@ This may not be the case if, for example, the low yield is due to a problem with
  
 .. table:: **Table 2a.** The total number of read${' pair' if is_paired else ''}s (in millions) in each lane.${' An asterisk (*) next to a value indicates a yield less than what we guarantee.' if application == 'Finished library' else ''}
 
-
   .. class:: sample-table  
 
 ${lane_yield_table}
@@ -141,6 +140,8 @@ Data delivery
 :File format: FASTQ
 :Quality scale: Sanger / phred33 / Illumina 1.8+
 
+Data from the sequencing will be uploaded to the UPPNEX (UPPMAX Next Generation sequence Cluster Storage, www.uppmax.uu.se), from which the user can access it. 
+
 Sequence reads in FASTQ format, compressed with gzip, have been delivered to the INBOX of the UPPNEX account associated with your project. Data for each sample is placed under its own subfolder in the project path.
 Under each sample folder, the data is further organized according to flowcell. Since this is a ${'paired' if is_paired else 'single'} end run, there will be ${'two files' if is_paired else 'one file'} 
 for each sample and lane${', one for the forward read and one for the reverse read' if is_paired else ''}. The quality scale is Sanger / phred33 / Illumina 1.8+.
@@ -153,6 +154,19 @@ Please refer to the `Sequencing FAQ`_ for detailed instructions on how to log in
 questions regarding UPPNEX, please contact support@uppmax.uu.se.
 
 .. _Sequencing FAQ: http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf
+
+.. raw:: pdf
+
+  PageBreak
+
+Acknowledgement
+^^^^^^^^^^^^^^^
+
+In publications based on data from the work covered by this contract, the 
+authors must acknowledge SciLifeLab, NGI and Uppmax: "The authors would 
+like to acknowledge support from Science for Life Laboratory, the National 
+Genomics Infrastructure, NGI, and Uppmax for providing assistance in massive 
+parallel sequencing and computational infrastructure."
 
 
 

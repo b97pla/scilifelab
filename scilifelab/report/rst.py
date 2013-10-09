@@ -86,44 +86,30 @@ def col_widths(data):
             wd[i] = max(len(str(row[i])),wd[i])
     return wd
 
-def make_rst_sample_name_table(data):
-    """Format sample name table"""
+def _make_rst_table(data):
     if data is None or len(data) == 0:
         return ""
     else:
         tab_tt = tt.Texttable(max_width=0)
+        tab_tt.set_precision(2)
         tab_tt.add_rows(data)
         return indent_texttable_for_rst(tab_tt)
+
+def make_rst_sample_name_table(data):
+    """Format sample name table"""
+    return _make_rst_table(data)
 
 def make_rst_sample_yield_table(data):
     """Format sample name table"""
-    if data is None or len(data) == 0:
-        return ""
-    else:
-        tab_tt = tt.Texttable(max_width=0)
-        tab_tt.set_precision(2)
-        tab_tt.add_rows(data)
-        return indent_texttable_for_rst(tab_tt)
+    return _make_rst_table(data)
 
 def make_rst_lane_yield_table(data):
     """Format sample name table"""
-    if data is None or len(data) == 0:
-        return ""
-    else:
-        tab_tt = tt.Texttable(max_width=0)
-        tab_tt.set_precision(2)
-        tab_tt.add_rows(data)
-        return indent_texttable_for_rst(tab_tt)
+    return _make_rst_table(data)
 
 def make_rst_sample_quality_table(data):
     """Format sample name table"""
-    if data is None or len(data) == 0:
-        return ""
-    else:
-        tab_tt = tt.Texttable(max_width=0)
-        tab_tt.set_precision(2)
-        tab_tt.add_rows(data)
-        return indent_texttable_for_rst(tab_tt)
+    return _make_rst_table(data)
 
 def make_logo_table():
     """Format the logo table
@@ -151,10 +137,12 @@ def make_rest_note(outfile, tables={}, outdir="rst", report="sample_report", **k
                'author':'N/A',
                'description':'N/A',
                'logo_table': make_logo_table(),
-               'sample_name_table':make_rst_sample_name_table(tables.get('name',None)),
-               'sample_yield_table':make_rst_sample_yield_table(tables.get('sample_yield',None)),
-               'lane_yield_table':make_rst_lane_yield_table(tables.get('lane_yield',None)),
-               'sample_quality_table':make_rst_sample_quality_table(tables.get('quality',None)),
+               'sample_name_table':make_rst_sample_name_table(tables.get('name')),
+               'sample_yield_table':make_rst_sample_yield_table(tables.get('sample_yield')),
+               'lane_yield_table':make_rst_lane_yield_table(tables.get('lane_yield')),
+               'sample_quality_table':make_rst_sample_quality_table(tables.get('quality')),
+               'flowcell_table':_make_rst_table(tables.get('flowcell_table')),
+               'sample_table':_make_rst_table(tables.get('sample_table')),
                'stylefile': os.path.join(TEMPLATEPATH, "rst", "scilife.txt"),
                })
     if not os.path.exists(rst_path):

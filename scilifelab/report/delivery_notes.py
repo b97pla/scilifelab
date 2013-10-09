@@ -175,6 +175,7 @@ def _set_project_sample_dict(project_sample_item, source):
     #The structure of the database has changed for projects opened after July 1st
     #2013 (document 10294_01 for more details)
     if source == 'lims':
+        # FIXME: This section does not return the correctly formatted results
         LOG.debug("This project has LIMS as source of information")
         if "library_prep" in project_sample_item.keys():
             sample_run_metrics = {k:v.get("sample_run_metrics", {}) for k,v in \
@@ -206,6 +207,72 @@ def _set_project_sample_dict(project_sample_item, source):
     return project_sample_d
 
 
+def _collect_status_note_data(**kw):
+    """Gather the data needed for status notes
+    """
+    
+    # Connect to databases
+    s_con = SampleRunMetricsConnection(dbname=kw.get("samplesdb"), **kw)
+    fc_con = FlowcellRunMetricsConnection(dbname=kw.get("flowcelldb"), **kw)
+    p_con = ProjectSummaryConnection(dbname=kw.get("projectdb"), **kw)
+
+    project_name = kw.get("project_name")
+    project = p_con.get_entry(project_name)
+    if not project:
+        LOG.warn("No such project '{}'".format(project_name))
+        return []
+    
+    prj_dict = dict()
+    # Update the dict with project information
+    prj_dict.update(_get_project_info(project, p_con))
+    
+    # Get uppnex id, possible overridden on the command line
+    if kw.get("uppnex_id"):
+        prj_dict["uppnex_project_id"] = kw.get("uppnex_id")
+        
+    # Get customer reference, possible overridden on the command line        
+    if kw.get("customer_reference"):
+        prj_dict["customer_reference"] = kw.get("customer_reference")
+
+    # Get the list of sample_runs, possibly restricted by flowcell
+    flowcell = kw.get("flowcell")
+    sample_run_list = _set_sample_run_list(project_name,flowcell,kw.get("project_alias"),s_con)
+    if len(sample_run_list) == 0:
+        LOG.warn("No samples for project '{}'{}. Maybe there are no sample run metrics in statusdb?".format(project_name,                                                                                                        ', flowcell {}'.format(flowcell) if flowcell else '')) 
+    sample_dict = _get_sample_info(sample_run_list, prj_dict, fc_con, **kw)
+    
+    fc_dict = []
+    if flowcell:
+        # Get flowcell
+        fc_doc = fc_con.get_flowcell_by_id(flowcell)
+        if not fc_doc:
+            LOG.warn("No such flowcell '{}'".format(flowcell))
+            return []
+        fc = fc_doc.get("name")
+        
+        # Get a dict with the flowcell level information
+        param = _get_flowcell_info(fc_con,fc,project_name)
+        # Update the dict with the relevant QC thresholds
+        param.update(_get_qc_thresholds(param,kw.get("config")))
+        fc_dict.append(param)
+    else:
+        # Get all flowcells and lanes from the sample run list
+        fcs = {}
+        for sample in sample_run_list:
+            fc = '{}_{}'.format(sample.get("date"),
+                                sample.get("flowcell"))
+            if not fc in fcs:
+                # Get a dict with the flowcell level information
+                param = _get_flowcell_info(fc_con,fc,project_name)
+                # Update the dict with the relevant QC thresholds
+                param.update(_get_qc_thresholds(param,kw.get("config")))
+                fc_dict.append(param)
+                fcs[fc] = []
+                
+            fcs[fc] = list(set(fcs[fc] + [sample.get("lane")]))
+        
+    return prj_dict, fc_dict, sample_dict
+     
 def sample_status_note(project_name=None, flowcell=None, username=None, password=None, url=None,
                        ordered_million_reads=None, uppnex_id=None, customer_reference=None, bc_count=None,
                        project_alias=[], projectdb="projects", samplesdb="samples", flowcelldb="flowcells",
@@ -224,107 +291,52 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
     :param phix: phix error rate
     :param is_paired: True if run is paired-end, False for single-end
     """
-    # Cutoffs
-    cutoffs = {
-        "phix_err_cutoff" : float(config.get("qc","phix_error_rate_threshold")),
-        "qv_cutoff" : 30,
-        }
-
-    instrument = _parse_instrument_config(os.path.expanduser(kw.get("instrument_config","")))
-    instrument_dict = {i['instrument_id']: i for i in instrument}
-
+    
+    kw["project_name"] = project_name
+    kw["flowcell"] = flowcell
+    kw["username"] = username
+    kw["password"] = password
+    kw["url"] = url
+    kw["uppnex_id"] = uppnex_id
+    kw["customer_reference"] = customer_reference
+    kw["project_alias"] = project_alias
+    kw["projectdb"] = projectdb
+    kw["samplesdb"] = samplesdb
+    kw["flowcelldb"] = flowcelldb
+    kw["phix"] = phix
+    kw["config"] = config
+    
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
     if not _assert_flowcell_format(flowcell):
         LOG.warn("Wrong flowcell format {}; skipping. Please use the flowcell id (format \"[A-Z0-9\-]+\")".format(flowcell) )
         return output_data
-    output_data = _update_sample_output_data(output_data, cutoffs)
+    #output_data = _update_sample_output_data(output_data, cutoffs)
 
-    # Set options
-    bc_count = _literal_eval_option(bc_count)
-    phix = _literal_eval_option(phix)
-    
-    # Connect and run
-    s_con = SampleRunMetricsConnection(dbname=samplesdb, username=username, password=password, url=url)
-    fc_con = FlowcellRunMetricsConnection(dbname=flowcelldb, username=username, password=password, url=url)
-    p_con = ProjectSummaryConnection(dbname=projectdb, username=username, password=password, url=url)
-
-    # Get project
-    project = p_con.get_entry(project_name)
-    source = p_con.get_info_source(project_name)
-    if not project:
-        LOG.warn("No such project '{}'".format(project_name))
+    data = _collect_status_note_data(**kw)
+    if len(data) == 0:
         return output_data
-
-    # Get flowcell
-    fc_doc = fc_con.get_flowcell_by_id(flowcell)
-    if not fc_doc:
-        LOG.warn("No such flowcell '{}'".format(flowcell))
-        return output_data
-    fc = fc_doc.get("name")
-
-    # Get a dict with the flowcell level information
-    fc_param = _get_flowcell_info(fc_con,fc,project_name)
-    # Update the dict with project information
-    fc_param.update(_get_project_info(project))
-    # Update the dict with the relevant QC thresholds
-    fc_param.update(_get_qc_thresholds(fc_param,config))
     
-    fc_param["pdffile"] = "{}_{}_flowcell_summary.pdf".format(project_name, fc)
-    fc_param["rstfile"] = "{}.rst".format(os.path.splitext(fc_param["pdffile"])[0])
+    prj_dict, fc_dict, sample_dict = data[0:3]
     
     # FIXME: parse this from configs
-    fc_param.update(software_versions)
-    demux_software = fc_con.get_demultiplex_software(fc)
-    fc_param["basecaller_version"] = demux_software.get(fc_param["basecall_software"],None)
-    fc_param["demultiplex_version"] = demux_software.get(fc_param["demultiplex_software"],"1.8.3")
-    
-    # Get uppnex id, possible overridden on the command line
-    if uppnex_id:
-        fc_param["uppnex_project_id"] = uppnex_id
-        
-    # Get customer reference, possible overridden on the command line        
-    if customer_reference:
-        fc_param["customer_reference"] = customer_reference
-
-    # Create the tables
-    snt_header = ['SciLifeLab ID','Submitted ID']
-    sample_name_table = [snt_header]
-    
-    syt_header = ['SciLifeLab ID','Lane','Barcode']
-    syt_header.append('Read{}s (M)'.format(' pair' if fc_param['is_paired'] else ''))
-    sample_yield_table = [syt_header]
-    
-    lyt_header = ['Lane',
-                  'Read{}s (M)'.format(' pair' if fc_param['is_paired'] else '')]
-    
-    lane_yield_table = [lyt_header] + [[lane,
-                                        "{}{}".format(_round_read_count_in_millions(yld),
-                                                      "*" if fc_param["application"] == "Finished library" and yld < int(fc_param["lane_yield_cutoff"]) else "")] for lane,yld in fc_param["lane_yields"].items()]
-    fc_param["lane_yield_cutoff"] = _round_read_count_in_millions(fc_param["lane_yield_cutoff"])
-    
-    sqt_header = ['SciLifeLab ID','Lane','Barcode','Avg Q','Q30 (%)','PhiX error rate (%)']
-    sample_quality_table = [sqt_header]
-    
-    
-    # Get the list of sample runs
-    sample_run_list = _set_sample_run_list(project_name, flowcell, project_alias, s_con)
-    if len(sample_run_list) == 0:
-        LOG.warn("No samples for project '{}', flowcell '{}'. Maybe there are no sample run metrics in statusdb?".format(project_name, flowcell))
-        return output_data
+    for fc_param in fc_dict:
+        fc_param.update(software_versions)
+        fc_param["basecaller_version"] = fc_param["software"].get(fc_param["basecall_software"])
+        fc_param["demultiplex_version"] = fc_param["software"].get(fc_param["demultiplex_software"],"1.8.3")
     
     # Verify that the same sample does not have two entries for the same flowcell, lane and barcode. If so, prompt for input.
-    sample_dict = {}
-    for sample in sample_run_list:
+    sample_d = {}
+    for sample in sample_dict:
         key = "{}_{}_{}_{}".format(sample.get("date"),
                                    sample.get("flowcell"),
                                    sample.get("lane"),
-                                   sample.get("sequence"))
-        if key not in sample_dict:
-            sample_dict[key] = []
+                                   sample.get("barcode"))
+        if key not in sample_d:
+            sample_d[key] = []
         
-        sample_dict[key].append(sample)
+        sample_d[key].append(sample)
         
-    for key, samples in sample_dict.items():
+    for key, samples in sample_d.items():
         # If we have just one sample for this key, everything is in order
         if len(samples) == 1:
             continue
@@ -336,7 +348,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
             for sample in samples:
                 LOG.info("Project: {}, sample: {}, yield (M): {}, _id: {}".format(sample.get("sample_prj"),
                                                                                   sample.get("barcode_name"),
-                                                                                  _round_read_count_in_millions(sample.get("bc_count")),
+                                                                                  sample.get("read_count"),
                                                                                   sample.get("_id")))
                 if not query_yes_no("Do you want to include this sample in the report?"):
                     LOG.info("Excluding sample run with _id: {}".format(sample.get("_id")))
@@ -344,82 +356,52 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
                     keep.append(sample)
             samples = keep
         
-        sample_dict[key] = samples
+        sample_d[key] = samples
     
     # Populate the sample run list with the verified sample runs
-    sample_run_list = [s[0] for s in sample_dict.values()]
+    sample_dict = [s[0] for s in sample_d.values()]
+        
+    rst_dict = dict()
+    rst_dict.update(fc_dict[0])
+    rst_dict.update(prj_dict)
+    rst_dict["pdffile"] = "{}_{}_flowcell_summary.pdf".format(rst_dict["project_name"], rst_dict["FC_name"])
+    rst_dict["rstfile"] = "{}.rst".format(os.path.splitext(rst_dict["pdffile"])[0])
+    
+    q30_cutoff = int(rst_dict["sample_q30_cutoff"])
+    phix_cutoff = float(rst_dict["phix_cutoff"])
+    lane_yield_cutoff = int(rst_dict["lane_yield_cutoff"])
+    rst_dict["lane_yield_cutoff"] = _round_read_count_in_millions(lane_yield_cutoff)
     
     # Loop samples and build the sample information table
-    for s in sample_run_list: 
-        LOG.debug("working on sample '{}', sample run metrics name '{}', id '{}'".format(s.get("barcode_name", None), s.get("name", None), s.get("_id", None)))
-        
-        # Get the project sample name corresponding to the sample run
-        project_sample = p_con.get_project_sample(project_name, s.get("project_sample_name", None))
-        if project_sample:
-            # FIXME: Is this really necessary? There doesn't seem to be any consequence if the ids don't match
-            LOG.debug("project sample run metrics mapping found: '{}' : '{}'".format(s["name"], project_sample["sample_name"]))
-            project_sample_item = project_sample['project_sample']
-            # Set project_sample_d: a dictionary mapping from sample run metrics name to sample run metrics database id
-            project_sample_d = _set_project_sample_dict(project_sample_item, source)
-            if not project_sample_d:
-                LOG.warn("No sample_run_metrics information for sample '{}', barcode name '{}', id '{}'\n\tProject summary information {}".format(s["name"], s["barcode_name"], s["_id"], project_sample))
-            # Check if sample run metrics name present in project database: if so, verify that database ids are consistent
-            if s["name"] not in project_sample_d.keys():
-                LOG.warn("no such sample run metrics '{}' in project sample run metrics dictionary".format(s["name"]) )
-            else:
-                if s["_id"] == project_sample_d[s["name"]]:
-                    LOG.debug("project sample run metrics mapping found: '{}' : '{}'".format(s["name"], project_sample_d[s["name"]]))
-                else:
-                    LOG.warn("inconsistent mapping for '{}': '{}' != '{}' (project summary id)".format(s["name"], s["_id"], project_sample_d[s["name"]]))
-            s['customer_name'] = project_sample_item.get("customer_name", None)
-            
-        # No project sample found. Manual upload to database necessary.
-        else:
-            s['customer_name'] = None
-            LOG.warn("No project sample name found for sample run name '{}'".format(s["barcode_name"]))
-            LOG.info("Please run 'pm qc upload-qc FLOWCELL_ID --extensive-matching' to update project sample names ")
-            LOG.info("or 'pm qc update --sample_prj PROJECT_NAME --names BARCODE_TO_SAMPLE_MAP to update project sample names.")
-            LOG.info("Please refer to the pm documentation for examples.")
-            query_ok(force=kw.get("force", False))
-        
-        # Get read counts, possible overridden on the command line
-        if bc_count:
-            read_count = _round_read_count_in_millions(_get_bc_count(s["barcode_name"], bc_count, s))
-        else:
-            read_count = _round_read_count_in_millions(s.get("bc_count",None))
-        
-        # Get quality score from demultiplex stats, if that fails
-        # (which it shouldn't), fall back on fastqc data.
-        (avg_quality_score, pct_q30_bases) = fc_con.get_barcode_lane_statistics(project_name, s.get("barcode_name"), fc, s["lane"])
-        if not avg_quality_score:
-            avg_quality_score = calc_avg_qv(s) 
-        if not avg_quality_score:
-            LOG.warn("Setting average quality failed for sample {}, id {}".format(s.get("name"), s.get("_id")))
-        if not pct_q30_bases:
-            LOG.warn("Setting % of >= Q30 Bases (PF) failed for sample {}, id {}".format(s.get("name"), s.get("_id")))
-        
-        # Get phix error rate, possible overridden on the command line
-        if phix:
-            phix_rate = _get_phix_error_rate(s["lane"], phix)
-        else:
-            phix_rate = fc_param["phix_error_rate"][s["lane"]] 
-        
-        scilifeid = s.get("project_sample_name", None)
-        customerid = s.get("customer_name", None)
-        lane = s.get("lane",None)
-        barcode = s.get("sequence",None)
-        
-        sample_name_table.append([scilifeid,customerid])
-        sample_yield_table.append([scilifeid,lane,barcode,read_count])
-        sample_quality_table.append([scilifeid,
-                                     lane,
-                                     barcode,
-                                     avg_quality_score,
-                                     "{}{}".format(pct_q30_bases,
-                                                   "*" if float(pct_q30_bases) < fc_param["sample_q30_cutoff"] else ""),
-                                     "{}{}".format(phix_rate,
-                                                   "*" if float(phix_rate) > fc_param["phix_cutoff"] else "")])
-
+    snt_header = ['SciLifeLab ID','Submitted ID']
+    syt_header = ['SciLifeLab ID','Lane','Barcode']
+    syt_header.append('Read{}s (M)'.format(' pair' if rst_dict['is_paired'] else ''))
+    sqt_header = ['SciLifeLab ID','Lane','Barcode','Avg Q','Q30 (%)','PhiX error rate (%)']
+    lyt_header = ['Lane',
+                  'Read{}s (M)'.format(' pair' if rst_dict['is_paired'] else '')]
+    
+    sample_name_table = [snt_header] + [[sample["scilifeid"], 
+                                         sample["customerid"]] for sample in sample_dict]
+    
+    sample_yield_table = [syt_header] + [[sample["scilifeid"], 
+                                          sample["lane"], 
+                                          sample["barcode"],
+                                          sample["read_count"]] for sample in sample_dict]
+    
+    sample_quality_table = [sqt_header] + [[sample["scilifeid"], 
+                                            sample["lane"], 
+                                            sample["barcode"],
+                                            sample["avgQ"],
+                                            "{}{}".format(sample["q30"],
+                                                          "*" if float(sample["q30"]) < q30_cutoff else ""),
+                                            "{}{}".format(sample["phix_error_rate"],
+                                                          "*" if float(sample["phix_error_rate"]) > phix_cutoff else ""),
+                                            ] for sample in sample_dict]
+    
+    lane_yield_table = [lyt_header] + [[lane,
+                                        "{}{}".format(_round_read_count_in_millions(yld),
+                                                      "*" if prj_dict["application"] == "Finished library" and yld < lane_yield_cutoff else "")] for lane,yld in fc_dict[0]["lane_yields"].items()]
+    
     # Sort the tables by smaple and lane
     snt = [sample_name_table[0]] 
     for n in sorted(sample_name_table[1:], key=operator.itemgetter(0,1)): 
@@ -431,11 +413,11 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
     sample_quality_table = [sample_quality_table[0]] + sorted(sample_quality_table[1:], key=operator.itemgetter(0,2,3))
 
     # Write final output to reportlab and rst files
-    output_data["debug"].write(json.dumps({'s_param': [fc_param], 'sample_runs':{s["name"]:s["barcode_name"] for s in sample_run_list}}))
+    output_data["debug"].write(json.dumps({'s_param': [rst_dict], 'sample_runs':{s["name"]:s["barcode_name"] for s in sample_dict}}))
 
-    make_rest_note(fc_param["rstfile"], 
+    make_rest_note(rst_dict["rstfile"], 
                    tables={'name': sample_name_table, 'sample_yield': sample_yield_table, 'lane_yield': lane_yield_table, 'quality': sample_quality_table}, 
-                   report="sample_report", **fc_param)
+                   report="sample_report", **rst_dict)
     
     return output_data
 
@@ -485,6 +467,7 @@ def _get_qc_thresholds(params, config):
 
 def _get_flowcell_info(fc_con, fc, project_name=None):
     info = {}
+    info["FC_name"] = fc
     info["FC_id"] = fc_con.get_run_info(fc).get("Flowcell")
     info["FC_position"] = fc_con.get_run_parameters(fc).get("FCPosition")
     info["start_date"] = fc_con.get_start_date(fc)
@@ -503,11 +486,12 @@ def _get_flowcell_info(fc_con, fc, project_name=None):
     info["num_cycles"] = fc_con.num_cycles(fc)
     info["lane_yields"] = fc_con.get_lane_yields(fc,project_name)
     info["phix_error_rate"] = {lane: fc_con.get_phix_error_rate(fc,lane) for lane in info["lane_yields"].keys()}
+    info["software"] = fc_con.get_demultiplex_software(fc)
     
     return info
     
     
-def _get_project_info(project):
+def _get_project_info(project, pcon):
     info = {}
     info["project_name"] = project.get("project_name")
     info["customer_reference"] = project.get("customer_reference")
@@ -517,8 +501,100 @@ def _get_project_info(project):
     info["uppnex_project_id"] = project.get("uppnex_id")
     info["project_id"] = project.get("project_id")
     info["open_date"] = project.get("open_date")
+    info["samples"] = project.get("samples")
+    info["m_ordered"] = pcon.get_ordered_amount(info["project_name"],samples=info["samples"])
     
     return info
+
+def _get_sample_info(sample_run_list, project, fc_con, **kw):
+    
+    samples = []
+    # Loop samples and build the sample information 
+    for sample in sample_run_list: 
+        LOG.debug("working on sample '{}', sample run metrics name '{}', id '{}'".format(sample.get("barcode_name"), 
+                                                                                         sample.get("name"), 
+                                                                                         sample.get("_id")))
+        # Get the project sample name corresponding to the sample run
+        project_sample = project.get("samples",{}).get(sample.get("project_sample_name"))
+        if project_sample:
+            # FIXME: Is this really necessary? There doesn't seem to be any consequence if the ids don't match
+            LOG.debug("project sample run metrics mapping found: '{}' : '{}'".format(sample["name"], project_sample["scilife_name"]))
+            # Set project_sample_d: a dictionary mapping from sample run metrics name to sample run metrics database id
+            project_sample_d = _set_project_sample_dict(project_sample, project.get("source","gdocs"))
+            if not project_sample_d:
+                LOG.warn("No sample_run_metrics information for sample '{}', barcode name '{}', id '{}'\n\tProject summary information {}".format(sample["name"], 
+                                                                                                                                                  sample["barcode_name"], 
+                                                                                                                                                  sample["_id"], 
+                                                                                                                                                  project_sample))
+            # Check if sample run metrics name present in project database: if so, verify that database ids are consistent
+            if sample["name"] not in project_sample_d.keys():
+                LOG.warn("no such sample run metrics '{}' in project sample run metrics dictionary".format(sample["name"]) )
+            else:
+                if sample["_id"] == project_sample_d[sample["name"]]:
+                    LOG.debug("project sample run metrics mapping found: '{}' : '{}'".format(sample["name"], 
+                                                                                             project_sample_d[sample["name"]]))
+                else:
+                    LOG.warn("inconsistent mapping for '{}': '{}' != '{}' (project summary id)".format(sample["name"], 
+                                                                                                       sample["_id"], 
+                                                                                                       project_sample_d[sample["name"]]))
+            sample['customer_name'] = project_sample.get("customer_name")
+            
+        # No project sample found. Manual upload to database necessary.
+        else:
+            sample['customer_name'] = None
+            LOG.warn("No project sample name found for sample run name '{}'".format(sample["barcode_name"]))
+            LOG.info("Please run 'pm qc upload-qc FLOWCELL_ID --extensive-matching' to update project sample names ")
+            LOG.info("or 'pm qc update --sample_prj PROJECT_NAME --names BARCODE_TO_SAMPLE_MAP to update project sample names.")
+            LOG.info("Please refer to the pm documentation for examples.")
+            query_ok(force=kw.get("force", False))
+        
+        # Get read counts, possible overridden on the command line
+        if kw.get("bc_count"):
+            read_count = _round_read_count_in_millions(_get_bc_count(sample["barcode_name"], _literal_eval_option(kw.get("bc_count")), sample))
+        else:
+            read_count = _round_read_count_in_millions(sample.get("bc_count"))
+        
+        # Get quality score from demultiplex stats, if that fails
+        # (which it shouldn't), fall back on fastqc data.
+        fc = "{}_{}".format(sample["date"],
+                            sample["flowcell"])
+        (avg_quality_score, pct_q30_bases) = fc_con.get_barcode_lane_statistics(project.get("project_name"), 
+                                                                                sample.get("barcode_name"), 
+                                                                                fc, 
+                                                                                sample["lane"])
+        if not avg_quality_score:
+            avg_quality_score = calc_avg_qv(sample) 
+        if not avg_quality_score:
+            LOG.warn("Setting average quality failed for sample {}, id {}".format(sample.get("name"), 
+                                                                                  sample.get("_id")))
+        if not pct_q30_bases:
+            LOG.warn("Setting % of >= Q30 Bases (PF) failed for sample {}, id {}".format(sample.get("name"), 
+                                                                                         sample.get("_id")))
+        
+        # Get phix error rate, possible overridden on the command line
+        if kw.get("phix"):
+            phix_rate = _get_phix_error_rate(sample["lane"], _literal_eval_option(kw.get("phix")))
+        else:
+            phix_rate = fc_con.get_phix_error_rate(fc,sample["lane"]) 
+        
+        sample_item = dict()
+        sample_item["_id"] = sample.get("_id")
+        sample_item["name"] = sample.get("name")
+        sample_item["scilifeid"] = sample.get("project_sample_name")
+        sample_item["sample_prj"] = sample.get("sample_prj")
+        sample_item["customerid"] = sample.get("customer_name")
+        sample_item["barcode_name"] = sample.get("barcode_name")
+        sample_item["lane"] = sample.get("lane")
+        sample_item["barcode"] = sample.get("sequence")
+        sample_item["date"] = sample.get("date")
+        sample_item["flowcell"] = sample.get("flowcell")
+        sample_item["read_count"] = read_count
+        sample_item["avgQ"] = avg_quality_score
+        sample_item["q30"] = pct_q30_bases
+        sample_item["phix_error_rate"] = phix_rate
+        samples.append(sample_item)
+    
+    return samples
 
 def _exclude_sample_id(exclude_sample_ids, sample_name, barcode_seq):
     """Check whether we should exclude a sample id.
@@ -657,28 +733,44 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
     :param flat_table: Just create a simple tab-separated version of the table instead of the fancy pdf
     """
 
+    kw["project_name"] = project_name
+    kw["username"] = username
+    kw["password"] = password
+    kw["url"] = url
+    kw["uppnex_id"] = uppnex_id
+    kw["customer_reference"] = customer_reference
+    kw["project_alias"] = project_alias
+    kw["projectdb"] = projectdb
+    kw["samplesdb"] = samplesdb
+    kw["flowcelldb"] = flowcelldb
+    kw["use_ps_map"] = use_ps_map
+    kw["use_bc_map"] = use_bc_map
+    kw["check_consistency"] = check_consistency
+    kw["ordered_million_reads"] = ordered_million_reads
+    kw["exclude_sample_ids"] = exclude_sample_ids
+    kw["sample_aliases"] = sample_aliases
+    kw["include_all_samples"] = include_all_samples
+    kw["flat_table"] = flat_table
+    
     # parameters
     parameters = {
         "project_name" : project_name,
         "finished" : "Not finished, or cannot yet assess if finished.",
         }
 
-    output_data, sample_table, param = _project_status_note_table(project_name, username, password, url,
-                                                                  use_ps_map, use_bc_map, check_consistency,
-                                                                  ordered_million_reads, uppnex_id,
-                                                                  customer_reference, exclude_sample_ids,
-                                                                  project_alias, sample_aliases, projectdb,
-                                                                  samplesdb, flowcelldb, include_all_samples,
-                                                                  parameters, **kw)
+    output_data, tables, param = _project_status_note_table(**kw)
 
     if not flat_table:
         # Set report paragraphs
-        paragraphs = project_note_paragraphs()
-        headers = project_note_headers()
+        #paragraphs = project_note_paragraphs()
+        #headers = project_note_headers()
 
-        paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
-        make_note("{}_project_summary.pdf".format(project_name), headers, paragraphs, **param)
-        make_rest_note("{}_project_summary.rst".format(project_name), sample_table=sample_table, report="project_report", **param)
+        #paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
+        #make_note("{}_project_summary.pdf".format(project_name), headers, paragraphs, **param)
+        make_rest_note("{}_project_summary.rst".format(param["project_name"]), 
+                       report="project_report", 
+                       tables=tables, 
+                       **param)
 
     else:
         # Write tab-separated output
@@ -695,17 +787,12 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
                 output_data['stdout'].write("{}\n".format("\t".join(data)))
 
     param.update({k:"N/A" for k in param.keys() if param[k] is None or param[k] ==  ""})
-    output_data["debug"].write(json.dumps({'param':param, 'table':sample_table}))
+    output_data["debug"].write(json.dumps({'param':param, 'sample_table': tables["sample_table"], 'flowcell_table': tables["flowcell_table"]}))
 
     return output_data
 
 
-def _project_status_note_table(project_name=None, username=None, password=None, url=None,
-                               use_ps_map=True, use_bc_map=False, check_consistency=False,
-                               ordered_million_reads=None, uppnex_id=None, customer_reference=None,
-                               exclude_sample_ids={}, project_alias=None, sample_aliases={},
-                               projectdb="projects", samplesdb="samples", flowcelldb="flowcells",
-                               include_all_samples=False, param={}, **kw):
+def _project_status_note_table(**kw):
 
     # mapping project_summary to parameter keys
     ps_to_parameter = {"scilife_name":"scilife_name", "customer_name":"customer_name", "project_name":"project_name"}
@@ -713,6 +800,7 @@ def _project_status_note_table(project_name=None, username=None, password=None, 
     table_keys = ['ScilifeID', 'SubmittedID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status']
 
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
+    """
     # Connect and run
     s_con = SampleRunMetricsConnection(dbname=samplesdb, username=username, password=password, url=url)
     fc_con = FlowcellRunMetricsConnection(dbname=flowcelldb, username=username, password=password, url=url)
@@ -728,7 +816,7 @@ def _project_status_note_table(project_name=None, username=None, password=None, 
         LOG.warn("No such project '{}'".format(project_name))
         return
     LOG.debug("Working on project '{}'.".format(project_name))
-
+    
     # Get sample run list and loop samples to make mapping sample -> {sampleruns}
     sample_run_list = _set_sample_run_list(project_name, flowcell=None, project_alias=project_alias, s_con=s_con)
     samples = {}
@@ -760,11 +848,51 @@ def _project_status_note_table(project_name=None, username=None, password=None, 
         param["uppnex_project_id"] = uppnex_id
     if customer_reference:
         param["customer_reference"] = customer_reference
-
+    """
+    
+    data = _collect_status_note_data(**kw)
+    if len(data) == 0:
+        return output_data
+    
+    prj_dict, fc_dict, sample_dict = data[0:3]
+   
     # Process options
-    ordered_million_reads = _literal_eval_option(ordered_million_reads)
-    exclude_sample_ids = _literal_eval_option(exclude_sample_ids, default={})
+    prj_dict["m_ordered"] = _literal_eval_option(kw.get("ordered_million_reads"), default=prj_dict.get("m_ordered"))
+    exclude_sample_ids = _literal_eval_option(kw.get("exclude_sample_ids"), default={})
 
+    # Create a list of lanes containing this project's samples on each flowcell
+    fc_lanes = {}
+    for sample in sample_dict:
+        key = "{}_{}".format(sample["date"],sample["flowcell"])
+        if key not in fc_lanes:
+            fc_lanes[key] = []
+        fc_lanes[key] = list(set(fc_lanes[key] + [sample["lane"]])) 
+
+    # Create the flowcell table
+    fct_header = ["Start date", "Flowcell position", "Flowcell id", "Lane", "Yield (M)", "PhiX error rate (%)"]
+    fc_table = [fct_header] + [[fc["start_date"],
+                                fc["FC_position"],
+                                fc["FC_id"],
+                                lane,
+                                "{}{}".format(_round_read_count_in_millions(fc["lane_yields"][lane]),
+                                              "*" if fc["lane_yields"][lane] < fc["lane_yield_cutoff"] else ""),
+                                "{}{}".format(fc["phix_error_rate"][lane],
+                                              "*" if fc["phix_error_rate"][lane] > fc["phix_cutoff"] else "")] for fc in fc_dict for lane in fc_lanes[fc["FC_name"]]]
+    fc_table = [fc_table[0]] + sorted(fc_table[1:], key=operator.itemgetter(0,1,2,3))
+    
+    # Create the sample table
+    st_header = ["SciLifeLab ID", "Submitted ID", "Total yield (M)", "Status"]
+    sample_table = [st_header] + [[sample.get("scilife_name"),
+                                   sample.get("customer_name"),
+                                   sample.get("m_reads_sequenced","0"),
+                                   sample.get("status","N/A")] for sample in prj_dict.get("samples",{}).values()]
+    sample_table = [sample_table[0]] + sorted(sample_table[1:], key=operator.itemgetter(0,1,3,2))
+    
+    rst_dict = prj_dict
+    rst_dict["flowcell_dicts"] = fc_dict
+    rst_dict["sample_dicts"] = sample_dict
+    
+    """ 
     ## Start collecting the data
     sample_table = []
     samples_excluded = []
@@ -821,6 +949,6 @@ def _project_status_note_table(project_name=None, username=None, password=None, 
     sample_table.sort()
     sample_table = list(sample_table for sample_table,_ in itertools.groupby(sample_table))
     sample_table.insert(0, ['ScilifeID', 'SubmittedID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status'])
-
-    return output_data, sample_table, param
+    """
+    return output_data, {"flowcell_table": fc_table, "sample_table": sample_table}, rst_dict
 

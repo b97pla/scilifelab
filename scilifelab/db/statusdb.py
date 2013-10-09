@@ -624,7 +624,7 @@ class ProjectSummaryConnection(Couch):
         if not amount:
             return None
         else:
-            return round(amount, dec)
+            return round(amount, dec) if rounded else amount
 
     def get_latest_library_prep(self, project_name):
         """Get mapping from project name to sample_run_metrics for
