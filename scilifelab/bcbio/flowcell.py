@@ -322,7 +322,7 @@ class Flowcell(object):
                 re_str = "{}_{}".format(smp['lane'], smp['barcode_id'])
             else:
                 re_str = "{}".format(smp['lane'])
-            pattern = "{}_[0-9]+_.?{}(_nophix)?(_{})?*{}".format(smp['lane'], smp['flowcell_id'], smp['barcode_id'], ext)
+            pattern = "{}_[0-9]+_.?{}(_nophix)?(_{})?.*{}".format(smp['lane'], smp['flowcell_id'], smp['barcode_id'], ext)
             glob_pfx[sample] = pattern
         return glob_pfx
 
