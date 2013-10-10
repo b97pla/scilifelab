@@ -139,15 +139,15 @@ class DistributedCommandHandler(command.CommandHandler):
             jt.args = cmd_args[1:]
             jt.jobName = job_args['jobname']
             if os.path.isdir(job_args['outputPath']):
-                jt.outputPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.abspath(job_args['outputPath']), jt.jobName + "-drmaa.log")
+                jt.outputPath = ":{}".format(os.path.join(os.path.abspath(job_args['outputPath']), jt.jobName + "-drmaa.out"))
             else:
-                jt.outputPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.abspath(job_args['outputPath']), os.getenv("HOME"))
+                jt.outputPath = ":{}".format(os.path.abspath(job_args['outputPath']))
             if os.path.isdir(job_args['errorPath']):
-                jt.errorPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.abspath(job_args['errorPath']), jt.jobName + "-drmaa.err")
+                jt.errorPath = ":{}".format(os.path.join(os.path.abspath(job_args['errorPath']), jt.jobName + "-drmaa.err"))
             else:
-                jt.errorPath = ":" + drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.join(os.path.abspath(job_args['errorPath']))
+                jt.errorPath = ":{}".format(os.path.abspath(job_args['errorPath']))
 
-            jt.workingDirectory = drmaa.JobTemplate.HOME_DIRECTORY + os.sep + os.path.abspath(job_args['errorPath'])
+            jt.workingDirectory = os.path.abspath(job_args['errorPath'])
             jt.nativeSpecification = "-t {time} -p {partition} -A {account} {extra}".format(**job_args)
             if kw.get('email', None):
                 jt.email=[kw.get('email')]
