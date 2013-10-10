@@ -147,7 +147,7 @@ class DistributedCommandHandler(command.CommandHandler):
             else:
                 jt.errorPath = ":{}".format(os.path.abspath(job_args['errorPath']))
 
-            jt.workingDirectory = os.path.abspath(job_args['errorPath'])
+            jt.workingDirectory = os.path.abspath(job_args['workingDirectory'])
             jt.nativeSpecification = "-t {time} -p {partition} -A {account} {extra}".format(**job_args)
             if kw.get('email', None):
                 jt.email=[kw.get('email')]
