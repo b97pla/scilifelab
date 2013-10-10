@@ -330,7 +330,7 @@ class Flowcell(object):
         """Return glob prefix regular expression strings"""
         glob_pfx = []
         for sample in self:
-            pattern = "{}_[0-9]+_.?{}(_nophix)?(_{})?*{}".format(sample['lane'], sample['flowcell_id'], sample['barcode_id'], ext)
+            pattern = "{}_[0-9]+_.?{}(_nophix)?(_{})?.*{}".format(sample['lane'], sample['flowcell_id'], sample['barcode_id'], ext)
             glob_pfx.append(pattern)
             # Catch sample files for casava
             glob_pfx.append("^{}[_\-].*\.*".format(sample['name']))
