@@ -154,11 +154,11 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
     assert os.path.exists(fc_dir), "ERROR: Flowcell directory %s does not exist" % fc_dir
     assert os.path.exists(analysis_dir), "ERROR: Analysis top directory %s does not exist" % analysis_dir
     
-    couch_credentials = config.get('couch_db',{})
-    couch_credentials['url'] = couch_credentials.get('maggie_url','localhost')
-    couch_credentials['port'] = couch_credentials.get('maggie_port','5984')
-    couch_credentials['username'] = couch_credentials.get('maggie_username','anonymous')
-    couch_credentials['password'] = couch_credentials.get('maggie_password','password')
+    couch_credentials = config.get('statusdb',{})
+    couch_credentials['url'] = couch_credentials.get('url','localhost')
+    couch_credentials['port'] = couch_credentials.get('port','5984')
+    couch_credentials['username'] = couch_credentials.get('username','anonymous')
+    couch_credentials['password'] = couch_credentials.get('password','password')
     
     # A list with the arguments to each run, when running by sample
     sample_run_arguments = []
@@ -395,15 +395,17 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
                                             'genome_build': 'phix'},
                          'RNA-seq (total RNA)': {'analysis': 'Align_standard',
                                                  'genome_build': 'phix'},
+                         'stranded RNA-seq (total RNA)': {'analysis': 'Align_standard',
+                                                          'genome_build': 'phix'},
                          'WG re-seq': {'analysis': 'Align_standard'},
                          'default': {'analysis': 'Align_standard'},
                          }
 
-    #Connect to maggie to get project application 
+    #Connect to statusdb to get project application 
     try:
         p_con = ProjectSummaryConnection(**couch_credentials)
     except:
-        print "Can't connect to maggie to get application"
+        print "Can't connect to statusdb to get application"
         p_con = None
   
   # Replace the default analysis
