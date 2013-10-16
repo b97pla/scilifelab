@@ -6,7 +6,7 @@ import yaml
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractExtendedBaseController
 from scilifelab.bcbio.flowcell import *
-from scilifelab.lib.archive import flowcell_remove_status, package_run, rm_run, upload_tarball, rm_tarball
+from scilifelab.lib.archive import *
 
 ## Main archive controller
 class ArchiveController(AbstractExtendedBaseController):
@@ -34,6 +34,8 @@ class ArchiveController(AbstractExtendedBaseController):
         base_app.args.add_argument('--remote-user', action="store", default=None, help="remote user to use for remote upload")
         base_app.args.add_argument('--remote-host', action="store", default=None, help="remote host to use for remote upload")
         base_app.args.add_argument('--remote-path', action="store", default=None, help="remote path to use for remote upload")
+        base_app.args.add_argument('--send-to-swestore', action="store_true", default=False, help="send a packaged run to swestore using irods")
+        base_app.args.add_argument('--swestore-path', action="store", default=None, help="the path to the project's folder on the swestore area")
 
     def _process_args(self):
         # Set root path for parent class
@@ -88,6 +90,7 @@ class ArchiveController(AbstractExtendedBaseController):
     def swestore(self):
         """This function is the entry point for tasks having to do with packaging and sending runs to swestore
         """
+        # Create a tarball out of the run folder
         if self.pargs.package_run:
             
             # We require a flowcell argument
@@ -100,15 +103,27 @@ class ArchiveController(AbstractExtendedBaseController):
                 return
             if self.pargs.clean:
                 rm_run(self,self.config.get('archive','root'), flowcell=self.pargs.flowcell)
+        
+        if not self.pargs.tarball:
+            self.log.error("Required argument --tarball was not specified")
+            return
+        
+        if not os.path.exists(self.pargs.tarball):
+            self.log.error("Tarball {} does not exist".format(self.pargs.tarball))
+            return
+         
+        # Upload a tarball to a remote host
         if self.pargs.remote_upload:
-            if not self.pargs.tarball:
-                self.log.error("Required argument --tarball was not specified")
-                return
-            if not os.path.exists(self.pargs.tarball):
-                self.log.error("Tarball {} does not exist".format(self.pargs.tarball))
-                return 
             result = upload_tarball(self,
                                     **dict(self.config.get_section_dict('archive').items() + vars(self.pargs).items()))
+            if not result:
+                return
+            if self.pargs.clean:
+                rm_tarball(self,tarball=self.pargs.tarball)
+                
+        # Send the tarball to Swestore using irods
+        if self.pargs.send_to_swestore:
+            result = send_to_swestore(self,**dict(self.config.get_section_dict('archive').items() + vars(self.pargs).items()))
             if not result:
                 return
             if self.pargs.clean:

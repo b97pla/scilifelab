@@ -227,6 +227,68 @@ def upload_tarball(arch, tarball, remote_host=None, remote_path=None, remote_use
         
     return passed
 
+def send_to_swestore(arch, tarball, swestore_path=None, **kw):
+    """Method that sends a tarball to swestore using irods
+    
+    For now, the irods commands are just shell commands. These could probably be migrated to use the PyRods library.
+    """
+    dir = os.path.dirname(tarball)
+    fname = os.path.basename(tarball)
+
+    if swestore_path is None:
+        arch.log.error("A Swestore path must be specified in the config or with the --swestore-path command line option")
+        return False
+    ss_tarball = os.path.join(swestore_path,fname)
+    
+    # Load the irods module 
+    try:
+        cmd = "module unload irods"
+        arch.log.info(arch.app.cmd.command(shlex.split(cmd),capture=True,ignore_error=False))
+        cmd = "module load irods/swestore"
+        arch.log.info(arch.app.cmd.command(shlex.split(cmd),capture=True,ignore_error=False))
+    except:
+        arch.log.error("failed to load irods modules")
+        return False
+    
+    # cd to the relevant swestore path
+    try:
+        cmd = "icd {}".format(swestore_path)
+        arch.log.info(arch.app.cmd.command(shlex.split(cmd),capture=True,ignore_error=False))
+        # put the tarball on the remote destination
+        cmd = "iput -K -P {} {}".format(tarball,ss_tarball)
+        arch.log.info("sending {} to swestore with command '{}'".format(tarball,cmd))
+        arch.log.info(arch.app.cmd.command(shlex.split(cmd),capture=True,ignore_error=False))
+    except:
+        arch.log.error("sending {} to swestore failed".format(tarball))
+        return False
+    
+    # verify the transfer to swestore using ssverify.sh
+    passed = False
+    try:
+        cmd = "ssverify.sh {} {}".format(tarball,ss_tarball)
+        arch.log.info("verifying integrity of transfer to swestore with command '{}'".format(cmd))
+        arch.log.info(arch.app.cmd.command(shlex.split(cmd),capture=True,ignore_error=False))
+        passed = True
+    except:
+        self.log.error("verification of transfer to swestore failed for {}".format(tarball))
+    
+    # if transfer validation failed, prompt to clean up on remote
+    if not passed:
+        if query_yes_no("Remove the corrupt file in swestore ({})?".format(ss_tarball), 
+                        force=arch.pargs.force):
+            try:
+                cmd = "irm {}".format(ss_tarball)
+                arch.log.info("removing {}".format(ss_tarball))
+                arch.log.info(arch.app.cmd.command(shlex.split(cmd),capture=True,ignore_error=False))
+            except:
+                arch.log.error("failed to remove {} from swestore using irods. You may need to do this manually".format(ss_tarball))
+        
+        arch.log.error("sending of {} to swestore failed".format(tarball))
+        return False
+    
+    arch.log.info("{} uploaded to {} in swestore successfully".format(tarball,ss_tarball))
+    return True
+    
 @task
 def verify_upload(remote_md5):
     """Verify the md5 sum of a remote file
@@ -236,8 +298,7 @@ def verify_upload(remote_md5):
     remote_fname = os.path.splitext(os.path.basename(remote_md5))[0]
     with settings(warn_only=True):        
         with cd(remote_path):
-            result = run("md5sum -c {}".format(os.path.basename(remote_md5)))
-            return re.search(r'{}\:\s+OK'.format(remote_fname),result)
+            return run("md5sum -c {}".format(os.path.basename(remote_md5))).succeeded
 
 @task
 def rm_file(path):
