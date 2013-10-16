@@ -240,12 +240,13 @@ def send_to_swestore(arch, tarball, swestore_path=None, **kw):
         return False
     ss_tarball = os.path.join(swestore_path,fname)
     
+    command_kw = {capture:True,ignore_error:False, shell:True}
     # Load the irods module 
     try:
         cmd = "module unload irods"
-        arch.log.info(arch.app.cmd.command(shlex.split(cmd),capture=True,ignore_error=False))
+        arch.log.info(arch.app.cmd.command(shlex.split(cmd),**command_kw))
         cmd = "module load irods/swestore"
-        arch.log.info(arch.app.cmd.command(shlex.split(cmd),capture=True,ignore_error=False))
+        arch.log.info(arch.app.cmd.command(shlex.split(cmd),**command_kw))
     except:
         arch.log.error("failed to load irods modules")
         return False
@@ -253,11 +254,11 @@ def send_to_swestore(arch, tarball, swestore_path=None, **kw):
     # cd to the relevant swestore path
     try:
         cmd = "icd {}".format(swestore_path)
-        arch.log.info(arch.app.cmd.command(shlex.split(cmd),capture=True,ignore_error=False))
+        arch.log.info(arch.app.cmd.command(shlex.split(cmd),**command_kw))
         # put the tarball on the remote destination
         cmd = "iput -K -P {} {}".format(tarball,ss_tarball)
         arch.log.info("sending {} to swestore with command '{}'".format(tarball,cmd))
-        arch.log.info(arch.app.cmd.command(shlex.split(cmd),capture=True,ignore_error=False))
+        arch.log.info(arch.app.cmd.command(shlex.split(cmd),**command_kw))
     except:
         arch.log.error("sending {} to swestore failed".format(tarball))
         return False
@@ -267,7 +268,7 @@ def send_to_swestore(arch, tarball, swestore_path=None, **kw):
     try:
         cmd = "ssverify.sh {} {}".format(tarball,ss_tarball)
         arch.log.info("verifying integrity of transfer to swestore with command '{}'".format(cmd))
-        arch.log.info(arch.app.cmd.command(shlex.split(cmd),capture=True,ignore_error=False))
+        arch.log.info(arch.app.cmd.command(shlex.split(cmd),**command_kw))
         passed = True
     except:
         self.log.error("verification of transfer to swestore failed for {}".format(tarball))
@@ -279,7 +280,7 @@ def send_to_swestore(arch, tarball, swestore_path=None, **kw):
             try:
                 cmd = "irm {}".format(ss_tarball)
                 arch.log.info("removing {}".format(ss_tarball))
-                arch.log.info(arch.app.cmd.command(shlex.split(cmd),capture=True,ignore_error=False))
+                arch.log.info(arch.app.cmd.command(shlex.split(cmd),**command_kw))
             except:
                 arch.log.error("failed to remove {} from swestore using irods. You may need to do this manually".format(ss_tarball))
         
