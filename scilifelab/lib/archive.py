@@ -6,6 +6,8 @@ import subprocess
 import shlex
 
 from cStringIO import StringIO
+from fabric.api import task, run, execute, cd, settings
+from fabric.network import disconnect_all
 from scilifelab.utils.misc import filtered_walk
 from scilifelab.utils.misc import query_yes_no, md5sum
 
@@ -105,7 +107,7 @@ def rm_run(arch, root, flowcell=None):
     if not query_yes_no("Going to remove flowcell folder {}. This action can not be undone. Are you sure you want to continue?".format(path), 
                         force=arch.pargs.force):
         return
-    arch.app.log.info("removing {}".format(path))
+    arch.log.info("removing {}".format(path))
     arch.app.cmd.rmtree(path)
     
 def rm_tarball(arch, tarball):
@@ -114,7 +116,7 @@ def rm_tarball(arch, tarball):
     if not query_yes_no("Going to remove tarball {}. This action can not be undone. Are you sure you want to continue?".format(tarball), 
                         force=arch.pargs.force):
         return
-    arch.app.log.info("removing {}".format(tarball))
+    arch.log.info("removing {}".format(tarball))
     arch.app.cmd.safe_unlink(tarball)
     
 def package_run(arch, root, flowcell, workdir=None, excludes=None, compress_program=None, **kw):
@@ -166,7 +168,7 @@ def upload_tarball(arch, tarball, remote_host=None, remote_path=None, remote_use
     """Upload the tarball to the remote destination
     """
     if not remote_path:
-        arch.app.cmd.error("A remote path must be specified in the config or on the command line")
+        arch.log.error("A remote path must be specified in the config or on the command line")
         return False
      
     source_files = {'tarball': tarball,
@@ -193,24 +195,57 @@ def upload_tarball(arch, tarball, remote_host=None, remote_path=None, remote_use
         arch.app.cmd.transfer_file(source_files[label],remote_files[label])
     
     # Verify the transfer on the remote side using fabric (if necessary)
+    use_fabric = remote_host is not None and remote_host != "localhost"
+    passed = False 
     arch.log.debug("Verifying integrity of remote file {} after transfer".format(remote_files['tarball']))
-    if remote_host is not None and remote_host != "localhost":
+    if use_fabric:
         # Verify the md5sum using fabric
-        pass
+        host, path = remote_files['tarball_md5'].split(':')
+        result = execute(verify_upload,path,host=host)
+        passed = result.get(host,False)
     else:
-        # If the destination file is on the same server, fabric is not necessary
-        if not arch.app.cmd.verify_md5sum(remote_files['tarball_md5']):
-            arch.app.log.error("md5 sum of remote file {} does not match after transfer".format(remote_files['tarball']))
-            if query_yes_no("Remove the corrupted remote file {}?".format(remote_files['tarball']), 
-                            force=arch.pargs.force):
-                for path in remote_files.values():
-                    arch.app.log.info("removing {}".format(path))
+        passed = arch.app.cmd.verify_md5sum(remote_files['tarball_md5'])
+        
+    # If the verification was not successful, prompt to delete the corrupt files
+    if not passed:
+        arch.log.error("md5 sum of remote file {} does not match after transfer".format(remote_files['tarball']))
+        if query_yes_no("Remove the corrupted remote file {}?".format(remote_files['tarball']), 
+                        force=arch.pargs.force):
+            for path in remote_files.values():
+                arch.log.info("removing {}".format(path))
+                if use_fabric:
+                    path = path.split(':')[-1]
+                    execute(rm_file,path,host=host)
+                else:
                     arch.app.cmd.safe_unlink(path)
-            return False
+        arch.log.error("Upload of {} to remote destination failed".format(source_files['tarball']))
+    else:
+        arch.log.info("{} uploaded to {} successfully".format(source_files['tarball'],remote_files['tarball']))
     
-    arch.log.info("{} uploaded to {} successfully".format(source_files['tarball'],remote_files['tarball']))
-    return True
+    if use_fabric:    
+        disconnect_all()
+        
+    return passed
 
+@task
+def verify_upload(remote_md5):
+    """Verify the md5 sum of a remote file
+    """
+    # Go to the remote folder and execute the md5sum check
+    remote_path = os.path.dirname(remote_md5)
+    remote_fname = os.path.splitext(os.path.basename(remote_md5))[0]
+    with settings(warn_only=True):        
+        with cd(remote_path):
+            result = run("md5sum -c {}".format(os.path.basename(remote_md5)))
+            return re.search(r'{}\:\s+OK'.format(remote_fname),result)
+
+@task
+def rm_file(path):
+    """Remove the supplied file
+    """
+    run("rm {}".format(path))
+    
+        
     
 
     

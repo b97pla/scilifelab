@@ -110,7 +110,6 @@ class ArchiveController(AbstractExtendedBaseController):
             result = upload_tarball(self,
                                     **dict(self.config.get_section_dict('archive').items() + vars(self.pargs).items()))
             if not result:
-                self.log.error("Upload of {} to remote destination failed".format(self.pargs.tarball))
                 return
             if self.pargs.clean:
                 rm_tarball(self,tarball=self.pargs.tarball)
