@@ -3,9 +3,11 @@
 import os
 import re
 import subprocess
+import shlex
 
 from cStringIO import StringIO
 from scilifelab.utils.misc import filtered_walk
+from scilifelab.utils.misc import query_yes_no, md5sum
 
 import scilifelab.log
 
@@ -95,4 +97,120 @@ def flowcell_remove_status(archive_dir, swestore_dir, to_remove="to_remove"):
             continue
         output_data["stdout"].write("{:<40}{:>12}{:>20.2f}{:>60}\n".format(k, flowcells[k]['pbzip_exit'], flowcells[k]['tarball_size'], flowcells[k]['irods_checksum'] ))
     return output_data
+    
+def rm_run(arch, root, flowcell=None):
+    """Remove a flowcell folder from the root folder
+    """    
+    path = os.path.join(root,flowcell)
+    if not query_yes_no("Going to remove flowcell folder {}. This action can not be undone. Are you sure you want to continue?".format(path), 
+                        force=arch.pargs.force):
+        return
+    arch.app.log.info("removing {}".format(path))
+    arch.app.cmd.rmtree(path)
+    
+def rm_tarball(arch, tarball):
+    """Remove a tarball
+    """    
+    if not query_yes_no("Going to remove tarball {}. This action can not be undone. Are you sure you want to continue?".format(tarball), 
+                        force=arch.pargs.force):
+        return
+    arch.app.log.info("removing {}".format(tarball))
+    arch.app.cmd.safe_unlink(tarball)
+    
+def package_run(arch, root, flowcell, workdir=None, excludes=None, compress_program=None, **kw):
+    """Package a run in preparation for archiving to swestore
+    """
+    
+    # Check that a supplied file with excludes exist
+    if excludes is not None and not os.path.exists(excludes):
+        arch.log.error("Excludes file {} does not exist".format(excludes))
+        return None
+    if not workdir:
+        workdir = root
+    elif not os.path.exists(workdir):
+        arch.log.info("Creating non-existing working directory {}".format(workdir))
+        arch.app.cmd.safe_makedir(workdir)
 
+    dest_path = os.path.join(workdir,"{}.tar{}".format(flowcell,arch._meta.compress_suffix))
+    dest_path_md5 = "{}.md5".format(dest_path)
+    
+    # If destination path already exists, check if it should be overwritten or, if md5sums match, it should be left as is and used
+    if os.path.exists(dest_path):
+        if not kw.get("force_overwrite",False):
+            # Check md5sum
+            if os.path.exists(dest_path_md5) and arch.app.cmd.verify_md5sum(dest_path_md5):
+                arch.log.info("Run package already exists and md5sum matches, will not overwrite. Use --force-overwrite option to replace existing package")
+                return dest_path
+            elif os.path.exists(dest_path_md5):
+                arch.log.warn("Run package already exists but md5sum does not match, will replace existing package")
+            else:
+                arch.log.warn("Run package already exists but no md5sum to compare against could be found, will replace existing package")
+        else:
+            arch.log.info("Run package already exists but --force-overwrite specified, will replace existing package")
+    
+    cmd = "tar {} --use-compress-program={} {}-cf {} -C {} {}".format(arch._meta.compress_opt,
+                                                                arch._meta.compress_prog,
+                                                                "--exclude-from={} ".format(excludes) if excludes else "",
+                                                                dest_path,
+                                                                root,
+                                                                flowcell)
+    # Run the compression
+    arch.app.cmd.command(shlex.split(cmd), capture=True, ignore_error=False, cwd=workdir)
+    
+    # Calculate the md5sum
+    arch.app.cmd.md5sum(dest_path)
+    
+    return dest_path
+
+def upload_tarball(arch, tarball, remote_host=None, remote_path=None, remote_user=None, **kw):
+    """Upload the tarball to the remote destination
+    """
+    if not remote_path:
+        arch.app.cmd.error("A remote path must be specified in the config or on the command line")
+        return False
+     
+    source_files = {'tarball': tarball,
+                    'tarball_md5': "{}.md5".format(tarball)}
+    
+    arch.log.debug("Verifying that md5sum file {} exists".format(source_files['tarball_md5']))
+    if not os.path.exists(source_files['tarball_md5']):
+        arch.log.warn("md5 file {} does not exist".format(source_files['tarball_md5']))
+        if not query_yes_no("Calculate md5 file and proceed?", 
+                            force=arch.pargs.force):
+            return False
+        
+        # Calculate the md5sum
+        arch.app.cmd.md5sum(source_files['tarball'])
+    
+    remote_location = "{}{}".format("{}@".format(remote_user) if remote_user else "",
+                                    "{}:".format(remote_host) if remote_host else "")
+    # Transfer the md5 file and tarball
+    remote_files = {}
+    for label in source_files.keys():
+        remote_files[label] = "{}{}".format(remote_location,
+                                            os.path.join(remote_path,os.path.basename(source_files[label])))
+        arch.log.debug("Transferring {} to {}".format(source_files[label],remote_files[label]))
+        arch.app.cmd.transfer_file(source_files[label],remote_files[label])
+    
+    # Verify the transfer on the remote side using fabric (if necessary)
+    arch.log.debug("Verifying integrity of remote file {} after transfer".format(remote_files['tarball']))
+    if remote_host is not None and remote_host != "localhost":
+        # Verify the md5sum using fabric
+        pass
+    else:
+        # If the destination file is on the same server, fabric is not necessary
+        if not arch.app.cmd.verify_md5sum(remote_files['tarball_md5']):
+            arch.app.log.error("md5 sum of remote file {} does not match after transfer".format(remote_files['tarball']))
+            if query_yes_no("Remove the corrupted remote file {}?".format(remote_files['tarball']), 
+                            force=arch.pargs.force):
+                for path in remote_files.values():
+                    arch.app.log.info("removing {}".format(path))
+                    arch.app.cmd.safe_unlink(path)
+            return False
+    
+    arch.log.info("{} uploaded to {} successfully".format(source_files['tarball'],remote_files['tarball']))
+    return True
+
+    
+
+    

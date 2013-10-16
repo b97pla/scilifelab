@@ -6,7 +6,7 @@ import yaml
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractExtendedBaseController
 from scilifelab.bcbio.flowcell import *
-from scilifelab.lib.archive import flowcell_remove_status
+from scilifelab.lib.archive import flowcell_remove_status, package_run, rm_run, upload_tarball, rm_tarball
 
 ## Main archive controller
 class ArchiveController(AbstractExtendedBaseController):
@@ -24,6 +24,16 @@ class ArchiveController(AbstractExtendedBaseController):
         super(ArchiveController, self)._setup(base_app)
         base_app.args.add_argument('--as_yaml', action="store_true", default=False, help="list runinfo as yaml file")
         base_app.args.add_argument('-P', '--list-projects', action="store_true", default=False, help="list projects of flowcell")
+        base_app.args.add_argument('--package-run', action="store_true", default=False, help="package a run in preparation for archiving to swestore")
+        base_app.args.add_argument('--excludes', action="store", default=None, help="a file containing file and directory name patterns to exclude from tarball")
+        base_app.args.add_argument('--workdir', action="store", default=None, help="the folder to create tarballs in (default is parent of the run folder)")
+        base_app.args.add_argument('--force-overwrite', action="store_true", default=False, help="will replace any existing package")
+        base_app.args.add_argument('--tarball', action="store", default=None, help="tarball package of a run to send to swestore")
+        base_app.args.add_argument('--clean', action="store_true", default=False, help="remove the flowcell run folder after successful packaging")
+        base_app.args.add_argument('--remote-upload', action="store_true", default=False, help="upload the tarball to the remote host specified in config file")
+        base_app.args.add_argument('--remote-user', action="store", default=None, help="remote user to use for remote upload")
+        base_app.args.add_argument('--remote-host', action="store", default=None, help="remote host to use for remote upload")
+        base_app.args.add_argument('--remote-path', action="store", default=None, help="remote path to use for remote upload")
 
     def _process_args(self):
         # Set root path for parent class
@@ -63,3 +73,45 @@ class ArchiveController(AbstractExtendedBaseController):
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
 
+    @controller.expose(help="Remove a run folder from archive")
+    def rm(self):
+        """Remove a specified flowcell run folder from archive
+        """
+        
+        # We require a flowcell argument
+        if not self._check_pargs(["flowcell"]):
+            return
+        
+        rm_run(self,self.config.get('archive','root'), flowcell=self.pargs.flowcell)
+
+    @controller.expose(help="Archive a run in swestore")
+    def swestore(self):
+        """This function is the entry point for tasks having to do with packaging and sending runs to swestore
+        """
+        if self.pargs.package_run:
+            
+            # We require a flowcell argument
+            if not self._check_pargs(["flowcell"]):
+                return
+        
+            self.pargs.tarball = package_run(self,self.config.get('archive','root'), **vars(self.pargs))
+            if not self.pargs.tarball:
+                self.log.error("No tarball was created, exiting")
+                return
+            if self.pargs.clean:
+                rm_run(self,self.config.get('archive','root'), flowcell=self.pargs.flowcell)
+        if self.pargs.remote_upload:
+            if not self.pargs.tarball:
+                self.log.error("Required argument --tarball was not specified")
+                return
+            if not os.path.exists(self.pargs.tarball):
+                self.log.error("Tarball {} does not exist".format(self.pargs.tarball))
+                return 
+            result = upload_tarball(self,
+                                    **dict(self.config.get_section_dict('archive').items() + vars(self.pargs).items()))
+            if not result:
+                self.log.error("Upload of {} to remote destination failed".format(self.pargs.tarball))
+                return
+            if self.pargs.clean:
+                rm_tarball(self,tarball=self.pargs.tarball)
+        
