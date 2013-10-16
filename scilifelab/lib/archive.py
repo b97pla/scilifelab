@@ -240,7 +240,7 @@ def send_to_swestore(arch, tarball, swestore_path=None, **kw):
         return False
     ss_tarball = os.path.join(swestore_path,fname)
     
-    command_kw = {capture:True,ignore_error:False, shell:True}
+    command_kw = {'capture':True, 'ignore_error':False, 'shell':True}
     # Load the irods module 
     try:
         cmd = "module unload irods"
