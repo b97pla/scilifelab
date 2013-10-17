@@ -114,6 +114,7 @@ def _clone(source, destination):
         l.info("Copying data from {} in source to destination".format(db))
         d_couch.replicate(source_db, dest_db)
         l.info("Copying security object to {} database in destination".format(db))
+        d_couch[db].resource.put('_security', security)
 
     l.info("DONE!")
 
