@@ -136,4 +136,5 @@ class ArchiveController(AbstractExtendedBaseController):
             # Log to statusdb
             if self.pargs.log_to_db:
                 # implement this
-                pass
+                raise NotImplementedError("logging to db functionality not implemented")
+            
