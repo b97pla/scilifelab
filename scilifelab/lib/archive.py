@@ -6,7 +6,7 @@ import subprocess
 import shlex
 
 from cStringIO import StringIO
-from fabric.api import task, run, execute, cd, settings
+from fabric.api import task, run, execute, cd, settings, local
 from fabric.network import disconnect_all
 from scilifelab.utils.misc import filtered_walk
 from scilifelab.utils.misc import query_yes_no, md5sum
@@ -238,57 +238,30 @@ def send_to_swestore(arch, tarball, swestore_path=None, **kw):
     if swestore_path is None:
         arch.log.error("A Swestore path must be specified in the config or with the --swestore-path command line option")
         return False
-    ss_tarball = os.path.join(swestore_path,fname)
+    
+    swestore_path = os.path.relpath(swestore_path,os.path.join('/ssUppnexZone','proj'))
     
     command_kw = {'capture':True, 'ignore_error':False, 'shell':True}
-    # Load the irods module 
-    try:
-        cmd = "module unload irods"
-        arch.log.info(arch.app.cmd.command(shlex.split(cmd),**command_kw))
-        cmd = "module load irods/swestore"
-        arch.log.info(arch.app.cmd.command(shlex.split(cmd),**command_kw))
-    except:
-        arch.log.error("failed to load irods modules")
-        return False
-    
-    # cd to the relevant swestore path
-    try:
-        cmd = "icd {}".format(swestore_path)
-        arch.log.info(arch.app.cmd.command(shlex.split(cmd),**command_kw))
-        # put the tarball on the remote destination
-        cmd = "iput -K -P {} {}".format(tarball,ss_tarball)
-        arch.log.info("sending {} to swestore with command '{}'".format(tarball,cmd))
-        arch.log.info(arch.app.cmd.command(shlex.split(cmd),**command_kw))
-    except:
-        arch.log.error("sending {} to swestore failed".format(tarball))
-        return False
-    
-    # verify the transfer to swestore using ssverify.sh
+    # Execute the archiving script
     passed = False
     try:
-        cmd = "ssverify.sh {} {}".format(tarball,ss_tarball)
-        arch.log.info("verifying integrity of transfer to swestore with command '{}'".format(cmd))
-        arch.log.info(arch.app.cmd.command(shlex.split(cmd),**command_kw))
+        cmd = "swestore_archive_run.sh {}{}{} {}".format("-d " if arch.pargs.clean else "",
+                                                         "-n " if arch.pargs.dry_run else "",
+                                                         tarball,
+                                                         swestore_path)
+        arch.log.info("sending {} to swestore {}".format(tarball,swestore_path))
+        output = arch.app.cmd.command([cmd],**command_kw)
+        arch.log.info(output)
         passed = True
     except:
-        self.log.error("verification of transfer to swestore failed for {}".format(tarball))
+        arch.log.error("archiving script failed")
     
-    # if transfer validation failed, prompt to clean up on remote
     if not passed:
-        if query_yes_no("Remove the corrupt file in swestore ({})?".format(ss_tarball), 
-                        force=arch.pargs.force):
-            try:
-                cmd = "irm {}".format(ss_tarball)
-                arch.log.info("removing {}".format(ss_tarball))
-                arch.log.info(arch.app.cmd.command(shlex.split(cmd),**command_kw))
-            except:
-                arch.log.error("failed to remove {} from swestore using irods. You may need to do this manually".format(ss_tarball))
-        
         arch.log.error("sending of {} to swestore failed".format(tarball))
-        return False
-    
-    arch.log.info("{} uploaded to {} in swestore successfully".format(tarball,ss_tarball))
-    return True
+    else:
+        arch.log.info("{} uploaded to {} in swestore successfully".format(tarball,swestore_path))
+        
+    return passed
     
 @task
 def verify_upload(remote_md5):
@@ -307,7 +280,15 @@ def rm_file(path):
     """
     run("rm {}".format(path))
     
-        
+@task
+def load_module(module,tarball,ss_tarball):
+    """Load a module from the module system
+    """
+    local('echo $LOADEDMODULES')
+    local("module unload {}".format(module))
+    local("module load {}".format(module))  
+    local('echo $LOADEDMODULES')  
+    local("imkdir -p {}".format(os.path.dirname(ss_tarball)))
+    local("iput -K -P {} {}".format(tarball,ss_tarball))
     
-
     
