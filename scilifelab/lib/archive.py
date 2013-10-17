@@ -227,34 +227,49 @@ def upload_tarball(arch, tarball, remote_host=None, remote_path=None, remote_use
         
     return passed
 
-def send_to_swestore(arch, tarball, swestore_path=None, **kw):
+def send_to_swestore(arch, tarball, swestore_path=None, remote_swestore=False, remote_user=None, remote_host=None, remote_path=None, **kw):
     """Method that sends a tarball to swestore using irods
     
     For now, the irods commands are just shell commands. These could probably be migrated to use the PyRods library.
     """
-    dir = os.path.dirname(tarball)
-    fname = os.path.basename(tarball)
-
+    
+    passed = False
     if swestore_path is None:
         arch.log.error("A Swestore path must be specified in the config or with the --swestore-path command line option")
         return False
     
-    swestore_path = os.path.relpath(swestore_path,os.path.join('/ssUppnexZone','proj'))
-    
-    command_kw = {'capture':True, 'ignore_error':False, 'shell':True}
-    # Execute the archiving script
-    passed = False
-    try:
-        cmd = "swestore_archive_run.sh {}{}{} {}".format("-d " if arch.pargs.clean else "",
-                                                         "-n " if arch.pargs.dry_run else "",
-                                                         tarball,
-                                                         swestore_path)
-        arch.log.info("sending {} to swestore {}".format(tarball,swestore_path))
-        output = arch.app.cmd.command([cmd],**command_kw)
-        arch.log.info(output)
-        passed = True
-    except:
-        arch.log.error("archiving script failed")
+    # Execute on a remote host
+    if remote_swestore:
+        if not remote_path:
+            arch.log.error("a remote path where the tarball is located must be specified in the config or on the command line")
+            return False
+        
+        host = "{}{}".format("{}@".format(remote_user) if remote_user else "",
+                             remote_host)
+        remote_tarball = os.path.join(remote_path,os.path.basename(tarball))
+        arch.log.info("executing the swestore archiving script on the remote host {}".format(host))
+        result = execute(remote_swestore_archiving,remote_tarball,swestore_path,arch.pargs.clean,arch.pargs.dry_run,hosts=[host])
+        passed = result.get(host,False)
+        disconnect_all()
+        
+    # Run the script locally
+    else:
+        dir = os.path.dirname(tarball)
+        fname = os.path.basename(tarball)
+        
+        command_kw = {'capture':True, 'ignore_error':False, 'shell':True}
+        # Execute the archiving script
+        try:
+            cmd = "swestore_archive_run.sh {}{}{} {}".format("-d " if arch.pargs.clean else "",
+                                                             "-n " if arch.pargs.dry_run else "",
+                                                             tarball,
+                                                             swestore_path)
+            arch.log.info("sending {} to swestore {}".format(tarball,swestore_path))
+            output = arch.app.cmd.command([cmd],**command_kw)
+            arch.log.info(output)
+            passed = True
+        except:
+            arch.log.error("archiving script failed")
     
     if not passed:
         arch.log.error("sending of {} to swestore failed".format(tarball))
@@ -281,14 +296,14 @@ def rm_file(path):
     run("rm {}".format(path))
     
 @task
-def load_module(module,tarball,ss_tarball):
-    """Load a module from the module system
+def remote_swestore_archiving(tarball, swestore_path, clean, dry_run):
+    """Run the swestore archiving code on the remote host
     """
-    local('echo $LOADEDMODULES')
-    local("module unload {}".format(module))
-    local("module load {}".format(module))  
-    local('echo $LOADEDMODULES')  
-    local("imkdir -p {}".format(os.path.dirname(ss_tarball)))
-    local("iput -K -P {} {}".format(tarball,ss_tarball))
+    cmd = "pm archive swestore --tarball {} --send-to-swestore --swestore-path {}{}{}".format(tarball,
+                                                                                              swestore_path,
+                                                                                              " --clean" if clean else "",
+                                                                                              " -n" if dry_run else "")
+    with settings(warn_only=True):
+        return run(cmd).succeeded
     
     

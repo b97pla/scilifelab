@@ -2,6 +2,7 @@
 
 import os
 import yaml
+import sys
 
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractExtendedBaseController
@@ -36,6 +37,9 @@ class ArchiveController(AbstractExtendedBaseController):
         base_app.args.add_argument('--remote-path', action="store", default=None, help="remote path to use for remote upload")
         base_app.args.add_argument('--send-to-swestore', action="store_true", default=False, help="send a packaged run to swestore using irods")
         base_app.args.add_argument('--swestore-path', action="store", default=None, help="the path to the project's folder on the swestore area")
+        base_app.args.add_argument('--remote-swestore', action="store_true", default=False, help="run the swestore archiving script on the remote host instead of locally")
+        base_app.args.add_argument('--log-to-db', action="store_true", default=False, help="log the swestore archiving progress to db")
+        
 
     def _process_args(self):
         # Set root path for parent class
@@ -125,7 +129,11 @@ class ArchiveController(AbstractExtendedBaseController):
         if self.pargs.send_to_swestore:
             result = send_to_swestore(self,**dict(self.config.get_section_dict('archive').items() + vars(self.pargs).items()))
             if not result:
-                return
+                # If archiving failed, we need to give a non-zero exit code in order for a remote instance to detect the failure
+                sys.exit(1)
             if self.pargs.clean:
                 rm_tarball(self,tarball=self.pargs.tarball)
-        
+            # Log to statusdb
+            if self.pargs.log_to_db:
+                # implement this
+                pass
