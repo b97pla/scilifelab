@@ -12,6 +12,9 @@ import bcbio.solexa.samplesheet
 from bcbio.pipeline.config_loader import load_config
 from scilifelab.db.statusdb import ProjectSummaryConnection
 from scilifelab.bcbio.qc import FlowcellRunMetricsParser
+from scilifelab.log import minimal_logger
+
+LOG = minimal_logger(__name__)
 
 # The directory where CASAVA has written the demuxed output
 CASAVA_OUTPUT_DIR = "Unaligned"
@@ -25,6 +28,8 @@ PROCESS_YAML_SCRIPT = "process_run_info.py"
 PROCESS_YAML = True
 # If True, will assign the distributed master process and workers to a separate RabbitMQ queue for each flowcell 
 FC_SPECIFIC_AMPQ = True
+# Number of attempts to upload the report to gdocs
+REPORT_RETRIES = 10
 
 def main(post_process_config_file, fc_dir, run_info_file=None, only_run=False, only_setup=False, ignore_casava=False, process_project=[], process_sample=[]):
     
@@ -64,9 +69,9 @@ def run_analysis(work_dir, post_process, fc_dir, run_info):
     cluster = __import__("bcbio.distributed.{0}".format(cp), fromlist=[cp])
     platform_args = config["distributed"]["platform_args"].split()
     
-    print "Submitting job"
+    LOG.info("Submitting job")
     jobid = cluster.submit_job(platform_args, job_cl)
-    print 'Your job has been submitted with id ' + jobid
+    LOG.info('Your job has been submitted with id ' + jobid)
 
     # Change back to the starting directory
     os.chdir(start_dir)
@@ -79,20 +84,20 @@ def setup_analysis(post_process_config, archive_dir, run_info_file):
     
     # Set the barcode type in run_info.yaml to "illumina", strip the 7th nucleotide and set analysis to 'Minimal'
     if run_info_file is not None and PROCESS_YAML:
-        print "---------\nProcessing run_info:"
+        LOG.info("---------\nProcessing run_info:")
         run_info_backup = "%s.orig" % run_info_file
         os.rename(run_info_file,run_info_backup)
         cl = ["%s" % PROCESS_YAML_SCRIPT,run_info_backup,"--analysis","Align_illumina","--out_file",run_info_file,"--ascii","--clear_description"]
-        print subprocess.check_output(cl)
-        print "\n---------\n"
+        LOG.info(subprocess.check_output(cl))
+        LOG.info("\n---------\n")
     
     # Check that the specified paths exist
-    print "Checking input paths"
+    LOG.info("Checking input paths")
     for path in (post_process_config,archive_dir,run_info_file):
         if path is not None and not os.path.exists(path):
             raise Exception("The path %s does not exist" % path)
  
-    print "Getting base_dir from %s" % post_process_config
+    LOG.info("Getting base_dir from %s" % post_process_config)
     # Parse the config to get the analysis directory
     with open(post_process_config) as ppc:
         config = yaml.load(ppc)
@@ -100,14 +105,14 @@ def setup_analysis(post_process_config, archive_dir, run_info_file):
     analysis = config.get("analysis",{})
     base_dir = analysis["base_dir"]
     
-    print "Getting run name from %s" % archive_dir
+    LOG.info("Getting run name from %s" % archive_dir)
     # Get the run name from the archive dir
     _,run_name = os.path.split(os.path.normpath(archive_dir))
 
     # Create the working directory if necessary and change into it
     work_dir = os.path.join(base_dir,run_name)
     os.chdir(base_dir)
-    print "Creating/changing to %s" % work_dir
+    LOG.info("Creating/changing to %s" % work_dir)
     try:
         os.mkdir(run_name,0770)
     except OSError:
@@ -403,7 +408,7 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
     try:
         p_con = ProjectSummaryConnection(**couch_credentials)
     except:
-        print "Can't connect to maggie to get application"
+        LOG.warn("Can't connect to maggie to get application")
         p_con = None
   
   # Replace the default analysis
@@ -495,11 +500,26 @@ def report_to_gdocs(fc_dir, post_process_config_file):
     """Upload the run results to Google Docs using pm"""
     
     # Call the report_to_gdocs script
+    runid = os.path.basename(os.path.abspath(fc_dir))
     cmd = ["pm",
            "report",
            "report-to-gdocs",
-            "--run-id={}".format(os.path.basename(os.path.abspath(fc_dir)))]
-    subprocess.check_call(cmd)
+            "--run-id={}".format(runid)]
+    # Retry REPORT_RETRIES times to upload the report
+    succeeded = False
+    for i in xrange(REPORT_RETRIES):
+        try:
+            LOG.info("Uploading report to gdocs: {}".format(cmd))
+            subprocess.check_call(cmd)
+            succeeded = True
+            break
+        except Exception, e:
+            LOG.warn("Uploading failed for {} ('{}'), retrying.. ({} retries left)".format(runid,str(e),str(REPORT_RETRIES-i-1)))
+    if succeded:
+        LOG.info("Uploading report for {} successful".format(runid))
+    else:
+        LOG.warn("Uploading report for {} failed, giving up after {} attempts".format(runid,REPORT_RETRIES))
+    return succeeded
 
 if __name__ == "__main__":
 
