@@ -107,12 +107,13 @@ def upload_to_gdocs(fcdir, credentials_file=None, gdocs_folder=None):
     
     return output_data
 
-def summarize_project(ssheet, project_data={}):
+def summarize_project(ssheet, project_data=None):
     """Parse the flowcell worksheets for a project and sum the counts for each sample
     """
     
     # If the data to be summarized was not supplied, get the feed of all worksheets
-    if len(project_data) == 0:
+    if project_data is None:
+        project_data = {}
         for wsheet in ssheet.get_worksheets_feed().entry:
             wsheet_title = wsheet.title.text
             

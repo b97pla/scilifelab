@@ -45,7 +45,7 @@ print "Fetching Spreadsheet from google drive..." ##log
 
 ## method to merge two header rows to one
 def get_head(head1,head2):
-	head_main = []
+	head_main, pre = ([], '')
 	hd1 = [h.replace('\n','') for h in head1]
 	hd2 = [h.replace('\n','') for h in head2]
 	for i,h in enumerate(hd1):
@@ -114,6 +114,7 @@ print "Project\tNum_of_Samples\tDelivered_date\tDelivered_by" ##log
 
 ## from the obtained list project unflagged are flagged
 upp_path = config['upp_path']
+dir_miss = []
 for p in projects_done:
 	proj, person, deliv_date = p
 	uP = os.path.join(upp_path,proj)
@@ -125,13 +126,15 @@ for p in projects_done:
 			fCnt = fCnt+1
 			print "{}\t{}\t{}\t{}".format(proj,str(len(samples_unmarked)),deliv_date,person) ##log
 	else:
-		print "\nRUN TERMINATING: project directory not found for {}\n".format(proj) ##log
-		raise SystemExit
+		dir_miss.append(proj)
+		
 
 ## log
 print "\n*** Touch done ****"
 print "\nRUN SUMMARY:"
 print "------------"
-print "Project marked delivered in GPL: {}".format(str(len(projects_done)))
-print "No. of project already flagged: {}".format(str(len(projects_done)-fCnt))
-print "No. of project flagged in this run: {}\n".format(str(fCnt))
+print "Project marked delivered in GPL: {}".format(len(projects_done))
+print "No. of project already flagged: {}".format(len(projects_done)-fCnt-len(dir_miss))
+print "No. of project flagged in this run: {}\n".format(fCnt)
+print "No. of project missing folder in uppmax: {}".format(len(dir_miss))
+print "Project that dont have folder in uppmax: {}".format(",".join(dir_miss))
