@@ -14,7 +14,7 @@ from scilifelab.db.statusdb import ProjectSummaryConnection
 from scilifelab.bcbio.qc import FlowcellRunMetricsParser
 from scilifelab.log import minimal_logger
 
-LOG = scilifelab.log.minimal_logger(__name__)
+LOG = minimal_logger(__name__)
 
 # The directory where CASAVA has written the demuxed output
 CASAVA_OUTPUT_DIR = "Unaligned"
