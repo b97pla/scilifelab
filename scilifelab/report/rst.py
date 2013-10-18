@@ -23,7 +23,7 @@ ngi_logo_medium = os.path.join(FILEPATH, os.pardir, "data", "grf", "NGI-medium-t
 TEMPLATEPATH=os.path.join(FILEPATH, os.pardir, "data", "templates")
 
 report_templates = {'project_report':Template(filename=os.path.join(TEMPLATEPATH, "project_report.mako")),
-                    'sample_report':Template(filename=os.path.join(TEMPLATEPATH, "sample_report.mako")),
+                    'flowcell_report':Template(filename=os.path.join(TEMPLATEPATH, "flowcell_report.mako")),
                     'bp_seqcap':Template(filename=os.path.join(TEMPLATEPATH, "bp_seqcap.mako")),
                     }
 rst_templates = {
@@ -120,7 +120,7 @@ def make_logo_table():
     tab_tt.add_rows(data)
     return indent_texttable_for_rst(tab_tt)
 
-def make_rest_note(outfile, tables={}, outdir="rst", report="sample_report", **kw):
+def make_rest_note(outfile, tables={}, outdir="rst", report="flowcell_report", **kw):
     """Make reSt-formatted note.
 
     :param outfile: outfile name
@@ -178,7 +178,7 @@ def make_sample_rest_notes(concat_outfile, s_param_list, outdir="rst"):
         # add makefile if not present
         _install_makefile(rst_path, **s_param)
         # Write report note
-        rst_out = _render(report_templates["sample_report"], **s_param)
+        rst_out = _render(report_templates["flowcell_report"], **s_param)
         with open(os.path.join(outdir, os.path.basename(s_param["outfile"])), "w") as fh:
             fh.write(rst_out)
         concatenated_rst.write(rst_out)
