@@ -9,12 +9,13 @@ import csv
 import yaml
 import operator
 import texttable
+import datetime
 from cStringIO import StringIO
 from collections import Counter
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, calc_avg_qv
 from scilifelab.utils.misc import query_ok, query_yes_no
 from scilifelab.report import sequencing_success
-from scilifelab.report.rst import make_sample_rest_notes, make_rest_note
+from scilifelab.report.rst import make_sample_rest_notes, make_rest_note, render_rest_note, write_rest_note
 from scilifelab.report.rl import make_note, concatenate_notes, sample_note_paragraphs, sample_note_headers, project_note_paragraphs, project_note_headers, make_sample_table
 import scilifelab.log
 
@@ -241,6 +242,23 @@ def _collect_status_note_data(**kw):
         LOG.warn("No samples for project '{}'{}. Maybe there are no sample run metrics in statusdb?".format(project_name,                                                                                                        ', flowcell {}'.format(flowcell) if flowcell else '')) 
     sample_dict = _get_sample_info(sample_run_list, prj_dict, fc_con, **kw)
     
+    # Insert the actual sample run information objects into the project sample list
+    prj_samples = _get_project_sample_info(project)
+    for prj_sample in prj_samples:
+        name = prj_sample.get('scilifeid')
+        if not name:
+            continue
+        for sample in sample_dict:
+            if sample.get('scilifeid') != name:
+                continue
+            id = sample.get('_id')
+            if not id:
+                break
+            for run in [r for prep in prj_sample.get('library_preps',[]) for r in prep.get('sequencing_runs',[])]:
+                if id != run.get('sample_run_id'):
+                    continue
+                run['sample_run'] = sample
+    
     fc_dict = []
     if flowcell:
         # Get flowcell
@@ -271,7 +289,83 @@ def _collect_status_note_data(**kw):
                 
             fcs[fc] = list(set(fcs[fc] + [sample.get("lane")]))
         
-    return prj_dict, fc_dict, sample_dict
+    return prj_dict, fc_dict, sample_dict, prj_samples
+    
+def sample_summary_notes(project_name=None, config=None, **kw):
+    """Create one sample_summary_note per sample and concatenate them at the end
+    """
+    #import ipdb; ipdb.set_trace()
+    data = _collect_status_note_data(project_name=project_name, config=config, **kw)
+    if len(data) == 0:
+        return output_data
+    
+    prj_dict, fc_dict, _, samples = data[0:4]
+    
+    prep_header = ['Prep','Barcode','Average fragment size','Started','Finished','QC status']
+    runs_header = ['Prep','Barcode','Flowcell','Lane','Started','Finished','QC status']
+    
+    restfile = '{}_sample_summary_{}.rst'.format(project_name,
+                                                 datetime.datetime.now().strftime('%Y%m%d'))
+    # Create a summary note per sample
+    rest_notes = []
+    for sample in samples:
+        
+        rst_dict = {}
+        for field in ['scilifeid','customerid','incoming_qc_start_date','incoming_qc_finish_date','incoming_qc_status']:
+            rst_dict[field] = sample[field]
+        
+        # Prepare the prep and sequencing table
+        prep_body = []
+        runs_body = []
+        for prep in sample['library_preps']:
+            lbl = prep['label'] or 'N/A'
+            fsize = prep['fragment_size'] or sample['fragment_size_customer'] or 'N/A'
+            barcode = prep['reagent_label'] or 'N/A'
+            status = 'N/A' if prep['prep_qc_status'] is None else '{}'.format('Passed' if prep['prep_qc_status'] else 'Failed')
+            dates = []
+            for key in ['prep_start_date','prep_qc_finish_date']:
+                d = 'N/A'
+                try:
+                    d = prep[key].strftime('%Y-%m-%d')
+                except:
+                    pass
+                dates.append(d)
+            prep_body.append([lbl,barcode,fsize,dates[0],dates[1],status])
+            
+            for run in prep['sequencing_runs']:
+                srun = run.get('sample_run',{})
+                index = srun.get('barcode','')
+                fcid = srun.get('flowcell',' ')[1:]
+                lane = srun.get('lane','N/A')
+                
+                started = 'N/A'
+                try:
+                    started = datetime.datetime.strptime(srun.get('date'),'%y%m%d').strftime('%Y-%m-%d')
+                except:
+                    pass
+                
+                finished = 'N/A'
+                try:
+                    finished = run['run_finish_date'].strftime('%Y-%m-%d')
+                except:
+                    pass
+                
+                phix = srun.get('phix_error_rate','N/A')
+                q30 = srun.get('q30','N/A')
+                avgq = srun.get('avgQ','N/A')
+                yld = srun.get('read_count','N/A')
+                status = run.get('sequencing_qc_status','N/A')
+                runs_body.append([lbl,index,fcid,lane,started,finished,status])
+                
+        prep_table = [prep_header] + sorted(prep_body, key=operator.itemgetter(0))
+        runs_table = [runs_header] + sorted(runs_body, key=operator.itemgetter(0,2,3))
+        
+        # Render the note
+        rest_notes.append(render_rest_note(tables={'prep_table': prep_table, 'sequencing_table': runs_table, 'delivery_table': []}, 
+                                           report="sample_report", 
+                                           **rst_dict))
+    write_rest_note(restfile,contents=rest_notes)
+        
      
 def sample_status_note(project_name=None, flowcell=None, username=None, password=None, url=None,
                        ordered_million_reads=None, uppnex_id=None, customer_reference=None, bc_count=None,
@@ -505,6 +599,94 @@ def _get_project_info(project, pcon):
     info["m_ordered"] = pcon.get_ordered_amount(info["project_name"],samples=info["samples"])
     
     return info
+
+def _get_project_sample_info(project):
+    """Get the sample information stored in the project database
+    """
+    samples = []
+    for sample in project.get("samples",{}).values():
+        LOG.debug("got sample {}".format(sample.get("scilife_name")))
+        sample_dict = {}
+        sample_dict['scilifeid'] = sample.get('scilife_name')
+        sample_dict['customerid'] = sample.get('customer_name')
+        sample_dict['m_ordered'] = sample.get('reads_requested_(millions)',project.get('min_m_reads_per_sample_ordered'))
+        s = sample.get('incoming_QC_status','')
+        if s is not None:
+            s = (s.lower() == 'p' or s.lower() == 'passed' or s.lower() == 'true' or s.lower() == 't')
+        sample_dict['incoming_qc_status'] = s
+        
+        for item in ['start_date','finish_date']:
+            try:
+                s = datetime.datetime.strptime(sample.get('initial_qc_',{}).get(item),'%Y-%m-%d')
+            except:
+                s = None
+            sample_dict['incoming_qc_{}'.format(item)] = s
+            
+        sample_dict['overall_status'] = sample.get('status')
+        sample_dict['m_reads_sequenced'] = sample.get('m_reads_sequenced')
+        sample_dict['sample_type'] = sample.get('details',{}).get('sample_type')
+        sample_dict['fragment_size_customer'] = sample.get('details',{}).get('customer_average_fragment_length')
+        
+        # Get the library prep information
+        preps = []
+        for lbl, prep in sample.get('library_prep',{}).items():
+            prep_dict = {}
+            prep_dict['label'] = lbl
+            s = prep.get('prep_status')
+            if s is not None:
+                s = (s.lower() == 'p' or s.lower() == 'passed' or s.lower() == 'true' or s.lower() == 't')
+            prep_dict['prep_qc_status'] = s
+            
+            for item in ['start_date','finished_date']:
+                try:
+                    s = datetime.datetime.strptime(prep.get('prep_{}'.format(item)),'%Y-%m-%d')
+                except:
+                    s = None
+                prep_dict['prep_{}'.format(item.replace('finished','finish'))] = s
+        
+            prep_dict['fragment_size'] = prep.get('average_size_bp')
+            prep_dict['reagent_label'] = ";".join(prep.get('reagent_labels',[]))
+            
+            # Get the library validation information
+            libvals = prep.get('library_validation',{})
+            prep_dict['fragment_size'] = libvals.get('average_size_bp',prep_dict['fragment_size'])
+            for val in libvals.values():
+                if not type(val) is dict:
+                    continue
+                for item in ['start_date','finish_date']:
+                    key = 'prep_qc_{}'.format(item)
+                    try:
+                        s = datetime.datetime.strptime(val[item],'%Y-%m-%d')
+                        if  key not in prep_dict or prep_dict[key] < s:
+                            prep_dict[key] = s
+                    except:
+                        prep_dict[key] = prep_dict.get(key)
+                        
+                prep_dict['fragment_size'] = val.get('average_size_bp',prep_dict['fragment_size'])
+            
+            # Get the sequencing run information
+            runs = []
+            for lbl, run_metric in prep.get('sample_run_metrics',{}).items():
+                run_dict = {}
+                run_dict['sample_run_name'] = lbl
+                if type(run_metric) is str:
+                    run_dict['sample_run_id'] = run_metric
+                else:
+                    run_dict['sample_run_id'] = run_metric.get('sample_run_metrics_id')
+                    for key, name in [('sequencing_finish_date','run_finish_date'),
+                                      ('dillution_and_pooling_start_date','pool_start_date'),
+                                      ('sequencing_run_QC_finished','run_qc_finish_date'),]:
+                        try:
+                            s = datetime.datetime.strptime(run_metric.get(key),'%Y-%m-%d')
+                        except:
+                            s = None
+                        run_dict[name] = s
+                runs.append(run_dict)
+            prep_dict['sequencing_runs'] = runs
+            preps.append(prep_dict)
+        sample_dict['library_preps'] = preps
+        samples.append(sample_dict)
+    return samples
 
 def _get_sample_info(sample_run_list, project, fc_con, **kw):
     

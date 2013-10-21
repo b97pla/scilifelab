@@ -12,7 +12,7 @@ from scilifelab.report import sequencing_success
 from scilifelab.report.rl import *
 from scilifelab.report.qc import application_qc, fastq_screen, QC_CUTOFF
 from scilifelab.bcbio.run import find_samples
-from scilifelab.report.delivery_notes import sample_status_note, project_status_note, data_delivery_note
+from scilifelab.report.delivery_notes import sample_status_note, project_status_note, data_delivery_note, sample_summary_notes
 from scilifelab.report.best_practice import best_practice_note, SEQCAP_KITS
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, get_scilife_to_customer_name
 from scilifelab.utils.misc import query_yes_no, filtered_walk, md5sum
@@ -440,8 +440,20 @@ class DeliveryReportController(AbstractBaseController):
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
             
 
-    @controller.expose(help="Make sample status note")
+    @controller.expose(help="Make sample status summary note")
     def sample_status(self):
+        if not self._check_pargs(["project_name"]):
+            return
+        kw = vars(self.pargs)
+        config = self.app.config
+        kw.update({"config": config, "samplesdb":self.app.config.get("db", "samples"), "flowcelldb":self.app.config.get("db", "flowcells"), "projectdb":self.app.config.get("db", "projects"), "instrument_config": self.app.config.get("instrument","config")})
+        out_data = sample_summary_notes(**kw)
+        #self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
+        #self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
+        #self.app._output_data['debug'].write(out_data['debug'].getvalue())
+
+    @controller.expose(help="Make flowcell status note")
+    def flowcell_status(self):
         if not self._check_pargs(["project_name", "flowcell"]):
             return
         kw = vars(self.pargs)

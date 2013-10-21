@@ -23,6 +23,7 @@ ngi_logo_medium = os.path.join(FILEPATH, os.pardir, "data", "grf", "NGI-medium-t
 TEMPLATEPATH=os.path.join(FILEPATH, os.pardir, "data", "templates")
 
 report_templates = {'project_report':Template(filename=os.path.join(TEMPLATEPATH, "project_report.mako")),
+                    'sample_report':Template(filename=os.path.join(TEMPLATEPATH, "sample_report.mako")),
                     'flowcell_report':Template(filename=os.path.join(TEMPLATEPATH, "flowcell_report.mako")),
                     'bp_seqcap':Template(filename=os.path.join(TEMPLATEPATH, "bp_seqcap.mako")),
                     }
@@ -95,22 +96,6 @@ def _make_rst_table(data):
         tab_tt.add_rows(data)
         return indent_texttable_for_rst(tab_tt)
 
-def make_rst_sample_name_table(data):
-    """Format sample name table"""
-    return _make_rst_table(data)
-
-def make_rst_sample_yield_table(data):
-    """Format sample name table"""
-    return _make_rst_table(data)
-
-def make_rst_lane_yield_table(data):
-    """Format sample name table"""
-    return _make_rst_table(data)
-
-def make_rst_sample_quality_table(data):
-    """Format sample name table"""
-    return _make_rst_table(data)
-
 def make_logo_table():
     """Format the logo table
     """
@@ -119,6 +104,42 @@ def make_logo_table():
     tab_tt.set_deco(tab_tt.BORDER | tab_tt.VLINES | tab_tt.HLINES)
     tab_tt.add_rows(data)
     return indent_texttable_for_rst(tab_tt)
+
+def render_rest_note(tables, report, **kw):
+    
+    kw.update({'date':now.strftime("%Y-%m-%d"),
+               'year': now.year,
+               'project_lc':kw.get('project_name'),
+               'author':'N/A',
+               'description':'N/A',
+               'logo_table': make_logo_table(),
+               'stylefile': os.path.join(TEMPLATEPATH, "rst", "scilife.txt"),
+               })
+    rst_tables = {}
+    for outkey, inkey in [('sample_name_table','name'),
+                          ('sample_yield_table','sample_yield'),
+                          ('lane_yield_table','lane_yield'),
+                          ('sample_quality_table','quality'),
+                          ('flowcell_table','flowcell_table'),
+                          ('sample_table','sample_table'),
+                          ('prep_table','prep_table'),
+                          ('sequencing_table','sequencing_table'),
+                          ('delivery_table','delivery_table')]:
+        rst_tables[outkey] = _make_rst_table(tables.get(inkey))
+    kw.update(rst_tables)
+    return _render(report_templates[report], **kw)
+
+def write_rest_note(outfile, outdir="rst", contents=[], separator=".. raw:: pdf\n\n   PageBreak\n\n", stylefile=os.path.join(TEMPLATEPATH, "rst", "scilife.txt")):
+    
+    rst_path = os.path.join(os.path.dirname(outfile), outdir)
+    if not os.path.exists(rst_path):
+        os.makedirs(rst_path)
+    # add makefile if not present
+    _install_makefile(rst_path, stylefile=stylefile)
+    # Write report note
+    with open(os.path.join(outdir, os.path.basename(outfile)), "w") as fh:
+        fh.write(separator.join(contents))
+    
 
 def make_rest_note(outfile, tables={}, outdir="rst", report="flowcell_report", **kw):
     """Make reSt-formatted note.
@@ -130,28 +151,7 @@ def make_rest_note(outfile, tables={}, outdir="rst", report="flowcell_report", *
     :param kw: keyword arguments
     
     """
-    rst_path = os.path.join(os.path.dirname(outfile), outdir)
-    kw.update({'date':now.strftime("%Y-%m-%d"),
-               'year': now.year,
-               'project_lc':kw.get('project_name'),
-               'author':'N/A',
-               'description':'N/A',
-               'logo_table': make_logo_table(),
-               'sample_name_table':make_rst_sample_name_table(tables.get('name')),
-               'sample_yield_table':make_rst_sample_yield_table(tables.get('sample_yield')),
-               'lane_yield_table':make_rst_lane_yield_table(tables.get('lane_yield')),
-               'sample_quality_table':make_rst_sample_quality_table(tables.get('quality')),
-               'flowcell_table':_make_rst_table(tables.get('flowcell_table')),
-               'sample_table':_make_rst_table(tables.get('sample_table')),
-               'stylefile': os.path.join(TEMPLATEPATH, "rst", "scilife.txt"),
-               })
-    if not os.path.exists(rst_path):
-        os.makedirs(rst_path)
-    # add makefile if not present
-    _install_makefile(rst_path, **kw)
-    # Write report note
-    with open(os.path.join(outdir, os.path.basename(outfile)), "w") as fh:
-        fh.write(_render(report_templates[report], **kw))
+    write_rest_note(outfile,outdir,contents=[render_rest_note(tables,report,**kw)])
     
 def make_sample_rest_notes(concat_outfile, s_param_list, outdir="rst"):
     """Make reST-formatted sample note and concatenated ditto

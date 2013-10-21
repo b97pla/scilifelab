@@ -25,6 +25,7 @@ Project overview
 :Project name: ${project_name}
 :Customer reference: ${'{}'.format(customer_reference) if customer_reference not in ['', 'N/A'] else 'N/A'}
 :Application: ${application}
+${':Reads per sample ordered: {}'.format(m_ordered) if m_ordered else ''}
 ${':Sequencing lanes ordered: {}'.format(lanes_ordered) if lanes_ordered else ''}
 ${':Number of samples: {}'.format(no_samples) if no_samples else ''}
 :UPPNEX project id: ${uppnex_project_id}
