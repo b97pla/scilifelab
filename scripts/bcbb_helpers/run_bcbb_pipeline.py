@@ -515,7 +515,7 @@ def report_to_gdocs(fc_dir, post_process_config_file):
             break
         except Exception, e:
             LOG.warn("Uploading failed for {} ('{}'), retrying.. ({} retries left)".format(runid,str(e),str(REPORT_RETRIES-i-1)))
-    if succeded:
+    if succeeded:
         LOG.info("Uploading report for {} successful".format(runid))
     else:
         LOG.warn("Uploading report for {} failed, giving up after {} attempts".format(runid,REPORT_RETRIES))
