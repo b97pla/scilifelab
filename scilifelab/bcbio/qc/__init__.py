@@ -771,9 +771,9 @@ class FlowcellRunMetricsParser(RunMetricsParser):
         """Parse the undetermined indices top barcodes materics
         """
         
-        lanes = {str(k):{} for k in self._lanes}
         # Use a glob to allow for multiple fastq folders
         metrics_file_pattern = os.path.join(self.path, "Unaligned*", "Basecall_Stats_*{}".format(fc_name[1:]), "Undemultiplexed_stats.metrics")
+        metrics = {'undemultiplexed_barcodes': []}
         for metrics_file in glob.glob(metrics_file_pattern):
             self.log.debug("parsing {}".format(metrics_file))
             if not os.path.exists(metrics_file):
@@ -784,18 +784,34 @@ class FlowcellRunMetricsParser(RunMetricsParser):
                 parser = MetricsParser()
                 in_handle = csv.DictReader(fh, dialect=csv.excel_tab)
                 data = parser.parse_undemultiplexed_barcode_metrics(in_handle)
-                for k in lanes.keys():
-                    if "undemultiplexed_barcodes" not in lanes[str(k)]:
-                        lanes[str(k)]["undemultiplexed_barcodes"] = collections.defaultdict(list)
-                    try:
-                        for barcode in data[str(k)]:
-                            # Warn that we are replacing previously parsed results
-                            if len(lanes[str(k)].get("undemultiplexed_barcodes",{})) > 0:
-                                self.log.warn("Conflicting undemultiplexed barcode metrics for lane {}. Using values parsed from {}".format(k,metrics_file))
-                            for key, val in barcode.items():
-                                lanes[str(k)]["undemultiplexed_barcodes"][key].append(val)
-                    except KeyError:
-                        self.log.warn("No undemultiplexed barcode metrics for lane {}".format(k))
+                for lane, items in data.items():
+                    for item in items:
+                        item['lane'] = lane
+                        metrics['undemultiplexed_barcodes'].append(item)
+
+        # Define a function for sorting values according to lane and yield
+        def by_lane_yield(data):
+            return '{}-{}'.format(data.get('lane',''),data.get('count','').zfill(10))
+
+        # Remove duplicate entries resulting from multiple stats files
+        for metric in ['undemultiplexed_barcodes']:
+            dedupped = {}
+            for row in metrics[metric]:
+                key = "\t".join(row.values())
+                if key not in dedupped:
+                    dedupped[key] = row
+                else:
+                    self.log.warn("Duplicates of Undemultiplexed barcode entries discarded: {}".format(key[0:min(35,len(key))]))
+            
+            # Reformat the structure of the data to fit the downstream processing
+            lanes = {}
+            for row in sorted(dedupped.values(), key=by_lane_yield, reverse=True):
+                lane = row['lane']
+                if lane not in lanes:
+                    lanes[lane] = {metric: {k:[] for k in row.keys()}}
+                for k in row.keys():
+                    lanes[lane][metric][k].append(row[k])
+                    
         return lanes
     
     def parse_demultiplex_stats_htm(self, fc_name, **kw):
@@ -847,6 +863,21 @@ class FlowcellRunMetricsParser(RunMetricsParser):
             column_gen = (row.findAll("td") for row in rows)
             parse_row = lambda row: {smp_header[i]:str(row[i].string) for i in range(0, len(smp_header)) if row}
             metrics["Sample_information"].extend(map(parse_row, column_gen))
-            
+
+        # Define a function for sorting the values
+        def by_lane_sample(data):
+            return "{}-{}-{}".format(data.get('Lane',''),data.get('Sample ID',''),data.get('Index',''))
+        
+        # Post-process the metrics data to eliminate duplicates resulting from multiple stats files
+        for metric in ['Barcode_lane_statistics', 'Sample_information']:
+            dedupped = {}
+            for row in metrics[metric]:
+                key = "\t".join(row.values())
+                if key not in dedupped:
+                    dedupped[key] = row
+                else:
+                    self.log.debug("Duplicates of Demultiplex Stats entries discarded: {}".format(key[0:min(35,len(key))]))
+            metrics[metric] = sorted(dedupped.values(), key=by_lane_sample)
+        
         ## Set data
         return metrics
