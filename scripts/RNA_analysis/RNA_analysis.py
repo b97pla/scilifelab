@@ -7,10 +7,10 @@ if len(sys.argv) < 7:
 Usage:
         stand in 'intermediate' and run
 
-        RNA_analysis.py <project id> <bed file> <gtf file> <mail> <config_file> <extra_arg> <run dir 1> <run dir 2> ... <run dir N>
+        RNA_analysis.py <project id> <bed file> <gtf file> <mail> <config_file> <extra_arg> <analysis> <run dir 1> <run dir 2> ... <run dir N>
 
 Arguments:
-        <run dir i>
+    <run dir i>
                 - The name of the directory with the tophat_out_* -dirs.
                 This is typically the same as the run name, such as
                 20120323A_hiseq2000, but can be any name. The name of
@@ -23,27 +23,29 @@ Arguments:
                 the bamfiles from the diferent directories and do the analysis 
                 on the merged runs
 
-        <project id>
+    <project id>
                 - eg: M.Muurinen_11_01a
 
-        <bed file>
+    <bed file>
                 - reference gene model in bed format. Used by Ever-Seq
                 to get gene body coverage and read distribution.
 
-        <gtf fie>
+    <gtf fie>
                 - reference annotation in gtf format, used by cufflinks and HTseq
 
-        <mail>
+    <mail>
                 - mail adress for SLURM messages
 
-        <config_file>
+    <config_file>
                 - post_process.yaml
 
 	<extra_arg>
-		- qos flagg for sbatch scripts"""
+        - qos flagg for sbatch scripts
+        
+    <analysis>
+        - merged/all should the analysis be run on only merged samples, or on all samples?         """
 	sys.exit()
-
-command=[os.environ['HOME']+'/opt/scilifelab/scripts/RNA_analysis/RNA_analysis.sh', '-p', sys.argv[1], '-b', sys.argv[2], '-g', sys.argv[3], '-m', sys.argv[4], '-c', sys.argv[5], '-e', sys.argv[6]] + sys.argv[7:]
+command=[os.environ['HOME']+'/opt/scilifelab/scripts/RNA_analysis/RNA_analysis.sh', '-p', sys.argv[1], '-b', sys.argv[2], '-g', sys.argv[3], '-m', sys.argv[4], '-c', sys.argv[5], '-e', sys.argv[6] ,'-a', sys.argv[7]] + sys.argv[8:]
 command=' '.join(command)
 os.system(command)
 

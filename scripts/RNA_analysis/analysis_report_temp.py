@@ -16,7 +16,6 @@ from mako.lookup import TemplateLookup
 from texttable import Texttable
 from bcbio.pipeline.config_loader import load_config
 from scilifelab.google.project_metadata import ProjectMetaData
-from scilifelab.report.rst import make_logo_table
 import operator
 
 def image(fp, width):
@@ -24,7 +23,10 @@ def image(fp, width):
    return res
 
 def make_template(Map_Stat, FPKM, GBC, Read_Dist, rRNA_table, strandness_table, complexity):    
-    TEMPLATE= make_logo_table + """\
+    TEMPLATE="""\
+.. image:: sll_logo.gif
+   :align: right
+
 =======================
 RNA-seq analysis report
 =======================
@@ -48,19 +50,17 @@ ${uppnex}
 Access the results on UPPMAX
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Please refer to the `Sequencing FAQ`_ for detailed instructions on how
-to log in and access your files. If you have problems to access your
-data, please contact genomics_support@scilifelab.se. If you have
-questions regarding UPPNEX, please contact support@uppmax.uu.se.
+The results from the analysis are transfered to your uppmax acount: ${uppnex}
 
-
-.. _Sequencing FAQ: http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf
+You acces your data by logging in to biologin with your username and password:
+         
+ssh <user_name>@biologin.uppmax.uu.se
 
 Specification of RNA-seq analysis delivery
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 The RNA-seq analysis is delivered to /proj/${uppnex}/INBOX/${project_id}/analysis. The delivery consists of:
 
-- **Analysis Report (this document):** Contains reports about: Mapping statistics, Read distribution, Correlation between FPKM values of samples, Gene body covarage, Library complexity and Strand specificity.
+- **Analysis Report:** We are here reporting about: Mapping statistics, Read distribution, Correlation between FPKM values of samples, Gene body covarage, Library complexity and Strand specificity.
 
 - **BAM files:** Two alignment files are placed under the alignments folder. We deliver two files per sample, one with and one without duplicates.
 
@@ -70,7 +70,7 @@ The RNA-seq analysis is delivered to /proj/${uppnex}/INBOX/${project_id}/analysi
 
 - **fpkm_table_isoforms.txt:**  A single file containing all of the FPKM values per isoform and sample (duplicates included). This can be opened in Excel or a regular text processing application.
 
-- **count_table.txt:** Counts per gene and sample (duplicates included). For analyzing differential expression of genes or transcripts, it may be useful to have the raw read counts (the number of sequences that map to each gene/transcript). These are calculated using the HTSeq software and are collected into the table count_table.txt.
+- **count_table.txt:** Counts per gene and sample (duplicates included). For analyzing differential expression of genes or transcripts, it may be useful to have the raw read counts (the number of sequences that map to each gene/transcript). These are calculated using the HTSeq software and are collected into a table called count_table.txt.
 
 .. raw:: pdf
 
@@ -80,30 +80,30 @@ The RNA-seq analysis is delivered to /proj/${uppnex}/INBOX/${project_id}/analysi
 The RNA-seq pipeline step by step
 ---------------------------------------
 
-Your samples were analysed as follows:
+Your samples were were analysed by the folowing steps
 
-1. **Mapping:** Reads were mapped with ${mapping} to the ${species} genome assembly, build ${genombuild}. 
+1. **Mapping:** Reads were mapped with ${mapping} to the ${species} Ensembl genome assembly, build ${genombuild}. 
 
-2. **Merging:** Bamfiles from samples run on different lanes were merged with samtools.
+2. **Merging:** Bamfiles from samples run on multiple lanes were merged with samtools.
 
-3. **Sorting and Marking duplicates:** Merged bam files were sorted and duplicates removed using ${dup_rem}.
+3. **Sorting and Marking duplicates:** Merged bam files were sorted and duplicates remooved using ${dup_rem}.
 
 4. **Counts for genes:** Gene counts were generated using ${read_count} on bam files with duplicates included.
 
 5. **FPKMs for genes and transcripts:** FPKMs for genes and transcripts were generated using ${quantifyer} on bamfiles with duplicates included.
 
-6. **Mapping statistics:** Mapping statistics were calculated from numbers obtained by running bam_stat.py (included in rseqc/${rseqc_version}) on bam files with and without duplicates.
+6. **Mapping statistics:** Mapping statistics were counted from nubers that we got by running bam_stat.py from rseqc/${rseqc_version} on bam files with and without duplicates.
 
-7. **Readdistribution:** read_distribution.py (included in rseqc/${rseqc_version}) was run on bam files with duplicates.
+7. **Readdistribution:** read_distribution.py form rseqc/${rseqc_version} was run on bam files with duplicates.
 
-8. **Genebodycovarage:** geneBody_coverage.py (included in rseqc/${rseqc_version}) was run on bam files with duplicates.
+8. **Genebodycovarage:** geneBody_coverage.py form rseqc/${rseqc_version} was run on bam files with duplicates.
 
-9. **Strandedness:** infer_experiment.py (included in rseqc/${rseqc_version}) was run on bam files with duplicates.  
+9. **Strandedness:** infer_experiment.py from rseqc/${rseqc_version} was run on bam files with duplicates.  
 
 10. **Library complexity:** The complexity plot is generated by running ${Preseq} on bam files with duplicates.
 
-11. **Corelation heatmap:** The correlation heatmap is generated using the R-package pheatmap on the FPKM table for genes.
-
+11. **Corelation heatmap:** This is generated using the R-package pheatmap on the fpkm_table from genes.
+ 
 .. raw:: pdf
 
     PageBreak
@@ -122,7 +122,7 @@ ${Mapping_statistics}
 
 **UniqMapped:** The number of fragments that are mapped relative to the total number of sequenced fragments. 
     
-**UniqMapped DuplRem:** We remove duplicate reads i.e. reads that map to the same genomic location (if paired-end, duplicates are defined as the paired end reads where both mates map to the same genomic positions). If the sequenced reads/pairs will be used to call sequence variants, it is recommended to use duplicate-removed data to obtain unbiased variant frequency calls. It is not uncommon to observe high rates of read duplication rates in RNA-seq libraries and they may not necessarily be the result of libraries with low complexity and/or over-amplification of libraries. The duplication rates can be gene specific i.e. a small number of genes are being highly expressed and comprise most of the duplicated reads/pairs, hence reflecting the underlying RNA distribution of the sample being investigated. In the case of small number of highly abundant genes consuming majority of the sequenced reads, one might need to sequence the samples deeper to obtain a better distribution of the whole transcriptome. When performing differential expression analyses, it is not recommended to use duplicate-removed reads/pairs. This is due to the fact that removing duplicate reads may effect expression values of transcripts. Since different samples have inherently different RNA distributions with different levels of duplicate reads/pairs for different transcripts, there could be a risk of removing biologically relevant information hence leading to incorrect comparisons.
+**UniqMapped DuplRem:** We remove duplicate reads i.e. reads that maps precisely the same genomic location (if paired-end, duplicates are defined as the paired end reads where both mates map to the same loci). If the sequenced reads/pairs will be used to call sequence variants, it is recommended to use duplicate-removed data to obtain unbiased variant frequency calls. It is not uncommon to observe high rates of read duplication rates in RNA-seq libraries and they may not necessarily be the result of libraries with low complexity and/or over-amplification of libraries. The duplication rates can be gene specific i.e. a small number of genes are being highly expressed and comprise most of the duplicated reads/pairs, hence reflecting the underlying RNA distribution of the sample being investigated. In the case of small number of highly abundant genes consuming majority of the sequenced reads, one might need to sequence the samples deeper to obtain a better distribution of the whole transcriptome. When performing differential expression analyses, it is not recommended to use duplicate-removed reads/pairs. This is due to the fact that removing duplicate reads may effect expression values of transcripts. Since different samples have inherently different RNA distributions with different levels of duplicate reads/pairs for different transcripts, there could be a risk of removing biologically relevant information hence leading to incorrect comparisons.
 
 .. raw:: pdf
 
@@ -154,19 +154,7 @@ ${Read_Distribution}
 
     PageBreak
 """
-    if GBC:
-        TEMPLATE=TEMPLATE+"""
-Gene body covarage
-^^^^^^^^^^^^^^^^^^^^^
-Read coverage over gene body. To check if reads coverage is uniform and if there is any 5'/3' bias. All transcripts are scaled to 100 nucleotides and the read number is then calculated as the number of reads covering each nucleotide position. The plot shows the average gene body coverage from all samples.
-
-${GBC}
-
-.. raw:: pdf
-
-    PageBreak
-"""
-
+ 
     if FPKM:
         TEMPLATE=TEMPLATE+"""
 FPKM heatmap
@@ -181,6 +169,19 @@ ${FPKM_heatmap}
 
     PageBreak
 """ 
+    if GBC:
+        TEMPLATE=TEMPLATE+"""
+Gene body covarage
+^^^^^^^^^^^^^^^^^^^^^
+Read coverage over gene body. To check if reads coverage is uniform and if there is any 5'/3' bias. All transcripts are scaled to 100 nt and the read number is then calculated as the number of reads covering each nucleotide position. The plot shows the average gene body coverage from all samples.
+
+${GBC}
+
+.. raw:: pdf
+
+    PageBreak
+"""
+
     if complexity:
                 TEMPLATE=TEMPLATE+"""
 Library complexity 
@@ -225,12 +226,10 @@ ${strandness_table}
 Tools and references
 ---------------------------
 
-**Reference genome assembly:**
+**Ensembl genome assembly:**
 ${species}, ${genombuild}
 
-http://www.ensembl.org
-
-**Ensembl annotation:** Release ${anotation_version}
+http://www.ensembl.org/index.html
 
 **Mapping:** 
 ${mapping}
@@ -293,8 +292,7 @@ def generate_report(proj_conf,single_end,stranded):
         'genombuild':"",
         'rseqc_version':'',
         'Preseq':'',
-        'date':date.today(),
-        'anotation_version':''
+        'date':date.today()
         }
 
     if stranded:
@@ -335,7 +333,6 @@ def generate_report(proj_conf,single_end,stranded):
         d['genombuild'] = tools[proj_data.ref_genome]['name']
         d['rseqc_version'] = tools['rseqc_version']
         d['Preseq'] = tools['preseq']
-        d['anotation_version'] = tools[proj_data.ref_genome]['annotation_release']
     except:
         print "Could not fetched RNA-seq tools from config file post_process.yaml"
         pass
@@ -465,9 +462,7 @@ def generate_report(proj_conf,single_end,stranded):
         D=data
         for sample_name in proj_conf['samples']:
             if D.has_key(sample_name):
-                tab.add_row([sample_name,str(float(D[sample_name])*100)+'%'])
-                print str(float(D[sample_name])*100)
-
+                tab.add_row([sample_name,str(D[sample_name])+'%'])
         d['strandness_table']=tab.draw()
         f.close()
     except:

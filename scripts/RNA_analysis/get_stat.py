@@ -21,8 +21,10 @@ mail	  = sys.argv[2]
 try:
         config    = load_config(sys.argv[3])
         extra_arg = "#SBATCH "+config['sbatch']['extra_arg']
+        rseqc_version = config['custom_algorithms']['RNA-seq analysis']['rseqc_version']
 except:
 	extra_arg = ""
+    rseqc_version = ""
 	pass
 
 f=open(name+"_get_stat.sh",'w')
@@ -40,6 +42,7 @@ print >>f, """#! /bin/bash -l
 
 module add bioinfo-tools
 module load samtools
+module load rseqc/""" + rseqc_version + """
 
 NAME="""+name+"""
 

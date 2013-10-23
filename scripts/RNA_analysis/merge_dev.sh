@@ -1,8 +1,8 @@
 #!/bin/bash -l 
 
 #SBATCH -A a2012043
-#SBATCH -p node
-#SBATCH -t 50:00:00
+#SBATCH -p devel
+#SBATCH -t 1:00:00
 #SBATCH -J merge
 #SBATCH -e merge.err
 #SBATCH -o merge.out
@@ -67,6 +67,8 @@ Output:
 	- A new directory for the merged data, called merged and placed in the intermediate directory.
 	"
 else
+    merge_samples=`for dir in ${flowcells[*]};do ls -d $dir/tophat_out_*|cut -f 2 -d '/'|sed 's/tophat_out_//g';done|sort|uniq -d`
+    copy_samples=`for dir in ${flowcells[*]};do ls -d $dir/tophat_out_*|cut -f 2 -d '/'|sed 's/tophat_out_//g';done|sort|uniq -u`
 	# merge first two flowcells
     mkdir $path/merged
     for name in ${name_list[*]};do
@@ -131,7 +133,6 @@ else
     for i in ${rerun[*]};do
     rm $path/merged/tophat_out_${i}/accepted_hits_sorted_dupRemoved_${i}.bam
     done
-    if [ "$gtf_file" != "" ]; then
     ## run HTseq and cufflinks on meged samples
     for i in ${rerun[*]};do
         echo make_MarkDup_HT_cuff.py $i $gtf_file $mail $path/merged $config_file

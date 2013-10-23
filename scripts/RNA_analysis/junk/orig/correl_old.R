@@ -1,8 +1,5 @@
-library(pheatmap)
 args = commandArgs(TRUE)
 snames = args[c(1:length(args))]
-
-###-------------- FPKM table for genes
 
 # Find no of rows
 name <- snames[1]
@@ -30,7 +27,8 @@ d.0 <- data.frame(e)
 d.1 <- cbind(Gene_ID=temp[o,5], d.0)
 d.2 <- cbind(ENSEMBL_ID=temp[o,1],d.1)
 
-########## cleanup cufflincs fpkm table ##########
+
+########## cleanup cufflincs fpkm table
 end=ncol(d.2)
 
 #uniq genes
@@ -41,60 +39,42 @@ dup=d.2[duplicated(d.2[,1]),]
 
 #add rowsums
 dup[,'suma']=rowSums(dup[,3:end])
-
 #sort on rowsums
 dup=dup[with(dup,order(suma)),]
 
 #rm duplicated genses and ceep the genes w highest rowsums
 max_dup=dup[!duplicated(dup[,'suma']),1:end]
 
-#concat uniq and dupl
+#oncat uniq and dupl
 all_uniq=rbind(uniq,max_dup)
 
 #remoove genes w 0 coverage
 keep = rowSums(all_uniq[3:end])>0
-all_uniq_0cov_rem = all_uniq[keep, ]
+all_uniq = all_uniq[keep, ]
 
-all_uniq = all_uniq[,3:end]
-all_uniq_0cov_rem = all_uniq_0cov_rem[,3:end]
-########## end cleening table ##########
+e=all_uniq[,3:end]
+##########
 
-write.table(all_uniq, file="fpkm_table.txt", quote=F, row.names=F, sep="\t")
+write.table(d.2, file="fpkm_table.txt", quote=F, row.names=F, sep="\t")
 
+# continue with numeric e
 pdf("FPKM_heatmap.pdf")
-if (end>20){pheatmap(cor(all_uniq), symm=T,fontsize = 4)}else{pheatmap(cor(all_uniq), symm=T)}
+if (end>20){heatmap(cor(e), symm=T,cexCol=0.4,cexRow=0.4)}else{heatmap(cor(e), symm=T)}
 dev.off()
 
-###-------------- FPKM table for isoforms
+library(MASS)
+library(calibrate)
+p <- princomp(e)
+l <- p$loadings[,1:2]
+expl.vars <- (p$sdev^2)/sum(p$sdev^2)
+pdf("FPKM_PCAplot.pdf")
+plot(l, xlab=paste("PC 1, expl. var.", signif(expl.vars[1],2), sep=""), ylab=paste("PC 2; expl. var.", signif(expl.vars[2]), sep=""))
+textxy(l[,1],l[,2],labs=rownames(l),cx=1)
+dev.off()
 
-# Find no of rows
-name <- snames[1]
-fname <- paste("tophat_out_", name, "/cufflinks_out_", name, "/isoforms.fpkm_tracking", sep="")
-temp <- read.table(fname, header=T)
-
-e <-matrix(nrow=nrow(temp), ncol= (length(snames)))
-colnames(e) <- rep("NO_NAME_ASSIGNED", length(snames))
-
-idx <- 0 
-
-for (name in snames) {
-    idx <- idx+1
-    fname <- paste("tophat_out_", name, "/cufflinks_out_", name, "/isoforms.fpkm_tracking", sep="")
-    temp <- read.table(fname, header=T)
-    colnames(e)[idx] <- name
-    o <- order(temp$tracking_id)
-    e[,idx] <- temp$FPKM[o]
-    temp.o <- temp[o,]
-    print(temp.o[1, ])
-} 
-
-# write a more user friendly version file 
-d.0 <- data.frame(e)
-d.1 <- cbind(Transcript_ID=temp[o,5], d.0)
-d.2 <- cbind(ENSEMBL_ID=temp[o,1],d.1)
-
-write.table(d.2, file="isoform_fpkm_table.txt", quote=F, row.names=F, sep="\t")
-
+#pdf("spearman_heatmap.pdf")
+#heatmap(as.matrix(cor(e, method="spearman")))
+#dev.off()
 
 # HTSeq counts
 
@@ -118,4 +98,15 @@ for (name in snames){
 
 write.table(h, file="count_table.txt", quote=F, row.names=T, sep="\t")
 
+pdf("count_heatmap.pdf")
+heatmap(cor(h), symm=T)
+dev.off()
 
+#library(calibrate)
+p <- princomp(h)
+l <- p$loadings[,1:2]
+expl.vars <- (p$sdev^2)/sum(p$sdev^2)
+pdf("count_PCAplot.pdf")
+plot(l, xlab=paste("PC 1 (expl. var.", signif(expl.vars[1]), ")", sep=""), ylab=paste("PC 2 (expl. var.", signif(expl.vars[2]), ")", sep=""))
+textxy(l[,1],l[,2],labs=rownames(l),cx=1)
+dev.off()

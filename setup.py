@@ -27,7 +27,8 @@ setup(name = "scilifelab",
     author_email = "genomics_support@scilifelab.se",
     description = "Useful scripts for use at SciLifeLab",
     license = "MIT",
-    scripts = glob.glob('scripts/*.py') + 
+    scripts = glob.glob('scripts/*.py') +
+                glob.glob('scripts/analysisDB/*.py') + 
                 glob.glob('scripts/RNA_analysis/*.py') + 
                 glob.glob('scripts/bcbb_helpers/*.py') + 
                 glob.glob('scilifelab/lims_utils/*.py') +

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """Module for extracting a project's UppNex id from a spreadsheet on Google Docs"""
-
-import bcbio.google
+import bcbio.google 
 import bcbio.google.spreadsheet
 import os 
 
@@ -71,7 +70,8 @@ class ProjectMetaData:
         """
 
         return {
-	   "type" : "Type",
+	        "type" : "Type",
+            "ref_genome":"Ref genome",
            "project_id": "ID",
            "project_name": "Project name",
            "queue_date": "Queue date",
@@ -89,6 +89,12 @@ class ProjectMetaData:
 
     def _set_project_id(self, value):
         self._project_id = value
+
+    def _get_ref_genome(self):
+        return self._ref_genome
+
+    def _set_ref_genome(self, value):
+        self._ref_genome = value
 
     def _get_project_name(self):
         return self._project_name
@@ -151,6 +157,7 @@ class ProjectMetaData:
         self._type = value
 
     type = property(_get_type, _set_type)
+    ref_genome = property(_get_ref_genome,_set_ref_genome)
     project_id = property(_get_project_id, _set_project_id)
     project_name = property(_get_project_name, _set_project_name)
     queue_date = property(_get_queue_date, _set_queue_date)
