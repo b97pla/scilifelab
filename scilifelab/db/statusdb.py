@@ -465,7 +465,7 @@ class FlowcellRunMetricsConnection(Couch):
         if not fc:
             return None
         reads = fc.get('RunInfo', {}).get('Reads', [])
-        return len([read for read in reads if read.get('IsIndexedRun','N') == 'N']) == 1
+        return len([read for read in reads if read.get('IsIndexedRead','N') == 'N']) == 2
 
 
 class ProjectSummaryConnection(Couch):
