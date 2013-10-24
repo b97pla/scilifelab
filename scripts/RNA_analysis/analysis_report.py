@@ -16,15 +16,41 @@ from mako.lookup import TemplateLookup
 from texttable import Texttable
 from bcbio.pipeline.config_loader import load_config
 from scilifelab.google.project_metadata import ProjectMetaData
-from scilifelab.report.rst import make_logo_table
+#from scilifelab.report.rst import make_logo_table
 import operator
 
 def image(fp, width):
    res = ".. figure:: %s\n    :width: %s\n\n" % (fp, width)
    return res
 
+def indent_texttable_for_rst(ttab, indent=4, add_spacing=True):
+    """Texttable needs to be indented for rst.
+
+    :param ttab: texttable object
+    :param indent: indentation (should be 4 *spaces* for rst documents)
+    :param add_spacing_row: add additional empty row below class directives
+
+    :returns: reformatted texttable object as string
+    """
+    output = ttab.draw()
+    new_output = []
+    for row in output.split("\n"):
+        new_output.append(" " * indent + row)
+        if re.search('.. class::', row):
+            new_row = [" " if x != "|" else x for x in row]
+            new_output.append(" " * indent + "".join(new_row))
+    return "\n".join(new_output)
+
 def make_template(Map_Stat, FPKM, GBC, Read_Dist, rRNA_table, strandness_table, complexity):    
-    TEMPLATE= make_logo_table + """\
+#    TEMPLATE=make_logo_table+"""\
+    TEMPLATE="""\
+<%
+    tablenum=0
+    figurenum=0
+%>
+.. image:: sll_logo.gif
+   :align: right
+
 =======================
 RNA-seq analysis report
 =======================
@@ -114,8 +140,14 @@ Results
     
     if Map_Stat:
         TEMPLATE=TEMPLATE+"""
+<%
+    tablenum=tablenum+1
+%>
 Mapping statistics
 ^^^^^^^^^^^^^^^^^^^^^
+
+.. table:: **Table ${tablenum}.**
+
 ${Mapping_statistics}
     
 **Tot NO Reads:** If paired-end reads, the total number of reads indicates the total number of sequenced paired-end reads. Since a paired-end read is made up of two sequenced fragments (mates), the total number of sequenced 100-bp regions is twice the number shown in this column. If single-end reads, this column reflects the total numer of sequences.
@@ -131,9 +163,12 @@ ${Mapping_statistics}
 
     if Read_Dist:
         TEMPLATE=TEMPLATE+"""
+<%
+    tablenum=tablenum+1
+%>
 Read distribution
 ^^^^^^^^^^^^^^^^^^^
-This table contain information about the extent to which sequences from each sample mapped to different structural parts of genes, like coding exons, untranslated regions, and transcription start sites. The actual number itself is less important than the relative values for the different kinds of regions. For a normal RNA-seq experiment you should have a higher value in the CDS Exon column than in the others, for example. Perhaps the most easily interpretable column is the mRNA column, which gives the percentage of sequences that mapped to ENSEMBL-annotated mRNA (including coding regions and UTRs). While this number is not completely accurate (because ENSEMBL doe not completely describe the transcriptome), it is a useful summary statistic which should be relatively high for an mRNA-seq experiment, typically above 80%. 
+Table ${tablenum} contain information about the extent to which sequences from each sample mapped to different structural parts of genes, like coding exons, untranslated regions, and transcription start sites. The actual number itself is less important than the relative values for the different kinds of regions. For a normal RNA-seq experiment you should have a higher value in the CDS Exon column than in the others, for example. Perhaps the most easily interpretable column is the mRNA column, which gives the percentage of sequences that mapped to ENSEMBL-annotated mRNA (including coding regions and UTRs). While this number is not completely accurate (because ENSEMBL doe not completely describe the transcriptome), it is a useful summary statistic which should be relatively high for an mRNA-seq experiment, typically above 80%. 
 
 **CDS:** Coding sequence exons.
 
@@ -147,6 +182,8 @@ This table contain information about the extent to which sequences from each sam
 
 **mRNA:** Percentage of sequences that mapped to ENSEMBL-annotated mRNA.
 
+.. table:: **Table ${tablenum}.**
+
 ${Read_Distribution}
 
 
@@ -156,11 +193,16 @@ ${Read_Distribution}
 """
     if GBC:
         TEMPLATE=TEMPLATE+"""
+<%
+    figurenum=figurenum+1
+%>
 Gene body covarage
 ^^^^^^^^^^^^^^^^^^^^^
-Read coverage over gene body. To check if reads coverage is uniform and if there is any 5'/3' bias. All transcripts are scaled to 100 nucleotides and the read number is then calculated as the number of reads covering each nucleotide position. The plot shows the average gene body coverage from all samples.
+Read coverage over gene body. To check if reads coverage is uniform and if there is any 5'/3' bias. All transcripts are scaled to 100 nucleotides and the read number is then calculated as the number of reads covering each nucleotide position. Figure ${figurenum} shows the average gene body coverage from all samples.
 
 ${GBC}
+
+    **Figure ${figurenum}.**
 
 .. raw:: pdf
 
@@ -169,26 +211,35 @@ ${GBC}
 
     if FPKM:
         TEMPLATE=TEMPLATE+"""
+<%
+    figurenum=figurenum+1
+%>
 FPKM heatmap
 ^^^^^^^^^^^^^^^^^
-This heatmap shows the (Pearson) correlation between FPKM values of samples. 
+Figure ${figurenum} shows the (Pearson) correlation between FPKM values of samples. 
     
 
 ${FPKM_heatmap}
     
+    **Figure ${figurenum}.**
     
 .. raw:: pdf
 
     PageBreak
 """ 
     if complexity:
-                TEMPLATE=TEMPLATE+"""
+        TEMPLATE=TEMPLATE+"""
+<%
+    figurenum=figurenum+1
+%>
 Library complexity 
 ^^^^^^^^^^^^^^^^^^^^
-Library complexity is an important measure when assessing the quality of samples and libraries. It refers to the amount of unique molecules that are present in a sample/library. Complex libraries, i.e. those with high number of unique molecules can be explored by sequencing with high coverage, whereas those with low complexity are probably not worthy of sequencing further or deeper. The plot Y shows the number of unique molecules detected as a function of number of reads sequenced. It is obtained by extrapolating from the actual sequencing run and can be regarded as a predictor of the complexity of sample/library and assess its potential for further sequencing. For further information, please refer to: http://www.nature.com/nmeth/journal/v10/n4/full/nmeth.2375.html)
+Library complexity is an important measure when assessing the quality of samples and libraries. It refers to the amount of unique molecules that are present in a sample/library. Complex libraries, i.e. those with high number of unique molecules can be explored by sequencing with high coverage, whereas those with low complexity are probably not worthy of sequencing further or deeper. Figure ${figurenum} shows the number of unique molecules detected as a function of number of reads sequenced. It is obtained by extrapolating from the actual sequencing run and can be regarded as a predictor of the complexity of sample/library and assess its potential for further sequencing. For further information, please refer to: http://www.nature.com/nmeth/journal/v10/n4/full/nmeth.2375.html)
+
 
 ${complexity_plot}
 
+    **Figure ${figurenum}.**
 
 .. raw:: pdf
 
@@ -197,9 +248,14 @@ ${complexity_plot}
 
     if rRNA_table:
         TEMPLATE=TEMPLATE+"""
+<%
+    tablenum=tablenum+1
+%>
 Quantification of rRNA present in the samples
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Presented percentage rRNA per sample. Calculated as the number of reads mapping to ENSGs identified as rRNA, divided by the total number of mapped reads.
+Presented percentage rRNA per sample. The numbers are calculated as the number of reads mapping to Ensembl genes that have their <source> field set to "rRNA" in the gtf file, divided by the total number of mapped reads.
+
+.. table:: **Table ${tablenum}.**
 
 ${rRNA_table}
 
@@ -209,10 +265,15 @@ ${rRNA_table}
 """
     if strandness_table:
         TEMPLATE=TEMPLATE+"""
+<%
+    tablenum=tablenum+1
+%>
 Percentage of reads/pairs mapped to the expected strand
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                      
-The script infer_experiment.py from RSeQC package is used to evaluate strand-specificity of the sequencing. The table  shows the percentage of read pairs that were detected on the strand the gene is expressed.
+The script infer_experiment.py from RSeQC package is used to evaluate strand-specificity of the sequencing. Table ${tablenum}  shows the percentage of read pairs that were detected on the strand the gene is expressed.
+
+.. table:: **Table ${tablenum}.**
 
 ${strandness_table}
 
@@ -359,7 +420,7 @@ def generate_report(proj_conf,single_end,stranded):
             except:
                 print 'Could not make mapping statistics for sample '+sample_name
 
-        d['Mapping_statistics'] = tab.draw()
+        d['Mapping_statistics'] = indent_texttable_for_rst(tab)
         stat_json = open('stat.json','w')
         print>> stat_json, statistics
         stat_json.close()
@@ -391,7 +452,7 @@ def generate_report(proj_conf,single_end,stranded):
         RSeQC_rd_json = open('RSeQC_rd.json','w')
         print >> RSeQC_rd_json, read_dist
         RSeQC_rd_json.close()
-        d['Read_Distribution'] = tab.draw()
+        d['Read_Distribution'] = indent_texttable_for_rst(tab)
     except:
         print "Could not make Read Distribution table"
         pass
@@ -445,7 +506,7 @@ def generate_report(proj_conf,single_end,stranded):
         for sample_name in proj_conf['samples']:
             if D.has_key(sample_name):
                 tab.add_row([sample_name,D[sample_name]])
-        d['rRNA_table']=tab.draw()
+        d['rRNA_table']=indent_texttable_for_rst(tab)
         f.close()
 
     except:
@@ -468,7 +529,7 @@ def generate_report(proj_conf,single_end,stranded):
                 tab.add_row([sample_name,str(float(D[sample_name])*100)+'%'])
                 print str(float(D[sample_name])*100)
 
-        d['strandness_table']=tab.draw()
+        d['strandness_table']=indent_texttable_for_rst(tab)
         f.close()
     except:
         print "could not generate strandness_table"
