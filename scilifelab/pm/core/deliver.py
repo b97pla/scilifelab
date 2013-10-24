@@ -477,6 +477,8 @@ class DeliveryReportController(AbstractBaseController):
             return
         # Send out a user survey if necessary
         self._meta.date_format = "%Y-%m-%d"
+        # This must be read from a non-public location
+        self._meta.salt = "test salt"
         initiated = initiate_survey(self,
                                     project=self.pargs.project_name,
                                     url=self.pargs.url,
