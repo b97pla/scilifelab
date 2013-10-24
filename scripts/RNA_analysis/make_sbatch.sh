@@ -50,7 +50,7 @@ for i in ${name_list[*]};do
 done
 echo $DEPENDENCY
 ## make complexity plot
-sbatch --dependency=$DEPENDENCY $WP/process.metrics.files/GenerateComplexityPlots.sh
+sbatch --dependency=$DEPENDENCY $WP/GenerateComplexityPlots.sh
 
 ## seqQc_inferexpe
 RseqQc_inferexpe.py $bedfile $mail $config_file $path

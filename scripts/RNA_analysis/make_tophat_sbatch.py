@@ -235,5 +235,4 @@ cd tophat_out_{1}
 {11}
 {12}
 """.format(hours ,samp ,mail ,aligner_version,innerdist,refpath,innnerdistflagg,R1,R2,extra_arg, aligner_libtype,sam_bam,make_fai, qscale)
-#""".format(hours ,samp ,mail ,aligner_version,quantifyer_version,counts_version,innerdist,refpath,innnerdistflagg,R1,R2,extra_arg, aligner_libtype,sam_bam,make_fai, qscale)
         f.close()
