@@ -13,6 +13,7 @@ from scilifelab.report.rl import *
 from scilifelab.report.qc import application_qc, fastq_screen, QC_CUTOFF
 from scilifelab.bcbio.run import find_samples
 from scilifelab.report.delivery_notes import sample_status_note, project_status_note, data_delivery_note
+from scilifelab.report.survey import initiate_survey
 from scilifelab.report.best_practice import best_practice_note, SEQCAP_KITS
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, get_scilife_to_customer_name
 from scilifelab.utils.misc import query_yes_no, filtered_walk, md5sum
@@ -295,8 +296,6 @@ class DeliveryController(AbstractBaseController):
                 to_copy[sample.get('_id')].append([file,os.path.join(dest_proj_path,sname,runname,dstfile),read])
     
         return to_copy
-
-
         
     @controller.expose(help="Deliver best practice results")
     def best_practice(self):
@@ -471,7 +470,19 @@ class DeliveryReportController(AbstractBaseController):
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
         self.app._output_data['debug'].write(out_data['debug'].getvalue())
-        
+
+    @controller.expose(help="Send out a user survey")
+    def survey(self):
+        if not self._check_pargs(["project_name"]):
+            return
+        # Send out a user survey if necessary
+        self._meta.date_format = "%Y-%m-%d"
+        initiated = initiate_survey(self,
+                                    project=self.pargs.project_name,
+                                    url=self.pargs.url,
+                                    username=self.pargs.username,
+                                    password=self.pargs.password)
+       
     @controller.expose(help="Make best practice reports")
     def best_practice(self):
         self.log.info("Until best practice results are stored in statusDB, best practice reports are generated via the 'pm project bpreport' subcommand. This requires that best practice analyses have been run in the project folder.")
