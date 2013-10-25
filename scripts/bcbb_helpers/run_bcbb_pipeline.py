@@ -8,10 +8,13 @@ import subprocess
 import copy
 import tempfile
 import argparse
-import bcbio.solexa.flowcell
 import bcbio.solexa.samplesheet
 from bcbio.pipeline.config_loader import load_config
 from scilifelab.db.statusdb import ProjectSummaryConnection
+from scilifelab.bcbio.qc import FlowcellRunMetricsParser
+from scilifelab.log import minimal_logger
+
+LOG = minimal_logger(__name__)
 
 # The directory where CASAVA has written the demuxed output
 CASAVA_OUTPUT_DIR = "Unaligned"
@@ -25,13 +28,15 @@ PROCESS_YAML_SCRIPT = "process_run_info.py"
 PROCESS_YAML = True
 # If True, will assign the distributed master process and workers to a separate RabbitMQ queue for each flowcell 
 FC_SPECIFIC_AMPQ = True
+# Number of attempts to upload the report to gdocs
+REPORT_RETRIES = 10
 
-def main(post_process_config_file, fc_dir, run_info_file=None, only_run=False, only_setup=False, ignore_casava=False):
+def main(post_process_config_file, fc_dir, run_info_file=None, only_run=False, only_setup=False, ignore_casava=False, process_project=[], process_sample=[]):
     
     run_arguments = [[os.getcwd(),post_process_config_file,fc_dir,run_info_file]]
     if has_casava_output(fc_dir) and not ignore_casava:
         if not only_run:
-            run_arguments = setup_analysis_directory_structure(post_process_config_file, fc_dir, run_info_file)
+            run_arguments = setup_analysis_directory_structure(post_process_config_file, fc_dir, run_info_file, process_project, process_sample)
              
     else:
         if not only_run:
@@ -64,9 +69,9 @@ def run_analysis(work_dir, post_process, fc_dir, run_info):
     cluster = __import__("bcbio.distributed.{0}".format(cp), fromlist=[cp])
     platform_args = config["distributed"]["platform_args"].split()
     
-    print "Submitting job"
+    LOG.info("Submitting job")
     jobid = cluster.submit_job(platform_args, job_cl)
-    print 'Your job has been submitted with id ' + jobid
+    LOG.info('Your job has been submitted with id ' + jobid)
 
     # Change back to the starting directory
     os.chdir(start_dir)
@@ -79,20 +84,20 @@ def setup_analysis(post_process_config, archive_dir, run_info_file):
     
     # Set the barcode type in run_info.yaml to "illumina", strip the 7th nucleotide and set analysis to 'Minimal'
     if run_info_file is not None and PROCESS_YAML:
-        print "---------\nProcessing run_info:"
+        LOG.info("---------\nProcessing run_info:")
         run_info_backup = "%s.orig" % run_info_file
         os.rename(run_info_file,run_info_backup)
         cl = ["%s" % PROCESS_YAML_SCRIPT,run_info_backup,"--analysis","Align_illumina","--out_file",run_info_file,"--ascii","--clear_description"]
-        print subprocess.check_output(cl)
-        print "\n---------\n"
+        LOG.info(subprocess.check_output(cl))
+        LOG.info("\n---------\n")
     
     # Check that the specified paths exist
-    print "Checking input paths"
+    LOG.info("Checking input paths")
     for path in (post_process_config,archive_dir,run_info_file):
         if path is not None and not os.path.exists(path):
             raise Exception("The path %s does not exist" % path)
  
-    print "Getting base_dir from %s" % post_process_config
+    LOG.info("Getting base_dir from %s" % post_process_config)
     # Parse the config to get the analysis directory
     with open(post_process_config) as ppc:
         config = yaml.load(ppc)
@@ -100,14 +105,14 @@ def setup_analysis(post_process_config, archive_dir, run_info_file):
     analysis = config.get("analysis",{})
     base_dir = analysis["base_dir"]
     
-    print "Getting run name from %s" % archive_dir
+    LOG.info("Getting run name from %s" % archive_dir)
     # Get the run name from the archive dir
     _,run_name = os.path.split(os.path.normpath(archive_dir))
 
     # Create the working directory if necessary and change into it
     work_dir = os.path.join(base_dir,run_name)
     os.chdir(base_dir)
-    print "Creating/changing to %s" % work_dir
+    LOG.info("Creating/changing to %s" % work_dir)
     try:
         os.mkdir(run_name,0770)
     except OSError:
@@ -142,7 +147,7 @@ def setup_analysis(post_process_config, archive_dir, run_info_file):
             
     return [[os.getcwd(),post_process_config,archive_dir,run_info_file]]   
         
-def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_config_file):
+def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_config_file, process_project=[], process_sample=[]):
     """Parse the CASAVA 1.8+ generated flowcell directory and create a 
        corresponding directory structure suitable for bcbb analysis,
        complete with sample-specific and project-specific configuration files.
@@ -180,16 +185,26 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
     
     # Iterate over the projects in the flowcell directory
     for project in fc_dir_structure.get('projects',[]):
-        # Create a project directory if it doesn't already exist
+        
+        # If we only want to run the analysis for a particular project, skip if this is not it
         project_name = project['project_name']
+        if len(process_project) > 0 and project_name not in process_project:
+            continue
+        
+        # Create a project directory if it doesn't already exist
         project_dir = os.path.join(analysis_dir,project_name)
         if not os.path.exists(project_dir):
             os.mkdir(project_dir,0770)
         
         # Iterate over the samples in the project
         for sample_no, sample in enumerate(project.get('samples',[])):
-            # Create a directory for the sample if it doesn't already exist
+            
+            # If we only want to run the analysis for a particular sample, skip if this is not it
             sample_name = sample['sample_name'].replace('__','.')
+            if len(process_sample) > 0 and sample_name not in process_sample:
+                continue
+            
+            # Create a directory for the sample if it doesn't already exist
             sample_dir = os.path.join(project_dir,sample_name)
             if not os.path.exists(sample_dir):
                 os.mkdir(sample_dir,0770)
@@ -367,21 +382,24 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
 
     application_setup = {
                          'Amplicon': {'analysis': 'Align_standard'},
-                         'ChIP-seq': {'analysis': 'RNA-seq'},
+                         'ChIP-seq': {'analysis': 'Align_standard',
+                                      'genome_build': 'phix'},
                          'Custom capture': {'analysis': 'Align_standard_seqcap'},
                          'de novo': {'analysis': 'Align_standard',
                                      'genome_build': 'unknown'},
                          'Exome capture': {'analysis': 'Align_standard_seqcap'},
                          'Finished library': {'analysis': 'Align_standard',
-                                              'genome_build': 'unknown'},
+                                              'genome_build': 'phix'},
                          'Mate-pair': {'analysis': 'Align_standard',
                                        'genome_build': 'unknown'},
                          'Metagenome': {'analysis': 'Align_standard',
                                         'genome_build': 'unknown'},
                          'miRNA-seq': {'analysis': 'Align_standard',
                                        'genome_build': 'unknown'},
-                         'RNA-seq (mRNA)': {'analysis': 'RNA-seq'},
-                         'RNA-seq (total RNA)': {'analysis': 'RNA-seq'},
+                         'RNA-seq (mRNA)': {'analysis': 'Align_standard',
+                                            'genome_build': 'phix'},
+                         'RNA-seq (total RNA)': {'analysis': 'Align_standard',
+                                                 'genome_build': 'phix'},
                          'WG re-seq': {'analysis': 'Align_standard'},
                          'default': {'analysis': 'Align_standard'},
                          }
@@ -390,7 +408,7 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
     try:
         p_con = ProjectSummaryConnection(**couch_credentials)
     except:
-        print "Can't connect to maggie to get application"
+        LOG.warn("Can't connect to maggie to get application")
         p_con = None
   
   # Replace the default analysis
@@ -433,7 +451,15 @@ def parse_casava_directory(fc_dir):
     projects = []
     
     fc_dir = os.path.abspath(fc_dir)
-    fc_name, fc_date = bcbio.solexa.flowcell.get_flowcell_info(fc_dir)
+    parser = FlowcellRunMetricsParser(fc_dir)
+    run_info = parser.parseRunInfo()
+    runparams = parser.parseRunParameters()
+        
+    fc_name = run_info.get('Flowcell',None)
+    fc_date = run_info.get('Date',None)
+    fc_pos = runparams.get('FCPosition','')
+    assert fc_name is not None and fc_date is not None, "Could not parse flowcell name and flowcell date"
+    
     unaligned_dir_pattern = os.path.join(fc_dir,"{}*".format(CASAVA_OUTPUT_DIR))
     basecall_stats_dir_pattern = os.path.join(unaligned_dir_pattern,"Basecall_Stats_*")
     basecall_stats_dir = [os.path.relpath(d,fc_dir) for d in glob.glob(basecall_stats_dir_pattern)]
@@ -459,7 +485,7 @@ def parse_casava_directory(fc_dir):
                          'project_name': project_name, 
                          'samples': project_samples})
     
-    return {'fc_dir': fc_dir, 'fc_name': fc_name, 'fc_date': fc_date, 'basecall_stats_dir': basecall_stats_dir, 'projects': projects}
+    return {'fc_dir': fc_dir, 'fc_name': '{}{}'.format(fc_pos,fc_name), 'fc_date': fc_date, 'basecall_stats_dir': basecall_stats_dir, 'projects': projects}
     
 def has_casava_output(fc_dir):
     try:
@@ -471,15 +497,29 @@ def has_casava_output(fc_dir):
     return False
 
 def report_to_gdocs(fc_dir, post_process_config_file):
-    # Rename any existing run_info.yaml as it will interfere with gdocs upload
-    run_info = os.path.join(fc_dir, "run_info.yaml")
-    if os.path.exists(run_info):
-        os.rename(run_info, "{}.bak".format(run_info))
+    """Upload the run results to Google Docs using pm"""
+    
     # Call the report_to_gdocs script
-    cmd = ["report_to_gdocs.py",
-            os.path.basename(os.path.abspath(fc_dir)),
-            post_process_config_file]
-    subprocess.check_call(cmd)
+    runid = os.path.basename(os.path.abspath(fc_dir))
+    cmd = ["pm",
+           "report",
+           "report-to-gdocs",
+            "--run-id={}".format(runid)]
+    # Retry REPORT_RETRIES times to upload the report
+    succeeded = False
+    for i in xrange(REPORT_RETRIES):
+        try:
+            LOG.info("Uploading report to gdocs: {}".format(cmd))
+            subprocess.check_call(cmd)
+            succeeded = True
+            break
+        except Exception, e:
+            LOG.warn("Uploading failed for {} ('{}'), retrying.. ({} retries left)".format(runid,str(e),str(REPORT_RETRIES-i-1)))
+    if succeeded:
+        LOG.info("Uploading report for {} successful".format(runid))
+    else:
+        LOG.warn("Uploading report for {} failed, giving up after {} attempts".format(runid,REPORT_RETRIES))
+    return succeeded
 
 if __name__ == "__main__":
 
@@ -497,9 +537,10 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--only-setup", dest="only_setup", action="store_true", default=False, help="Setup the analysis directory but don't start the pipeline")
     parser.add_argument("-i", "--ignore-casava", dest="ignore_casava", action="store_true", default=False, help="Ignore any Casava 1.8+ file structure and just assume the pre-casava pipeline setup")
     parser.add_argument("-g", "--no-google-report", dest="no_google_report", action="store_true", default=False, help="Don't upload any demultiplex statistics to Google Docs")
+    parser.add_argument("--process-project", dest="process_project", action="store", default=[], nargs='+', help="Only setup and run analysis for the specified list of projects")
+    parser.add_argument("--process-sample", dest="process_sample", action="store", default=[], nargs='+', help="Only setup and run analysis for the specified list of samples")
     args = parser.parse_args()
-        
-    main(args.config,args.fcdir,args.custom_config,args.only_run,args.only_setup,args.ignore_casava)
+    main(args.config,args.fcdir,args.custom_config,args.only_run,args.only_setup,args.ignore_casava,args.process_project,args.process_sample)
     if not args.no_google_report:
         report_to_gdocs(args.fcdir, args.config)
 

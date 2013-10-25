@@ -35,7 +35,7 @@ class HiSeqRun(illumina.IlluminaRun):
         and/or sample_project and/or index.
         """
         entries = []
-        with open(samplesheet) as fh:
+        with open(samplesheet,"rU") as fh:
             csvr = csv.DictReader(fh, dialect='excel')
             entries = [row for row in csvr \
                        if (lane is None or row["Lane"] == lane) \
@@ -99,7 +99,7 @@ class HiSeqSampleSheet(list):
         corresponding to the columns in the header. Optionally filter by lane 
         and/or sample_project and/or index.
         """
-        with open(self.samplesheet) as fh:
+        with open(self.samplesheet,"rU") as fh:
             csvr = csv.DictReader(fh, dialect='excel')
             for row in csvr:
                 if (lane is None or row["Lane"] == lane) \

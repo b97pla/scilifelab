@@ -48,22 +48,27 @@ class Couch(Database):
         self.port = 5984
         self.user = kwargs.get("username", None)
         self.pw = kwargs.get("password", None)
-        self.url_string = "http://{}:{}".format(self.url, self.port)
+        if self.user and self.pw:
+            self.url_string = "http://{}:{}@{}:{}".format(self.user, self.pw, self.url, self.port)
+            self.display_url_string = "http://{}:{}@{}:{}".format(self.user, "*********", self.url, self.port)
+        else:
+            self.url_string = "http://{}:{}".format(self.url, self.port)
+            self.display_url_string = "http://{}:{}".format(self.url, self.port)
         if log:
             self.log = log
         super(Couch, self).__init__(**kwargs)        
         if not self.con:
-            raise ConnectionError("Connection failed for url {}".format(self.url_string))
+            raise ConnectionError("Connection failed for url {}".format(self.display_url_string))
 
     def connect(self, username=None, password=None, url="localhost", port=5984, **kw):
         if not username or not password or not url:
             self.log.warn("please supply username, password, and url")
             return None
         if not check_url(self.url_string):
-            self.log.warn("No such url {}".format(self.url_string))
+            self.log.warn("No such url {}".format(self.display_url_string))
             return None
         self.con = couchdb.Server(url=self.url_string)
-        self.log.debug("Connected to server @{}".format(self.url_string))
+        self.log.debug("Connected to server @{}".format(self.display_url_string))
         self.user = username
         self.pw = password
 
@@ -88,7 +93,7 @@ class Couch(Database):
             return
         self.log.debug("retrieving field entry in field '{}' for name '{}'".format(field, name))
         if self.name_view.get(name, None) is None:
-            self.log.warn("no field '{}' for name '{}'".format(field, name))
+            self.log.warn("no entry '{}' in {}".format(name, self.db))
             return None
         doc = self._doc_type(**self.db.get(self.name_view.get(name)))
         if field:

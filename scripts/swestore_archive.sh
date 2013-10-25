@@ -1,6 +1,8 @@
-#! /bin/bash
+#! /bin/bash -l
 
-ROOT="/ssUppnexZone/proj"
+# Function for echoing to stderr
+echoerr() { echo "$@" 1>&2; }
+
 CLEAN="0"
 DRYRUN="0"
 PROJECT=""
@@ -43,125 +45,32 @@ done
 PROJECT=${@:$OPTIND:1}
 if [ -z ${PROJECT} ]
 then
-  echo "*** ERROR *** An UPPNEX project must be specified"
+  echoerr "*** ERROR *** An UPPNEX project must be specified"
   exit 1
 fi
 
 
-# Switch to the project account, will also make sure that the iRODS module has been loaded
-icd ${ROOT}/${PROJECT}
-if [ $? -ne 0 ]
+if [ ${DRYRUN} == "0" ]
 then
-  echo "*** ERROR *** Could not icd to ${ROOT}/${PROJECT}"
-  exit 1
+  N=""
+else
+  N="-n "
 fi
 
-# Find files that have not been modified in the last day and process them
-find ./ -maxdepth 1 -name "${FILE}" -mtime +1 |while read RUN
+if [ ${CLEAN} == "0" ]
+then
+  D=""
+else
+  D="-d "
+fi
+
+DIR=`dirname ${FILE}`
+FNAME=`basename ${FILE}`
+# Find files and process them
+find ${DIR} -maxdepth 1 -name "${FNAME}" |while read RUN
 do
-  
-  RUN=`basename ${RUN}`
-  
-  # If the run already seems to have been archived, we skip it
-  if [ -e ${RUN}.irods.log ]
-  then
-    echo `date -u +"%xT%TZ"`"   ${RUN} has already been archived. Skipping."
-    continue
-  fi
-  
-  LOGFILE=${RUN}.archive.log
-  
-  # Check if the file already exists on the destination, in which case we will warn and skip it
-  CMD="ils ${RUN}"
-  ${CMD} >& /dev/null
-  if [ $? -eq 0 ]
-  then
-    echo `date -u +"%xT%TZ"`"   ERROR: ${RUN} already exists on destination, you will need to remove it with 'irm' before archiving" |tee -a ${LOGFILE}
-    continue
-  fi
-  
-  # We require a pre-computed md5-sum (computed on the original source)
-  # This is just to double-check that the initial transfer was OK 
-  if [ ! -e ${RUN}.md5 ]
-  then
-    echo `date -u +"%xT%TZ"`"   Missing pre-computed md5 sum, will NOT archive ${RUN}" |tee -a ${LOGFILE}
-    continue
-  fi
-  
-  # Checking that the pre-computed md5 matches the file
-  echo `date -u +"%xT%TZ"`"   Verifying md5sum of ${RUN}" |tee -a ${LOGFILE}
-  CMD="md5sum -c ${RUN}.md5"
-  echo ${CMD} |tee -a ${LOGFILE}
-  if [ ${DRYRUN} == "0" ]
-  then
-    $CMD
-    if [ $? -ne 0 ]
-    then
-      echo `date -u +"%xT%TZ"`"   md5sum verification failed, will NOT archive ${RUN}" |tee -a ${LOGFILE}
-      continue
-    fi
-  fi
-  
-  # Archiving file through iRODS
-  echo `date -u +"%xT%TZ"`"   Archiving ${RUN}" |tee -a ${LOGFILE}
-  CMD="iput -K -P ${RUN}"
-  echo ${CMD} |tee -a ${LOGFILE}
-  if [ ${DRYRUN} == "0" ]
-  then
-    $CMD >& ${RUN}.irods.log
-    if [ $? -ne 0 ]
-    then
-      echo `date -u +"%xT%TZ"`"   ERROR: Archiving of ${RUN} FAILED" |tee -a ${LOGFILE}
-      mv ${RUN}.irods.log ${RUN}.failed.log
-      continue
-    fi
-  fi
-  
-  # Verifying that the checksum in Swestore matches
-  echo `date -u +"%xT%TZ"`"   Verifying checksum in Swestore" |tee -a ${LOGFILE}
-  if [ ${DRYRUN} == "0" ]
-  then
-    s=`ichksum ${RUN}`
-    s=`echo $s |cut -f 2 -d ' '`
-    u=`cut -f 1 -d ' ' ${RUN}.md5`
-    if [ "$s" == "$u" ]
-    then
-      echo `date -u +"%xT%TZ"`"   Swestore checksum and uppmax checksum match for ${RUN}. Archiving OK" |tee -a ${LOGFILE}
-    else
-      echo `date -u +"%xT%TZ"`"   Swestore checksum did not match. Archiving of ${RUN} FAILED" |tee -a ${LOGFILE}
-      mv ${RUN}.irods.log ${RUN}.failed.log
-      continue
-    fi
-  else
-    echo `date -u +"%xT%TZ"`"   DRYRUN: No md5 sums to verify" |tee -a ${LOGFILE}
-  fi 
-  
-  # As an extra precaution, verify the integrity of the file using ssverify.sh
-  echo `date -u +"%xT%TZ"`"   Verifying upload through ssverify.sh" |tee -a ${LOGFILE}
-  CMD="ssverify.sh ${RUN} ${ROOT}/${PROJECT}/${RUN}"
-  echo $CMD |tee -a ${LOGFILE}
-  if [ ${DRYRUN} == "0" ]
-  then
-    $CMD
-    if [ $? -ne 0 ]
-    then
-      echo `date -u +"%xT%TZ"`"   ERROR: ssverify.sh for ${RUN} FAILED" |tee -a ${LOGFILE}
-      mv ${RUN}.irods.log ${RUN}.failed.log
-      continue
-    fi
-    echo `date -u +"%xT%TZ"`"   ssverify.sh for ${RUN} PASSED. Archiving OK" |tee -a ${LOGFILE}
-  fi
-  
-  # Remove source file if everything seems OK
-  if [ ${CLEAN} == "1" ]
-  then
-    echo `date -u +"%xT%TZ"`"   Removing source file ${RUN}" |tee -a ${LOGFILE}
-    CMD="rm -f ${RUN}"
-    echo $CMD |tee -a ${LOGFILE}
-    if [ ${DRYRUN} == "0" ]
-    then
-      $CMD
-    fi
-  fi
-  
+  CMD="bash swestore_archive_run.sh ${D}${N}${RUN} ${PROJECT}"
+  echo $CMD
+  $CMD
 done
+  

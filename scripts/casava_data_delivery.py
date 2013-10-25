@@ -33,7 +33,10 @@ def is_fastq(fname):
     fastq_ext = [".fastq.gz",
                  ".fastq",
                  "_fastq.txt.gz",
-                 "_fastq.txt"]
+                 "_fastq.txt",
+                 ".fastq..gz",
+                 "_fastq.txt..gz"
+                 ]
     for ext in fastq_ext:
         if fname.endswith(ext):
             return True
@@ -45,7 +48,7 @@ def create_final_name(fname, date, fc_id, sample_name):
     """
     
      # Split the file name according to CASAVA convention
-    m = re.match(r'(\S+?)_[ACGTN\-]+_L0*(\d+)_R(\d)_\d+\.fastq(.*)', fname)
+    m = re.match(r'(\S+?)_(?:[ACGTN\-]+|NoIndex|Undetermined)_L0*(\d+)_R(\d)_\d+\.fastq(.*)', fname)
     if m is not None:
         lane = m.group(2)
         read = m.group(3)
@@ -64,7 +67,7 @@ def create_final_name(fname, date, fc_id, sample_name):
                                                        fc_id,
                                                        sample_name,
                                                        read]),
-                                             ext)
+                                             ext.replace('..','.'))
     return dest_file_name
       
 def get_file_copy_list(proj_base_dir, dest_proj_path, fcid, deliver_all_fcs, deliver_nophix, skip_list):
@@ -177,6 +180,8 @@ def main():
     parser.add_argument('uppmax_id', action='store', help="UPPMAX project id to deliver to, e.g. b2012001")
     args = parser.parse_args()
 
+    print("""\n****** Deprication ******\nPlease note that this script is deprecated and the functionality has been replaced by 'pm deliver raw-data'\n""")
+    
     if not args.project_name in os.listdir(args.caspath): 
         print("Could not find project. Check directory listing:")
         for f in os.listdir(args.caspath): 
@@ -398,11 +403,30 @@ class TestDataDelivery(unittest.TestCase):
                        "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name)),
                       ("{}_CGATGT_L001_R1_001.fastq.gz".format(sample_name),
                        "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name)),
+                      ("{}_NoIndex_L001_R2_001.fastq.gz".format(sample_name),
+                       "1_{}_{}_{}_2.fastq.gz".format(date,fcid,sample_name)),
+                      ("{}_CGATGT_L001_R1_001.fastq..gz".format(sample_name),
+                       "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name)),
                       ("{}_CGATGT_L001_R1_001.fastq".format(sample_name),
                        "1_{}_{}_{}_1.fastq".format(date,fcid,sample_name))]
         
         for test_fname, exp_result in test_names:
             obs_result = create_final_name(test_fname,date,fcid,sample_name)
+            self.assertEqual(obs_result,
+                             exp_result,
+                             "Did not get expected final name ({:s}) for file name {:s}".format(exp_result,test_fname))
+        
+        # Try without the _index part of file name
+        sample_name_noindex = "P101_150"
+        test_names = [("1_{}_{}_1_nophix_1_fastq.txt.gz".format(date,fcid),
+                       "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name_noindex)),
+                      ("{}_CGATGT_L001_R1_001.fastq.gz".format(sample_name_noindex),
+                       "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name_noindex)),
+                      ("{}_NoIndex_L001_R2_001.fastq.gz".format(sample_name_noindex),
+                       "1_{}_{}_{}_2.fastq.gz".format(date,fcid,sample_name_noindex))]
+        
+        for test_fname, exp_result in test_names:
+            obs_result = create_final_name(test_fname,date,fcid,sample_name_noindex)
             self.assertEqual(obs_result,
                              exp_result,
                              "Did not get expected final name ({:s}) for file name {:s}".format(exp_result,test_fname))
@@ -414,7 +438,18 @@ class TestDataDelivery(unittest.TestCase):
         for test_name in test_names:
             with self.assertRaises(ValueError):
                 create_final_name(test_name,date,fcid,sample_name)
-            
+        
+        # Try a file with undetermined reads
+        sample_name = "lane1"
+        test_names = [("{}_Undetermined_L001_R1_001.fastq.gz".format(sample_name),
+                       "1_{}_{}_{}_1.fastq.gz".format(date,fcid,sample_name)),]    
+        for test_fname, exp_result in test_names:
+            obs_result = create_final_name(test_fname,date,fcid,sample_name)
+            self.assertEqual(obs_result,
+                             exp_result,
+                             "Did not get expected final name ({:s}) for file name {:s}".format(exp_result,test_fname))
+    
+        
     def test_get_file_copy_list(self):
         """Get list of files to copy and the destinations
         """
@@ -440,7 +475,8 @@ class TestDataDelivery(unittest.TestCase):
                     os.makedirs(d)
                     test_names = ["{:d}_{:s}_1_1_fastq.txt.gz".format(random.randint(1,8),
                                                                            fcid),
-                                  "{}_CGATGT_L001_R1_001.fastq.gz".format(samples[-1]),]
+                                  "{}_CGATGT_L001_R1_001.fastq.gz".format(samples[-1]),
+                                  "{}_CGATGT_L001_R1_001.fastq..gz".format(samples[-1]),]
                     for test_name in test_names:
                         test_file = os.path.join(d,test_name)
                         open(test_file,"w").close()

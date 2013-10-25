@@ -26,6 +26,11 @@ Flow cell id
 
 ${FC_id}
 
+Lane
+^^^^
+
+${lane}
+
 Sequence data directory
 ^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -34,21 +39,20 @@ Sequence data directory
 Sample
 ^^^^^^
 
-${scilifelab_name} / ${customer_name}. Ordered amount: ${ordered_amount} million paired reads.
+${scilifelab_name} / ${customer_name}. Ordered amount: ${ordered_amount} million read${'{}'.format(' pair') if is_paired else ''}s.
 
 Method
 ^^^^^^
 
-Clustered on cBot and sequenced on ${instrument}${', {} run mode,'.format(run_mode) if run_mode not in ['', 'N/A'] else ''} 
+Clustered on cBot and sequenced on ${instrument_version}${', {} run mode,'.format(run_mode) if run_mode not in ['', 'N/A'] else ''} 
 according to manufacturer's instructions. Demultiplexing and conversion using
 ${casava_version}. The quality scale is Sanger / phred33 / Illumina 1.8+.
 
 Results
 ^^^^^^^
 
-${rounded_read_count} million paired reads in lane with PhiX error
-rate ${phix_error_rate}. Average quality score ${avg_quality_score}
-(${pct_q30_bases}% bases >= Q30).
+${rounded_read_count} million read${'{}'.format(' pair') if is_paired else ''}s${' in lane with PhiX error rate {}%'.format(phix_error_rate) if phix_error_rate != 'N/A' else ''}. 
+Average quality score ${avg_quality_score} (${pct_q30_bases}% bases >= Q30).
 
 Comments
 ^^^^^^^^

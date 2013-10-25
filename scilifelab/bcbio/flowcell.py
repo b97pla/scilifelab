@@ -322,7 +322,7 @@ class Flowcell(object):
                 re_str = "{}_{}".format(smp['lane'], smp['barcode_id'])
             else:
                 re_str = "{}".format(smp['lane'])
-            pattern = "{}_[0-9]+_.?{}(_nophix)?_{}*{}".format(smp['lane'], smp['flowcell_id'], smp['barcode_id'], ext)
+            pattern = "{}_[0-9]+_.?{}(_nophix)?(_{})?.*{}".format(smp['lane'], smp['flowcell_id'], smp['barcode_id'], ext)
             glob_pfx[sample] = pattern
         return glob_pfx
 
@@ -330,7 +330,7 @@ class Flowcell(object):
         """Return glob prefix regular expression strings"""
         glob_pfx = []
         for sample in self:
-            pattern = "{}_[0-9]+_.?{}(_nophix)?_{}*{}".format(sample['lane'], sample['flowcell_id'], sample['barcode_id'], ext)
+            pattern = "{}_[0-9]+_.?{}(_nophix)?(_{})?.*{}".format(sample['lane'], sample['flowcell_id'], sample['barcode_id'], ext)
             glob_pfx.append(pattern)
             # Catch sample files for casava
             glob_pfx.append("^{}[_\-].*\.*".format(sample['name']))
@@ -343,7 +343,7 @@ class Flowcell(object):
         """Return glob prefix regular expressions."""
         glob_pfx = []
         for sample in self:
-            pattern = re.compile("{}_[0-9]+_.?{}(_nophix)?_{}-*{}".format(sample['lane'], sample['flowcell_id'], sample['barcode_id'], ext))
+            pattern = re.compile("{}_[0-9]+_.?{}(_nophix)?(_{})?-*{}".format(sample['lane'], sample['flowcell_id'], sample['barcode_id'], ext))
             glob_pfx.append(pattern)
         return glob_pfx
 
@@ -383,7 +383,7 @@ class Flowcell(object):
             sample = None
             self.lane_files[lane].append(os.path.abspath(f))
             return
-        re_sample = re.compile('^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_([0-9]+|unmatched).*')
+        re_sample = re.compile('^([0-9]+)_[0-9]+_[A-Za-z0-9]+(_nophix)?_([0-9]+|unmatched)?.*')
         m_sample = re_sample.search(os.path.basename(f))
         if m_sample:
             lane = m_sample.group(1)

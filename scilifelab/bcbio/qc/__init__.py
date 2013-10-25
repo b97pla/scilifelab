@@ -11,6 +11,7 @@ import csv
 import collections
 import xml.etree.cElementTree as ET
 from bs4 import BeautifulSoup
+import datetime
 
 from cement.core import backend
 LOG = backend.minimal_logger("bcbio")
@@ -62,6 +63,19 @@ class MetricsParser():
         for line in in_handle:
             data[line['lane']].append({c:line[c] for c in in_handle.fieldnames if c != 'lane'})
         return data
+
+    def parse_bcbb_checkpoints(self, in_handle):
+        
+        TIMEFORMAT = "%Y-%m-%dT%H:%M:%S.%f"
+        timestamp = []
+        for line in in_handle:
+            try:
+                ts = "{}Z".format(datetime.datetime.strptime(line.strip(), TIMEFORMAT).isoformat())
+                timestamp.append(ts)
+            except ValueError:
+                pass 
+    
+        return timestamp
 
 class ExtendedPicardMetricsParser(PicardMetricsParser):
     """Extend basic functionality and parse all picard metrics"""
@@ -187,6 +201,42 @@ class RunInfoParser():
         p.CharacterDataHandler = self._char_data
         p.ParseFile(fp)
 
+class RunParametersParser():
+    """runParameters.xml parser"""
+    def __init__(self):
+        self.data = {}
+        
+    def parse(self, fh):
+        
+        tree = ET.parse(fh)
+        root = tree.getroot()
+        self.data = XmlToDict(root)
+        # If not a MiSeq run, return the contents of the Setup tag
+        if 'MCSVersion' not in self.data:
+            self.data = self.data['Setup']
+        return self.data
+
+class DemultiplexConfigParser():
+    """DemultiplexConfig.xml parser"""
+    def __init__(self, cfgfile):
+        self.data = {}
+        self.cfgfile = cfgfile
+        
+    def parse(self):
+        
+        if not os.path.exists(self.cfgfile):
+            self.log.warn("No such file {}".format(self.cfgfile))
+            return {}
+        try:
+            with open(self.cfgfile) as fh:
+                tree = ET.parse(fh)
+                root = tree.getroot()
+                self.data = XmlToDict(root)
+        except:
+            self.log.warn("Reading file {} failed".format(self.cfgfile))
+            return {}
+        
+        return self.data
 
 # Generic XML to dict parsing
 # See http://code.activestate.com/recipes/410469-xml-as-dictionary/
@@ -458,8 +508,8 @@ class SampleRunMetricsParser(RunMetricsParser):
     def read_picard_metrics(self, barcode_name, sample_prj, lane, flowcell, barcode_id, **kw):
         self.log.debug("read_picard_metrics for sample {}, project {}, lane {} in run {}".format(barcode_name, sample_prj, lane, flowcell))
         picard_parser = ExtendedPicardMetricsParser()
-        pattern = "|".join(["{}_[0-9]+_[0-9A-Za-z]+(_nophix)?_{}-.*.(align|hs|insert|dup)_metrics".format(lane, barcode_id),
-                            "{}_[0-9]+_[0-9A-Za-z]+_{}(_nophix)?-.*.(align|hs|insert|dup)_metrics".format(lane, barcode_id)])
+        pattern = "|".join(["{}_[0-9]+_[0-9A-Za-z]+(_nophix)?(_{})?-.*.(align|hs|insert|dup)_metrics".format(lane, barcode_id),
+                            "{}_[0-9]+_[0-9A-Za-z]+(_{})?(_nophix)?-.*.(align|hs|insert|dup)_metrics".format(lane, barcode_id)])
         files = self.filter_files(pattern)
         if len(files) == 0:
             self.log.warn("no picard metrics files for sample {}; pattern {}".format(barcode_name, pattern))
@@ -475,8 +525,9 @@ class SampleRunMetricsParser(RunMetricsParser):
     def parse_fastq_screen(self, barcode_name, sample_prj, lane, flowcell, barcode_id, **kw):
         self.log.debug("parse_fastq_screen for sample {}, project {}, lane {} in run {}".format(barcode_name, sample_prj, lane, flowcell))
         parser = MetricsParser()
-        pattern = "|".join(["{}_[0-9]+_[0-9A-Za-z]+(_nophix)?_{}_[12]_screen.txt".format(lane, barcode_id),
-                            "{}_[0-9]+_[0-9A-Za-z]+_{}(_nophix)?_[12]_screen.txt".format(lane, barcode_id)])
+        pattern = "|".join(["{}_[0-9]+_[0-9A-Za-z]+(_nophix)?(_{})?_[12]_screen.txt".format(lane, barcode_id),
+                            "{}_[0-9]+_[0-9A-Za-z]+(_{})?(_nophix)?_[12]_screen.txt".format(lane, barcode_id),
+                            "{}_{}_L0*{}_.*_screen.txt".format(barcode_name, kw.get("sequence"), lane)])
         files = self.filter_files(pattern)
         self.log.debug("files {}".format(",".join(files)))
         try:
@@ -488,11 +539,31 @@ class SampleRunMetricsParser(RunMetricsParser):
             self.log.warn("no fastq screen metrics for sample {}".format(barcode_name))
             return {}
 
+    def parse_bcbb_checkpoints(self, barcode_name, sample_prj, flowcell, barcode_id, **kw):
+        self.log.debug("parse_bcbb_checkpoints for sample {}, project {} in run {}".format(barcode_name, sample_prj, flowcell))
+        parser = MetricsParser()
+        def filter_fn(f):
+            return re.match("[0-9][0-9]_[^\/]+\.txt", os.path.basename(f)) != None
+        
+        files = self.filter_files(None,filter_fn)
+        self.log.debug("files {}".format(",".join(files)))
+        
+        checkpoints = {}
+        for f in files:
+            try: 
+                with open(f) as fh:
+                    checkpoints[os.path.splitext(os.path.basename(f))[0]] = parser.parse_bcbb_checkpoints(fh)
+            except Exception as e:
+                self.log.warn("Exception: {}".format(e))
+                self.log.warn("no bcbb checkpoint for sample {} using pattern '{}'".format(barcode_name, pattern))
+        
+        return checkpoints
+
     def read_fastqc_metrics(self, barcode_name, sample_prj, lane, flowcell, barcode_id, **kw):
         self.log.debug("read_fastqc_metrics for sample {}, project {}, lane {} in run {}".format(barcode_name, sample_prj, lane, flowcell))
         if barcode_name == "unmatched":
             return
-        pattern = "fastqc/{}_[0-9]+_[0-9A-Za-z]+(_nophix)?_{}-*".format(lane, barcode_id)
+        pattern = "fastqc/{}_[0-9]+_[0-9A-Za-z]+(_nophix)?(_{})?-*".format(lane, barcode_id)
         files = self.filter_files(pattern)
         self.log.debug("files {}".format(",".join(files)))
         try:
@@ -508,7 +579,7 @@ class SampleRunMetricsParser(RunMetricsParser):
     def parse_filter_metrics(self, **kw):
         """CASAVA: Parse filter metrics at sample level"""
         self.log.debug("parse_filter_metrics for lane {}, project {} in flowcell {}".format(lane, sample_prj, flowcell))
-        pattern = "{}_[0-9]+_[0-9A-Za-z]+_{}(_nophix)?.filter_metrics".format(lane, barcode_id)
+        pattern = "{}_[0-9]+_[0-9A-Za-z]+(_{})?(_nophix)?.filter_metrics".format(lane, barcode_id)
         files = self.filter_files(pattern)
         self.log.debug("files {}".format(",".join(files)))
         try:
@@ -521,7 +592,7 @@ class SampleRunMetricsParser(RunMetricsParser):
             self.log.warn("No filter nophix metrics for lane {}".format(lane))
             return {"reads":None, "reads_aligned":None, "reads_fail_align":None}
 
-    def get_bc_count(self, barcode_name, sample_prj, flowcell, lane, barcode_id, demultiplex_stats=None, **kw):
+    def get_bc_count(self, barcode_name, sample_prj, flowcell, lane, barcode_id, demultiplex_stats=None, run_setup=None, **kw):
         """Parse bc metrics at sample level and get *bc_count* for a sample run!"""
         self.log.debug("get_bc_count for sample {}, project {} in flowcell {}".format(barcode_name, sample_prj, flowcell))
         # If demultiplex_stats passed use this info instead
@@ -530,7 +601,12 @@ class SampleRunMetricsParser(RunMetricsParser):
             sample_lane = "{}_{}".format(barcode_name, lane)
             if sample_lane in demux_stats_dict:
                 self.log.debug("sample {}, lane {} found in demultiplex_stats - using this information".format(barcode_name, lane))
-                return int(demux_stats_dict[sample_lane]["# Reads"].replace(",", ""))/2
+                # Only return paired read counts for paired-end runs
+                reads = int(demux_stats_dict[sample_lane]["# Reads"].replace(",", ""))
+                if self._is_single_end(run_setup):
+                    return reads
+                else:
+                    return reads/2
         pattern = "{}_[0-9]+_[0-9A-Za-z]+(_nophix)?[\._]bc[\._]metrics".format(lane)
         files = self.filter_files(pattern)
         if len(files) == 0:
@@ -547,6 +623,11 @@ class SampleRunMetricsParser(RunMetricsParser):
             self.log.warn("No bc_metrics info for lane {}".format(lane))
             return None
 
+    def _is_single_end(self, reads):
+        """Return True if run is single end, False otherwise"""
+        if len([read for read in reads if read.get("IsIndexedRead","N") == "N"]) == 1:
+            return True
+        return False
 
 class FlowcellRunMetricsParser(RunMetricsParser):
     """Flowcell level class for parsing flowcell run metrics data."""
@@ -587,13 +668,23 @@ class FlowcellRunMetricsParser(RunMetricsParser):
             return {}
         try:
             with open(infile) as fh:
-                tree = ET.parse(fh)
-            root = tree.getroot()
-            data = XmlToDict(root)
+                parser = RunParametersParser()
+                data = parser.parse(fh)
             return data
         except:
             self.log.warn("Reading file {} failed".format(os.path.join(os.path.abspath(self.path), fn)))
             return {}
+
+    def parseDemultiplexConfig(self, fn="DemultiplexConfig.xml", **kw):
+        """Parse the DemultiplexConfig.xml configuration files"""
+        pattern = os.path.join(os.path.abspath(self.path), "Unaligned*", fn)
+        cfg = {}
+        for cfgfile in glob.glob(pattern):
+            parser = DemultiplexConfigParser(cfgfile)
+            data = parser.parse()
+            if len(data) > 0:
+                cfg[os.path.basename(os.path.dirname(cfgfile))] = data
+        return cfg
 
     def parse_samplesheet_csv(self, runinfo_csv="SampleSheet.csv", **kw):
         infile = os.path.join(os.path.abspath(self.path), runinfo_csv)
@@ -659,7 +750,7 @@ class FlowcellRunMetricsParser(RunMetricsParser):
 
     def parse_bc_metrics(self, fc_name, **kw):
         """Parse bc metrics at sample level"""
-        self.log.debug("parse_bc_metrics for flowcell {}".format(fc_name[1:]))
+        self.log.debug("parse_bc_metrics for flowcell {}".format(fc_name))
         lanes = {str(k):{} for k in self._lanes}
         for lane in self._lanes:
             pattern = "{}_[0-9]+_[0-9A-Za-z]+(_nophix)?[\._]bc[\._]metrics".format(lane)
@@ -680,9 +771,9 @@ class FlowcellRunMetricsParser(RunMetricsParser):
         """Parse the undetermined indices top barcodes materics
         """
         
-        lanes = {str(k):{} for k in self._lanes}
         # Use a glob to allow for multiple fastq folders
-        metrics_file_pattern = os.path.join(self.path, "Unaligned*", "Basecall_Stats_{}".format(fc_name[1:]), "Undemultiplexed_stats.metrics")
+        metrics_file_pattern = os.path.join(self.path, "Unaligned*", "Basecall_Stats_*{}".format(fc_name[1:]), "Undemultiplexed_stats.metrics")
+        metrics = {'undemultiplexed_barcodes': []}
         for metrics_file in glob.glob(metrics_file_pattern):
             self.log.debug("parsing {}".format(metrics_file))
             if not os.path.exists(metrics_file):
@@ -693,17 +784,34 @@ class FlowcellRunMetricsParser(RunMetricsParser):
                 parser = MetricsParser()
                 in_handle = csv.DictReader(fh, dialect=csv.excel_tab)
                 data = parser.parse_undemultiplexed_barcode_metrics(in_handle)
-                for k in lanes.keys():
-                    lanes[str(k)]["undemultiplexed_barcodes"] = collections.defaultdict(list)
-                    try:
-                        for barcode in data[str(k)]:
-                            # Warn that we are replacing previously parsed results
-                            if len(lanes[str(k)]) > 0:
-                                self.log.warn("Conflicting undemultiplexed barcode metrics for lane {}. Using values parsed from {}".format(k,metrics_file))
-                            for key, val in barcode.items():
-                                lanes[str(k)]["undemultiplexed_barcodes"][key].append(val)
-                    except KeyError:
-                        self.log.warn("No undemultiplexed barcode metrics for lane {}".format(k))
+                for lane, items in data.items():
+                    for item in items:
+                        item['lane'] = lane
+                        metrics['undemultiplexed_barcodes'].append(item)
+
+        # Define a function for sorting values according to lane and yield
+        def by_lane_yield(data):
+            return '{}-{}'.format(data.get('lane',''),data.get('count','').zfill(10))
+
+        # Remove duplicate entries resulting from multiple stats files
+        for metric in ['undemultiplexed_barcodes']:
+            dedupped = {}
+            for row in metrics[metric]:
+                key = "\t".join(row.values())
+                if key not in dedupped:
+                    dedupped[key] = row
+                else:
+                    self.log.warn("Duplicates of Undemultiplexed barcode entries discarded: {}".format(key[0:min(35,len(key))]))
+            
+            # Reformat the structure of the data to fit the downstream processing
+            lanes = {}
+            for row in sorted(dedupped.values(), key=by_lane_yield, reverse=True):
+                lane = row['lane']
+                if lane not in lanes:
+                    lanes[lane] = {metric: {k:[] for k in row.keys()}}
+                for k in row.keys():
+                    lanes[lane][metric][k].append(row[k])
+                    
         return lanes
     
     def parse_demultiplex_stats_htm(self, fc_name, **kw):
@@ -713,7 +821,7 @@ class FlowcellRunMetricsParser(RunMetricsParser):
         metrics = {"Barcode_lane_statistics": [],
                    "Sample_information": []}
         # Use a glob to allow for multiple fastq directories
-        htm_file_pattern = os.path.join(self.path, "Unaligned*", "Basecall_Stats_{}".format(fc_name[1:]), "Demultiplex_Stats.htm")
+        htm_file_pattern = os.path.join(self.path, "Unaligned*", "Basecall_Stats_*{}".format(fc_name[1:]), "Demultiplex_Stats.htm")
         for htm_file in glob.glob(htm_file_pattern):
             self.log.debug("parsing {}".format(htm_file))
             if not os.path.exists(htm_file):
@@ -755,6 +863,21 @@ class FlowcellRunMetricsParser(RunMetricsParser):
             column_gen = (row.findAll("td") for row in rows)
             parse_row = lambda row: {smp_header[i]:str(row[i].string) for i in range(0, len(smp_header)) if row}
             metrics["Sample_information"].extend(map(parse_row, column_gen))
-            
+
+        # Define a function for sorting the values
+        def by_lane_sample(data):
+            return "{}-{}-{}".format(data.get('Lane',''),data.get('Sample ID',''),data.get('Index',''))
+        
+        # Post-process the metrics data to eliminate duplicates resulting from multiple stats files
+        for metric in ['Barcode_lane_statistics', 'Sample_information']:
+            dedupped = {}
+            for row in metrics[metric]:
+                key = "\t".join(row.values())
+                if key not in dedupped:
+                    dedupped[key] = row
+                else:
+                    self.log.debug("Duplicates of Demultiplex Stats entries discarded: {}".format(key[0:min(35,len(key))]))
+            metrics[metric] = sorted(dedupped.values(), key=by_lane_sample)
+        
         ## Set data
         return metrics
