@@ -293,7 +293,7 @@ class DeliveryController(AbstractBaseController):
                 self.log.warn("Sample and flowcell directory {} does not exist. Skipping sample".format(seqdir))
                 continue
             
-            for read in [1,2]:
+            for read in xrange(1,10):
                 # Locate the source file, allow a wildcard to accommodate sample names with index
                 fname = "{}*_{}_L00{}_R{}_001.fastq.gz".format(sname,sample.get("sequence",""),sample.get("lane",""),str(read))
                 file = glob.glob(os.path.join(seqdir,fname))
