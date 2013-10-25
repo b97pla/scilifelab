@@ -224,7 +224,7 @@ class DeliveryController(AbstractBaseController):
                     self.app.cmd.chmod(f,stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP) 
         
             # touch the flag to trigger uppmax inbox permission fix
-            self.app.cmd.safe_touchfile(os.path.join("/sw","uppmax","var","inboxfix","schedule",args.uppmax_id))
+            self.app.cmd.safe_touchfile(os.path.join("/sw","uppmax","var","inboxfix","schedule",self.pargs.uppmax_project))
             
             # log the transfer to statusdb if verification passed
             if passed:
