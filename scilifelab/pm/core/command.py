@@ -177,7 +177,14 @@ class CommandHandler(handler.CementBaseHandler):
             with open (fn, "w") as fh:
                 fh.write(data)
         return self.dry("writing data to file {}".format(fn), runpipe)
-
+    
+    def safe_touchfile(self, fname):
+        """Touch a non-existing file
+        
+        :param fname: file name
+        """
+        return self.write(fname,data="",overwrite=False)
+                
     def safe_unlink(self, fh):
         """Wrapper for unlinking a file.
 
