@@ -2,13 +2,15 @@
 
    \#\#\#Page\#\#\#
 
-.. table::
+.. header::
+
+  .. table::
 
 ${logo_table}
 
-===================
-Project status note
-===================
+====================================================
+${project_name} - Project Summary
+====================================================
 
 ${date}
 ---------------------------------
@@ -16,8 +18,33 @@ ${date}
 Description
 ^^^^^^^^^^^
 
-This is a project status note containing an overview of the status of your project to date. If your samples are sequenced on multiple flowcells, you may receive
-a project status note after each delivery.
+This report summarizes the progress of your project to date. If your samples are sequenced on multiple flowcells, you may receive
+a project summary after each delivery. Note that this summary may contain information about sequencing results that you have not 
+yet received. 
+
+The report contains the following sections:
+
+- `Project overview`_ contains a brief summary of the project parameters
+- `Sequencing overview`_ contains an overview of the sequencing runs that have been carried out on the project samples
+- `Sample overview`_ contains an overview of the progress of each sample in the project
+- Sample details contains detailed information about the progress of each sample in the project
+
+Acknowledgement
+^^^^^^^^^^^^^^^
+
+In publications based on data from the work covered by this contract, the 
+authors must acknowledge SciLifeLab, NGI and Uppmax: "The authors would 
+like to acknowledge support from Science for Life Laboratory, the National 
+Genomics Infrastructure, NGI, and Uppmax for providing assistance in massive 
+parallel sequencing and computational infrastructure."
+
+Please don't hesitate to contact support@ngisweden.zendesk.com if you have any questions or comments.
+
+.. raw:: pdf
+
+  PageBreak
+  
+  SetPageCounter 1
 
 Project overview
 ^^^^^^^^^^^^^^^^
@@ -31,27 +58,31 @@ ${':Number of samples: {}'.format(no_samples) if no_samples else ''}
 :UPPNEX project id: ${uppnex_project_id}
 :Project path: /proj/${uppnex_project_id}/INBOX/${project_name}
 
-Sequencing lanes
-^^^^^^^^^^^^^^^^
+Sequencing overview
+^^^^^^^^^^^^^^^^^^^
 
-Below, you will find a summary of the sequencing lanes that have been run to date for the ${project_name} project.
+Table 1 contains a summary of the sequencing lanes that have been run to date for the ${project_name} project.
 
-.. table::
+.. table:: **Table 1** The sequencing lanes where samples from the project have been sequenced
 
   .. class:: sample-table  
 
 ${flowcell_table}
 
-Samples
-^^^^^^^
+Sample overview
+^^^^^^^^^^^^^^^
 
-Below, you will find a summary of the sequencing yield for the samples in your project. Only reads that have passed our quality criteria are included in the read counts below.
+Table 2 contains an overview of the progress of each sample in the project. Only reads that have passed our quality criteria are included in the read counts below.
 
-.. table::
+.. table:: **Table 2** Summary of the progress of each sample in the project.
 
   .. class:: sample-table  
 
 ${sample_table}
+
+.. raw:: pdf
+
+  PageBreak
 
 Data delivery
 ^^^^^^^^^^^^^
@@ -65,12 +96,3 @@ Detailed information on how to access your data can be found in the `Sequencing 
 as well as in the sample delivery note that you received together with each delivery.
 
 .. _Sequencing FAQ: http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf
-
-Acknowledgement
-^^^^^^^^^^^^^^^
-
-In publications based on data from the work covered by this contract, the 
-authors must acknowledge SciLifeLab, NGI and Uppmax: "The authors would 
-like to acknowledge support from Science for Life Laboratory, the National 
-Genomics Infrastructure, NGI, and Uppmax for providing assistance in massive 
-parallel sequencing and computational infrastructure."

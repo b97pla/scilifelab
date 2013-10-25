@@ -290,83 +290,7 @@ def _collect_status_note_data(**kw):
             fcs[fc] = list(set(fcs[fc] + [sample.get("lane")]))
         
     return prj_dict, fc_dict, sample_dict, prj_samples
-    
-def sample_summary_notes(project_name=None, config=None, **kw):
-    """Create one sample_summary_note per sample and concatenate them at the end
-    """
-    #import ipdb; ipdb.set_trace()
-    data = _collect_status_note_data(project_name=project_name, config=config, **kw)
-    if len(data) == 0:
-        return output_data
-    
-    prj_dict, fc_dict, _, samples = data[0:4]
-    
-    prep_header = ['Prep','Barcode','Average fragment size','Started','Finished','QC status']
-    runs_header = ['Prep','Barcode','Flowcell','Lane','Started','Finished','QC status']
-    
-    restfile = '{}_sample_summary_{}.rst'.format(project_name,
-                                                 datetime.datetime.now().strftime('%Y%m%d'))
-    # Create a summary note per sample
-    rest_notes = []
-    for sample in samples:
-        
-        rst_dict = {}
-        for field in ['scilifeid','customerid','incoming_qc_start_date','incoming_qc_finish_date','incoming_qc_status']:
-            rst_dict[field] = sample[field]
-        
-        # Prepare the prep and sequencing table
-        prep_body = []
-        runs_body = []
-        for prep in sample['library_preps']:
-            lbl = prep['label'] or 'N/A'
-            fsize = prep['fragment_size'] or sample['fragment_size_customer'] or 'N/A'
-            barcode = prep['reagent_label'] or 'N/A'
-            status = 'N/A' if prep['prep_qc_status'] is None else '{}'.format('Passed' if prep['prep_qc_status'] else 'Failed')
-            dates = []
-            for key in ['prep_start_date','prep_qc_finish_date']:
-                d = 'N/A'
-                try:
-                    d = prep[key].strftime('%Y-%m-%d')
-                except:
-                    pass
-                dates.append(d)
-            prep_body.append([lbl,barcode,fsize,dates[0],dates[1],status])
-            
-            for run in prep['sequencing_runs']:
-                srun = run.get('sample_run',{})
-                index = srun.get('barcode','')
-                fcid = srun.get('flowcell',' ')[1:]
-                lane = srun.get('lane','N/A')
-                
-                started = 'N/A'
-                try:
-                    started = datetime.datetime.strptime(srun.get('date'),'%y%m%d').strftime('%Y-%m-%d')
-                except:
-                    pass
-                
-                finished = 'N/A'
-                try:
-                    finished = run['run_finish_date'].strftime('%Y-%m-%d')
-                except:
-                    pass
-                
-                phix = srun.get('phix_error_rate','N/A')
-                q30 = srun.get('q30','N/A')
-                avgq = srun.get('avgQ','N/A')
-                yld = srun.get('read_count','N/A')
-                status = run.get('sequencing_qc_status','N/A')
-                runs_body.append([lbl,index,fcid,lane,started,finished,status])
-                
-        prep_table = [prep_header] + sorted(prep_body, key=operator.itemgetter(0))
-        runs_table = [runs_header] + sorted(runs_body, key=operator.itemgetter(0,2,3))
-        
-        # Render the note
-        rest_notes.append(render_rest_note(tables={'prep_table': prep_table, 'sequencing_table': runs_table, 'delivery_table': []}, 
-                                           report="sample_report", 
-                                           **rst_dict))
-    write_rest_note(restfile,contents=rest_notes)
-        
-     
+
 def sample_status_note(project_name=None, flowcell=None, username=None, password=None, url=None,
                        ordered_million_reads=None, uppnex_id=None, customer_reference=None, bc_count=None,
                        project_alias=[], projectdb="projects", samplesdb="samples", flowcelldb="flowcells",
@@ -622,7 +546,10 @@ def _get_project_sample_info(project):
                 s = None
             sample_dict['incoming_qc_{}'.format(item)] = s
             
-        sample_dict['overall_status'] = sample.get('status')
+        s = sample.get('status','N/A')
+        #if s is not None:
+        #    s = (s.lower() == 'p' or s.lower() == 'passed' or s.lower() == 'true' or s.lower() == 't')
+        sample_dict['status'] = s
         sample_dict['m_reads_sequenced'] = sample.get('m_reads_sequenced')
         sample_dict['sample_type'] = sample.get('details',{}).get('sample_type')
         sample_dict['fragment_size_customer'] = sample.get('details',{}).get('customer_average_fragment_length')
@@ -940,7 +867,7 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
         "finished" : "Not finished, or cannot yet assess if finished.",
         }
 
-    output_data, tables, param = _project_status_note_table(**kw)
+    output_data, rest_notes = _project_status_note_table(**kw)
 
     if not flat_table:
         # Set report paragraphs
@@ -949,16 +876,21 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
 
         #paragraphs["Samples"]["tpl"] = make_sample_table(sample_table)
         #make_note("{}_project_summary.pdf".format(project_name), headers, paragraphs, **param)
-        make_rest_note("{}_project_summary.rst".format(param["project_name"]), 
-                       report="project_report", 
-                       tables=tables, 
-                       **param)
+        #make_rest_note("{}_project_summary.rst".format(param["project_name"]), 
+        #               report="project_report", 
+        #               tables=tables, 
+        #               **param)
+        restfile = '{}_project_summary_{}.rst'.format(project_name,
+                                                      datetime.datetime.now().strftime('%Y%m%d'))
+    
+        write_rest_note(restfile,contents=rest_notes)
+    
 
     else:
         # Write tab-separated output
         sample_table[0].insert(0,'ProjectID')
         table_cols = [sample_table[0].index(col) for col in ['ProjectID', 'ScilifeID', 'SubmittedID', 'BarcodeSeq', 'MSequenced']]
-        outfile = "{}_project_summary.csv".format(project_name)
+        outfile = "{}_project_summary_{}.csv".format(project_name,datetime.datetime.now().strftime('%Y%m%d'))
         with open(outfile,"w") as outh:
             csvw = csv.writer(outh)
             for i,sample in enumerate(sample_table):
@@ -967,9 +899,6 @@ def project_status_note(project_name=None, username=None, password=None, url=Non
                 data = [str(sample[col]) for col in table_cols]
                 csvw.writerow(data)
                 output_data['stdout'].write("{}\n".format("\t".join(data)))
-
-    param.update({k:"N/A" for k in param.keys() if param[k] is None or param[k] ==  ""})
-    output_data["debug"].write(json.dumps({'param':param, 'sample_table': tables["sample_table"], 'flowcell_table': tables["flowcell_table"]}))
 
     return output_data
 
@@ -982,61 +911,12 @@ def _project_status_note_table(**kw):
     table_keys = ['ScilifeID', 'SubmittedID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status']
 
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
-    """
-    # Connect and run
-    s_con = SampleRunMetricsConnection(dbname=samplesdb, username=username, password=password, url=url)
-    fc_con = FlowcellRunMetricsConnection(dbname=flowcelldb, username=username, password=password, url=url)
-    p_con = ProjectSummaryConnection(dbname=projectdb, username=username, password=password, url=url)
-
-    #Get the information source for this project
-    source = p_con.get_info_source(project_name)
-
-    # Get project summary from project database
-    sample_aliases = _literal_eval_option(sample_aliases, default={})
-    prj_summary = p_con.get_entry(project_name)
-    if not prj_summary:
-        LOG.warn("No such project '{}'".format(project_name))
-        return
-    LOG.debug("Working on project '{}'.".format(project_name))
-    
-    # Get sample run list and loop samples to make mapping sample -> {sampleruns}
-    sample_run_list = _set_sample_run_list(project_name, flowcell=None, project_alias=project_alias, s_con=s_con)
-    samples = {}
-    for s in sample_run_list:
-        prj_sample = p_con.get_project_sample(project_name, s.get("project_sample_name", None))
-        if prj_sample:
-            sample_name = prj_sample['project_sample'].get("scilife_name", None)
-            s_d = {s["name"] : {'sample':sample_name, 'id':s["_id"]}}
-            samples.update(s_d)
-        else:
-            if s["barcode_name"] in sample_aliases:
-                s_d = {sample_aliases[s["barcode_name"]] : {'sample':sample_aliases[s["barcode_name"]], 'id':s["_id"]}}
-                samples.update(s_d)
-            else:
-                s_d = {s["name"]:{'sample':s["name"], 'id':s["_id"], 'barcode_name':s["barcode_name"]}}
-                LOG.warn("No mapping found for sample run:\n  '{}'".format(s_d))
-
-    # Convert to mapping from desired sample name to list of aliases
-    # Less important for the moment; one solution is to update the
-    # Google docs summary table to use the P names
-    sample_dict = prj_summary['samples']
-    param.update({key:prj_summary.get(ps_to_parameter[key], None) for key in ps_to_parameter.keys()})
-    param["ordered_amount"] = param.get("ordered_amount", p_con.get_ordered_amount(project_name, samples=sample_dict))
-    param['customer_reference'] = param.get('customer_reference', prj_summary.get('customer_reference'))
-    param['uppnex_project_id'] = param.get('uppnex_project_id', prj_summary.get('uppnex_id'))
-
-    # Override database values if options passed at command line
-    if uppnex_id:
-        param["uppnex_project_id"] = uppnex_id
-    if customer_reference:
-        param["customer_reference"] = customer_reference
-    """
-    
+ 
     data = _collect_status_note_data(**kw)
     if len(data) == 0:
         return output_data
     
-    prj_dict, fc_dict, sample_dict = data[0:3]
+    prj_dict, fc_dict, sample_dict, prj_samples = data[0:4]
    
     # Process options
     prj_dict["m_ordered"] = _literal_eval_option(kw.get("ordered_million_reads"), default=prj_dict.get("m_ordered"))
@@ -1058,79 +938,122 @@ def _project_status_note_table(**kw):
                                 lane,
                                 "{}{}".format(_round_read_count_in_millions(fc["lane_yields"][lane]),
                                               "*" if fc["lane_yields"][lane] < fc["lane_yield_cutoff"] else ""),
-                                "{}{}".format(fc["phix_error_rate"][lane],
+                                "{}{}".format(fc["phix_error_rate"][lane] if fc["phix_error_rate"][lane] >= 0 else "N/A",
                                               "*" if fc["phix_error_rate"][lane] > fc["phix_cutoff"] else "")] for fc in fc_dict for lane in fc_lanes[fc["FC_name"]]]
     fc_table = [fc_table[0]] + sorted(fc_table[1:], key=operator.itemgetter(0,1,2,3))
-    
     # Create the sample table
-    st_header = ["SciLifeLab ID", "Submitted ID", "Total yield (M)", "Status"]
-    sample_table = [st_header] + [[sample.get("scilife_name"),
-                                   sample.get("customer_name"),
+    st_header = ["SciLifeLab ID", "Submitted ID", "Arrival QC", "Library QC", "Sequencing runs", "Total yield (M)", "Status"]
+    sample_table = [st_header] + [[sample.get("scilifeid"),
+                                   sample.get("customerid"),
+                                   "N/A" if sample.get("incoming_qc_status") is None else "{}".format("Pass" if sample.get("incoming_qc_status") else "Fail"),
+                                   "/".join(["Pass" if s.get("prep_qc_status") else "Fail" for s in sample.get("library_preps",[])]),
+                                   str(len(set([s.get("sample_run_name","_")[1:] for p in sample.get("library_preps",[]) for s in p.get("sequencing_runs",[])]))),
                                    sample.get("m_reads_sequenced","0"),
-                                   sample.get("status","N/A")] for sample in prj_dict.get("samples",{}).values()]
+                                   "Pass" if sample.get("status") == "P" else "Not Pass"] for sample in prj_samples]
     sample_table = [sample_table[0]] + sorted(sample_table[1:], key=operator.itemgetter(0,1,3,2))
     
     rst_dict = prj_dict
     rst_dict["flowcell_dicts"] = fc_dict
     rst_dict["sample_dicts"] = sample_dict
     
-    """ 
-    ## Start collecting the data
-    sample_table = []
-    samples_excluded = []
-    all_passed = True
-    last_library_preps = p_con.get_latest_library_prep(project_name)
-    last_library_preps_srm = [x for l in last_library_preps.values() for x in l]
-    LOG.debug("Looping through sample map that maps project sample names to sample run metrics ids")
-    for k,v in samples.items():
-        LOG.debug("project sample '{}' maps to '{}'".format(k, v))
-        if not include_all_samples:
-            if v['sample'] not in last_library_preps.keys():
-                LOG.info("No library prep information for sample {}; keeping in report".format(v['sample']))
-            else:
-                if k not in last_library_preps_srm:
-                    LOG.info("Sample run {} ('{}') is not latest library prep ({}) for project sample {}: excluding from report".format(k, v["id"], ",".join(list(set(last_library_preps[v['sample']].values()))), v['sample']))
-                    continue
-        else:
-            pass
+    project_summary_note = render_rest_note(tables={"flowcell_table": fc_table, "sample_table": sample_table}, 
+                                            report="project_report", 
+                                            **rst_dict)
+    
+    sample_summary_notes = _sample_summary_notes(prj_samples)
+                                           
+    rst_dict.update({k:"N/A" for k in rst_dict.keys() if rst_dict[k] is None or rst_dict[k] ==  ""})
+    output_data["debug"].write(json.dumps({'param':rst_dict, 'sample_table': sample_table, 'flowcell_table': fc_table}))
 
-        if re.search("Unexpected", k):
-            continue
-        barcode_seq = s_con.get_entry(k, "sequence")
-        # Exclude sample id?
-        if _exclude_sample_id(exclude_sample_ids, v['sample'], barcode_seq):
-            samples_excluded.append(v['sample'])
-            continue
-        # Get the project sample name from the sample run and set table values
-        project_sample = sample_dict[v['sample']]
-        vals = _set_sample_table_values(v['sample'], project_sample, barcode_seq, ordered_million_reads, param)
-        if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
-        sample_table.append([vals[k] for k in table_keys])
+    return output_data, [project_summary_note] + sample_summary_notes
 
-    # Loop through samples in sample_dict for which there is no sample run information
-    samples_in_table_or_excluded = list(set([x[0] for x in sample_table])) + samples_excluded
-    samples_not_in_table = list(set(sample_dict.keys()) - set(samples_in_table_or_excluded))
-    for sample in samples_not_in_table:
-        if re.search("Unexpected", sample):
-            continue
-        project_sample = sample_dict[sample]
-        # Set project_sample_d: a dictionary mapping from sample run metrics name to sample run metrics database id
-        project_sample_d = _set_project_sample_dict(project_sample, source)
-        if project_sample_d:
-            for k,v in project_sample_d.iteritems():
-                barcode_seq = s_con.get_entry(k, "sequence")
-                vals = _set_sample_table_values(sample, project_sample, barcode_seq, ordered_million_reads, param)
-                if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
-                sample_table.append([vals[k] for k in table_keys])
-        else:
-            barcode_seq = None
-            vals = _set_sample_table_values(sample, project_sample, barcode_seq, ordered_million_reads, param)
-            if vals['Status']=="N/A" or vals['Status']=="NP": all_passed = False
-            sample_table.append([vals[k] for k in table_keys])
-    if all_passed: param["finished"] = 'Project finished.'
-    sample_table.sort()
-    sample_table = list(sample_table for sample_table,_ in itertools.groupby(sample_table))
-    sample_table.insert(0, ['ScilifeID', 'SubmittedID', 'BarcodeSeq', 'MSequenced', 'MOrdered', 'Status'])
+
+def sample_summary_notes(project_name=None, config=None, **kw):
+    """Create one sample_summary_note per sample and concatenate them at the end
     """
-    return output_data, {"flowcell_table": fc_table, "sample_table": sample_table}, rst_dict
-
+    
+    data = _collect_status_note_data(project_name=project_name, config=config, **kw)
+    if len(data) == 0:
+        return output_data
+    
+    _, _, _, samples = data[0:4]
+    
+    rest_notes = _sample_summary_notes(samples)
+    restfile = '{}_sample_summary_{}.rst'.format(project_name,
+                                                 datetime.datetime.now().strftime('%Y%m%d'))
+    
+    write_rest_note(restfile,contents=rest_notes)
+    
+def _sample_summary_notes(samples):
+    
+    prep_header = ['Prep','Barcode','Average fragment size','Started','Finished','QC status']
+    runs_header = ['Prep','Barcode','Flowcell','Lane','Started','Finished','QC status']
+    
+    # Create a summary note per sample
+    rest_notes = []
+    for sample in samples:
+        
+        rst_dict = {}
+        for field in ['scilifeid',
+                      'customerid',
+                      'incoming_qc_start_date',
+                      'incoming_qc_finish_date',
+                      'incoming_qc_status',
+                      'sample_type',
+                      'm_ordered',
+                      'm_reads_sequenced',
+                      'status']:
+            rst_dict[field] = sample[field]
+        
+        # Prepare the prep and sequencing table
+        prep_body = []
+        runs_body = []
+        for prep in sample['library_preps']:
+            lbl = prep['label'] or 'N/A'
+            fsize = prep['fragment_size'] or sample['fragment_size_customer'] or 'N/A'
+            barcode = prep['reagent_label'] or 'N/A'
+            status = 'N/A' if prep['prep_qc_status'] is None else '{}'.format('Passed' if prep['prep_qc_status'] else 'Failed')
+            dates = []
+            for key in ['prep_start_date','prep_qc_finish_date']:
+                d = 'N/A'
+                try:
+                    d = prep[key].strftime('%Y-%m-%d')
+                except:
+                    pass
+                dates.append(d)
+            prep_body.append([lbl,barcode,fsize,dates[0],dates[1],status])
+            
+            for run in prep['sequencing_runs']:
+                srun = run.get('sample_run',{})
+                index = srun.get('barcode','')
+                fcid = srun.get('flowcell',' ')[1:]
+                lane = srun.get('lane','N/A')
+                
+                started = 'N/A'
+                try:
+                    started = datetime.datetime.strptime(srun.get('date'),'%y%m%d').strftime('%Y-%m-%d')
+                except:
+                    pass
+                
+                finished = 'N/A'
+                try:
+                    finished = run['run_finish_date'].strftime('%Y-%m-%d')
+                except:
+                    pass
+                
+                phix = srun.get('phix_error_rate','N/A')
+                q30 = srun.get('q30','N/A')
+                avgq = srun.get('avgQ','N/A')
+                yld = srun.get('read_count','N/A')
+                status = run.get('sequencing_qc_status','N/A')
+                runs_body.append([lbl,index,fcid,lane,started,finished,status])
+                
+        prep_table = [prep_header] + sorted(prep_body, key=operator.itemgetter(0))
+        runs_table = [runs_header] + sorted(runs_body, key=operator.itemgetter(0,2,3))
+        
+        # Render the note
+        rest_notes.append(render_rest_note(tables={'prep_table': prep_table, 'sequencing_table': runs_table, 'delivery_table': []}, 
+                                           report="sample_report", 
+                                           **rst_dict))
+    return rest_notes
+     

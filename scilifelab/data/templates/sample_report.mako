@@ -1,34 +1,23 @@
 
-.. table::
+Sample details - ${scilifeid}
+------------------------------------
 
-${logo_table}
+Sample summary
+^^^^^^^^^^^^^^
 
-${date} - Sample status
----------------------------------
-
-===============================================================
-${scilifeid} ${" - {}".format(customerid) if customerid else ""}
-===============================================================
-
-Description
-^^^^^^^^^^^
-
-This is a sample status note containing detailed information about the progress of one sample. 
-The aim of this report is to provide an overall picture of the progress of the sample and the 
-information within reflects the status at the date at the top. Note that this report may contain
-information about sequencing runs that you haven't yet received any data for. 
- 
-If your sample is sequenced on multiple flowcells, you may receive
-an updated sample status note after each delivery.
-
-Please don't hesitate to contact genomics_support@scilifelab.se if you have any questions or comments.
+:SciLifeLab ID: ${scilifeid}
+:Submitted ID: ${customerid}
+${":Sample type: {}".format(sample_type) if sample_type else ""}
+${":Ordered amount: {} M".format(m_ordered) if m_ordered else ""}
+:Sequenced amount: ${"{} M".format(m_reads_sequenced) if m_reads_sequenced else "N/A"}
+:Status: ${"Pass" if status else "N/A"}
 
 Arrival QC
 ^^^^^^^^^^
 
 ${':Sample received: {}'.format(incoming_qc_start_date.strftime('%Y-%m-%d')) if incoming_qc_start_date else ''}
 ${':Arrival QC finished: {}'.format(incoming_qc_finish_date.strftime('%Y-%m-%d')) if incoming_qc_finish_date else ''}
-:Arrival QC status: ${'N/A' if incoming_qc_status is None else '{}'.format('Passed' if incoming_qc_status else 'Failed')}
+:Arrival QC status: ${'N/A' if incoming_qc_status is None else '{}'.format('Pass' if incoming_qc_status else 'Fail')}
  
 Library prep
 ^^^^^^^^^^^^
