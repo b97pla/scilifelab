@@ -27,15 +27,17 @@ def minimal_logger(namespace, debug=False):
     """
     config = cf.load_config()
     log = logbook.Logger(namespace, level=logbook.INFO)
-    s_h = logbook.StreamHandler(sys.stdout, level = logbook.INFO)
+    s_h = logbook.StreamHandler(sys.stdout, level = logbook.INFO, bubble=True)
     log.handlers.append(s_h)
     try:
         host = config.get('log', 'redis_host')
         port = config.getint('log', 'redis_port')
         key = config.get('log', 'redis_key')
         password = config.get('log', 'redis_password')
+        extra_fields = {"program": "pm",
+                        "command": namespace}
         r_h = RedisHandler(host=host, port=port, key=key, password=password,
-                level=logbook.INFO)
+                extra_fields=extra_fields, level=logbook.INFO, bubble=True)
         log.handlers.append(r_h)
     except:
         log.warn('Not loading RedisHandler')
