@@ -6,6 +6,8 @@ import stat
 import shutil
 import itertools
 import glob
+import json
+
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractBaseController, AbstractExtendedBaseController
 from scilifelab.report import sequencing_success
@@ -35,7 +37,6 @@ class DeliveryController(AbstractBaseController):
         arguments = [
             (['project'], dict(help="Project name, formatted as 'J.Doe_00_00'", default=None, nargs="?")),
             (['uppmax_project'], dict(help="Uppmax project.", default=None, nargs="?")),
-            (['--production-root'], dict(action="store", dest="production_root", default=None, help="Path to production run folder. Overrides config setting.")),
             (['--flowcell'], dict(help="Flowcell id, formatted as YYMMDD_AA000AAXX.", default=None, action="store")),
             (['-i', '--interactive'], dict(help="Interactively select samples to be delivered", default=False, action="store_true")),
             (['-a', '--deliver_all_fcs'], dict(help="rsync samples from all flow cells", default=False, action="store_true")),
@@ -122,7 +123,7 @@ class DeliveryController(AbstractBaseController):
         samples = sorted(s_con.get_samples(fc_id=self.pargs.flowcell, sample_prj=self.pargs.project), key=lambda k: (k.get('project_sample_name','NA'), k.get('flowcell','NA'), k.get('lane','NA'))) 
         
         # Setup paths and verify parameters
-        self._meta.production_root = self.pargs.production_root if self.pargs.production_root else self.app.config.get("production", "root")
+        self._meta.production_root = self.app.config.get("production", "root")
         self._meta.root_path = self._meta.production_root
         proj_base_dir = os.path.join(self._meta.root_path, self.pargs.project)
         assert os.path.exists(self._meta.production_root), "No such directory {}; check your production config".format(self._meta.production_root)
@@ -148,11 +149,11 @@ class DeliveryController(AbstractBaseController):
         if self.pargs.interactive:
             to_process = []
             for sample in samples:
-                sname = sample.get("project_sample_name",None)
-                index = sample.get("sequence",None)
-                fcid = sample.get("flowcell",None)
-                lane = sample.get("lane",None)
-                date = sample.get("date",None)
+                sname = sample.get("project_sample_name")
+                index = sample.get("sequence")
+                fcid = sample.get("flowcell")
+                lane = sample.get("lane")
+                date = sample.get("date")
                 self.log.info("Sample: {}, Barcode: {}, Flowcell: {}, Lane: {}, Started on: {}".format(sname,
                                                                                                            index,
                                                                                                            fcid,
@@ -180,7 +181,6 @@ class DeliveryController(AbstractBaseController):
             self.pargs.rsync = True
             
         # Process each sample run 
-        md5 = []
         for id, files in to_copy.items():
             # get the sample database object
             [sample] = [s for s in samples if s.get('_id') == id]
@@ -191,7 +191,7 @@ class DeliveryController(AbstractBaseController):
             for f in files:
                 m = md5sum(f[0])
                 mfile = "{}.md5".format(f[1])
-                md5.append([m,mfile,f[2]])
+                md5.append([m,mfile,f[2],f[0]])
                 self.log.debug("md5sum for source file {}: {}".format(f[0],m))
                 
             # transfer files
@@ -200,7 +200,7 @@ class DeliveryController(AbstractBaseController):
             
             # write the md5sum to a file at the destination and verify the transfer
             passed = True
-            for m, mfile, read in md5:
+            for m, mfile, read, srcpath in md5:
                 dstfile = os.path.splitext(mfile)[0]
                 self.log.debug("Writing md5sum to file {}".format(mfile))
                 self.app.cmd.write(mfile,"{}  {}".format(m,os.path.basename(dstfile)),True)
@@ -222,20 +222,34 @@ class DeliveryController(AbstractBaseController):
                 
                 # Modify the permissions to ug+rw
                 for f in [dstfile, mfile]:
-                    self.app.cmd.chown(f,uid,gid)
                     self.app.cmd.chmod(f,stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP) 
         
+            # touch the flag to trigger uppmax inbox permission fix
+            self.app.cmd.safe_touchfile(os.path.join("/sw","uppmax","var","inboxfix","schedule",self.pargs.uppmax_project))
+            
             # log the transfer to statusdb if verification passed
             if passed:
                 self.log.info("Logging delivery to StatusDB document {}".format(id))
-                sample['raw_data_delivery'] = {'timestamp': utc_time(),
-                                               'files': {'R{}'.format(read):{
-                                                                             'md5': m, 
-                                                                             'path': os.path.splitext(mfile)[0], 
-                                                                             'size_in_bytes': self._getsize(os.path.splitext(mfile)[0])} for m, mfile, read in md5},
-                                               }
+                data = {'raw_data_delivery': {'timestamp': utc_time(),
+                                              'files': {'R{}'.format(read):{'md5': m, 
+                                                                            'path': os.path.splitext(mfile)[0], 
+                                                                            'size_in_bytes': self._getsize(os.path.splitext(mfile)[0]),
+                                                                            'source_location': srcpath} for m, mfile, read, srcpath in md5},
+                                              }
+                        }
+                jsonstr = json.dumps(data)
+                jsonfile = os.path.join(os.path.dirname(md5[0][3]),
+                                        "{}_{}_{}_{}_L{}_raw_data_delivery.json".format(sample.get("date"),
+                                                                                       sample.get("flowcell"),
+                                                                                       sample.get("project_sample_name"),
+                                                                                       sample.get("sequence"),
+                                                                                       sample.get("lane")))
+                self.log.debug("Writing delivery to json file {}".format(jsonfile))
+                self.app.cmd.write(jsonfile,data=jsonstr,overwrite=True)
                 self.log.debug("Saving delivery in StatusDB document {}".format(id))
+                sample.update(data)
                 self._save(s_con,sample)
+                self.log.debug(jsonstr)
         
     def _getsize(self, file):
         """Wrapper around getsize
@@ -301,8 +315,20 @@ class DeliveryController(AbstractBaseController):
         
     @controller.expose(help="Deliver best practice results")
     def best_practice(self):
-        outpath = self._setup_delivery()
-        
+        if not self._check_pargs(["project", "uppmax_project"]):
+            return
+        project_path = os.path.normpath(os.path.join("/proj", self.pargs.uppmax_project))
+        if not os.path.exists(project_path):
+            self.log.warn("No such project {}; skipping".format(self.pargs.uppmax_project))
+            return
+        if self.pargs.outdir:
+            outpath = os.path.join(project_path, "INBOX", self.pargs.outdir)
+        else:
+            outpath = os.path.join(project_path, "INBOX", self.pargs.statusdb_project_name) if self.pargs.statusdb_project_name else os.path.join(project_path, "INBOX", self.pargs.project)
+        if not query_yes_no("Going to deliver data to {}; continue?".format(outpath)):
+            return
+        if not os.path.exists(outpath):
+            self.app.cmd.safe_makedir(outpath)
         kw = vars(self.pargs)
         basedir = os.path.abspath(os.path.join(self._meta.root_path, self._meta.path_id))
         flist = find_samples(basedir, **vars(self.pargs))
@@ -335,25 +361,8 @@ class DeliveryController(AbstractBaseController):
                 size = size + sum(statinfo)
         if self.pargs.size:
             self.app._output_data['stderr'].write("\n********************************\nEstimated delivery size: {:.1f}G\n********************************".format(size/1e9))
-    
-    def _setup_delivery(self):
-        if not self._check_pargs(["project", "uppmax_project"]):
-            return
-        project_path = os.path.normpath(os.path.join("/proj", self.pargs.uppmax_project))
-        if not os.path.exists(project_path):
-            self.log.warn("No such project {}; skipping".format(self.pargs.uppmax_project))
-            return
-        if self.pargs.outdir:
-            outpath = os.path.join(project_path, "INBOX", self.pargs.outdir)
-        else:
-            outpath = os.path.join(project_path, "INBOX", self.pargs.statusdb_project_name) if self.pargs.statusdb_project_name else os.path.join(project_path, "INBOX", self.pargs.project)
-        if not query_yes_no("Going to deliver data to {}; continue?".format(outpath)):
-            return
-        if not os.path.exists(outpath):
-            self.app.cmd.safe_makedir(outpath)
-        
-        return outpath
-        
+
+
     def _transfer_files(self, sources, targets):
         for src, tgt in zip(sources, targets):
             if not os.path.exists(os.path.dirname(tgt)):
