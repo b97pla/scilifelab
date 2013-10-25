@@ -48,9 +48,14 @@ def minimal_logger(namespace, debug=False):
     # before the app logging is setup. Besides, this will fail for
     # tests since sys.argv will consist of the test call arguments.
     if '--debug' in sys.argv or debug:
-        r_h.level = logbook.DEBUG
+        try:
+            #If there was any problem loading the RedisHandler, at this point
+            #the variable r_h will not exist
+            r_h.level = logbook.DEBUG
+        except UnboundLocalError:
+            pass
         s_h.level = logbook.DEBUG
-        log.setLevel(logging.DEBUG)
+        log.level = logbook.DEBUG
 
     return log
 
