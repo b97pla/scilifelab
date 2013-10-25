@@ -164,7 +164,10 @@ def chdir(new_dir):
     finally:
         os.chdir(cur_dir)
 
-
+def touch_file(fname):
+    """Create an empty file
+    """
+    open(fname, "w").close()
 
 def opt_to_dict(opts):
     """Transform option list to a dictionary.

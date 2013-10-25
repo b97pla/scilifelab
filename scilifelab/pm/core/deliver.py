@@ -221,9 +221,11 @@ class DeliveryController(AbstractBaseController):
                 
                 # Modify the permissions to ug+rw
                 for f in [dstfile, mfile]:
-                    self.app.cmd.chown(f,uid,gid)
                     self.app.cmd.chmod(f,stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP) 
         
+            # touch the flag to trigger uppmax inbox permission fix
+            self.app.cmd.safe_touchfile(os.path.join("/sw","uppmax","var","inboxfix","schedule",self.pargs.uppmax_project))
+            
             # log the transfer to statusdb if verification passed
             if passed:
                 self.log.info("Logging delivery to StatusDB document {}".format(id))
