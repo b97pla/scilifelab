@@ -504,6 +504,16 @@ class SampleRunMetricsParser(RunMetricsParser):
         RunMetricsParser.__init__(self)
         self.path = path
         self._collect_files()
+    
+    def parse_raw_data_delivery(self, flowcell=None, sequence=None, lane=None):
+        pattern = os.path.join(self.path,"*{}*_{}_L{}_raw_data_delivery.json".format(flowcell,sequence,lane))
+        files = glob.glob(pattern)
+        if len(files) == 0:
+            return {}
+        if len(files) > 1:
+            self.log.warn("Multiple raw_data_delivery files found matching pattern {}. Will use {}".format(pattern,files[0]))
+        with open(files[0]) as fh:
+            return json.load(fh)
         
     def read_picard_metrics(self, barcode_name, sample_prj, lane, flowcell, barcode_id, **kw):
         self.log.debug("read_picard_metrics for sample {}, project {}, lane {} in run {}".format(barcode_name, sample_prj, lane, flowcell))
