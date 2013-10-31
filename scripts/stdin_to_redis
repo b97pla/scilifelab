@@ -5,6 +5,7 @@ import logbook
 import ConfigParser
 import os
 import json
+import argparse
 
 from logbook.queues import RedisHandler
 
@@ -16,7 +17,7 @@ def load_config():
     By default it assumes ~/.pm/pm.conf
     """
     try:
-        config_file = os.path.join(os.environ('HOME'), '.pm', 'pm.conf')
+        config_file = os.path.join(os.environ.get('HOME'), '.pm', 'pm.conf')
         config = ConfigParser.SafeConfigParser()
         with open(config_file) as f:
             config.readfp(f)
@@ -33,50 +34,34 @@ if __name__=='__main__':
     sends it to a Redis DB in a formatted record.
 
     The script expects a file ~/.pm/pm.conf with information about Redis parameters:
-
-        [log]
-            redis_host = *
-            redis_port = *
-            redis_key = *
-            redis_password = *
-
-    Arguments:
-        --help:     Prints this help.
-        -f <field>: Adds the field <field> to the key "program" in the fields to
-                    be added to the Redis record. If the argument <field> is 
-                    json formatted, a new field will be added for each key in the
-                    resulting python dictionary.
-
-    Usge:
-        your_script | stdin_to_redis -f <field>
-
-        Example:
-            cat file.txt | stdin_to_redis -f cat
-            cat file.txt | stdin_to_redis -f '{"program":"cat", "file":"file.txt"}'
+    Host, Port, Key and Password.
     """
 
-    if len(sys.argv) > 1 and sys.argv[1] == '-f':
-        h = logbook.StreamHandler(sys.stdout, bubble=True)
-        # Try to convert the -f param to a dict, otherwise add it as "program" key
-        _extra_fields = {}
-        try:
-            _extra_fields = json.loads(sys.argv[2])
-        except:
-            _extra_fields['program'] = str(sys.argv[2])
-        try:
-            config = load_config()
-            host = config.get('log', 'redis_host')
-            port = config.getint('log', 'redis_port')
-            key = config.get('log', 'redis_key')
-            password = config.get('log', 'redis_password')
-            h = RedisHandler(host=host, port=port, key=key, password=password,
-                    extra_fields=_extra_fields, level=logbook.INFO, bubble=True)
-        except:
-            l.warn('Not loading RedisHandler')
-            pass
-        with h.applicationbound():
-            for input_line in sys.stdin:
-                l.info(input_line)
-        h.close()
-    else:
-        sys.exit(DESCRIPTION)
+    parser = argparse.ArgumentParser(description=DESCRIPTION)
+    parser.add_argument('program', type=str, help = "A key \"program\":<program> " \
+        "is added to the record sent to Redis. If <program> is json formatted, a " \
+        "new field per key in the json is added to the record")
+    args = parser.parse_args()
+
+    h = logbook.StreamHandler(sys.stdout, bubble=True)
+    # Try to convert the -f param to a dict, otherwise add it as "program" key
+    _extra_fields = {}
+    try:
+        _extra_fields = json.loads(args.program)
+    except:
+        _extra_fields['program'] = str(args.program)
+    try:
+        config = load_config()
+        host = config.get('log', 'redis_host')
+        port = config.getint('log', 'redis_port')
+        key = config.get('log', 'redis_key')
+        password = config.get('log', 'redis_password')
+        h = RedisHandler(host=host, port=port, key=key, password=password,
+                extra_fields=_extra_fields, level=logbook.INFO, bubble=True)
+    except:
+        l.warn('Not loading RedisHandler')
+        pass
+    with h.applicationbound():
+        for input_line in sys.stdin:
+            l.info(input_line)
+    h.close()
