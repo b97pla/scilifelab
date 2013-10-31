@@ -30,17 +30,15 @@ def load_config():
 
 if __name__=='__main__':
 
-    DESCRIPTION= """This script takes input from stdin and, for each read line,
-    sends it to a Redis DB in a formatted record.
+    parser = argparse.ArgumentParser(description="This script takes input from " \
+        "stdin and, for each read line, sends it to a Redis DB in a formatted record. " \
+        "The script expects a file ~/.pm/pm.conf with information about Redis parameters:" \
+        "Host, Port, Key and Password.")
 
-    The script expects a file ~/.pm/pm.conf with information about Redis parameters:
-    Host, Port, Key and Password.
-    """
-
-    parser = argparse.ArgumentParser(description=DESCRIPTION)
     parser.add_argument('program', type=str, help = "A key \"program\":<program> " \
         "is added to the record sent to Redis. If <program> is json formatted, a " \
         "new field per key in the json is added to the record")
+
     args = parser.parse_args()
 
     h = logbook.StreamHandler(sys.stdout, bubble=True)
