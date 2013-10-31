@@ -13,7 +13,7 @@ try:
 except ImportError:
     import bcbio.pipeline.config_loader as cl
 
-def minimal_logger(namespace, debug=False):
+def minimal_logger(namespace, extra_fields=None, debug=False):
     """Make and return a minimal console logger.
 
     NOTE: this does apparently *not* work with logbook as I first thought, and
@@ -34,8 +34,9 @@ def minimal_logger(namespace, debug=False):
         port = config.getint('log', 'redis_port')
         key = config.get('log', 'redis_key')
         password = config.get('log', 'redis_password')
-        extra_fields = {"program": "pm",
-                        "command": namespace}
+        if not extra_fields:
+            extra_fields = {"program": "pm",
+                            "command": namespace}
         r_h = RedisHandler(host=host, port=port, key=key, password=password,
                 extra_fields=extra_fields, level=logbook.INFO, bubble=True)
         log.handlers.append(r_h)
