@@ -11,21 +11,22 @@ from logbook.queues import RedisHandler
 
 l = logbook.Logger('Script', level=logbook.INFO)
 
-def load_config():
-    """Loads a configuration file.
+def load_config(config_file):
+    """Loads the provided configuration file. If not configuration file if provided
 
-    By default it assumes ~/.pm/pm.conf
+    it tries to load ~/.pm/pm.conf
     """
     try:
-        config_file = os.path.join(os.environ.get('HOME'), '.pm', 'pm.conf')
+        if config_file is None:
+            config_file = os.path.join(os.environ.get('HOME'), '.pm', 'pm.conf')
         config = ConfigParser.SafeConfigParser()
         with open(config_file) as f:
             config.readfp(f)
         return config
     except IOError:
         raise IOError('There was a problem loading the configuration file. \
-                Please make sure that {} exists and that you have \
-                read permissions'.format(config_file))
+                Please make sure that {} exists, that you have \
+                read permissions and that it is correctly formatted'.format(config_file))
 
 
 if __name__=='__main__':
@@ -33,11 +34,14 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser(description="This script takes input from " \
         "stdin and, for each read line, sends it to a Redis DB in a formatted record. " \
         "The script expects a file ~/.pm/pm.conf with information about Redis parameters:" \
-        "Host, Port, Key and Password.")
+        "Host, Port, Key and Password. A configuration file can be explicitly passed.")
 
     parser.add_argument('program', type=str, help = "A key \"program\":<program> " \
         "is added to the record sent to Redis. If <program> is json formatted, a " \
         "new field per key in the json is added to the record")
+
+    parser.add_argument('--config', type=str, help="Configuration file with Redis " \
+        "credentials")
 
     args = parser.parse_args()
 
@@ -49,7 +53,7 @@ if __name__=='__main__':
     except:
         _extra_fields['program'] = str(args.program)
     try:
-        config = load_config()
+        config = load_config(args.config)
         host = config.get('log', 'redis_host')
         port = config.getint('log', 'redis_port')
         key = config.get('log', 'redis_key')
