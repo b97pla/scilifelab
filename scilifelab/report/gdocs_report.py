@@ -36,12 +36,12 @@ def _column_mapping():
 def _column_header():
     return [m[1] for m in _column_mapping() if len(m[1]) > 0]
 
-def _demultiplex_spreadsheet(run_date):
+def _demultiplex_spreadsheet(template, run_date):
     """Get the appropriate demultiplex spreadsheet according to the date of the run
     """
     ts = datetime.datetime.strptime(run_date,"%y%m%d")
     quarter = 1+(ts.month-1)/3
-    return "Demultiplex Counts {} Q{}".format(str(ts.year),str(quarter))
+    return "{} Q{} {}".format(str(ts.year),str(quarter),template)
 
 def _run_setup(reads):
     read_cycles = [r.get('NumCycles','?') for r in reads if r.get('IsIndexedRead','N') == 'N']
@@ -57,7 +57,7 @@ def _run_setup(reads):
     
     return setup
 
-def upload_to_gdocs(fcdir, credentials_file=None, gdocs_folder=None):
+def upload_to_gdocs(fcdir, credentials_file=None, gdocs_folder=None, flowcell_template=None, project_template=None):
 
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
     
@@ -72,9 +72,13 @@ def upload_to_gdocs(fcdir, credentials_file=None, gdocs_folder=None):
     
     metrics = collect_metrics(fcdir)
     samples = _format_samples(metrics)
+    ssheet_name = _demultiplex_spreadsheet(flowcell_template, metrics['RunInfo'].get('Date',None))
+    ssheet = SpreadSheet(credentials,ssheet_name,create=False)
     
-    ssheet_name = _demultiplex_spreadsheet(metrics['RunInfo'].get('Date',None))
-    ssheet = SpreadSheet(credentials,ssheet_name)
+    if ssheet.ssheet is None:
+        tpl = SpreadSheet(credentials,flowcell_template,create=False)
+        ssheet = tpl.copy(ssheet_name)
+        
     ssheet.move_to_folder(gdocs_folder)
     
     run_id = metrics['RunInfo']['Id'].split("_")
@@ -93,9 +97,9 @@ def upload_to_gdocs(fcdir, credentials_file=None, gdocs_folder=None):
         for sample in project_samples:
             sample['Description'] = wsheet_name
             
-        ssheet_name = "{}_sequencing_results".format(project)
+        ssheet_name = "{} {}".format(project,project_template)
         ssheet = SpreadSheet(credentials,ssheet_name)
-        ssheet.move_to_folder(gdocs_folder)
+        ssheet.move_to_folder("{}/Tables".format(project))
         # Truncate the summary worksheet so that it won't show the wrong information in case upload fails
         write_flowcell_metrics([], ssheet, "Summary")
         project_samples = summarize_project(ssheet,{wsheet_name: project_samples})

@@ -429,9 +429,12 @@ class DeliveryReportController(AbstractBaseController):
             cfile = self.pargs.credentials_file
         
         gdocs_folder = self.app.config.get("gdocs","gdocs_folder")
+        flowcell_template = self.app.config.get("gdocs","flowcell_results_template")
+        project_template = self.app.config.get("gdocs","project_results_template")
         
         out_data = upload_to_gdocs(os.path.join(self.app.config.get("archive","root"),self.pargs.run_id),
-                                   credentials_file=os.path.expanduser(cfile), gdocs_folder=gdocs_folder)
+                                   credentials_file=os.path.expanduser(cfile), gdocs_folder=gdocs_folder,
+                                   flowcell_template=flowcell_template, project_template=project_template)
         
     @controller.expose(help="Print summary QC data for a flowcell/project for application QC control")
     def application_qc(self):

@@ -1,6 +1,7 @@
 
 import gdata.spreadsheet.service
 import gdata.docs.service
+import gdata.docs.client
 import gdata
 from gdata import MediaSource
 from gdata import GDataEntry
@@ -45,8 +46,13 @@ class Document(GoogleConnection):
     
     def __init__(self, credentials):
         # Create a client class which will make HTTP requests with Google Docs server. 
-        self.client = gdata.docs.service.DocsService()
+        self.client = gdata.docs.service.DocsService() 
+        #self.client = gdata.docs.client.DocsClient()
         super(Document, self).__init__(credentials)
+        
+        #self.docsclient = gdata.docs.client.DocsClient()
+        #email, password = self._decode_credentials(self.credentials)
+        #self.docsclient.client_login(email,password,'gdocs_report',service='writely')
 
 
     def add_spreadsheet(self, name):
@@ -58,6 +64,9 @@ class Document(GoogleConnection):
     
         ssheet = self.client.Post(new_entry, '/feeds/documents/private/full')
         return ssheet
+
+    def copy(self, doc, new_title):
+        return self.docsclient.copy_resource(doc,new_title)
 
     def move_to_folder(self, doc, target_folder):
         target_folder = self.get_folder(target_folder)
@@ -76,7 +85,7 @@ class Document(GoogleConnection):
 
 class SpreadSheet(GoogleConnection):
     
-    def __init__(self, credentials, name=None):
+    def __init__(self, credentials, name=None, create=True):
         # Create a client class which will make HTTP requests with Google Docs server. 
         self.client = gdata.spreadsheet.service.SpreadsheetsService()
         super(SpreadSheet, self).__init__(credentials)
@@ -86,8 +95,23 @@ class SpreadSheet(GoogleConnection):
         if name is not None:
             self.ssheet = self.get_spreadsheet(title=name)
             # Create the spreadsheet if it doesn't exist
-            if self.ssheet is None:
+            if self.ssheet is None and create:
                 self.ssheet = self.doc.add_spreadsheet(name)
+    
+    def copy(self, new_title):
+        """Create a new spreadsheet with the given title and copy the contents 
+        of this instance. Returns the new spreadsheet instance
+        """
+        if not self.ssheet:
+            return None
+        ssheet_copy = SpreadSheet(self.credentials,name=new_title,create=True)
+        # Get the worksheets from this instance
+        for wsheet in self.get_worksheets_feed().entry:
+            # Add the worksheet to the copy
+            wsheet_copy = ssheet_copy.add_worksheet(name=wsheet.title.text,rows=wsheet.row_count.text,cols=wsheet.col_count.text)
+            for i, row in enumerate(self.get_cell_content(wsheet)):
+                ssheet_copy.update_row(wsheet_copy,i+1,row)
+        return ssheet_copy
     
     def move_to_folder(self, target_folder):
         key = self.get_key(self.ssheet)
@@ -163,6 +187,9 @@ class SpreadSheet(GoogleConnection):
         ws_key = self.get_key(wsheet)
     
         try:
+            if len(header) == 0:
+                header = rows.pop(0)
+                
             # As a workaround for the InsertRow bugs with column names,
             # just use single lowercase letters as column headers to start with
             for i in range(0, len(header)):
@@ -174,6 +201,7 @@ class SpreadSheet(GoogleConnection):
     
                 for i, value in enumerate(row):
                     row_data[chr(97 + i)] = unicode(value)
+                
                 self.client.InsertRow(row_data, ss_key, ws_key)
     
             # Lastly, substitute the one-letter header for the real string
