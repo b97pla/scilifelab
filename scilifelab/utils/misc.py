@@ -200,5 +200,9 @@ def prune_option_list(opts, keys):
 def md5sum(infile):
     """Calculate the md5sum of a file
     """
-    return hashlib.md5(open(infile, 'rb').read()).hexdigest()
-
+    # Implementation taken from: http://stackoverflow.com/a/4213255
+    md5 = hashlib.md5()
+    with open(infile,'rb') as f: 
+        for chunk in iter(lambda: f.read(128*md5.block_size), b''): 
+            md5.update(chunk)
+    return md5.hexdigest()
