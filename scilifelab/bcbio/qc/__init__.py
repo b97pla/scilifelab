@@ -505,7 +505,7 @@ class SampleRunMetricsParser(RunMetricsParser):
         self.path = path
         self._collect_files()
     
-    def parse_raw_data_delivery(self, flowcell=None, sequence=None, lane=None):
+    def parse_raw_data_delivery(self, flowcell=None, sequence=None, lane=None, **kw):
         pattern = os.path.join(self.path,"*{}*_{}_L{}_raw_data_delivery.json".format(flowcell,sequence,lane))
         files = glob.glob(pattern)
         if len(files) == 0:
