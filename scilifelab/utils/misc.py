@@ -164,7 +164,10 @@ def chdir(new_dir):
     finally:
         os.chdir(cur_dir)
 
-
+def touch_file(fname):
+    """Create an empty file
+    """
+    open(fname, "w").close()
 
 def opt_to_dict(opts):
     """Transform option list to a dictionary.
@@ -197,5 +200,9 @@ def prune_option_list(opts, keys):
 def md5sum(infile):
     """Calculate the md5sum of a file
     """
-    return hashlib.md5(open(infile, 'rb').read()).hexdigest()
-
+    # Implementation taken from: http://stackoverflow.com/a/4213255
+    md5 = hashlib.md5()
+    with open(infile,'rb') as f: 
+        for chunk in iter(lambda: f.read(128*md5.block_size), b''): 
+            md5.update(chunk)
+    return md5.hexdigest()

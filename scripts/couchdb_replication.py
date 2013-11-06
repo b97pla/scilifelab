@@ -8,12 +8,11 @@ import sys
 import os
 import ConfigParser
 
+from scilifelab.log import minimal_logger
 from couchdb import PreconditionFailed
 
 #Set up logging
-l = logbook.Logger("CouchDB replicator", level=logbook.INFO)
-h = logbook.StreamHandler(sys.stdout, level=logbook.INFO)
-
+l = minimal_logger("CouchDB replicator")
 
 def _get_config():
     """Looks for a configuration file and load credentials.
@@ -149,15 +148,14 @@ if __name__ == "__main__":
     if not all([source, destination]):
         source, destination = _get_config()
 
-    with h.applicationbound():
-        actions = ['continuous', 'clone']
-        if action not in actions:
-            raise ValueError("Action not recognised, please choose between %s" % \
-                    ', '.join(actions))
-        l.info("Starting replication - source: {}, destination: {}".format( \
-                source.split('@')[-1], destination.split('@')[-1]))
-        if action == "continuous":
-            _setup_continuous(source, destination)
-        else:
-            _clone(source, destination)
+    actions = ['continuous', 'clone']
+    if action not in actions:
+        raise ValueError("Action not recognised, please choose between %s" % \
+                ', '.join(actions))
+    l.info("Starting replication - source: {}, destination: {}".format( \
+            source.split('@')[-1], destination.split('@')[-1]))
+    if action == "continuous":
+        _setup_continuous(source, destination)
+    else:
+        _clone(source, destination)
 
