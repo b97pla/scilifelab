@@ -106,53 +106,6 @@ key                     = find_proj_from_view(proj_db, proj_ID)
 info                    = proj_db[key]
 
 
-if not len ( hours.split(':') ) == 3:
-        sys.exit("Please specify the time allocation string as hours:minutes:seconds or days-hours:minutes:seconds")
-
-if phred64 == True:
-        qscale = '--solexa1.3-quals'
-else:
-        qscale = ''
-
-if not fpath:
-        p = os.getcwd()
-        fpath = p.split('intermediate')[0] + 'data/' + sys.argv[1]
-print fpath
-p=os.getcwd()
-
-if not os.path.exists(fpath):
-        sys.exit('no such dir '+fpath)
-
-
-flist = glob.glob(str(fpath + '/*'))
-file_info={}
-
-for f in flist:
-        fname   =       f.split('/')[-1]
-        try:
-                if (fname.split('.')[-1] == "fastq") | ( fname.split('.')[-2] == "fastq"):
-                        lane_run        = "_".join(fname.split("_")[0:3])
-                        tag             = "_".join(fname.split("_")[3:-2])
-                        if not file_info.has_key(lane_run):
-                                file_info[lane_run]={}
-                        if not file_info[lane_run].has_key(tag):
-                                file_info[lane_run][tag]={}
-			if (fname.split('.fastq')[0][-1] == "1"):
-                        	file_info[lane_run][tag]['R1']=fname
-			else:
-				file_info[lane_run][tag]['R2']=fname
-        except:
-                sys.exit('files missing? '+fname)
-print file_info.keys()
-
-print "Best guess for sample names: "
-for lane in file_info:
-        print lane
-        print sorted(file_info[lane].keys())
-
-r = raw_input("Press n to exit")
-if r.upper() == "N": sys.exit(0)
-
 
 
 for lane in file_info:
@@ -163,11 +116,6 @@ for lane in file_info:
     print an_path
     for samp in sorted(file_info[lane]):
         ## Handeling some anoying options in a ugly way
-        if old == True:
-                aligner_version = "1.0.14"
-                sam_bam="samtools view -bT concat.fa.fa -o accepted_hits_"+samp+".bam accepted_hits.sam"
-        else:
-                aligner_version = conf['custom_algorithms']['RNA-seq analysis']['aligner_version']
                 sam_bam="mv accepted_hits.bam accepted_hits_"+samp+".bam"
         if fai != '':
                 make_fai="""genomeCoverageBed -bga -split -ibam accepted_hits_sorted_dupRemoved_"""+samp+""".bam -g """+fai+""" > sample_"""+samp+""".bga

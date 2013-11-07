@@ -16,9 +16,8 @@ space=" "
 for files in `ls tophat_out_*/*.ccurve.txt | sort`; do filelist+=($files$space); done;
 
 asize=${#filelist[@]}
-echo $asize
 
-Rscript /bubo/home/h24/mayabr/opt/scilifelab/scripts/RNA_analysis/process.metrics.files/ccurveplots.R ${filelist[@]} 
+Rscript /bubo/home/h24/mayabr/opt/scilifelab/scripts/RNA_analysis/ccurveplots.R ${filelist[@]} 
  
 
 

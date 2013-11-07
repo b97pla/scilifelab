@@ -207,23 +207,24 @@ def get_column(ssheet_content, header, col_cond=0):
 #		COUCHDB
 def save_couchdb_obj(db, obj):
     dbobj = db.get(obj['_id'])
+    print dbobj
     time_log = datetime.utcnow().isoformat() + "Z"
-    if dbobj is None:
-        #obj["creation_time"] = time_log
-        #obj["modification_time"] = time_log
-        #db.save(obj)   
-        return None
-    elif dbobj.has_key('source'):
-        if dbobj['source']=='lims':
-            return None
-    else:
-        obj["_rev"] = dbobj.get("_rev")
-        del dbobj["modification_time"]
-        obj["creation_time"] = dbobj["creation_time"]
-        if not comp_obj(obj, dbobj):
-            obj["modification_time"] = time_log
-            db.save(obj)
-            return 'Uppdated'
+    #if dbobj is None:
+    print 'kkkk'
+    obj["creation_time"] = time_log
+    obj["modification_time"] = time_log
+    db.save(obj)   
+    #elif dbobj.has_key('source'):
+    #    if dbobj['source']=='lims':
+    #        return None
+    #else:
+    #    obj["_rev"] = dbobj.get("_rev")
+    #    del dbobj["modification_time"]
+    #    obj["creation_time"] = dbobj["creation_time"]
+    #    if not comp_obj(obj, dbobj):
+     #       obj["modification_time"] = time_log
+      #      db.save(obj)
+    return 'Uppdated'
     return 'Not uppdated'
 
 def comp_obj(obj, dbobj):
@@ -462,8 +463,11 @@ def  main(client, CONFIG, URL, proj_ID, all_projects, GPL ):
     elif proj_ID is not None:
         print proj_ID
         obj = get_proj_inf(WS_projects,proj_ID, samp_db, proj_db, client, CONFIG)
+        print obj
         if obj['samples'].keys() != []:
+            print 'hej'
             info = save_couchdb_obj(proj_db, obj)
+            print info
     else:
         logger.debug('Argument error')
     if info:
@@ -489,7 +493,7 @@ Options (Only one option is acceptab):
 	CONFIG_FILE = os.path.join(os.environ['HOME'], 'opt/config/post_process.yaml')
 	CONFIG = cl.load_config(CONFIG_FILE)
 	log_path = CONFIG['analysis']['log']
-	URL = CONFIG['couch_db']['maggie_login']+':'+CONFIG['couch_db']['maggie_pass']+'@'+CONFIG['couch_db']['maggie_url'] + ':' + str(CONFIG['couch_db']['maggie_port'])
+	URL = CONFIG['tools']['login']+':'+CONFIG['tools']['pass']+'@'+CONFIG['tools']['url'] + ':' + str(CONFIG['tools']['port'])
 	logger = my_logging(log_path+'/proj_coucdb.log')
 
 	if (options.project_ID is None) and (options.all_projects is False):
