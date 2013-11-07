@@ -24,8 +24,7 @@ def main(project_name, conf, cred):
     config = cl.load_config(conf)
     couch = load_couch_server(conf)
     analysis_db = couch['analysis']
-    print dir(analysis_db)
-    #proj_db = couch['analysis']#['projects']
+    #proj_db = couch['projects']
     BP_RNA = DB.BP_RNA(project_name)
     key = find_proj_from_view(analysis_db, project_name)
     BP_RNA.obj['_id'] = find_or_make_key(key)

@@ -358,12 +358,6 @@ def generate_report(proj_conf,single_end,stranded):
         'anotation_version':''
         }
 
-    if stranded:
-        analysis_type='RNA-seq stranded analysis'
-    #the name in custom_algorithms section in opt/config/post_process.yaml
-    else:
-        analysis_type='RNA-seq analysis'
-
     ## Latex option (no of floats per page)
     floats_per_page = '.. raw:: latex\n\n   \setcounter{totalnumber}{8}'
     d['latex_opt'] = floats_per_page
@@ -388,7 +382,7 @@ def generate_report(proj_conf,single_end,stranded):
 
      ## RNA-seq tools fetched from config file post_process.yaml
     try:
-        tools = proj_conf['config']['custom_algorithms'][analysis_type]
+        tools = proj_conf['config']['custom_algorithms']['RNA-seq analysis']
         d['mapping'] = os.path.join(tools['aligner'],tools['aligner_version'])
         d['dup_rem'] = os.path.join(tools['dup_remover'],tools['dup_remover_version'])
         d['read_count'] = os.path.join(tools['counts'],tools['counts_version'])
@@ -432,7 +426,6 @@ def generate_report(proj_conf,single_end,stranded):
     try:
         tab = Texttable()
         tab.set_cols_dtype(['t','t','t','t','t','t','t','t'])
-        print dir(tab)
         tab.header(["Sample","CDS","5'UTR","3'UTR","Intron","TSS","TES","mRNA"])
         read_dist = {}
         for i in range(len(proj_conf['samples'])):
@@ -527,8 +520,6 @@ def generate_report(proj_conf,single_end,stranded):
         for sample_name in proj_conf['samples']:
             if D.has_key(sample_name):
                 tab.add_row([sample_name,str(float(D[sample_name])*100)+'%'])
-                print str(float(D[sample_name])*100)
-
         d['strandness_table']=indent_texttable_for_rst(tab)
         f.close()
     except:
@@ -625,10 +616,11 @@ def main(project_id,sample_names,single_end,config_file,Map_Stat,Read_Dist,FPKM,
         'samples': sample_names
          } 
     d = generate_report(proj_conf,single_end,stranded)
-    rstfile = "%s.rst" % (project_id)
+    rstfile = "%s_analysis_report.rst" % (project_id)
     fp = open(rstfile, "w")
     fp.write(tmpl.render(**d))
     fp.close()
+    os.system('rst2pdf '+ rstfile)
 
 
 if __name__ == "__main__":
