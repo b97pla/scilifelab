@@ -92,8 +92,23 @@ def get_sample_analysis(conf):
         analysis.extend([None])
     return list(set(analysis) - set([None]))
     
-    
-def sort_sample_config_fastq(conf):
+
+def _locate_file(fpath, path=None):
+    if not os.path.exists(fpath):
+        fname, ext = os.path.splitext(fpath)
+        if ext != ".gz":
+            fname = "{}.gz".format(fpath)
+            LOG.warn("Couldn't find fastq file; will try extension .gz")
+        else:
+            LOG.warn("Couldn't find .gz file; will try extension .fastq")
+        if os.path.exists(fname):
+            return fname
+        if path:
+            LOG.warn("Couldn't find file; will try in path {}".format(path))
+            return _locate_file(os.path.join(path,fpath))
+    return fpath        
+
+def sort_sample_config_fastq(conf, path=os.getcwd()):
     """Sort fastq entires in sample config file, at the same
     time adding/subtracting gz extension if present/absent.
 
@@ -104,31 +119,13 @@ def sort_sample_config_fastq(conf):
     newconf = copy.deepcopy(conf)
     runinfo = newconf.get("details") if newconf.get("details", None) else newconf
     for i in range(0, len(runinfo)):
-        if runinfo[i].get("multiplex", None):
-            for j in range(0, len(runinfo[i].get("multiplex"))):
-                runinfo[i]["multiplex"][j]["files"].sort()
-                seqfiles = runinfo[i]["multiplex"][0]["files"]
-                for k in range(0, len(seqfiles)):
-                    if not os.path.exists(os.path.abspath(seqfiles[k])):
-                        (_, ext) = os.path.splitext(seqfiles[k])
-                        if ext == ".gz":
-                            LOG.warn("Couldn't find gz file; will set use extension .fastq")
-                            runinfo[i]["multiplex"][j]["files"][k] = runinfo[i]["multiplex"][j]["files"][k].replace(".gz", "")
-                        else:
-                            LOG.warn("Couldn't find fastq file; will set use extension .gz")
-                            runinfo[i]["multiplex"][j]["files"][k] = "{}.gz".format(runinfo[i]["multiplex"][j]["files"][k])
-        else:
-            ## Assume files directly in lane
-            seqfiles = runinfo[i]["files"]
-            for k in range(0, len(seqfiles)):
-                if not os.path.exists(os.path.abspath(seqfiles[k])):
-                    (_, ext) = os.path.splitext(seqfiles[k])
-                    if ext == ".gz":
-                        LOG.warn("Couldn't find gz file; will set use extension .fastq")
-                        runinfo[i]["files"][k] = runinfo[i]["files"][k].replace(".gz", "")
-                    else:
-                        LOG.warn("Couldn't find fastq file; will set use extension .gz")
-                        runinfo[i]["files"][k] = "{}.gz".format(runinfo[i]["files"][k])
+        for j in range(0, len(runinfo[i].get("multiplex",[]))):
+            runinfo[i]["multiplex"][j]["files"].sort()
+            for k, seqfile in enumerate(runinfo[i]["multiplex"][0]["files"]):
+                runinfo[i]["multiplex"][j]["files"][k] = _locate_file(seqfile,path)
+        ## files directly in lane
+        for j, seqfile in enumerate(runinfo[i].get("files",[])):
+            runinfo[i]["files"][j] = _locate_file(seqfile,path)
     newconf['details'] = runinfo
     return newconf
 
@@ -152,7 +149,7 @@ def merge_sample_config(flist, sample, out_d, dry_run=True):
         with open(f) as fh:
             conf = yaml.load(fh)
         # Make sure the fastq files exist
-        conf = sort_sample_config_fastq(conf)
+        conf = sort_sample_config_fastq(conf, path=os.path.dirname(f))
         runinfo = conf.get("details") if conf.get("details", None) else conf
         for i in range(0, len(runinfo)):
             for j in range(0, len(runinfo[i].get("multiplex"))):

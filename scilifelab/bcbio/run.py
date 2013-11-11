@@ -150,7 +150,7 @@ def setup_merged_samples(flist, sample_group_fn=_group_samples, **kw):
             out_d = os.path.join(os.path.dirname(os.path.dirname(f)), MERGED_SAMPLE_OUTPUT_DIR)
             LOG.info("Sample {} has {} sample runs; setting up merge analysis in {}".format(k, len(v), out_d))
             dry_makedir(out_d, dry_run=False)
-            pp = kw.get("post_process") if kw.get("post_process", None) else f.replace("-bcbb-config.yaml", "-post_process.yaml")
+            pp = kw.get("post_process",f.replace("-bcbb-config.yaml", "-post_process.yaml"))
             with open(pp) as fh:
                 conf = yaml.load(fh)
             conf = update_pp_platform_args(conf, **{'jobname': "{}_total".format(k), 'workdir': out_d, 'output': "{}_total-bcbb.log".format(k) })
