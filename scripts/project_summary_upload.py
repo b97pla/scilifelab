@@ -209,23 +209,22 @@ def save_couchdb_obj(db, obj):
     dbobj = db.get(obj['_id'])
     print dbobj
     time_log = datetime.utcnow().isoformat() + "Z"
-    #if dbobj is None:
-    print 'kkkk'
-    obj["creation_time"] = time_log
-    obj["modification_time"] = time_log
-    db.save(obj)   
-    #elif dbobj.has_key('source'):
-    #    if dbobj['source']=='lims':
-    #        return None
-    #else:
-    #    obj["_rev"] = dbobj.get("_rev")
-    #    del dbobj["modification_time"]
-    #    obj["creation_time"] = dbobj["creation_time"]
-    #    if not comp_obj(obj, dbobj):
-     #       obj["modification_time"] = time_log
-      #      db.save(obj)
-    return 'Uppdated'
-    return 'Not uppdated'
+    if dbobj is None:
+     #   obj["creation_time"] = time_log
+     #   obj["modification_time"] = time_log
+     #   db.save(obj)   
+        return None
+    elif dbobj.has_key('source'):
+        if dbobj['source']=='lims':
+            return None
+    else:
+        obj["_rev"] = dbobj.get("_rev")
+        del dbobj["modification_time"]
+        obj["creation_time"] = dbobj["creation_time"]
+        if not comp_obj(obj, dbobj):
+            obj["modification_time"] = time_log
+            db.save(obj)
+            return 'Uppdated'
 
 def comp_obj(obj, dbobj):
 	for key in obj:
@@ -463,11 +462,8 @@ def  main(client, CONFIG, URL, proj_ID, all_projects, GPL ):
     elif proj_ID is not None:
         print proj_ID
         obj = get_proj_inf(WS_projects,proj_ID, samp_db, proj_db, client, CONFIG)
-        print obj
         if obj['samples'].keys() != []:
-            print 'hej'
             info = save_couchdb_obj(proj_db, obj)
-            print info
     else:
         logger.debug('Argument error')
     if info:
