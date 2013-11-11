@@ -84,6 +84,11 @@ content = bcbio.google.spreadsheet.get_cell_content(client,ssheet,wsheet)
 ss_key = bcbio.google.spreadsheet.get_key(ssheet)
 ws_key = bcbio.google.spreadsheet.get_key(wsheet)
 #--------------
+def strip_prep(name):
+    preps='FABCD'
+    while name[-1] in preps:
+        name=name[:-1]  
+    return name
 
 reads_colindex = 0
 names_colindex = 0
@@ -97,22 +102,26 @@ for j,row in enumerate(content):
                                 reads_colindex = i+1
         name = str(row[names_colindex-1]).strip()
         try:
-                name=name.split('_')[0]+'_'+name.split('_')[1]
+            name=name.split('_')[0]+'_'+name.split('_')[1]
         except:
+            pass
+        if not dict.has_key(name):
+            try:
+                name=strip_prep(name)
+            except:
                 pass
-        if dict.has_key(name):
+        try:
                 if single:
-                        print dict[name]['aft_dup_rem']['Uniquely mapped']
-                        M_reads_aft_dup_rem=str(round(float(dict[name]['aft_dup_rem']['Uniquely mapped'])/1000000.0,2))
+                        print dict[name]['aft_dup_rem']['mapq >= mapq_cut (unique)']
+                        M_reads_aft_dup_rem=str(round(float(dict[name]['aft_dup_rem']['mapq >= mapq_cut (unique)'])/1000000.0,2))
                 else:
                         R1=dict[name]['aft_dup_rem']['Read-1']
                         R2=dict[name]['aft_dup_rem']['Read-2']
                         M_reads_aft_dup_rem=str(round((float(R2)+float(R1))/2000000,2))
                 client.UpdateCell(j+1, reads_colindex, M_reads_aft_dup_rem, ss_key, ws_key)
                 print name+' '+M_reads_aft_dup_rem
-
-
-
+        except:
+                pass
 
 
 

@@ -554,9 +554,10 @@ def make_stat(f,counts,single_end):
                     pass
     f.close()
     if single_end:
-        bef_dup_rem['%uniq_mapped'] = round(100*(float(bef_dup_rem['Uniquely mapped']))/(float(counts)),2)
-        aft_dup_rem['%uniq_mapped'] = round(100*(float(aft_dup_rem['Uniquely mapped']))/(float(counts)),2)
-        aft_dup_rem['%spliced'] = round(100*float(aft_dup_rem['spliced'])/float(aft_dup_rem['Uniquely mapped']))
+        bef_dup_rem['%uniq_mapped'] = round(100*(float(bef_dup_rem['mapq >= mapq_cut (unique)']))/(float(counts)),2)
+        aft_dup_rem['%uniq_mapped'] = round(100*(float(aft_dup_rem['mapq >= mapq_cut (unique)']))/(float(counts)),2)
+        aft_dup_rem['%spliced'] = round(100*float(aft_dup_rem['Splice reads'])/float(aft_dup_rem['mapq >= mapq_cut (unique)']))
+        print bef_dup_rem
     else:
         if float(counts) > 0:
             bef_dup_rem['%uniq_mapped'] = round(100*(float(bef_dup_rem['Read-1'])+float(bef_dup_rem['Read-2']))/(2*float(counts)),2)
@@ -565,7 +566,7 @@ def make_stat(f,counts,single_end):
             aft_dup_rem['%uniq_mapped'] = 0
             bef_dup_rem['%uniq_mapped'] = 0
         if (float(aft_dup_rem['Read-1']) + float(aft_dup_rem['Read-2'])) > 0:
-            aft_dup_rem['%spliced'] = round(100*float(aft_dup_rem['spliced'])/(float(aft_dup_rem['Read-1'])+float(aft_dup_rem['Read-2'])))
+            aft_dup_rem['%spliced'] = round(100*float(aft_dup_rem['Splice reads'])/(float(aft_dup_rem['Read-1'])+float(aft_dup_rem['Read-2'])))
         else:
             aft_dup_rem['%spliced'] = 0
     stat['bef_dup_rem']=bef_dup_rem

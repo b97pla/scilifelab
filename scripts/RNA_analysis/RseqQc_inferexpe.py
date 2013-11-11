@@ -48,7 +48,7 @@ dict='{'
 sep=''
 for i in tophat_out_*;do 
     infer_experiment.py -i ${i}/accepted_hits_*bam -r """+bed_file+"""  &> ${i}/RSeqC.out;
-    num='"'`grep '1+-,1-+,2++,2--' ${i}/RSeqC.out|cut -f 2 -d ':'`'"';
+    num='"'`grep '1+-,1-+,2++,2--\|+-,-+' ${i}/RSeqC.out|cut -f 2 -d ':'`'"';
     name='"'`echo ${i}|sed 's/tophat_out_//g'`'"'
     dict=${dict}${sep}${name}':'${num}
     sep=','
