@@ -53,7 +53,7 @@ for i in ${name_list[*]};do
 done
 echo $DEPENDENCY
 ## make complexity plot
-JOB=`sbatch --dependency=$DEPENDENCY $WP/GenerateComplexityPlots.sh| sed -re 's/.+\s+([0-9]+)/\1/'`
+JOB=`sbatch --dependency=$DEPENDENCY ${WP}/GenerateComplexityPlots.sh ${WP}| sed -re 's/.+\s+([0-9]+)/\1/'`
 DEP_REPORT=$DEP_REPORT:$JOB
 
 ## seqQc_inferexpe

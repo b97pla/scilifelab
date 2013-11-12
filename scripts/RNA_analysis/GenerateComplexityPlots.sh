@@ -11,13 +11,14 @@
 
 #Outputs a scatter plot of complexity curves of all samples in the project
 #Requires ccurveplots.R 
+wp=$1
 
 space=" "
 for files in `ls tophat_out_*/*.ccurve.txt | sort`; do filelist+=($files$space); done;
 
 asize=${#filelist[@]}
 
-Rscript /bubo/home/h24/mayabr/opt/scilifelab/scripts/RNA_analysis/ccurveplots.R ${filelist[@]} 
+Rscript ${wp}/ccurveplots.R ${filelist[@]} 
  
 
 
