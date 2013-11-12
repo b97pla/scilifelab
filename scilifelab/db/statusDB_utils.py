@@ -8,8 +8,8 @@ import bcbio.pipeline.config_loader as cl
 def load_couch_server(config_file):
     """loads couch server with settings specified in 'config_file'"""
     try:
-        db_conf = cl.load_config(config_file)['tools']
-        url = db_conf['login']+':'+db_conf['pass']+'@'+db_conf['url']+':'+str(db_conf['port'])
+        db_conf = cl.load_config(config_file)['statusdb']
+        url = db_conf['username']+':'+db_conf['password']+'@'+db_conf['url']+':'+str(db_conf['port'])
         couch = couchdb.Server("http://" + url)
         return couch
     except:

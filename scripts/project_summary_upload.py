@@ -489,7 +489,7 @@ Options (Only one option is acceptab):
 	CONFIG_FILE = os.path.join(os.environ['HOME'], 'opt/config/post_process.yaml')
 	CONFIG = cl.load_config(CONFIG_FILE)
 	log_path = CONFIG['analysis']['log']
-	URL = CONFIG['tools']['login']+':'+CONFIG['tools']['pass']+'@'+CONFIG['tools']['url'] + ':' + str(CONFIG['tools']['port'])
+	URL = CONFIG['statusdb']['username']+':'+CONFIG['statusdb']['password']+'@'+CONFIG['statusdb']['url'] + ':' + str(CONFIG['statusdb']['port'])
 	logger = my_logging(log_path+'/proj_coucdb.log')
 
 	if (options.project_ID is None) and (options.all_projects is False):

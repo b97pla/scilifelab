@@ -148,10 +148,10 @@ def main(args,phred64,fai,projtag,mail,hours,conffile,fpath,single,stranded):
     if not len ( hours.split(':') ) == 3:
         sys.exit("Please specify the time allocation string as hours:minutes:seconds or days-hours:minutes:seconds")
     conf = cl.load_config(conffile)
-    port = conf['tools']['port']
-    username = conf['tools']['login']
-    password = conf['tools']['pass']
-    URL = username+':'+password+'@'+conf['tools']['url']
+    port = conf['statusdb']['port']
+    username = conf['statusdb']['username']
+    password = conf['statusdb']['password']
+    URL = username+':'+password+'@'+conf['statusdb']['url']
     extra_arg = "#SBATCH " + conf['sbatch']['extra_arg']
     couch = couchdb.Server("http://" + URL + ':' +str(port))
     proj_db = couch['projects']
