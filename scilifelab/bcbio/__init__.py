@@ -153,14 +153,14 @@ def merge_sample_config(flist, sample, out_d, dry_run=True):
         runinfo = conf.get("details") if conf.get("details", None) else conf
         for i in range(0, len(runinfo)):
             for j in range(0, len(runinfo[i].get("multiplex"))):
-                seqfiles = [os.path.join(os.path.dirname(f), x) for x in runinfo[i]["multiplex"][0]["files"]]
+                seqfiles = runinfo[i]["multiplex"][0]["files"]
                 target_seqfiles = [os.path.join(out_d, os.path.basename(x).replace(sample, "{}_{}".format(sample, runinfo[i]["flowcell_id"]))) for x in seqfiles]
                 [dry_rsync(src, tgt, dry_run=dry_run) for src, tgt in izip(seqfiles, target_seqfiles)]
                 info = {}
                 info["lane"] = str(lane)
                 info["analysis"] = runinfo[i]["analysis"]
                 info["description"] = str(sample)
-                info["files"] = target_seqfiles
+                info["files"] = target_seqfiles 
                 info["genome_build"] = runinfo[i]["genome_build"]
                 newconf['details'].append(info)
                 lane = lane + 1
