@@ -1,56 +1,53 @@
 import sys
 from bcbio.pipeline.config_loader import load_config
-
-if len(sys.argv) < 6:
-        print """
+if len(sys.argv) < 5:
+    print """
 Usage:
 
-make_RseqQc_gbc.py  <sample_name> <bed_file> <mail> <config_file> <path> 
+make_complexity_plots.py  <sample_name> <mail> <config_file> <path> 
 
         sample_name		This name: /tophat_out_<sample name>
-        bed_file      
         mail                  	eg: maya.brandi@scilifelab.se
         config_file           	post_process.yaml assumes that you have specified samtools 
                                 version under 'custom_algorithms'/'RNA-seq analysis'
         path                  	Path to analysis dir containing the tophat_out_ directories
         """
-        sys.exit()
+    sys.exit()
 
 name            = sys.argv[1]
-bed_file        = sys.argv[2]
-mail            = sys.argv[3]
-config_file     = sys.argv[4]
-path            = sys.argv[5]
+mail            = sys.argv[2]
+config_file     = sys.argv[3]
+path            = sys.argv[4]
 
 try:
     config  = load_config(config_file)
-    extra_arg=config['sbatch']['extra_arg']
+    extra_arg = config['sbatch']['extra_arg']
     tools   = config['custom_algorithms']['RNA-seq analysis']
-    sam     = tools['sam']+'/'+tools['sam_version']
-    rseqc_version = tools['rseqc_version']
+    bam     = tools['bamtools']+'/'+tools['bamtools_version']
+    preseq  = tools['Preseq']
 except:
     print 'ERROR: problem loading samtools version from config file'
 
 
-f=open("RSeQC_"+name+"_gbc.sh",'w')
+f=open("complexity_"+name+".sh",'w')
 
-print >>f, """#!/bin/bash -l 
+print >>f, """#!/bin/bash -l
 #SBATCH -A a2012043
 #SBATCH -p node
-#SBATCH -t 50:00:00
-#SBATCH -e RSeQC_gbc_{0}.err
-#SBATCH -o RSeQC_gbc_{0}.out
-#SBATCH -J RSeQC_gbc_{0}
+#SBATCH -t 10:00:00
+#SBATCH -e complexity_{0}.err
+#SBATCH -o complexity_{0}.out
+#SBATCH -J complexity_{0}
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user={1}
 #SBATCH {5}
 
 module load bioinfo-tools
-module unload samtools
+module unload bamtools
 module load {3}
-module load rseqc/{6}
+
 cd {4}
 
-geneBody_coverage.py -i tophat_out_{0}/accepted_hits_{0}.bam -r {2} -o {0}
-#CMD BATCH {0}.geneBodyCoverage_plot.r
-""".format(name, mail, bed_file, sam, path, extra_arg, rseqc_version)
+{2} -v -B tophat_out_{0}/accepted_hits_{0}.bam -o tophat_out_{0}/{0}.ccurve.txt
+
+""".format(name, mail, preseq, bam, path, extra_arg)

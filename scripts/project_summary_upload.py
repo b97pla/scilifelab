@@ -207,11 +207,12 @@ def get_column(ssheet_content, header, col_cond=0):
 #		COUCHDB
 def save_couchdb_obj(db, obj):
     dbobj = db.get(obj['_id'])
+    print dbobj
     time_log = datetime.utcnow().isoformat() + "Z"
     if dbobj is None:
-        #obj["creation_time"] = time_log
-        #obj["modification_time"] = time_log
-        #db.save(obj)   
+     #   obj["creation_time"] = time_log
+     #   obj["modification_time"] = time_log
+     #   db.save(obj)   
         return None
     elif dbobj.has_key('source'):
         if dbobj['source']=='lims':
@@ -224,7 +225,6 @@ def save_couchdb_obj(db, obj):
             obj["modification_time"] = time_log
             db.save(obj)
             return 'Uppdated'
-    return 'Not uppdated'
 
 def comp_obj(obj, dbobj):
 	for key in obj:
@@ -489,7 +489,7 @@ Options (Only one option is acceptab):
 	CONFIG_FILE = os.path.join(os.environ['HOME'], 'opt/config/post_process.yaml')
 	CONFIG = cl.load_config(CONFIG_FILE)
 	log_path = CONFIG['analysis']['log']
-	URL = CONFIG['couch_db']['maggie_login']+':'+CONFIG['couch_db']['maggie_pass']+'@'+CONFIG['couch_db']['maggie_url'] + ':' + str(CONFIG['couch_db']['maggie_port'])
+	URL = CONFIG['statusdb']['username']+':'+CONFIG['statusdb']['password']+'@'+CONFIG['statusdb']['url'] + ':' + str(CONFIG['statusdb']['port'])
 	logger = my_logging(log_path+'/proj_coucdb.log')
 
 	if (options.project_ID is None) and (options.all_projects is False):
