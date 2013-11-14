@@ -88,7 +88,7 @@ The RNA-seq analysis is delivered to /proj/${uppnex}/INBOX/${project_id}/analysi
 
 - **Analysis Report (this document):** Contains reports about: Mapping statistics, Read distribution, Correlation between FPKM values of samples, Gene body covarage, Library complexity and Strand specificity.
 
-- **BAM files:** Two alignment files are placed under the alignments folder. We deliver two files per sample, one with and one without duplicates.
+- **BAM files:** The alignment files are placed under the alignments folder. We deliver two files per sample, one with and one without duplicates.
 
 - **FPKM files:** The quantification folder contains FPKM values calculated using the Cufflinks program using ENSEMBL annotation of genes and transcripts for each sample. These files also contain the upper and lower limits of the confidence interval for the FPKM estimate. FPKM values are the paired-end equivalent of RPKM (Reads Per Kilobase per Million mapped reads; the standard measure for gene expression in RNA-seq.)
 
