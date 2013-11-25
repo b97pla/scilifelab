@@ -7,7 +7,7 @@ import itertools
 from collections import defaultdict
 
 from cement.core import backend, controller, handler, hook
-from scilifelab.utils.misc import query_yes_no, soft_update
+from scilifelab.utils.misc import query_yes_no
 from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.utils.timestamp import modified_within_days
 from scilifelab.bcbio.qc import FlowcellRunMetricsParser, SampleRunMetricsParser
@@ -130,7 +130,7 @@ class RunMetricsController(AbstractBaseController):
                     obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
                     obj["bcbb_checkpoints"] = parser.parse_bcbb_checkpoints(**sample_kw)
                     for data in parser.parse_json_files():
-                        obj = soft_update(obj,data)
+                        obj.update(data)
                     qc_objects.append(obj)
         else:
             for d in runinfo:
@@ -168,7 +168,7 @@ class RunMetricsController(AbstractBaseController):
                 obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
                 obj["bcbb_checkpoints"] = parser.parse_bcbb_checkpoints(**sample_kw)
                 for data in parser.parse_json_files():
-                    obj = soft_update(obj,data)
+                    obj.update(data)
                 qc_objects.append(obj)
         return qc_objects
 
@@ -220,7 +220,7 @@ class RunMetricsController(AbstractBaseController):
         fcobj["run_setup"] = self._run_setup(read_setup)
         # Parse generic information from json files
         for data in parser.parse_json_files():
-            fcobj = soft_update(fcobj,data)
+            fcobj.update(data)
         qc_objects.append(fcobj)
         qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, "{}{}".format(fc_pos,fc_name), fcdir, as_yaml=as_yaml, setup=read_setup)
         return qc_objects
@@ -262,7 +262,7 @@ class RunMetricsController(AbstractBaseController):
             demux_stats = fcobj["illumina"]["Demultiplex_Stats"]
             # Parse generic information from json files
             for data in parser.parse_json_files():
-                fcobj = soft_update(fcobj,data)
+                fcobj.update(data)
             qc_objects.append(fcobj)
         qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, "{}{}".format(fc_pos,fc_name), fcdir, demultiplex_stats=demux_stats, setup=read_setup)
         return qc_objects
