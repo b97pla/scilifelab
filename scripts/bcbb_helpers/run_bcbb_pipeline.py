@@ -62,16 +62,20 @@ def run_analysis(work_dir, post_process, fc_dir, run_info):
         analysis_script = DISTRIBUTED_ANALYSIS_SCRIPT
     else:
         analysis_script = PARALLELL_ANALYSIS_SCRIPT
-        
-    job_cl = [analysis_script, post_process, fc_dir, run_info]
-    
-    cp = config["distributed"]["cluster_platform"]
-    cluster = __import__("bcbio.distributed.{0}".format(cp), fromlist=[cp])
-    platform_args = config["distributed"]["platform_args"].split()
-    
-    LOG.info("Submitting job")
-    jobid = cluster.submit_job(platform_args, job_cl)
-    LOG.info('Your job has been submitted with id ' + jobid)
+
+    # Launches the pipeline using PM module
+    project_to_run, sample_to_run, flowcell_to_run = fc_dir.split('/')[-3:]
+    cmd = ["pm",
+           "production",
+           "run",
+           project_to_run,
+           "--sample",
+           sample_to_run,
+           "--flowcell",
+           flowcell_to_run,
+           "--drmaa",
+           "--force"]
+    subprocess.check_call(cmd)
 
     # Change back to the starting directory
     os.chdir(start_dir)
