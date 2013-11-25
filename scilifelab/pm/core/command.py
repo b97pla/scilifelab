@@ -177,7 +177,14 @@ class CommandHandler(handler.CementBaseHandler):
             with open (fn, "w") as fh:
                 fh.write(data)
         return self.dry("writing data to file {}".format(fn), runpipe)
-
+    
+    def safe_touchfile(self, fname):
+        """Touch a non-existing file
+        
+        :param fname: file name
+        """
+        return self.write(fname,data="",overwrite=False)
+                
     def safe_unlink(self, fh):
         """Wrapper for unlinking a file.
 
@@ -214,6 +221,25 @@ class CommandHandler(handler.CementBaseHandler):
                     pass
         return self.dry("removing directory {}".format(d), runpipe)
 
+    def rmtree(self, d):
+        """Wrapper for recursively removing a directory structure, possibly containing
+        files and subdirectories
+        
+        :param d: directory
+        """
+        def runpipe():
+            if d is None:
+                return
+            if not os.path.exists(d):
+                self.app.log.warn("not going to remove non-existant directory {}".format(d))
+                return
+            self.app.log.debug("removing directory {} and everything beneath it".format(d))
+            try:
+                shutil.rmtree(d)
+            except e:
+                self.app.log.warn(e)
+        return self.dry("removing directory {} and everything beneath it".format(d),runpipe)
+    
     def link(self, src, tgt):
         """Wrapper for making links.
 
@@ -255,3 +281,52 @@ class CommandHandler(handler.CementBaseHandler):
                 return
             os.chmod(fname,mode)
         return self.dry("changing mode of file {}".format(fname), runpipe)
+
+    def md5sum(self, fname):
+        """Calculate the md5sum of a file and write the output to a file or, if supplied, an output pipe
+        """
+        import scilifelab.utils.misc
+        def runpipe():
+            if not os.path.exists(fname):
+                self.app.log.warn("not calculating md5sum of non-existant file {}".format(fname))
+                return
+            self.app.log.debug("Calculating md5sum of file {}".format(fname))
+            md5 = scilifelab.utils.misc.md5sum(fname)
+            md5file = "{}.md5".format(fname)
+            self.app.log.debug("Writing md5sum to file {}".format(md5file))
+            self.write(md5file,"{}  {}".format(md5,os.path.basename(fname)),True)
+            return md5file
+        return self.dry("calculating md5sum of {}".format(fname), runpipe)
+    
+    def verify_md5sum(self, md5file):
+        """Verify the md5sums and files given in the supplied md5file
+        """
+        import scilifelab.utils.misc
+        def runpipe():
+            if not os.path.exists(md5file):
+                self.app.log.warn("not verifying md5sums in non-existant file {}".format(md5file))
+                return False
+            passed = True
+            self.app.log.debug("Verifying md5sums in file {}".format(md5file))
+            with open(md5file) as fh:
+                for line in fh:
+                    line = line.strip()
+                    if len(line) == 0:
+                        continue
+                    self.app.log.debug("Processing line: {}".format(line))
+                    pcs = line.split()
+                    if not len(pcs) == 2:
+                        self.app.log.warn("malformed line: {} in {}".format(line,md5file))
+                        continue
+                    fpath = os.path.join(os.path.dirname(md5file),pcs[1])
+                    self.app.log.debug("Calculating md5sum of file {}. Expecting {}".format(fpath,pcs[0]))
+                    md5 = scilifelab.utils.misc.md5sum(fpath)
+                    self.app.log.debug("Calculated md5sum is {}".format(md5))
+                    if md5 == pcs[0]:
+                        self.app.log.info("{}: OK".format(pcs[1]))
+                    else: 
+                        self.app.log.warn("{}: FAILED".format(pcs[1]))
+                        passed = False
+            return passed
+        return self.dry("verifying md5sums in {}".format(md5file), runpipe)
+    

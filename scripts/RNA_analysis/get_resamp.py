@@ -41,7 +41,7 @@ print 'sample    M_reads       M_reads_(dup_rem)         Status'
 for sample in samps:
 	Total_M_read=float(dict[sample]['Total_No_reads'])/1000000
 	if single:
-		M_reads_aft_dup_rem=(float(dict[sample]['aft_dup_rem']['Uniquely mapped']))/1000000
+		M_reads_aft_dup_rem=(float(dict[sample]['aft_dup_rem']['mapq >= mapq_cut (unique)']))/1000000
 	else:	
 		R1=dict[sample]['aft_dup_rem']['Read-1']
 		R2=dict[sample]['aft_dup_rem']['Read-2']
