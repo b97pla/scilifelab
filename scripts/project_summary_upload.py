@@ -130,7 +130,6 @@ def get_proj_inf(WS_projects,project_name_swe, samp_db, proj_db, client, config)
 			else:
 				try: Av_sice = int(float(info[key][prep][0]))
 				except: Av_sice = info[key][prep][0]
-                                print info[key]
 				prep_status = info[key][prep][1]
                         if obj['samples'].has_key(striped_scilife_name):
                                 if obj['samples'][striped_scilife_name].has_key("library_prep"):
@@ -394,7 +393,6 @@ def get_20135_info(client,project_name_swe, info={}):
                	logger.debug('Google document found:	'+ssheet)
         else:
                	logger.debug('Google document 20135 not found')
-        print info
 	return info
 
 
