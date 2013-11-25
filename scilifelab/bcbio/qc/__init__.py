@@ -497,6 +497,20 @@ class RunMetricsParser(dict):
             filter_fn = filter_function
         return filter(filter_fn, self.files)
 
+    def parse_json_files(self, filter_fn=None):
+        """Parse json files and return the corresponding dicts
+        """
+        def filter_function(f):
+            return f is not None and f.endswith(".json")
+        if not filter_fn:
+            filter_fn = filter_function
+        files = self.filter_files(None,filter_fn)
+        dicts = []
+        for f in files:
+            with open(f) as fh:
+                dicts.append(json.load(fh))
+        return dicts
+
 class SampleRunMetricsParser(RunMetricsParser):
     """Sample-level class for parsing run metrics data"""
 
@@ -504,16 +518,6 @@ class SampleRunMetricsParser(RunMetricsParser):
         RunMetricsParser.__init__(self)
         self.path = path
         self._collect_files()
-
-    def parse_raw_data_delivery(self, flowcell=None, sequence=None, lane=None, **kw):
-        pattern = os.path.join(self.path,"*{}*_{}_L{}_raw_data_delivery.json".format(flowcell,sequence,lane))
-        files = glob.glob(pattern)
-        if len(files) == 0:
-            return {}
-        if len(files) > 1:
-            self.log.warn("Multiple raw_data_delivery files found matching pattern {}. Will use {}".format(pattern,files[0]))
-        with open(files[0]) as fh:
-            return json.load(fh)
         
     def read_picard_metrics(self, barcode_name, sample_prj, lane, flowcell, barcode_id, **kw):
         self.log.debug("read_picard_metrics for sample {}, project {}, lane {} in run {}".format(barcode_name, sample_prj, lane, flowcell))
