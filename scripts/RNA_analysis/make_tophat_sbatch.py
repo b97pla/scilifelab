@@ -46,29 +46,35 @@ def get_names_from_fastqfiles(fpath,flow_cell):
         sys.exit('no such dir '+fpath)
     flist = glob.glob(str(fpath + '/*'))
     file_info={}
-    for f in flist:
-        fname = f.split('/')[-1]
-        try:
-            if (fname.split('.')[-1] == "fastq") | ( fname.split('.')[-2] == "fastq"):
-                lane_run = "_".join(fname.split("_")[0:3])
-                tag = "_".join(fname.split("_")[3:-2])
-                if not file_info.has_key(lane_run):
-                    file_info[lane_run] = {}
-                if not file_info[lane_run].has_key(tag):
-                    file_info[lane_run][tag] = {}
-            if (fname.split('.fastq')[0][-1] == "1"):
-                file_info[lane_run][tag]['R1'] = fname
-            else:
-                file_info[lane_run][tag]['R2'] = fname
-        except:
-            sys.exit('files missing? '+fname)
-    print file_info.keys()
+    try_names = 'y'
+    ind=-1
+    while try_names=='y':
+        for f in flist:
+            fname = f.split('/')[-1]
+            try:
+                if (fname.split('.')[-1] == "fastq") | ( fname.split('.')[-2] == "fastq"):
+                    lane_run = "_".join(fname.split("_")[0:3])
+                    tag = "_".join(fname.split("_")[3:ind])
+                    if not file_info.has_key(lane_run):
+                        file_info[lane_run] = {}
+                    if not file_info[lane_run].has_key(tag):
+                        file_info[lane_run][tag] = {}
+                if (fname.split('.fastq')[0][-1] == "1"):
+                    file_info[lane_run][tag]['R1'] = fname
+                else:
+                    file_info[lane_run][tag]['R2'] = fname
+            except:
+                sys.exit('files missing? '+fname)
+        print file_info.keys()
 
-    print "Best guess for sample names: "
-    for lane in file_info:
-        print lane
-        print sorted(file_info[lane].keys())
-
+        print "Best guess for sample names: "
+        for lane in file_info:
+            print lane
+            print sorted(file_info[lane].keys())
+        try_names = raw_input("Press y if the sample names are wrong.")
+        if try_names =='y':
+            ind=ind-1
+            file_info={}
     r = raw_input("Press n to exit")
     if r.upper() == "N": sys.exit(0)
     return file_info
