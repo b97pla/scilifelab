@@ -72,19 +72,20 @@ module load picard/{9}
 module load rseqc/{10}
 
 cd {1}
-java -Xmx2g -jar {8}/SortSam.jar INPUT={1}/accepted_hits_{0}.bam OUTPUT={1}/accepted_hits_sorted_{0}.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT
-java -Xmx2g -jar {8}/MarkDuplicates.jar INPUT={1}/accepted_hits_sorted_{0}.bam OUTPUT={1}/accepted_hits_sorted_dupRemoved_{0}.bam ASSUME_SORTED=true REMOVE_DUPLICATES=true METRICS_FILE={0}_picardDup_metrics VALIDATION_STRINGENCY=LENIENT
+java -Xmx2g -jar {8}/SortSam.jar INPUT=accepted_hits_{0}.bam OUTPUT=accepted_hits_sorted_{0}.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT
+java -Xmx2g -jar {8}/MarkDuplicates.jar INPUT=accepted_hits_sorted_{0}.bam OUTPUT=accepted_hits_sorted_dupRemoved_{0}.bam ASSUME_SORTED=true REMOVE_DUPLICATES=true METRICS_FILE={0}_picardDup_metrics VALIDATION_STRINGENCY=LENIENT
+java -Xmx2g -jar {8}/CollectInsertSizeMetrics.jar INPUT=accepted_hits_{0}.bam OUTPUT={0}.picard_estimated_insert_size HISTOGRAM_FILE={0}.picard_histogram_file
 
-samtools view {1}/accepted_hits_sorted_dupRemoved_{0}.bam |sort > {1}/accepted_hits_sorted_dupRemoved_prehtseq_{0}.sam
-python -m HTSeq.scripts.count -s {12} -q {1}/accepted_hits_sorted_dupRemoved_prehtseq_{0}.sam {2} > {1}/{0}.counts
+samtools view accepted_hits_sorted_dupRemoved_{0}.bam |sort > accepted_hits_sorted_dupRemoved_prehtseq_{0}.sam
+python -m HTSeq.scripts.count -s {12} -q accepted_hits_sorted_dupRemoved_prehtseq_{0}.sam {2} > {0}.counts
 
-rm {1}/accepted_hits_sorted_dupRemoved_prehtseq_{0}.sam
+rm accepted_hits_sorted_dupRemoved_prehtseq_{0}.sam
 
-samtools index {1}/accepted_hits_sorted_dupRemoved_{0}.bam
-cufflinks -p 8 {11} -G {2} -o {1}/cufflinks_out_dupRemoved_{0} {1}/accepted_hits_sorted_dupRemoved_{0}.bam
+samtools index accepted_hits_sorted_dupRemoved_{0}.bam
+cufflinks -p 8 {11} -G {2} -o cufflinks_out_dupRemoved_{0} accepted_hits_sorted_dupRemoved_{0}.bam
 
-samtools index {1}/accepted_hits_sorted_{0}.bam
-cufflinks -p 8 {11} -G {2} -o {1}/cufflinks_out_{0} {1}/accepted_hits_sorted_{0}.bam
+samtools index accepted_hits_sorted_{0}.bam
+cufflinks -p 8 {11} -G {2} -o cufflinks_out_{0} accepted_hits_sorted_{0}.bam
 """.format(name, tophat_out_path, gtf_file, mail, quant, counts, path, extra_arg, picard_tools,picard_version,rseqc_version,aligner_libtype,ht_stranded)
 
 
