@@ -121,6 +121,7 @@ class AbstractExtendedBaseController(AbstractBaseController):
 
         group = base_app.args.add_argument_group('compression/decompression', 'Options affecting compression/decompression.')
         group.add_argument('--pbzip2', help="Use pbzip2 as compressing device", default=False, action="store_true")
+        group.add_argument('--bzip2', help="Use bzip2 as compressing device", default=False, action="store_true")
         group.add_argument('--pigz', help="Use pigz as compressing device", default=False, action="store_true")
         group.add_argument('--input_file', help="Run on specific input file", default=None)
 
@@ -162,8 +163,13 @@ class AbstractExtendedBaseController(AbstractBaseController):
         ## Setup zip program
         if self.pargs.pbzip2:
             self._meta.compress_prog = "pbzip2"
+            self._meta.compress_suffix = ".bz2"
+        elif self.pargs.bzip2:
+            self._meta.compress_prog = "bzip2"
+            self._meta.compress_suffix = ".bz2"
         elif self.pargs.pigz:
             self._meta.compress_prog = "pigz"
+            self._meta.compress_suffix = ".gz"
 
         # Setup transfer options
         if self.pargs.move:

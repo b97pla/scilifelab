@@ -11,7 +11,7 @@ from datetime import datetime
 import argparse
 import stat
 from subprocess import check_call, CalledProcessError
-from scilifelab.utils.misc import filtered_walk, query_yes_no
+from scilifelab.utils.misc import filtered_walk, query_yes_no, touch_file
 from scilifelab.utils.timestamp import utc_time
 
 def fixProjName(pname):
@@ -129,7 +129,6 @@ def rsync_files(to_copy, logfile, group, dry):
                 try:
                     # Create directory hierarchy with ug+rwX permissions
                     os.makedirs(dst_dir, 0770)
-                    os.chown(dst_dir,uid,gid)
                 except:
                     print("Could not create run-level delivery directory!")
                     clean_exit(1,logfile,dry)
@@ -154,7 +153,6 @@ def rsync_files(to_copy, logfile, group, dry):
             print("{:d} of {:d} files copied successfully".format(successful,len(to_copy)))
     
             # Modify the permissions to ug+rw
-            os.chown(dst_file,uid,gid)
             os.chmod(dst_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP)
 
 def main():
@@ -245,7 +243,10 @@ def main():
                 logfile,
                 args.group,
                 args.dry)
-        
+    
+    # Touch the flag for the Uppmax cronjob to fix the INBOX permissions
+    touch_file(os.path.join("/sw","uppmax","var","inboxfix","schedule",args.uppmax_id))
+    
     clean_exit(0,logfile,args.dry)
         
 def clean_exit(exitcode, logfile, dry=False):
