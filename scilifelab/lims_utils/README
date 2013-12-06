@@ -35,7 +35,7 @@ lims_utils
         PREPEND
         LIBVAL
         AGRLIBVAL
-        SEQSTART
+        DILSTART
         SEQUENCING
 
     get_sequencing_info(fc):

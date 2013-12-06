@@ -741,12 +741,6 @@ class FlowcellRunMetricsParser(RunMetricsParser):
         self.log.debug("Found {} RTA files {}...".format(len(fn), ",".join(fn[0:10])))
         parser = IlluminaXMLParser()
         metrics = parser.parse(fn, fullRTA)
-        def filter_function(f):
-            return f is not None and f == "run_summary.json"
-        try:
-            metrics.update(self.parse_json_files(filter_fn=filter_function).pop(0))
-        except IndexError:
-            pass
         return metrics
 
     def parse_filter_metrics(self, fc_name, **kw):
