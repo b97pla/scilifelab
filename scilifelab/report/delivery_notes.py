@@ -290,6 +290,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
 
     # Loop samples and collect information
     s_param_out = []
+    fcdoc = None
     for s in sample_run_list:
         s_param = {}
         LOG.debug("working on sample '{}', sample run metrics name '{}', id '{}'".format(s.get("barcode_name", None), s.get("name", None), s.get("_id", None)))
@@ -303,7 +304,18 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
             LOG.warn("Failed to set instrument and software versions for flowcell {} in report due to missing RunInfo -> Instrument field in statusdb. Either rerun 'pm qc update-qc' or search-and-replace 'NN' in the sample report.".format(fc))
             s_param.update(instrument_dict['default'])
         # Get run mode
-        s_param["run_mode"] = fc_con.get_run_mode(str(fc))
+        if not fcdoc or fcdoc.get("name") != fc:
+            fcdoc = fc_con.get_entry(fc)
+        runp = fcdoc.get("RunParameters",{})
+        s_param["sequencing_platform"] = "MiSeq" if "MCSVersion" in runp else "HiSeq2500"
+        s_param["clustering_method"] = "onboard clustering" if runp.get("ClusteringChoice","") == "OnBoardClustering" or s_param["sequencing_platform"] == "MiSeq" else "cBot"
+        s_param["sequencing_setup"] = fcdoc.get("run_setup")
+        s_param["sequencing_mode"] = runp.get("RunMode","High Output")
+        s_param["sequencing_software"] = "RTA {}".format(runp.get("RTAVersion"))
+        if s_param["sequencing_platform"] == "MiSeq":
+            s_param["sequencing_software"] = "MCS {}/{}".format(runp.get("MCSVersion"),s_param["sequencing_software"])
+        else:
+            s_param["sequencing_software"] = "{} {}/{}".format(runp.get("ApplicationName"),runp.get("ApplicationVersion"),s_param["sequencing_software"])
         s_param["is_paired"] = fc_con.is_paired_end(str(fc))
         if s_param["is_paired"] is None:
             LOG.warn("Could not determine run setup for flowcell {}. Will assume paired-end.".format(fc))

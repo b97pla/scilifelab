@@ -129,7 +129,6 @@ class RunMetricsController(AbstractBaseController):
                     obj["bc_count"] = parser.get_bc_count(run_setup=setup, **sample_kw)
                     obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
                     obj["bcbb_checkpoints"] = parser.parse_bcbb_checkpoints(**sample_kw)
-                    obj.update(parser.parse_raw_data_delivery(**sample_kw))
                     qc_objects.append(obj)
         else:
             for d in runinfo:
@@ -166,7 +165,6 @@ class RunMetricsController(AbstractBaseController):
                 obj["bc_count"] = parser.get_bc_count(demultiplex_stats=demultiplex_stats, run_setup=setup, **sample_kw)
                 obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
                 obj["bcbb_checkpoints"] = parser.parse_bcbb_checkpoints(**sample_kw)
-                obj.update(parser.parse_raw_data_delivery(**sample_kw))
                 qc_objects.append(obj)
         return qc_objects
 
