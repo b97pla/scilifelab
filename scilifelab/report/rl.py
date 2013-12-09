@@ -42,6 +42,9 @@ def sample_note_paragraphs():
     paragraphs["Flow cell id"] = dict(style=h3,
                                       tpl=Template("${FC_id}"))
 
+    paragraphs["Lane"] = dict(style=h3,
+                              tpl=Template("${lane}"))
+
     paragraphs["Sequence data directory"] = dict(style=h3,
                                                  tpl=Template("/proj/${uppnex_project_id}/INBOX/${project_name}/${scilifelab_name}/${start_date}_${FC_id}"))
 
@@ -50,10 +53,9 @@ def sample_note_paragraphs():
 Ordered amount: ${ordered_amount} million read${'{}'.format(' pair') if is_paired else ''}s."""))
 
     paragraphs["Method"] = dict(style=h3,
-                                tpl = Template("""Clustered on cBot
-and sequenced on ${instrument_version} according to manufacturer's
-instructions. Demultiplexing and conversion using ${casava_version}.
-The quality scale is Sanger / phred33 / Illumina 1.8+."""))
+                                tpl = Template("""Clustered using ${clustering_method} and sequenced on ${sequencing_platform} (${sequencing_software}) 
+                                with a ${sequencing_setup} setup in ${sequencing_mode} mode. Bcl to Fastq conversion was performed using bcl2Fastq v1.8.3 
+                                from the CASAVA software suite. The quality scale is Sanger / phred33 / Illumina 1.8+."""))
     paragraphs["Results"] = dict(style=h3,
                                  tpl = Template("""${rounded_read_count} million read${'{}'.format(' pair') if is_paired else ''}s${' in lane with PhiX error rate {}%'.format(phix_error_rate) if phix_error_rate != 'N/A' else ''}.
                                  Average quality score ${avg_quality_score} (${pct_q30_bases}% bases >= Q30)."""))

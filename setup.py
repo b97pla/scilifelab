@@ -27,11 +27,12 @@ setup(name = "scilifelab",
     author_email = "genomics_support@scilifelab.se",
     description = "Useful scripts for use at SciLifeLab",
     license = "MIT",
-    scripts = glob.glob('scripts/*.py') + 
+    scripts = glob.glob('scripts/*.py') +
+                glob.glob('scripts/analysisDB/*.py') + 
                 glob.glob('scripts/RNA_analysis/*.py') + 
                 glob.glob('scripts/bcbb_helpers/*.py') + 
                 glob.glob('scilifelab/lims_utils/*.py') +
-                ['scripts/pm'],
+                ['scripts/pm', 'scripts/stdin_to_redis'],
     install_requires = [
         "bcbio-nextgen >= 0.2",
         "drmaa >= 0.5",
@@ -48,6 +49,7 @@ setup(name = "scilifelab",
         #"pandas >= 0.9",
         "biopython",
         "rst2pdf",
+        "fabric",
         #"psutil",
         ],
       test_suite = 'nose.collector',

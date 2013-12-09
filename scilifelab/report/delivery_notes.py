@@ -7,6 +7,7 @@ import json
 import math
 import csv
 import yaml
+import texttable
 from cStringIO import StringIO
 from collections import Counter
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, calc_avg_qv
@@ -94,7 +95,7 @@ def _get_bc_count(sample_name, bc_count, sample_run):
 
 
 def _assert_flowcell_format(flowcell):
-    """Assert name of flowcell: "[A-Z0-9]+XX"
+    """Assert name of flowcell: "[A-Z0-9\-]+"
 
     :param flowcell: flowcell id
 
@@ -103,7 +104,7 @@ def _assert_flowcell_format(flowcell):
     if flowcell is None:
         # Can this really be right?!?
         return True
-    if not re.match("[A-Z0-9]+XX$", flowcell):
+    if not re.match("[A-Z0-9\-]+$", flowcell):
         return False
     return True
 
@@ -181,7 +182,11 @@ def _set_project_sample_dict(project_sample_item, source):
             for fc in sample_run_metrics.items():
                 fc, metrics = fc
                 for k, v in metrics.iteritems():
-                    project_sample_d[k] = v['sample_run_metrics_id']
+                    sample_run_metrics = v.get('sample_run_metrics_id', '')
+                    if sample_run_metrics:
+                        project_sample_d[k] = v['sample_run_metrics_id']
+                    else:
+                        LOG.warn("No sample_run_metrics information for sample '{}'".format(project_sample_item))
         else:
             sample_run_metrics = project_sample_item.get("sample_run_metrics", {})
             project_sample_d = {metrics[0]:metrics[1]['sample_run_metrics_id'] \
@@ -243,12 +248,13 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         }
     # key mapping from sample_run_metrics to parameter keys
     srm_to_parameter = {"project_name":"sample_prj", "FC_id":"flowcell",
-                        "scilifelab_name":"barcode_name", "start_date":"date", "rounded_read_count":"bc_count"}
+                        "scilifelab_name":"barcode_name", "start_date":"date", 
+                        "rounded_read_count":"bc_count", "lane": "lane"}
 
     LOG.debug("got parameters {}".format(parameters))
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
     if not _assert_flowcell_format(flowcell):
-        LOG.warn("Wrong flowcell format {}; skipping. Please use the flowcell id (format \"[A-Z0-9]+XX\")".format(flowcell) )
+        LOG.warn("Wrong flowcell format {}; skipping. Please use the flowcell id (format \"[A-Z0-9\-]+\")".format(flowcell) )
         return output_data
     output_data = _update_sample_output_data(output_data, cutoffs)
 
@@ -284,6 +290,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
 
     # Loop samples and collect information
     s_param_out = []
+    fcdoc = None
     for s in sample_run_list:
         s_param = {}
         LOG.debug("working on sample '{}', sample run metrics name '{}', id '{}'".format(s.get("barcode_name", None), s.get("name", None), s.get("_id", None)))
@@ -297,7 +304,18 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
             LOG.warn("Failed to set instrument and software versions for flowcell {} in report due to missing RunInfo -> Instrument field in statusdb. Either rerun 'pm qc update-qc' or search-and-replace 'NN' in the sample report.".format(fc))
             s_param.update(instrument_dict['default'])
         # Get run mode
-        s_param["run_mode"] = fc_con.get_run_mode(str(fc))
+        if not fcdoc or fcdoc.get("name") != fc:
+            fcdoc = fc_con.get_entry(fc)
+        runp = fcdoc.get("RunParameters",{})
+        s_param["sequencing_platform"] = "MiSeq" if "MCSVersion" in runp else "HiSeq2500"
+        s_param["clustering_method"] = "onboard clustering" if runp.get("ClusteringChoice","") == "OnBoardClustering" or s_param["sequencing_platform"] == "MiSeq" else "cBot"
+        s_param["sequencing_setup"] = fcdoc.get("run_setup")
+        s_param["sequencing_mode"] = runp.get("RunMode","High Output")
+        s_param["sequencing_software"] = "RTA {}".format(runp.get("RTAVersion"))
+        if s_param["sequencing_platform"] == "MiSeq":
+            s_param["sequencing_software"] = "MCS {}/{}".format(runp.get("MCSVersion"),s_param["sequencing_software"])
+        else:
+            s_param["sequencing_software"] = "{} {}/{}".format(runp.get("ApplicationName"),runp.get("ApplicationVersion"),s_param["sequencing_software"])
         s_param["is_paired"] = fc_con.is_paired_end(str(fc))
         if s_param["is_paired"] is None:
             LOG.warn("Could not determine run setup for flowcell {}. Will assume paired-end.".format(fc))
@@ -327,7 +345,9 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format(s["barcode_name"], s["lane"], s_param["phix_error_rate"], err_stat, s_param["avg_quality_score"], qv_stat))
 
         # Update/set remaning sample run parameters, falling back on project defaults if *key* is missing
-        s_param['ordered_amount'] = s_param.get('ordered_amount', p_con.get_ordered_amount(project_name))
+        s_param['ordered_amount'] = s_param.get('ordered_amount', 
+                                                p_con.get_ordered_amount(project_name,
+                                                                         samples=p_con.get_entry(project_name,'samples')))
         s_param['customer_reference'] = s_param.get('customer_reference', project.get('customer_reference'))
         s_param['uppnex_project_id'] = s_param.get('uppnex_project_id', project.get('uppnex_id'))
 
@@ -432,6 +452,71 @@ def _set_sample_table_values(sample_name, project_sample, barcode_seq, ordered_m
     vals['BarcodeSeq'] = barcode_seq
     vals.update({k:"N/A" for k in vals.keys() if vals[k] is None or vals[k] == ""})
     return vals
+
+def data_delivery_note(**kw):
+    """Create an easily parseable information file with information about the data delivery
+    """
+    output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
+    
+    project_name = kw.get('project_name',None)
+    flowcell = kw.get('flowcell',None)
+    LOG.debug("Generating data delivery note for project {}{}.".format(project_name,' and flowcell {}'.format(flowcell if flowcell else '')))
+    
+    # Get a connection to the project and sample databases
+    p_con = ProjectSummaryConnection(**kw)
+    assert p_con, "Could not connect to project database"
+    s_con = SampleRunMetricsConnection(**kw)
+    assert s_con, "Could not connect to sample database"
+    
+    # Get the entry for the project and samples from the database
+    LOG.debug("Fetching samples from sample database")
+    samples = s_con.get_samples(sample_prj=project_name, fc_id=flowcell)
+    LOG.debug("Got {} samples from database".format(len(samples)))
+    
+    # Get the customer sample names from the project database
+    LOG.debug("Fetching samples from project database")
+    project_samples = p_con.get_entry(project_name, "samples")
+    customer_names = {sample_name:sample.get('customer_name','N/A') for sample_name, sample in project_samples.items()}
+    
+    data = [['SciLifeLab ID','Submitted ID','Flowcell','Lane','Barcode','Read','Path','MD5','Size (bytes)','Timestamp']]
+    for sample in samples:
+        sname = sample.get('project_sample_name','N/A')
+        cname = customer_names.get(sname,'N/A')
+        fc = sample.get('flowcell','N/A')
+        lane = sample.get('lane','N/A')
+        barcode = sample.get('sequence','N/A')
+        if 'raw_data_delivery' not in sample:
+            data.append([sname,cname,'','','','','','','',''])
+            continue
+        delivery = sample['raw_data_delivery']
+        tstamp = delivery.get('timestamp','N/A')
+        for read, file in delivery.get('files',{}).items():
+            data.append([sname,
+                         cname,
+                         fc,
+                         lane,
+                         barcode,
+                         read,
+                         file.get('path','N/A'),
+                         file.get('md5','N/A'),
+                         file.get('size_in_bytes','N/A'),
+                         tstamp,])
+    
+    # Write the data to a csv file
+    outfile = "{}{}_data_delivery.csv".format(project_name,'_{}'.format(flowcell) if flowcell else '')
+    LOG.debug("Writing delivery data to {}".format(outfile))
+    with open(outfile,"w") as outh:
+        csvw = csv.writer(outh)
+        for row in data:
+            csvw.writerow(row)
+    
+    # Write Texttable formatted output to stdout
+    tt = texttable.Texttable(180)
+    tt.add_rows(data)
+    output_data['stdout'].write(tt.draw())
+        
+    return output_data
+    
 
 def project_status_note(project_name=None, username=None, password=None, url=None,
                         use_ps_map=True, use_bc_map=False, check_consistency=False,

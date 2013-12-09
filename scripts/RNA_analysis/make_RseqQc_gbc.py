@@ -23,17 +23,18 @@ config_file     = sys.argv[4]
 path            = sys.argv[5]
 
 try:
-        config  = load_config(config_file)
-	extra_arg=config['sbatch']['extra_arg']
-        tools   = config['custom_algorithms']['RNA-seq analysis']
-        sam     = tools['sam']+'/'+tools['sam_version']
+    config  = load_config(config_file)
+    extra_arg=config['sbatch']['extra_arg']
+    tools   = config['custom_algorithms']['RNA-seq analysis']
+    sam     = tools['sam']+'/'+tools['sam_version']
+    rseqc_version = tools['rseqc_version']
 except:
-        print 'ERROR: problem loading samtools version from config file'
+    print 'ERROR: problem loading samtools version from config file'
 
 
 f=open("RSeQC_"+name+"_gbc.sh",'w')
 
-print >>f, """#!/bin/bash -l
+print >>f, """#!/bin/bash -l 
 #SBATCH -A a2012043
 #SBATCH -p node
 #SBATCH -t 50:00:00
@@ -44,11 +45,12 @@ print >>f, """#!/bin/bash -l
 #SBATCH --mail-user={1}
 #SBATCH {5}
 
+module load bioinfo-tools
 module unload samtools
 module load {3}
-
+module load rseqc/{6}
 cd {4}
 
-samtools view /tophat_out_{0}/accepted_hits_sorted_dupRemoved_{0}.bam | geneBody_coverage.py -i - -r {2} -o {0}
-CMD BATCH {0}.geneBodyCoverage_plot.r
-mv geneBody_coverage.pdf {0}_geneBody_coverage.pdf""".format(name, mail, bed_file, sam, path, extra_arg)
+geneBody_coverage.py -i tophat_out_{0}/accepted_hits_{0}.bam -r {2} -o {0}
+#CMD BATCH {0}.geneBodyCoverage_plot.r
+""".format(name, mail, bed_file, sam, path, extra_arg, rseqc_version)

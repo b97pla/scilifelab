@@ -429,6 +429,12 @@ class FlowcellRunMetricsConnection(Couch):
                 if r > 0:
                     phix_r.append(r)
 
+        # If no results were found using the "old" structure, try the LIMS-parsed structure
+        if len(phix_r) == 0:
+            summary = fc.get("illumina",{}).get("run_summary",{})
+            data = summary.get(lane,{})
+            phix_r = [float(v) for k,v in data.items() if k.startswith("% Error Rate") and float(v) > 0]
+
         # Return -1 if the error rate could not be determined
         if len(phix_r) == 0:
             return -1
@@ -459,7 +465,7 @@ class FlowcellRunMetricsConnection(Couch):
         if not fc:
             return None
         reads = fc.get('RunInfo', {}).get('Reads', [])
-        return len([read for read in reads if read.get('IsIndexedRun','N') == 'N']) == 1
+        return len([read for read in reads if read.get('IsIndexedRead','N') == 'N']) == 2
 
 
 class ProjectSummaryConnection(Couch):

@@ -4,7 +4,9 @@ import os
 import re
 import contextlib
 import itertools
+import hashlib
 import scilifelab.log
+import collections
 
 LOG = scilifelab.log.minimal_logger(__name__)
 
@@ -163,7 +165,10 @@ def chdir(new_dir):
     finally:
         os.chdir(cur_dir)
 
-
+def touch_file(fname):
+    """Create an empty file
+    """
+    open(fname, "w").close()
 
 def opt_to_dict(opts):
     """Transform option list to a dictionary.
@@ -192,3 +197,30 @@ def prune_option_list(opts, keys):
         if k in opt_d:
             del opt_d[k]
     return [k for item in opt_d.iteritems() for k in item]
+
+def md5sum(infile):
+    """Calculate the md5sum of a file
+    """
+    # Implementation taken from: http://stackoverflow.com/a/4213255
+    md5 = hashlib.md5()
+    with open(infile,'rb') as f: 
+        for chunk in iter(lambda: f.read(128*md5.block_size), b''): 
+            md5.update(chunk)
+    return md5.hexdigest()
+
+def soft_update(a, b):
+    """Do a "soft" update of two dictionaries, meaning that the entries for 
+    overlapping keys will be merged rather than overwritten
+    
+    Taken from: http://stackoverflow.com/a/3233356
+    """
+    for k, v in b.iteritems():
+        if isinstance(v, collections.Mapping):
+            r = soft_update(a.get(k, {}), v)
+            a[k] = r
+        else:
+            a[k] = b[k]
+    return a
+
+    
+        

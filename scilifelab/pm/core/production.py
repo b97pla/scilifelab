@@ -277,4 +277,3 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                     t_utc = utc_time()
                     fh.write(t_utc)
         
-
