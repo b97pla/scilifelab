@@ -23,8 +23,8 @@ from datetime import date
 
 lims = Lims(BASEURI, USERNAME, PASSWORD)
 config_file = os.path.join(os.environ['HOME'], 'opt/config/post_process.yaml')
-db_conf = cl.load_config(config_file)['statusdb']
-url = db_conf['username']+':'+db_conf['password']+'@'+db_conf['url']+':'+str(db_conf['port'])
+db_conf = cl.load_config(config_file)['couch_db']
+url = db_conf['maggie_login']+':'+db_conf['maggie_pass']+'@'+db_conf['maggie_url']+':'+str(db_conf['maggie_port'])
 samp_db = couchdb.Server("http://" + url)['samples']
 
 class ProjectDB():
