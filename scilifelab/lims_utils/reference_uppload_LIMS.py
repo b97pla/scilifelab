@@ -19,7 +19,6 @@ import scilifelab.log
 lims = Lims(BASEURI, USERNAME, PASSWORD)
 
 def  main(project, sample, conf):
-    """"""
     today = date.today()
     couch = load_couch_server(conf)
     ref_db = couch['reference']
@@ -27,36 +26,36 @@ def  main(project, sample, conf):
         load_project_udfs(ref_db)
     if sample:
         load_sample_udfs(ref_db)
-        #LOG.info('flowcell %s %s : _id = %s' % (flowcell_name, info, key))
-       
-       
-
 
 def load_sample_udfs(ref_db):
+    """Loads all sample level udfs into the reference database on statusdb.
+    ref_db is the reference database."""
     udfs = prepare_udf_source_info('Sample', lims.get_samples())    
-    samples = ref_db.get('project-samples-[sample]')
-    samples_details = ref_db.get('project-samples-[sample]-details')
+    samples = ref_db.get('project-samples-[key]')
+    samples_details = ref_db.get('project-samples-[key]-details')
     for udf, udf_field in udfs.items():
-        try:
+        if 'discontinued' not in udf.split('_'):
             if udf in SAMP_UDF_EXCEPTIONS:
-                key = 'project-samples-[sample]-'+udf
+                key = 'project-samples-[key]-'+udf
                 samples[udf] = key
                 inf=save_couchdb_ref_obj(ref_db, samples)
             else:
-                key = 'project-samples-[sample]-details-'+udf
+                key = 'project-samples-[key]-details-'+udf
                 samples_details[udf] = key
+                delkey = 'project-samples-[sample]-details-'+udf
+                delete_doc(ref_db,delkey)
                 inf=save_couchdb_ref_obj(ref_db, samples_details)
             udf_field['_id'] = key
             inf=save_couchdb_ref_obj(ref_db, udf_field)
-        except: 
-            pass
 
 def load_project_udfs(ref_db):
+    """Loads all project level udfs into the reference database on statusdb.
+    ref_db is the reference database."""
     udfs = prepare_udf_source_info('Project', lims.get_projects())
     project = ref_db.get('project')
     project_details = ref_db.get('project-details')
     for udf, udf_field in udfs.items():
-        try:
+        if 'discontinued' not in udf.split('_'):
             if udf in PROJ_UDF_EXCEPTIONS:
                 key = 'project-'+udf
                 project[udf] = key
@@ -67,25 +66,21 @@ def load_project_udfs(ref_db):
                 inf=save_couchdb_ref_obj(ref_db, project_details)
             udf_field['_id'] = key
             inf=save_couchdb_ref_obj(ref_db, udf_field)
-        except:
-            pass
 
-def prepare_udf_source_info(element = None, element_list = None):
-    """element should be some lims element type, such as 
+def prepare_udf_source_info(element_type = None, element_list = None):
+    """element_type should be some lims element type, such as 
     'Project', 'Sample', 'Artifact'... 
     from wich you want to get udf source info.
     element_list should be an list of instanses of the element type. 
     eg output from get_samples(), get_projects()..."""
-    udfs = lims.get_udfs(attach_to_name = element)
+    udfs = lims.get_udfs(attach_to_name = element_type)
     objects={}
     for udf in udfs:
         db_name=udf.name.lower().replace(' ','_').replace('-','_')
-        example=find_example(element_list,udf.name)
-        objects[db_name] = {'doc_source':{'lims_field':'udf',
-                                    'lims_element':element, 
-                                    'description':udf.name},
-                            'doc_type': udf.root.get('type'),
-                            'doc_example':example}
+        objects[db_name] = {'doc_source': { 'lims_field':udf.name,
+                                            'lims_element': element_type, 
+                                            'source': 'Lims'},
+                            'doc_type': udf.root.get('type')}
     return objects  
 
 def find_example(element_list = None, udf_name = None):
@@ -105,7 +100,6 @@ def find_example(element_list = None, udf_name = None):
             except:
                 pass 
             if i==1000:
-                print 'Not found'
                 return 'Not found'
 
 if __name__ == '__main__':

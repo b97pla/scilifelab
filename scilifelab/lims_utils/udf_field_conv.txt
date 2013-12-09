@@ -1,0 +1,72 @@
+projects:
+
+
+        self.udf_field_conv={'Name':'name',
+            'Queued':'queued',
+            'Portal ID':'Portal_id',
+            'Sample type':'sample_type',
+            'Sequence units ordered (lanes)':'sequence_units_ordered_(lanes)',
+            'Sequencing platform':'sequencing_platform',
+            'Sequencing setup':'sequencing_setup',
+            'Library construction method':'library_construction_method',
+            'Bioinformatics':'bioinformatics',
+            'Disposal of any remaining samples':'disposal_of_any_remaining_samples',
+            'Type of project':'type',
+            'Invoice Reference':'invoice_reference',
+            'Uppmax Project Owner':'uppmax_project_owner',
+            'Custom Capture Design ID':'custom_capture_design_id',
+            'Customer Project Description':'customer_project_description',
+            'Project Comment':'project_comment',
+            'Delivery Report':'delivery_report'}
+        self.basic_udf_field_conv = {'Reference genome':'reference_genome',
+            'Application':'application',
+            'Uppmax Project':'uppnex_id',
+            'Customer project reference':'customer_reference'}
+
+
+
+
+samples:
+
+
+        self.udf_field_conv = {'Name':'name',
+            'Progress':'progress',
+            'Sequencing Method':'sequencing_method',
+            'Sequencing Coverage':'sequencing_coverage',
+            'Sample Type':'sample_type',
+            'Reference Genome':'reference_genome',
+            'Pooling':'pooling',
+            'Application':'application',
+            'Read Length':'requested_read_length',
+            'Control?':'control',
+            'Sample Buffer':'sample_buffer',
+            'Units':'units',
+            'Customer Volume':'customer_volume',
+            'Color':'color',
+            'Customer Conc.':'customer_conc',
+            'Customer Amount (ug)':'customer_amount_(ug)',
+            'Customer A260:280':'customer_A260:280',
+            'Conc Method':'conc_method',
+            'QC Method':'qc_method',
+            'Extraction Method':'extraction_method',
+            'Customer RIN':'customer_rin',
+            'Sample Links':'sample_links',
+            'Sample Link Type':'sample_link_type',
+            'Sample Conc':'sample_conc',
+            'Tumor Purity':'tumor_purity',
+            'Lanes Requested':'lanes_requested',
+            'Customer nM':'customer_nM',
+            'Customer Average Fragment Length':'customer_average_fragment_length',
+            '-DISCONTINUED-SciLifeLab ID':'sciLifeLab_ID',
+            '-DISCONTINUED-Volume Remaining':'volume_remaining'}
+        self.basic_udf_field_conv = {'Customer Sample Name':'customer_name',
+            'Reads Requested (millions)':'reads_requested_(millions)',
+            'min_reads':'min_reads',
+            'm_reads':'m_reads',
+            'dup_rm':'dup_rm',
+            'Status (auto)':'status_auto',
+            'Status (manual)':'status_manual',
+            'Insert Size':'average_size_bp',
+            'Passed Initial QC':'incoming_QC_status'}
+
+
