@@ -383,6 +383,12 @@ class SampleRunMetricsConnection(Couch):
         sample_names = [inv_view[x] for x in sample_ids]
         return [self.get_entry(x) for x in sample_names]
 
+    def get_samples_by_project_id(self, project_id, fc_id=None):
+        """Retrieve samples subset by project_id and, optionally, fc_id
+        """
+        self.log.debug("retrieving samples subset by flowcell '{}' and project_id '{}'".format(fc_id, project_id))
+        return [self.db.get(row.id) for row in self.db.iterview("names/id_to_proj_id",1000) if row.value == project_id]      
+
 class FlowcellRunMetricsConnection(Couch):
     _doc_type = FlowcellRunMetricsDocument
     _update_fn = update_fn

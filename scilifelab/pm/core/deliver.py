@@ -17,6 +17,7 @@ from scilifelab.report.best_practice import best_practice_note, SEQCAP_KITS
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, get_scilife_to_customer_name
 from scilifelab.utils.misc import query_yes_no, filtered_walk, md5sum
 from scilifelab.report.gdocs_report import upload_to_gdocs
+from scilifelab.report.sequencing_report import report
 from scilifelab.utils.timestamp import utc_time
 
 BCBIO_EXCLUDE_DIRS = ['realign-split', 'variants-split', 'tmp', 'tx', 'fastqc', 'fastq_screen', 'alignments', 'nophix']
@@ -439,7 +440,12 @@ class DeliveryReportController(AbstractBaseController):
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
             
-
+    @controller.expose(help="Make sequencing report")
+    def sequencing_report(self):
+        if not self._check_pargs(["project_name"]):
+            return
+        report(self,**vars(self.pargs))
+        
     @controller.expose(help="Make sample status summary note")
     def sample_status(self):
         if not self._check_pargs(["project_name"]):

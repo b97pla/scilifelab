@@ -79,7 +79,7 @@ sample names submitted by the customer and the internal SciLifeLab ID.
 
 ${sample_name_table}
 
-% if type == 'applications'
+% if type == 'applications':
 Note that your project is being handled by the Genomics Applications team, which typically means that some 
 aspects of the project contains features that are under development. This may have consequences on e.g. the
 expected time required to finish the project or the quality of the data that we guarantee. Please don't hesitate to
