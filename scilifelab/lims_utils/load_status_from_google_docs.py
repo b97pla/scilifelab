@@ -40,9 +40,6 @@ def strip_index(name):
     name = name.replace('-', '_').replace(' ', '')
     for i in indexes:
         name=name.split(i)[0]
-    preps='FBCDEF'
-    for prep in preps:
-        name=name.rstrip(prep)
     return name
 
 def get_20158_info(credentials, project_name_swe):
@@ -83,8 +80,6 @@ def get_20158_info(credentials, project_name_swe):
                     info[striped_name] = [status,no_reads]
                 except:
                     pass
-    else:
-        info=None
     return info
 
 def get(project_ID):

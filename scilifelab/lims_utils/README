@@ -4,8 +4,6 @@ Author: Maya Brandi <maya.brandi@scilifelab.se>
 
 Date: 2013-08-21
 
-### Needs to be updated (2013-11-06) ### 
-
 ## Description ##
 A package of scripts and modules mainly built to fetch and structure 
 information from lims and load information into statusdb
@@ -37,7 +35,7 @@ lims_utils
         PREPEND
         LIBVAL
         AGRLIBVAL
-        DILSTART
+        SEQSTART
         SEQUENCING
 
     get_sequencing_info(fc):

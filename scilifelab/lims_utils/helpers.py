@@ -17,8 +17,6 @@ def delete_Nones(dict):
     new_dict = {}
     for key, val in dict.items():
         if val:
-            if not val=='null':
-                if not (val=='2000-10-10' or val=='3000-10-10'):
-                    new_dict[key] = val
+            new_dict[key] = val
     if new_dict != {}:
         return new_dict
