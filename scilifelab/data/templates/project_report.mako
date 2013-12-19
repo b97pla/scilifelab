@@ -45,21 +45,26 @@ Naming conventions
 
 The data is delivered in fastq format using Illumina 1.8 quality
 scores. There will be one file for the forward reads and one file for
-the reverse reads. More information on our naming conventions can be
-found at
-http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf.
+the reverse reads (if the run was a paired-end run). 
+
+The naming of the files follow the convention:
+
+  [LANE]_[DATE]_[FLOWCELL]_[SCILIFE NAME]_[READ].fastq.gz
 
 Data access at UPPMAX
 """""""""""""""""""""
 
 Data from the sequencing will be uploaded to the UPPNEX (UPPMAX Next
 Generation sequence Cluster Storage, www.uppmax.uu.se), from which the
-user can access it. If you have problems to access your data, please
+user can access it. You can find the data in the INBOX folder of the UPPNEX project, which
+was created for you when your order was placed, e.g. 
+
+  /proj/b2013000/INBOX/J.Doe_13_01
+
+If you have problems to access your data, please
 contact SciLifeLab genomics_support@scilifelab.se. If you have
 questions regarding UPPNEX, please contact support@uppmax.uu.se.
-Information on how to access your data can be found at
-http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf.
-
+ 
 Acknowledgement
 """""""""""""""
 

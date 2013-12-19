@@ -14,8 +14,8 @@
 # Logs are stored in /proj/a2010001/private/delivery_logs
 
 
-LOGOUT=/proj/a2010001/private/delivery_logs/log.out
-LOGERR=/proj/a2010001/private/delivery_logs/log.err
+LOGOUT=/proj/a2010001/private/delivery_logs/454_log.out
+LOGERR=/proj/a2010001/private/delivery_logs/454_log.err
 
 function usage {
     echo "Usage: $0 [-n12] <src_dir> <dest_dir>"
