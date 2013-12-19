@@ -404,15 +404,17 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
                                             'genome_build': 'phix'},
                          'RNA-seq (total RNA)': {'analysis': 'Align_standard',
                                                  'genome_build': 'phix'},
+                         'stranded RNA-seq (total RNA)': {'analysis': 'Align_standard',
+                                                          'genome_build': 'phix'},
                          'WG re-seq': {'analysis': 'Align_standard'},
                          'default': {'analysis': 'Align_standard'},
                          }
 
-    #Connect to maggie to get project application 
+    #Connect to statusdb to get project application 
     try:
         p_con = ProjectSummaryConnection(**couch_credentials)
     except:
-        LOG.warn("Can't connect to maggie to get application")
+        print("Can't connect to statusdb to get application")
         p_con = None
   
   # Replace the default analysis
