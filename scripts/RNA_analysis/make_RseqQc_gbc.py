@@ -22,20 +22,14 @@ mail            = sys.argv[3]
 config_file     = sys.argv[4]
 path            = sys.argv[5]
 
-#try:
-if 1==1:
+try:
     config  = load_config(config_file)
-    print '#1'
     extra_arg=config['sbatch']['extra_arg']
-    print '#2'
     tools   = config['custom_algorithms']['RNA-seq analysis']
-    print '#3'
     sam     = tools['sam']+'/'+tools['sam_version']
-    print '#4'
     rseqc_version = tools['rseqc_version']
-    print '#5'
-#except:
-#    print 'ERROR: problem loading samtools version from config file'
+except:
+    print 'ERROR: problem loading samtools version from config file'
 
 
 f=open("RSeQC_"+name+"_gbc.sh",'w')
