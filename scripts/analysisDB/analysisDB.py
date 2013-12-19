@@ -17,6 +17,7 @@ class BP_RNA():
         self.get_RSeQC()
         self.get_rRNA()
         self.get_picardDup()
+        self.get_picardIns()
         self.get_top_dups()
 
     def get_proj_db_inf(self, proj_db):
@@ -79,15 +80,24 @@ class BP_RNA():
         scilife_names, preps = self.strip_scilife_name(names)
         for samp in scilife_names:
             samp_name_stripped = scilife_names[samp]
-            picardDup = self.pars_picard_metrics('tophat_out_' + samp + '/' + samp + '_picardDup_metrics')
-            picardEstInSize = self.pars_picard_metrics('tophat_out_' + samp + '/' + samp + '.picard_estimated_insert_size')
-            #picardEstInSizeHist= self.pars_picard_histogram('tophat_out_' + samp + '/' + samp + '.picard_estimated_insert_size')
+            try:picardDup = self.pars_picard_metrics('tophat_out_' + samp + '/' + samp + '_picardDup_metrics')
+            except: return
             if self.obj['samples'].has_key(samp_name_stripped):
                 self.obj['samples'][samp_name_stripped]['picard_dup'] = picardDup
-                self.obj['samples'][samp_name_stripped]['picard_estimated_insert_size'] = picardEstInSize
-#                self.obj['samples'][samp_name_stripped]['picard_estimated_insert_size_hist'] = picardEstInSizeHist
             else:
-                self.obj['samples'][samp_name_stripped] = {'picard_dup' : picard_dup, 'picard_estimated_insert_size' : picardEstInSize} #, 'picard_estimated_insert_size_hist':  picardEstInSizeHist}
+                self.obj['samples'][samp_name_stripped] = {'picard_dup' : picard_dup} 
+
+    def get_picardIns(self):
+        names = commands.getoutput("ls -d tophat_out_*|sed 's/tophat_out_//g'").split('\n')
+        scilife_names, preps = self.strip_scilife_name(names)
+        for samp in scilife_names:
+            samp_name_stripped = scilife_names[samp]
+            try:picardEstInSize = self.pars_picard_metrics('tophat_out_' + samp + '/' + samp + '.picard_estimated_insert_size')
+            except:return
+            if self.obj['samples'].has_key(samp_name_stripped):
+                self.obj['samples'][samp_name_stripped]['picard_estimated_insert_size'] = picardEstInSize
+            else:
+                self.obj['samples'][samp_name_stripped] = {'picard_estimated_insert_size' : picardEstInSize}
 
 
     def pars_picard_metrics(self,file):
