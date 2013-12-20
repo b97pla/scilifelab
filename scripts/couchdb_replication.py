@@ -147,8 +147,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     source = args.source
     destination = args.destination
-    security = args.no_security
+    security = False if args.no_security else True
     action = args.action
+
+    import ipdb; ipdb.set_trace()
 
     if not all([source, destination]):
         source, destination = _get_config()
