@@ -45,17 +45,52 @@ def fetch_project_data(ctrl, project_name, sample_name=None, flowcell_id=None, *
         
         # Fetch the information frpom the project database
         pdata = _get_project_info(project,sample_name,flowcell_id)
+        
         # Fetch sample run information from the samples database
         sdata = _get_sample_run_info(scon,pdata.get("project_id"),sample_name,flowcell_id)
-        fcs = []
+        fcs = ["_".join([sr.get("date").strftime("%y%m%d"),sr.get("flowcell")]) for sruns in sdata.values() for sr in sruns]
+        
+        # Fetch run information from the flowcell database for the flowcells listed among the sample runs
+        for fcid in list(set(fcs)):
+            if flowcell_id and fcid in flowcell_id:
+                continue
+            flowcell, sample_results = _get_flowcell_run_info(fcon.get_entry(fcid),pname,sample_name)
+            if "flowcells" not in pdata:
+                pdata["flowcells"] = {}
+            pdata["flowcells"][fcid] = flowcell
+            
+            # Add the sample results under the corresponding sample_run object
+            for result in sample_results.values():
+                key = "_".join([result.get("lane"),fcid,result.get("Index")])
+                for sname, sruns in sdata.items():
+                    for i, srun in enumerate(sruns):
+                        if srun.get("name") != key:
+                            continue
+                        # Verify that the project sample name and the sample id match before joining the results
+                        if not result.get("sampleid").startswith(srun.get("project_sample_name")):
+                            ctrl.error("Flowcell results for {} does not have a sample name that match the project_sample_name " \
+                                       "of the corresponding sample run ({} vs {})".format(key,
+                                                                                           result.get("sampleid"),
+                                                                                           srun.get("project_sample_name")))
+                            continue
+                        sdata[sname][i].update(result)
+                        key = None
+                        break
+                    if not key:
+                        break
+                # If key is not None, no match was found for the sample among the sample runs
+                if key:
+                    ctrl.warn("Flowcell results were found for sample {} ({}) " \
+                              "but no corresponding sample run was found".format(result.get("sampleid"),
+                                                                                 key))
+        
+        # Add the sample run object to the corresponding sample in the project
         for sname, sruns in sdata.items():
             if sname not in pdata.get("samples",{}):
                 ctrl.warn("Sample run for sample '{}' found in samples database but sample is missing from project database".format(sname))
                 pdata["samples"][sname] = {}
             pdata["samples"][sname]["sample_runs"] = sruns
-            fcs.extend(["_".join([sr.get("date"),sr.get("flowcell")]) for sr in sruns])
-        # Fetch run information from the flowcell database
-        pdata["flowcells"] = {fcid:_get_flowcell_run_info(fcon.get_entry(fcid),pname,sample_name) for fcid in list(set(fcs)) if not flowcell_id or fcid in flowcell_id}
+            
         data[pname] = pdata
         
     return data
@@ -64,32 +99,116 @@ def _get_flowcell_lane_info(demux_stats, project, sample_name=None):
     """Summarize the demultiplex info related to a project
     """
     lanes = {}
+    samples = {}
+    # Loop over the entries in Demultiplex_Stats and store information under lane keys
     for entry in demux_stats:
         lane = entry.get("Lane")
+        index = entry.get("Index")
         if lane not in lanes:
             lanes[lane] = {"reads": 0, "projects": [], "samples": []}
-        lanes[lane]["reads"] += int(entry.get("# Reads","").replace(",",""))
-        if entry.get("Index") == "Undetermined":
-            lanes[lane]["undetermined"] = int(entry.get("# Reads","").replace(",",""))
+            
+        # Sum the reads across the lane
+        reads = _parse_int(entry.get("# Reads"))
+        lanes[lane]["reads"] += reads
+        if index == "Undetermined":
+            lanes[lane]["undetermined"] = reads
+        
+        # Replace any '__' in project name with '.'
         pname = entry.get("Project","").replace("__",".")
         lanes[lane]["projects"] = list(set(lanes[lane]["projects"] + [pname]))
+        
+        # Skip any entries not belonging to the project we're interested in
         if pname != project:
             continue
-        sname = entry.get("Sample ID")
+        
+        # Skip any samples that are in the list of samples to ignore
+        sname = entry.get("Sample ID","").replace("__",".")
         if sample_name and sname in sample_name:
             continue
         lanes[lane]["samples"] = list(set(lanes[lane]["samples"] + [sname]))
-    return lanes
+        
+        # Store the sample details in the sample dict
+        
+        skey = "_".join([lane,index])
+        samples[skey] = {"sampleid": sname,
+                         "lane": lane, 
+                         "reads": reads, 
+                         "Index": index,
+                         "q30": float(entry.get("% of >= Q30 Bases (PF)","-1").replace(",",".")),
+                         "avgq": float(entry.get("Mean Quality Score (PF)","-1").replace(",",".")),
+                         "pct0mm": float(entry.get("% Perfect Index Reads","-1").replace(",",".")),
+                         "pct1mm": float(entry.get("% One Mismatch Reads (Index)","-1").replace(",",".")),
+                         "yield": _parse_int(entry.get("Yield (Mbases)"))*1e6
+                         }
+    return lanes, samples
+
+def _get_flowcell_run_details(runinfo=None, runparameters=None):
+    """Get the flowcell run details from the RunInfo and RunParameters
+    dictionaries
+    """
+    info = {}
+    if runinfo:
+        info.update({f:runinfo.get(f) for f in ["Number",
+                                                "Instrument",
+                                                "Id",
+                                                "Flowcell"]})
+        info["Reads"] = {r.get("Number"): {"NumCycles":r.get("NumCycles"), 
+                                           "IsIndexedRead":_translate_QC_flag("IsIndexedRead")} for r in runinfo.get("Reads",[])}
+        info["Date"] = _parse_date(runinfo.get("Date"),"%y%m%d")
+        
+    if runparameters:
+        info.update({f:runparameters.get(f) for f in ["RunMode",
+                                                      "RTAVersion",
+                                                      "ClusteringChoice",
+                                                      "ApplicationName",
+                                                      "ApplicationVersion",
+                                                      "FCPosition"]})
+        info["RunStartDate"] = _parse_date(runparameters.get("RunStartDate"),"%y%m%d")
+        info["PairEndFC"] = _translate_QC_flag(runparameters.get("PairEndFC"))
+                                                      
+    return info
 
 def _get_flowcell_run_info(flowcell, project, sample_name=None):
     """Get the flowcell run information from the flowcell database
     """
     info = {f:flowcell.get(f) for f in ["name",
                                         "run_setup"]}
-    info["lanes"] = _get_flowcell_lane_info(flowcell.get("illumina",{}).get("Demultiplex_Stats",{}).get("Barcode_lane_statistics",[]),project)
+    lanes, samples = _get_flowcell_lane_info(flowcell.get("illumina",{}).get("Demultiplex_Stats",{}).get("Barcode_lane_statistics",[]),project)
+    info["lanes"] = lanes
+    info["runinfo"] = _get_flowcell_run_details(flowcell.get("RunInfo"),flowcell.get("RunParameters"))
+    info["runsummary"] = _get_flowcell_run_summary(flowcell.get("illumina",{}).get("run_summary"))
     
-    return info 
+    return info, samples 
 
+def _get_flowcell_run_summary(summary):
+    """Get the run summary of the flowcell that was fetched from LIMS
+    """
+    info = {}
+    if not summary:
+        return info
+
+    for lane, data in summary.items():
+        lane_info = {f:data.get(f) for f in ["Cluster Density (K/mm^2) R1",
+                                             "Cluster Density (K/mm^2) R2",
+                                             "% Bases >=Q30 R1",
+                                             "% Bases >=Q30 R2",
+                                             "%PF R1",
+                                             "%PF R2",
+                                             "Avg Q Score R1",
+                                             "Avg Q Score R2",
+                                             "Clusters PF R1",
+                                             "Clusters PF R2",
+                                             "Yield PF (Gb) R1",
+                                             "Yield PF (Gb) R2",
+                                             "Clusters Raw R1",
+                                             "Clusters Raw R2",
+                                             "% Error Rate R1",
+                                             "% Error Rate R2"]}
+        lane_info["qc"] = _translate_QC_flag(summary.get("qc"))
+        info.update({lane: lane_info})
+        
+    return info
+                    
 def _get_library_prep_info(prep, fcid=None):
     """Get the library prep information stored in the project database
     """ 
@@ -179,11 +298,12 @@ def _get_sample_run_info(scon, project_id, sample_name=None, flowcell_id=None):
             continue
         info = {f:sample.get(f) for f in ["name",
                                           "lane",
-                                          "date",
                                           "flowcell",
                                           "project_id",
                                           "sequence",
-                                          "project_sample_name"]}
+                                          "project_sample_name",
+                                          "_id"]}
+        info["date"] = _parse_date(sample.get("date"),"%y%m%d")
         if not info["project_sample_name"] in sinfo:
             sinfo[info["project_sample_name"]] = []
         sinfo[info["project_sample_name"]].append(info)
@@ -197,9 +317,14 @@ def _parse_date(val,fmt="%Y-%m-%d"):
         val = None
     return val
 
+def _parse_int(val):
+    """Parse a int value with comma separated thousands
+    """
+    return 0 if not val else int(val.replace(",",""))
+
 def _translate_QC_flag(val):
     if val is not None and type(val) == str:
-        val = (val.lower() == 'p' or val.lower() == 'passed' or val.lower() == 'true' or val.lower() == 't')
+        val = (val.lower() == 'p' or val.lower() == 'passed' or val.lower() == 'true' or val.lower() == 't' or val.lower() == 'y')
     return val
 
 def _use_flowcell(s,haystack):
@@ -212,4 +337,3 @@ def _use_flowcell(s,haystack):
                 (len(s) == 1 and needle.endswith(s[0])):
                 return False
     return True
-        
