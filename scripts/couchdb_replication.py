@@ -150,8 +150,6 @@ if __name__ == "__main__":
     security = False if args.no_security else True
     action = args.action
 
-    import ipdb; ipdb.set_trace()
-
     if not all([source, destination]):
         source, destination = _get_config()
 
