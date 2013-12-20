@@ -54,7 +54,7 @@ def _get_databases_info(source, destination):
     return s_couch, d_couch, s_dbs, d_dbs
 
 
-def _setup_continuous(source, destination):
+def _setup_continuous(source, destination, security):
     """Set up a continuous replication of all databases in source to destination.
     """
     s_couch, d_couch, s_dbs, d_dbs = _get_databases_info(source, destination)
@@ -81,13 +81,14 @@ def _setup_continuous(source, destination):
         #Put the replicator document in source and set security object in destination
         l.info("Putting replicator document in _replicator database of source")
         s_rep.create(doc)
-        l.info("Copying security object to {} database in destination".format(db))
-        d_couch[db].resource.put('_security', security)
+        if security:
+            l.info("Copying security object to {} database in destination".format(db))
+            d_couch[db].resource.put('_security', security)
 
     l.info("DONE!")
 
 
-def _clone(source, destination):
+def _clone(source, destination, security):
     """Creates a complete clone of source in destination.
 
     WARNING: This action will remove ALL content from destination.
@@ -112,8 +113,9 @@ def _clone(source, destination):
         dest_db = '/'.join([destination, db])
         l.info("Copying data from {} in source to destination".format(db))
         d_couch.replicate(source_db, dest_db)
-        l.info("Copying security object to {} database in destination".format(db))
-        d_couch[db].resource.put('_security', security)
+        if security:
+            l.info("Copying security object to {} database in destination".format(db))
+            d_couch[db].resource.put('_security', security)
 
     l.info("DONE!")
 
@@ -139,10 +141,13 @@ if __name__ == "__main__":
             with the credentials included in the URL. I.E: http://admin:passw@source_db:5984")
     parser.add_argument('--destination', type=str, help = "Destination CouchDB instance, \
             with the credentials included in the URL. I.E: http://admin:passw@destination_db:5984")
+    parser.add_argument('--no-security', action='store_const', const=True, \
+            help='Do not copy security objects')
 
     args = parser.parse_args()
     source = args.source
     destination = args.destination
+    security = args.no_security
     action = args.action
 
     if not all([source, destination]):
@@ -155,7 +160,7 @@ if __name__ == "__main__":
     l.info("Starting replication - source: {}, destination: {}".format( \
             source.split('@')[-1], destination.split('@')[-1]))
     if action == "continuous":
-        _setup_continuous(source, destination)
+        _setup_continuous(source, destination, security)
     else:
-        _clone(source, destination)
+        _clone(source, destination, security)
 
