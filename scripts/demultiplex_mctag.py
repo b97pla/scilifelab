@@ -11,6 +11,7 @@ import Bio
 import itertools
 import os
 import re
+import shutil
 import sys
 
 #from scilifelab.illumina.hiseq import HiSeqSampleSheet
@@ -36,11 +37,12 @@ class RevComMatchException(Exception):
 
 
 
-def main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, halo_index_file, halo_index_length, molecular_tag_length=None):
+def main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, halo_index_file, halo_index_length, molecular_tag_length=None, force_overwrite=False):
 #def main(**kwargs):
 
     if not output_directory:
         raise SyntaxError("Must specify output directory.")
+    output_directory = create_output_dir(output_directory, force_overwrite)
 
     # Check for minimum required index information from user
     if halo_index_file:
@@ -69,6 +71,21 @@ def main(read_one, read_two, read_index, data_directory, read_index_num, output_
         raise SyntaxError("Either a directory and read index number or explicit paths to sequencing files must be specified.")
         print("End of function", file=sys.stderr)
 
+
+def create_output_dir(output_directory, force_overwrite):
+    """
+    Create the output directory, forcing overwrite if the -f flag is passed; otherwise, fail if file exists."
+    """
+    output_directory = os.path.abspath(output_directory)
+    if os.path.exists(output_directory):
+        if force_overwrite:
+            print("Warning: removing/overwriting output directory \"{}\"...".format(output_directory), file=sys.stderr, end="")
+            shutil.rmtree(output_directory)
+            print(" removed.", file=sys.stderr)
+    # This can be outside the conditional because I don't want to raise my own exception in case of failure
+    os.makedirs(output_directory)
+    return output_directory
+
 # TODO turn this into a generator and use it in a for loop above
 #def parse_directory(data_directory, read_index_num, index_dict, index_revcom_dict, halo_index_length, molecular_tag_length):
 def parse_directory(data_directory, read_index_num):
@@ -77,13 +94,10 @@ def parse_directory(data_directory, read_index_num):
     """
     raise NotImplementedError("I haven't implemented this yet, so don't go using it.")
 
-def parse_readset(read_1_fq, read_2_fq, read_index_fq, index_dict, index_revcom_dict, halo_index_length, molecular_tag_length=None):
+def parse_readset(read_1_fq, read_2_fq, read_index_fq, index_dict, index_revcom_dict, output_directory, halo_index_length, molecular_tag_length=None, force_append=False):
     """
     Parse input fastq files by index reads.
     """
-    # TODO make a real directory, not this hack for testing
-    output_dir = os.path.join(os.getcwd(), "processed_files")
-    os.makedirs(output_dir)
 
     fqp_1, fqp_2, fqp_ind = map(FastQParser, (read_1_fq, read_2_fq, read_index_fq))
 
@@ -106,10 +120,9 @@ def parse_readset(read_1_fq, read_2_fq, read_index_fq, index_dict, index_revcom_
         if halo_index and molecular_tag:
             for read_num, read in enumerate([read_1, read_2]):
                 read[0] = read[0] + "{}:{}:".format(halo_index, molecular_tag)
-                file_name = os.path.join(output_dir, "{}_R{}.fastq".format(halo_index, read_num+1))
+                file_name = os.path.join(output_directory, "{}_R{}.fastq".format(halo_index, read_num+1))
                 with open(file_name, 'a') as f:
-                    f.write("\n".join(read))
-    import pdb; pdb.set_trace()
+                    f.write("\n".join(read) + "\n")
 
 
 def parse_index(index_seq, index_dict=None, index_revcom_dict=None, halo_index_length=None, molecular_tag_length=None):
@@ -122,11 +135,11 @@ def parse_index(index_seq, index_dict=None, index_revcom_dict=None, halo_index_l
     # TODO add check against known indexes (Bio.pairwise2) -- this will also determine default molecular tag length
     #from Bio import pairwise2 as pw2
     #    pw2.align.globalms(halo_index, key, 2, -1, -1, -1)
-    if not halo_index in index_dict.keys():
-        if halo_index in index_revcom_dict.keys():
-            raise RevComMatchException(None, halo_index, molecular_tag)
-        else:
-            raise NoIndexMatchException(None, halo_index, molecular_tag)
+    #if not halo_index in index_dict.keys():
+    #    if halo_index in index_revcom_dict.keys():
+    #        raise RevComMatchException(None, halo_index, molecular_tag)
+    #    else:
+    #        raise NoIndexMatchException(None, halo_index, molecular_tag)
     #    return None, None, None
     #index_name = index_dict[halo_index]
     #return halo_index, molecular_tag, index_name
@@ -163,38 +176,33 @@ def check_input(**kwa):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-o", "--output-directory",
+    parser.add_argument("-o", "--output-directory", required=True,
                                 help="The directory to be used for storing output data.")
 
-    # TODO I don't know about this whole subparsers thing. maybe._
-    subparsers = parser.add_subparsers(title="subcommands")
-
-    indexfromfile = subparsers.add_parser("indexfile",
-                                help="Parse indexes from a file.")
-    # TODO change to positional argument (only one argument)
-    indexfromfile.add_argument( "-i", "--halo-index-file",
+    parser.add_argument( "-i", "--halo-index-file",
                                 help="File containing haloplex indexes (one per line, optional name " \
                                      "in second column separated by tab, comma, or semicolon).")
-    indexlength = subparsers.add_parser("indexlength", help="Parse indexes using a specified index length.")
-    indexlength.add_argument( "-l", "--halo-index-length", type=int,
+    parser.add_argument( "-l", "--halo-index-length", type=int,
                                 help="The length of the haloplex index. Required if indexes are not supplied (option -i).")
-    indexlength.add_argument( "-m", "--molecular-tag-length", type=int,
+    parser.add_argument( "-m", "--molecular-tag-length", type=int,
                                 help="The length of the (random) molecular tag. If not specified, " \
                                      "the remainder of the read after the halo index is used.")
 
-    files_parser = subparsers.add_parser("fastqfiles", help="Specify the paths to the fastq files.")
-    files_parser.add_argument("-1", "--read-one",
+    parser.add_argument("-1", "--read-one",
                                 help="Read 1 fastq file.")
-    files_parser.add_argument("-2", "--read-two",
+    parser.add_argument("-2", "--read-two",
                                 help="Read 2 fastq file.")
-    files_parser.add_argument("-r", "--read-index",
+    parser.add_argument("-r", "--read-index",
                                 help="Index read fastq file.")
 
-    directory_parser = subparsers.add_parser("fastqdir", help="Specify the directory containing the fastq files.")
-    directory_parser.add_argument("-d", "--data-directory",
+    parser.add_argument("-d", "--data-directory",
                                 help="Directory containing fastq read data.")
-    directory_parser.add_argument("-n", "--read-index-num", default=2, type=int,
-                                help="Which read is the index (e.g. 1, 2, 3). Default 2.")
+    parser.add_argument("-n", "--read-index-num", type=int,
+                                help="Which read is the index (e.g. 1, 2, 3).")
+
+    parser.add_argument("-f", "--force-overwrite", action="store_true",
+                                help="Force overwrite to output directory.")
+
     # TODO parser.add_argument("-s", "--single-read", action="store_true", help="Specify that the data is single-read (not paired-end). Default false.")
 
     # TODO ensure exclusive subcommands for indexes, fastq data: check namespaces
