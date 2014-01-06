@@ -12,29 +12,11 @@ import itertools
 import os
 import re
 import shutil
+import subprocess
 import sys
 
 #from scilifelab.illumina.hiseq import HiSeqSampleSheet
-from scilifelab.utils.fastq_utils import FastQParser
-
-
-# TODO these classes don't print the correct error message - maybe a problem with super? review docs
-class NoIndexMatchException(Exception):
-    def __init__(self, message, *args):
-        if not message:
-            message = "no match to supplied indexes."
-        super(NoIndexMatchException, self).__init__(self, message)
-        #Exception.__init__(self, message)
-        self.args = args
-
-class RevComMatchException(Exception):
-    def __init__(self, message, *args):
-        if not message:
-            message = "no match to supplied indexes but match to reverse complement of supplied indexes. Double-check read direction."
-        super(RevComMatchException, self).__init__(self, message)
-        Exception.__init__(self, message)
-        self.args = args
-
+#from scilifelab.utils.fastq_utils import FastQParser
 
 
 def main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, halo_index_file, halo_index_length, molecular_tag_length=None, force_overwrite=False):
@@ -69,7 +51,8 @@ def main(read_one, read_two, read_index, data_directory, read_index_num, output_
         #parse_directory(directory, read_index_num, index_dict, index_revcom_dict, output_directory, halo_index_length, molecular_tag_length)
     else:
         raise SyntaxError("Either a directory and read index number or explicit paths to sequencing files must be specified.")
-        print("End of function", file=sys.stderr)
+
+    print("Info: Processing complete.", file=sys.stderr)
 
 
 def create_output_dir(output_directory, force_overwrite):
@@ -170,8 +153,81 @@ def load_index_file(csv_file):
                 index_dict_revcom[rev_com_index]    = None
     return index_dict, index_dict_revcom
 
-def check_input(**kwa):
-    pass
+# I'm just putting this class here temporarily so I can test this without needing to load in all the other scilifelab jazz
+class FastQParser:
+    """Parser for fastq files, possibly compressed with gzip. 
+       Iterates over one record at a time. A record consists 
+       of a list with 4 elements corresponding to 1) Header, 
+       2) Nucleotide sequence, 3) Optional header, 4) Qualities"""
+
+    def __init__(self,file,filter=None):
+        self.fname = file
+        self.filter = filter
+
+        if file.endswith(".gz"):
+            self._fh = subprocess.Popen(["gunzip", "-d", "-c", file], stdout = subprocess.PIPE, bufsize = 1).stdout
+        else:
+            self._fh = subprocess.Popen(["cat", file], stdout = subprocess.PIPE, bufsize = 1).stdout
+        self._records_read = 0
+        self._next = self.setup_next()
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        return self._next(self)
+
+    def setup_next(self):
+        """Return the function to return the next record
+        """
+        if self.filter is None or len(self.filter.keys()) == 0:
+            def _next(self):
+                self._records_read += 1
+                return [self._fh.next().strip() for n in range(4)]
+        else:
+            def _next(self):
+                while True:
+                    record = [self._fh.next().strip() for n in range(4)]
+                    header = parse_header(record[0])
+                    skip = False
+                    for k, v in self.filter.items():
+                        if k in header and header[k] not in v:
+                            skip = True
+                            break
+                    if not skip:
+                        self._records_read += 1
+                        return record
+        return _next
+
+    def name(self):
+        return self.fname
+
+    def rread(self):
+        return self._records_read
+
+    def seek(self,offset,whence=None):
+        self._fh.seek(offset,whence)
+
+    def close(self):
+        self._fh.close()
+
+# TODO these classes don't print the correct error message - maybe a problem with super? review docs
+class NoIndexMatchException(Exception):
+    def __init__(self, message, *args):
+        if not message:
+            message = "no match to supplied indexes."
+        super(NoIndexMatchException, self).__init__(self, message)
+        #Exception.__init__(self, message)
+        self.args = args
+
+class RevComMatchException(Exception):
+    def __init__(self, message, *args):
+        if not message:
+            message = "no match to supplied indexes but match to reverse complement of supplied indexes. Double-check read direction."
+        super(RevComMatchException, self).__init__(self, message)
+        Exception.__init__(self, message)
+        self.args = args
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
