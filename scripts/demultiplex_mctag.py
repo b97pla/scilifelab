@@ -2,22 +2,22 @@
 Demultiplex haloplex data including molecular tags.
 """
 # TODO add pairwise alignment of indexes to correct for sequencing error (biopython's Bio.pairwise2)
-# TODO add directory parsing
-# TODO support single-read runs (i.e. not paired-end)
 
 from __future__ import print_function
 
 import argparse
 import Bio
-import collections
+#import collections
 import itertools
 import os
 import re
 import sys
 
-from scilifelab.illumina.hiseq import HiSeqSampleSheet
-from scilifelab.utils.fastq_utils import FastQParser, FastQWriter
+#from scilifelab.illumina.hiseq import HiSeqSampleSheet
+from scilifelab.utils.fastq_utils import FastQParser
 
+
+# TODO these classes don't print the correct error message - maybe a problem with super? review docs
 class NoIndexMatchException(Exception):
     def __init__(self, message, *args):
         if not message:
@@ -26,22 +26,58 @@ class NoIndexMatchException(Exception):
         #Exception.__init__(self, message)
         self.args = args
 
-class RevComMatchException(NoIndexMatchException):
+class RevComMatchException(Exception):
     def __init__(self, message, *args):
         if not message:
             message = "no match to supplied indexes but match to reverse complement of supplied indexes. Double-check read direction."
+        super(RevComMatchException, self).__init__(self, message)
         Exception.__init__(self, message)
         self.args = args
 
 
 
-def main(read_one, read_two, read_index, sample_sheet, halo_index_file, halo_index_length, molecular_tag_length=None):
+def main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, halo_index_file, halo_index_length, molecular_tag_length=None):
+#def main(**kwargs):
 
-    halo_index_dict, halo_index_revcom_dict = load_indexes(halo_index_file)
-    parse_readset(read_one, read_two, read_index, halo_index_dict, halo_index_revcom_dict, halo_index_length, molecular_tag_length)
+    if not output_directory:
+        raise SyntaxError("Must specify output directory.")
 
+    # Check for minimum required index information from user
+    if halo_index_file:
+        index_dict, index_revcom_dict = load_index_file(halo_index_file)
+    elif halo_index_length:
+        assert(type(halo_index_length) == int and halo_index_length > 0), "Haloplex index length must be a positive integer."
+        if molecular_tag_length:
+            assert(type(molecular_tag_length) == int and molecular_tag_length >= 0), "Molecular tag length must be a postive integer."
+        index_dict, index_revcom_dict = None, None
+    else:
+        raise SyntaxError("Either an index file or the index length must be specified.")
 
-def parse_readset(read_1_fq, read_2_fq, read_index_fq, halo_index_dict, halo_index_revcom_dict, halo_index_length, molecular_tag_length=None):
+    # Check for minimum required fastq location data from user and process
+    if read_one and read_two and read_index:
+        if data_directory or read_index_num:
+            raise SyntaxError("Ambiguous: too many options specified. Specify either file paths or directory and read index number.")
+        else:
+            parse_readset(read_one, read_two, read_index, index_dict, index_revcom_dict, output_directory, halo_index_length, molecular_tag_length)
+    elif data_directory and read_index_num:
+        parse_directory(data_directory, read_index_num)
+        #for readset in parse_directory(directory, read_index_num):
+        # etc.
+        # requires changing parse_directory to generator and changing parse_readset to accept a dict for the reads e.g. {1:x, 2:x, i:x}
+        #parse_directory(directory, read_index_num, index_dict, index_revcom_dict, output_directory, halo_index_length, molecular_tag_length)
+    else:
+        raise SyntaxError("Either a directory and read index number or explicit paths to sequencing files must be specified.")
+        print("End of function", file=sys.stderr)
+
+# TODO turn this into a generator and use it in a for loop above
+#def parse_directory(data_directory, read_index_num, index_dict, index_revcom_dict, halo_index_length, molecular_tag_length):
+def parse_directory(data_directory, read_index_num):
+    """
+    Searches the directory for fastq file sets and calls parse_readset() on them.
+    """
+    raise NotImplementedError("I haven't implemented this yet, so don't go using it.")
+
+def parse_readset(read_1_fq, read_2_fq, read_index_fq, index_dict, index_revcom_dict, halo_index_length, molecular_tag_length=None):
     """
     Parse input fastq files by index reads.
     """
@@ -56,7 +92,7 @@ def parse_readset(read_1_fq, read_2_fq, read_index_fq, halo_index_dict, halo_ind
     for read_1, read_2, read_ind in itertools.izip(fqp_1, fqp_2, fqp_ind):
         # Get the haloplex index and the molecular tag from the index read's sequence data
         try:
-            halo_index, molecular_tag = parse_index(read_ind[1], halo_index_dict, halo_index_revcom_dict,
+            halo_index, molecular_tag = parse_index(read_ind[1], index_dict, index_revcom_dict,
                                                     halo_index_length, molecular_tag_length)
             match += 1
         except RevComMatchException as e:
@@ -76,7 +112,7 @@ def parse_readset(read_1_fq, read_2_fq, read_index_fq, halo_index_dict, halo_ind
     import pdb; pdb.set_trace()
 
 
-def parse_index(index_seq, halo_index_dict=None, halo_index_revcom_dict=None, halo_index_length=None, molecular_tag_length=None):
+def parse_index(index_seq, index_dict=None, index_revcom_dict=None, halo_index_length=None, molecular_tag_length=None):
     """
     Split an index up into its haloplex index and the random molecular tag.
     Returns the halo index and the molecular tag as a tuple.
@@ -86,18 +122,18 @@ def parse_index(index_seq, halo_index_dict=None, halo_index_revcom_dict=None, ha
     # TODO add check against known indexes (Bio.pairwise2) -- this will also determine default molecular tag length
     #from Bio import pairwise2 as pw2
     #    pw2.align.globalms(halo_index, key, 2, -1, -1, -1)
-    if not halo_index in halo_index_dict.keys():
-        if halo_index in halo_index_revcom_dict.keys():
+    if not halo_index in index_dict.keys():
+        if halo_index in index_revcom_dict.keys():
             raise RevComMatchException(None, halo_index, molecular_tag)
         else:
             raise NoIndexMatchException(None, halo_index, molecular_tag)
     #    return None, None, None
-    #index_name = halo_index_dict[halo_index]
+    #index_name = index_dict[halo_index]
     #return halo_index, molecular_tag, index_name
     return halo_index, molecular_tag
 
 
-def load_indexes(csv_file):
+def load_index_file(csv_file):
     """
     Load known indexes from a csv file.
     csv file should be in format:
@@ -121,20 +157,48 @@ def load_indexes(csv_file):
                 index_dict_revcom[rev_com_index]    = None
     return index_dict, index_dict_revcom
 
+def check_input(**kwa):
+    pass
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--sample-sheet", help="Sample sheet describing the indexes used during library preparation.")
-    parser.add_argument("-i", "--halo-index-file", required=True, help="File containing haloplex indexes (one per line, optional name in second column separated by tab, comma, or semicolon).")
-    # TODO make this not required by dynamically matching to indexes
-    parser.add_argument("-l", "--halo-index-length", type=int, required=True, help="The length of the haloplex index. Required if indexes are not supplied (option -i).")
-    parser.add_argument("-m", "--molecular-tag-length", type=int, help="The length of the (random) molecular tag. If not specified, the remainder of the read after the halo index is used.")
-    #parser.add_argument("-r", "--read-index", dest="read_index", type=int, help="Which read is the index.")
-    #parser.add_argument("-s", "--single-read", dest="single_read", action="store_true", help="Specify that the data is single-read (not paired-end); default false.")
-    #parser.add_argument("-d", "--directory", help="Directory containing demultiplexed data.")
-    parser.add_argument("-1", "--read-one", required=True, help="Read 1 fastq file.")
-    parser.add_argument("-2", "--read-two", required=True, help="Read 2 fastq file.")
-    parser.add_argument("-r", "--read-index", required=True, help="Index read fastq file.")
 
+    parser.add_argument("-o", "--output-directory",
+                                help="The directory to be used for storing output data.")
+
+    # TODO I don't know about this whole subparsers thing. maybe._
+    subparsers = parser.add_subparsers(title="subcommands")
+
+    indexfromfile = subparsers.add_parser("indexfile",
+                                help="Parse indexes from a file.")
+    # TODO change to positional argument (only one argument)
+    indexfromfile.add_argument( "-i", "--halo-index-file",
+                                help="File containing haloplex indexes (one per line, optional name " \
+                                     "in second column separated by tab, comma, or semicolon).")
+    indexlength = subparsers.add_parser("indexlength", help="Parse indexes using a specified index length.")
+    indexlength.add_argument( "-l", "--halo-index-length", type=int,
+                                help="The length of the haloplex index. Required if indexes are not supplied (option -i).")
+    indexlength.add_argument( "-m", "--molecular-tag-length", type=int,
+                                help="The length of the (random) molecular tag. If not specified, " \
+                                     "the remainder of the read after the halo index is used.")
+
+    files_parser = subparsers.add_parser("fastqfiles", help="Specify the paths to the fastq files.")
+    files_parser.add_argument("-1", "--read-one",
+                                help="Read 1 fastq file.")
+    files_parser.add_argument("-2", "--read-two",
+                                help="Read 2 fastq file.")
+    files_parser.add_argument("-r", "--read-index",
+                                help="Index read fastq file.")
+
+    directory_parser = subparsers.add_parser("fastqdir", help="Specify the directory containing the fastq files.")
+    directory_parser.add_argument("-d", "--data-directory",
+                                help="Directory containing fastq read data.")
+    directory_parser.add_argument("-n", "--read-index-num", default=2, type=int,
+                                help="Which read is the index (e.g. 1, 2, 3). Default 2.")
+    # TODO parser.add_argument("-s", "--single-read", action="store_true", help="Specify that the data is single-read (not paired-end). Default false.")
+
+    # TODO ensure exclusive subcommands for indexes, fastq data: check namespaces
+    # TODO set unset variables to None? or check for presence of variables here
     arg_vars = vars(parser.parse_args())
 
     main(**arg_vars)
