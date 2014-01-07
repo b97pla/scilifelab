@@ -10,6 +10,7 @@ import itertools
 import os
 import random
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -23,7 +24,7 @@ import sys
 # TODO switch from open() to subprocess pipes?
 
 
-def main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, force_overwrite=False, verbose=True):
+def main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, force_overwrite=False):
 
     if not output_directory:
         raise SyntaxError("Must specify output directory.")
@@ -39,12 +40,12 @@ def main(read_one, read_two, read_index, data_directory, read_index_num, output_
             raise SyntaxError("Ambiguous: too many options specified. Specify either file paths or directory and read index number.", file=sys.stderr)
         else:
             print("Processing read set associated with \"{}\" using user-supplied indexes.".format(read_one), file=sys.stderr)
-            reads_processed, num_match, num_nonmatch = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory, verbose)
+            reads_processed, num_match, num_nonmatch = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory)
             print("\nInfo: Processing complete; {} reads processed ({} matching, {} non-matching).".format(reads_processed, num_match, num_nonmatch), file=sys.stderr)
     elif data_directory and read_index_num:
         for readset in parse_directory(data_directory, read_index_num):
             read_one, read_two, read_index = readset
-            parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory, verbose)
+            parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory)
     else:
         raise SyntaxError("Insufficient information: either a directory and read index number or explicit paths to sequencing files must be specified.")
 
@@ -57,7 +58,7 @@ def parse_directory(data_directory, read_index_num):
     # possibly implement as generator, calling parse_readset_byindexdict in a for loop from the calling loop
 
 
-def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, output_directory, verbose=True):
+def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, output_directory):
     """
     Parse input fastq files, searching for matches to each index.
     """
@@ -66,11 +67,11 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, o
 
     reads_processed, num_match, num_nonmatch = 0, 0, 0
 
-    if verbose:
-        print("Counting total number of lines in fastq files...", file=sys.stderr, end="")
-        # TODO Actually I think du -k * 16 / 1.024 should give approximately the right number for any number of reads greater than 1000 or so
-        total_lines_in_file = sum(1 for line in open(read_1_fq))
-        print(" complete.", file=sys.stderr)
+    print("Counting total number of lines in fastq files...", file=sys.stderr, end="")
+    # TODO Actually I think du -k * 16 / 1.024 should give approximately the right number for any number of reads greater than 1000 or so
+    total_lines_in_file = int(subprocess.check_output(shlex.split("wc -l {}".format(read_1_fq))).split()[0])
+    #total_lines_in_file = sum(1 for line in open(read_1_fq))
+    print(" complete.", file=sys.stderr)
 
     for read_1, read_2, read_ind in itertools.izip(fqp_1, fqp_2, fqp_ind):
         read_ind_seq = read_ind[1]
@@ -90,8 +91,7 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, o
                 num_nonmatch += 1
         reads_processed += 1
 
-        if verbose:
-            print_progress(reads_processed, (total_lines_in_file / 4), type='text')
+        print_progress(reads_processed, (total_lines_in_file / 4), type='text')
 
     print("\nProcessed {} reads, processing complete.".format(reads_processed), file=sys.stderr)
     if num_match == 0:
@@ -114,7 +114,7 @@ def print_progress(processed, total, type='text'):
     sys.stderr.flush()
 
 # TODO sample subset of reads (200,000 or whatever)
-def count_top_indexes(count_num, index_file, index_length, verbose):
+def count_top_indexes(count_num, index_file, index_length):
     """
     Determine the most common indexes, sampling at most 200,000 reads.
     """
@@ -124,11 +124,10 @@ def count_top_indexes(count_num, index_file, index_length, verbose):
     fqp_ind = FastQParser(index_file)
 
     # This should perhaps be added to the FastQParser class
-    if verbose:
-        print("Counting total number of lines in fastq file...", file=sys.stderr, end="")
-    total_lines = sum(1 for line in open(index_file))
-    if verbose:
-        print(" complete.", file=sys.stderr)
+    print("Counting total number of lines in fastq file...", file=sys.stderr, end="")
+    total_lines = int(subprocess.check_output(shlex.split("wc -l {}".format(index_file))).split()[0])
+    #total_lines = sum(1 for line in open(index_file))
+    print(" complete.", file=sys.stderr)
 
     index_tally = collections.defaultdict(int)
     processed_reads = 0
@@ -144,8 +143,7 @@ def count_top_indexes(count_num, index_file, index_length, verbose):
         index_tally[index_seq] += 1
         processed_reads += 1
 
-        if verbose:
-            print_progress(processed_reads, total_lines / 4)
+        print_progress(processed_reads, total_lines / 4)
     print("\n", file=sys.stderr)
 
 
@@ -178,7 +176,7 @@ def iter_sample_fast(iterable, samplesize):
         r = random.randint(0, i)
         if r < samplesize:
             results[r] = v  # at a decreasing rate, replace random items
-            print_progress(len(results), 200000)
+            print_progress(i, 200000)
     return results
 
 
@@ -357,8 +355,6 @@ if __name__ == "__main__":
 
     parser.add_argument("-f", "--force-overwrite", action="store_true",
                                 help="Force overwrite to output directory.")
-    parser.add_argument("-q", "--quiet", dest="verbose", action="store_false",
-                                help="Don't print status messages; saves some time (no file length calculations).")
 
     parser.add_argument("-t", "--top-indexes", type=int,
                                 help="Find the n most common indexes. Pair with -l (index length) and -r (read index file). Does not perform any demultiplexing.")
@@ -367,9 +363,6 @@ if __name__ == "__main__":
 
     arg_vars = vars(parser.parse_args())
 
-
-    if not arg_vars.get('verbose'):
-        arg_vars['verbose'] = True
 
     # It's my namespace and I'll clobber it if I want to
     locals().update(arg_vars)
@@ -380,6 +373,6 @@ if __name__ == "__main__":
         if not arg_vars['read_index']:
             raise SyntaxError("Must indicate file to parse for indexes.")
         else:
-            count_top_indexes(top_indexes, read_index, index_length, verbose)
+            count_top_indexes(top_indexes, read_index, index_length)
     else:
-        main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, force_overwrite, verbose)
+        main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, force_overwrite)
