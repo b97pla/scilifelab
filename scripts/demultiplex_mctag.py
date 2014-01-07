@@ -134,7 +134,7 @@ def count_top_indexes(count_num, index_file, index_length):
     # Subsample if file is large
     if total_lines / 4 > 200000:
         print("Subsampling 200,000 reads from file...", file=sys.stderr, end="")
-        fqp_ind = iter_sample_fast(fqp_ind, 200000)
+        fqp_ind = iter_sample_fast(fqp_ind, 200000, total_lines / 4)
         print(" complete.", file=sys.stderr)
         total_lines = 200000
     for index in fqp_ind:
@@ -158,7 +158,7 @@ def count_top_indexes(count_num, index_file, index_length):
         print("{:<20} {:>20,} {:>10.2f}%".format(index, index_tally[index], percentage), file=sys.stderr)
 
 
-def iter_sample_fast(iterable, samplesize):
+def iter_sample_fast(iterable, samplesize, total_size):
     """
     http://stackoverflow.com/questions/12581437/python-random-sample-with-a-generator/12583436#12583436
     """
@@ -176,7 +176,7 @@ def iter_sample_fast(iterable, samplesize):
         r = random.randint(0, i)
         if r < samplesize:
             results[r] = v  # at a decreasing rate, replace random items
-            print_progress(i, 200000)
+            print_progress(i, total_size)
     return results
 
 
