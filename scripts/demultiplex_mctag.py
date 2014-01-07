@@ -119,7 +119,6 @@ def count_top_indexes(count_num, index_file, index_length, verbose):
     Determine the most common indexes, sampling at most 200,000 reads.
     """
 
-#    count_num, index_file, index_length, verbose = [ kwargs[x] for x in [ "top_indexes", "read_index", "halo_index_length", "verbose"] ]
     assert(type(count_num) == int and count_num > 0), "Number passed must be a positive integer."
 
     fqp_ind = FastQParser(index_file)
@@ -135,7 +134,9 @@ def count_top_indexes(count_num, index_file, index_length, verbose):
     processed_reads = 0
     # Subsample if file is large
     if total_lines / 4 > 200000:
+        print("Subsampling 200,000 reads from file...", file=sys.stderr, end="")
         fqp_ind = iter_sample_fast(fqp_ind, 200000)
+        print(" complete.", file=sys.stderr)
         total_lines = 200000
     for index in fqp_ind:
         index_read_seq = index[1]
@@ -169,6 +170,7 @@ def iter_sample_fast(iterable, samplesize):
     try:
         for _ in xrange(samplesize):
             results.append(iterator.next())
+            print_progress(len(results), 200000)
     except StopIteration:
         raise ValueError("Sample larger than population.")
     random.shuffle(results)  # Randomize their positions
@@ -176,6 +178,7 @@ def iter_sample_fast(iterable, samplesize):
         r = random.randint(0, i)
         if r < samplesize:
             results[r] = v  # at a decreasing rate, replace random items
+            print_progress(len(results), 200000)
     return results
 
 
