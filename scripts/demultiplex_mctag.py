@@ -5,7 +5,7 @@ Demultiplex haloplex data including molecular tags.
 from __future__ import print_function
 
 import argparse
-#import collections
+import collections
 import itertools
 import os
 import re
@@ -89,6 +89,7 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, i
     if verbose:
         print("Counting total number of lines in fastq files...", file=sys.stderr, end="")
         # TODO See if the approximation du -s * 16 gives roughly the same result
+        # TODO Actually I think du -k * 16 / 1.024 should give approximately the right number for any number of reads greater than 1000 or so
         total_lines_in_file = sum(1 for line in open(read_1_fq))
         print(" complete.", file=sys.stderr)
 
@@ -110,7 +111,7 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, i
                 num_nonmatch += 1
         reads_processed += 1
 
-        if total_lines_in_file:
+        if verbose:
             print_progress((reads_processed * 4), total_lines_in_file, type='text')
 
     print("\nProcessed {} reads, processing complete.".format(reads_processed), file=sys.stderr)
@@ -133,6 +134,47 @@ def print_progress(processed, total, type='text'):
         sys.stderr.write("{processed}/{total} reads processed ({percentage_complete:0.2f}% finished)".format(processed=processed, total=total, percentage_complete=percentage_complete)) 
     sys.stderr.flush()
 
+def count_top_indexes(**kwargs):
+    """
+    Determine the most common indexes.
+    """
+
+    count_num, index_file, index_length, verbose = [ kwargs[x] for x in [ "top_indexes", "read_index", "halo_index_length", "verbose"] ]
+
+    assert(type(count_num) == int and count_num > 0), "Number passed must be a positive integer."
+
+    fqp_ind = FastQParser(index_file)
+
+    if verbose:
+        # This should perhaps be added to the FastQParser class
+        print("Counting total number of lines in fastq file...", file=sys.stderr, end="")
+        # TODO See if the approximation du -s * 16 gives roughly the same result
+        # TODO Actually I think du -k * 16 / 1.024 should give approximately the right number for any number of reads greater than 1000 or so
+        total_lines_in_file = sum(1 for line in open(index_file))
+        print(" complete.", file=sys.stderr)
+
+    index_tally = collections.defaultdict(int)
+
+    processed_reads = 0
+    for index in fqp_ind:
+        index_read_seq = index[1]
+        index_seq = index_read_seq[:index_length]
+        index_tally[index_seq] += 1
+        processed_reads += 1
+
+        if verbose:
+            print_progress(processed_reads, total_lines_in_file)
+
+
+    if count_num > len(index_tally.keys()):
+        print("Number of indexes found ({}) is fewer than those requested ({}). Printing all indexes found.".format(len(index_tally.keys()), count_num), file=sys.stderr)
+        count_num = len(index_tally.keys())
+
+    print("{:^20} {:^20} {:^10}".format("Index", "Occurences", "Percentage"))
+    total_indexes = sum(index_tally.values())
+    for index, _ in sorted(index_tally.items(), key=(lambda x: x[1]), reverse=True)[:count_num]:
+        percentage = (100.0 * index_tally[index] ) / total_indexes
+        print("{:<20} {:>20} {:>20.2f}%".format(index, index_tally[index], percentage), file=sys.stderr)
 
 # TODO add minimum read cutoffs (i.e. drop indexes with reads fewer than X)
 def parse_readset(read_1_fq, read_2_fq, read_index_fq, output_directory, halo_index_length, molecular_tag_length=None, verbose=True):
@@ -325,7 +367,7 @@ class RevComMatchException(Exception):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-o", "--output-directory", required=True,
+    parser.add_argument("-o", "--output-directory",
                                 help="The directory to be used for storing output data. Required.")
 
     parser.add_argument( "-i", "--halo-index-file",
@@ -354,8 +396,21 @@ if __name__ == "__main__":
     parser.add_argument("-q", "--quiet", dest="verbose", action="store_false",
                                 help="Don't print status messages; saves some time (no file length calculations).")
 
+    parser.add_argument("-t", "--top-indexes", type=int,
+                                help="Find the n most common indexes. Pair with -l (index length) and -r (read index file). Does not perform any demultiplexing.")
+
     # TODO parser.add_argument("-s", "--single-read", action="store_true", help="Specify that the data is single-read (not paired-end). Default false.")
 
     arg_vars = vars(parser.parse_args())
+
+    if arg_vars['top_indexes']:
+        if not arg_vars['halo_index_length']:
+            raise SyntaxError("Must indicate index length to tally.")
+        if not arg_vars['read_index']:
+            raise SyntaxError("Must indicate file to parse for indexes.")
+        else:
+            count_top_indexes(**arg_vars)
+            #count_top_indexes(arg_vars['top_indexes'], arg_vars['read_index'], arg_vars['halo_index_length'], )
+            sys.exit()
 
     main(**arg_vars)
