@@ -50,10 +50,12 @@ def main(read_one, read_two, read_index, data_directory, read_index_num, output_
         else:
             if index_dict:
                 # Indexes are user-supplied
+                print("Processing read set associated with \"{}\" using user-supplied indexes.".format(read_one), file=sys.stderr)
                 reads_processed, num_match, num_nonmatch = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, index_revcom_dict, output_directory)
                 print("\nInfo: Processing complete; {} reads processed ({} matching, {} non-matching).".format(reads_processed, num_match, num_nonmatch), file=sys.stderr)
             else:
                 # Indexes will be pulled from data itself based on user-supplied length
+                print("Processing read set associated with \"{}\" using an index length of {}.".format(read_one, halo_index_length), file=sys.stderr)
                 reads_processed = parse_readset(read_one, read_two, read_index, output_directory, halo_index_length, molecular_tag_length)
                 print("\nInfo: Processing complete; {} reads processed..".format(reads_processed), file=sys.stderr)
     elif data_directory and read_index_num:
@@ -88,6 +90,8 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, i
     reads_processed, num_match, num_nonmatch = 0, 0, 0
 
     if verbose:
+        print("Counting total number of lines in fastq files...", file=sys.stderr)
+        # TODO See if the approximation du -s * 16 gives roughly the same result
         total_lines_in_file = sum(1 for line in open(read_1_fq))
 
     for read_1, read_2, read_ind in itertools.izip(fqp_1, fqp_2, fqp_ind):
@@ -141,6 +145,8 @@ def parse_readset(read_1_fq, read_2_fq, read_index_fq, output_directory, halo_in
     reads_processed, reads_match, reads_nonmatch = 0, 0, 0
 
     if verbose:
+        print("Counting total number of lines in fastq files...", file=sys.stderr)
+        # TODO See if the approximation du -s * 16 gives roughly the same result
         total_lines_in_file = sum(1 for line in open(read_1_fq))
 
     for read_1, read_2, read_ind in itertools.izip(fqp_1, fqp_2, fqp_ind):
