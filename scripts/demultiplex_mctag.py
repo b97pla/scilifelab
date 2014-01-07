@@ -1,7 +1,6 @@
 """
 Demultiplex haloplex data including molecular tags.
 """
-# TODO add pairwise alignment of indexes to correct for sequencing error (biopython's Bio.pairwise2)
 
 from __future__ import print_function
 
@@ -18,14 +17,12 @@ from Bio import Seq, pairwise2
 #from scilifelab.illumina.hiseq import HiSeqSampleSheet
 #from scilifelab.utils.fastq_utils import FastQParser
 
-# TODO add index file reading
-# TODO switch from open() to subprocess pipes?
+# TODO add pairwise alignment of indexes to correct for sequencing error (biopython's Bio.pairwise2)
 # TODO add directory processing
-# TODO add status updates (every 10K read or whatever)
-# TODO add minimum read cutoffs (i.e. drop indexes with reads fewer than X)
+# TODO switch from open() to subprocess pipes?
 
 
-def main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, halo_index_file, halo_index_length, molecular_tag_length=None, force_overwrite=False):
+def main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, halo_index_file, halo_index_length, molecular_tag_length=None, force_overwrite=False, verbose=True):
 
     if not output_directory:
         raise SyntaxError("Must specify output directory.")
@@ -51,12 +48,12 @@ def main(read_one, read_two, read_index, data_directory, read_index_num, output_
             if index_dict:
                 # Indexes are user-supplied
                 print("Processing read set associated with \"{}\" using user-supplied indexes.".format(read_one), file=sys.stderr)
-                reads_processed, num_match, num_nonmatch = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, index_revcom_dict, output_directory)
+                reads_processed, num_match, num_nonmatch = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, index_revcom_dict, output_directory, verbose)
                 print("\nInfo: Processing complete; {} reads processed ({} matching, {} non-matching).".format(reads_processed, num_match, num_nonmatch), file=sys.stderr)
             else:
                 # Indexes will be pulled from data itself based on user-supplied length
                 print("Processing read set associated with \"{}\" using an index length of {}.".format(read_one, halo_index_length), file=sys.stderr)
-                reads_processed = parse_readset(read_one, read_two, read_index, output_directory, halo_index_length, molecular_tag_length)
+                reads_processed = parse_readset(read_one, read_two, read_index, output_directory, halo_index_length, molecular_tag_length, verbose)
                 print("\nInfo: Processing complete; {} reads processed..".format(reads_processed), file=sys.stderr)
     elif data_directory and read_index_num:
         parse_directory(data_directory, read_index_num)
@@ -90,9 +87,10 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, i
     reads_processed, num_match, num_nonmatch = 0, 0, 0
 
     if verbose:
-        print("Counting total number of lines in fastq files...", file=sys.stderr)
+        print("Counting total number of lines in fastq files...", file=sys.stderr, end="")
         # TODO See if the approximation du -s * 16 gives roughly the same result
         total_lines_in_file = sum(1 for line in open(read_1_fq))
+        print(" complete.", file=sys.stderr)
 
     for read_1, read_2, read_ind in itertools.izip(fqp_1, fqp_2, fqp_ind):
         read_ind_seq = read_ind[1]
@@ -113,32 +111,35 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, i
         reads_processed += 1
 
         if total_lines_in_file:
-            percentage = 100 * ((reads_processed * 4.0) / total_lines_in_file)
-            if percentage % 1 == 0:
-                print_progress(percentage)
+            print_progress((reads_processed * 4), total_lines_in_file, type='text')
 
     print("\nProcessed {} reads, processing complete.".format(reads_processed), file=sys.stderr)
     if num_match == 0:
         print("\nWarning: no reads matched supplied indexes; nothing written.", file=sys.stderr)
     return reads_processed, num_match, num_nonmatch
 
-def print_progress(percentage_complete):
+def print_progress(processed, total, type='text'):
     """
     Prints a little progress bar on the current line after clearing it.
     """
-    _, term_cols = os.popen('stty size', 'r').read().split()
-    term_cols = int(term_cols) - 10
-    progress = int((term_cols * percentage_complete / 100))
+    percentage_complete = 100 * (float(processed) / total)
     sys.stderr.write('\r')
-    sys.stderr.write("[{progress:<{cols}}] {percentage}%".format(progress="="*progress, cols=term_cols, percentage=percentage_complete))
+    if type == 'bar':
+        _, term_cols = os.popen('stty size', 'r').read().split()
+        term_cols = int(term_cols) - 10
+        progress = int((term_cols * percentage_complete / 100))
+        sys.stderr.write("[{progress:<{cols}}] {percentage:0.2f}%".format(progress="="*progress, cols=term_cols, percentage=percentage_complete))
+    else:
+        sys.stderr.write("{processed}/{total} reads processed ({percentage_complete:0.2f}% finished)".format(processed=processed, total=total, percentage_complete=percentage_complete)) 
     sys.stderr.flush()
 
 
-# TODO there's probably a good way to combine these two parse_readset functions
+# TODO add minimum read cutoffs (i.e. drop indexes with reads fewer than X)
 def parse_readset(read_1_fq, read_2_fq, read_index_fq, output_directory, halo_index_length, molecular_tag_length=None, verbose=True):
     """
     Parse input fastq files by index reads.
     """
+    raise NotImplementedError("This needs more filtering work before it's ready to use.")
     fqp_1, fqp_2, fqp_ind = map(FastQParser, (read_1_fq, read_2_fq, read_index_fq))
 
     #match, non_match, revcom_match = 0, 0, 0
@@ -188,7 +189,7 @@ def create_output_dir(output_directory, force_overwrite):
     os.makedirs(output_directory)
     return output_directory
 
-# TODO see if it's faster to keep a dict of { index -> filehandle }
+# TODO see if it's faster to keep a dict of { index -> filehandle } -- probably not
 def write_reads_to_disk(read_list, sample_name, output_directory):
     """
     Write a Fastq read to the appropriate file.
@@ -350,6 +351,8 @@ if __name__ == "__main__":
 
     parser.add_argument("-f", "--force-overwrite", action="store_true",
                                 help="Force overwrite to output directory.")
+    parser.add_argument("-q", "--quiet", dest="verbose", action="store_false",
+                                help="Don't print status messages; saves some time (no file length calculations).")
 
     # TODO parser.add_argument("-s", "--single-read", action="store_true", help="Specify that the data is single-read (not paired-end). Default false.")
 
