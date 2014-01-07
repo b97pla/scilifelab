@@ -77,7 +77,7 @@ def parse_directory(data_directory, read_index_num):
 # TODO parallelize
 # TODO add checking against reverse_complement sequences
 # TODO there's probably a good way to combine these two parse_readset functions
-def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, index_revcom_dict, output_directory):
+def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, index_revcom_dict, output_directory, verbose=True):
     """
     Parse input fastq files, searching for matches to each index.
     """
@@ -87,6 +87,8 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, i
     #match, non_match, revcom_match = 0, 0, 0
     reads_processed, num_match, num_nonmatch = 0, 0, 0
 
+    if verbose:
+        total_lines_in_file = sum(1 for line in open(read_1_fq))
 
     for read_1, read_2, read_ind in itertools.izip(fqp_1, fqp_2, fqp_ind):
         read_ind_seq = read_ind[1]
@@ -106,16 +108,30 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, i
                 num_nonmatch += 1
         reads_processed += 1
 
-        if reads_processed % 100 == 0:
-            print("Processed {} reads...".format(reads_processed), file=sys.stderr)
+        if total_lines_in_file:
+            percentage = 100 * ((reads_processed * 4.0) / total_lines_in_file)
+            if percentage % 1 == 0:
+                print_progress(percentage)
 
-    print("Processed {} reads, processing complete.".format(reads_processed), file=sys.stderr)
+    print("\nProcessed {} reads, processing complete.".format(reads_processed), file=sys.stderr)
     if num_match == 0:
         print("\nWarning: no reads matched supplied indexes; nothing written.", file=sys.stderr)
     return reads_processed, num_match, num_nonmatch
 
+def print_progress(percentage_complete):
+    """
+    Prints a little progress bar on the current line after clearing it.
+    """
+    _, term_cols = os.popen('stty size', 'r').read().split()
+    term_cols = int(term_cols) - 10
+    progress = int((term_cols * percentage_complete / 100))
+    sys.stderr.write('\r')
+    sys.stderr.write("[{progress:<{cols}}] {percentage}%".format(progress="="*progress, cols=term_cols, percentage=percentage_complete))
+    sys.stderr.flush()
+
+
 # TODO there's probably a good way to combine these two parse_readset functions
-def parse_readset(read_1_fq, read_2_fq, read_index_fq, output_directory, halo_index_length, molecular_tag_length=None):
+def parse_readset(read_1_fq, read_2_fq, read_index_fq, output_directory, halo_index_length, molecular_tag_length=None, verbose=True):
     """
     Parse input fastq files by index reads.
     """
@@ -123,6 +139,9 @@ def parse_readset(read_1_fq, read_2_fq, read_index_fq, output_directory, halo_in
 
     #match, non_match, revcom_match = 0, 0, 0
     reads_processed, reads_match, reads_nonmatch = 0, 0, 0
+
+    if verbose:
+        total_lines_in_file = sum(1 for line in open(read_1_fq))
 
     for read_1, read_2, read_ind in itertools.izip(fqp_1, fqp_2, fqp_ind):
         read_ind_seq = read_ind[1]
@@ -134,8 +153,11 @@ def parse_readset(read_1_fq, read_2_fq, read_index_fq, output_directory, halo_in
         write_reads_to_disk(read_list, sample_name, output_directory)
 
         reads_processed += 1
-        if reads_processed % 100 == 0:
-            print("Processed {} reads...".format(reads_processed), file=sys.stderr)
+
+        if total_lines_in_file:
+            percentage = 100 * ((reads_processed * 4.0) / total_lines_in_file)
+            if percentage % 1 == 0:
+                print_progress(percentage)
 
     return reads_processed
 
@@ -297,7 +319,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-o", "--output-directory", required=True,
-                                help="The directory to be used for storing output data.")
+                                help="The directory to be used for storing output data. Required.")
 
     parser.add_argument( "-i", "--halo-index-file",
                                 help="File containing haloplex indexes (one per line, optional name " \
@@ -316,7 +338,7 @@ if __name__ == "__main__":
                                 help="Index read fastq file.")
 
     parser.add_argument("-d", "--data-directory",
-                                help="Directory containing fastq read data.")
+                                help="Directory containing fastq read data. Requires specifying read number (-n).")
     parser.add_argument("-n", "--read-index-num", type=int,
                                 help="Which read is the index (e.g. 1, 2, 3).")
 
