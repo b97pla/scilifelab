@@ -18,6 +18,12 @@ import sys
 #from scilifelab.illumina.hiseq import HiSeqSampleSheet
 #from scilifelab.utils.fastq_utils import FastQParser
 
+# TODO add index file reading
+# TODO switch from open() to subprocess pipes?
+# TODO add directory processing
+# TODO add status updates (every 10K read or whatever)
+# TODO add minimum read cutoffs (i.e. drop indexes with reads fewer than X)
+
 
 def main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, halo_index_file, halo_index_length, molecular_tag_length=None, force_overwrite=False):
 #def main(**kwargs):
@@ -108,9 +114,10 @@ def parse_readset(read_1_fq, read_2_fq, read_index_fq, index_dict, index_revcom_
                     f.write("\n".join(read) + "\n")
 
 
+# TODO add checking against a file
 def parse_index(index_seq, index_dict=None, index_revcom_dict=None, halo_index_length=None, molecular_tag_length=None):
     """
-    Split an index up into its haloplex index and the random molecular tag.
+    Split an index sequence up into its haloplex index and the random molecular tag.
     Returns the halo index and the molecular tag as a tuple.
     """
     halo_index, molecular_tag = index_seq[:halo_index_length], index_seq[halo_index_length:molecular_tag_length]
