@@ -137,6 +137,8 @@ def count_top_indexes(count_num, index_file, index_length):
         fqp_ind = iter_sample_fast(fqp_ind, 200000, total_lines / 4)
         print(" complete.", file=sys.stderr)
         total_lines = 200000
+
+    print("Tallying indexes in {} records...".format(total_lines / 4), file=sys.stderr)
     for index in fqp_ind:
         index_read_seq = index[1]
         index_seq = index_read_seq[:index_length]
@@ -155,7 +157,7 @@ def count_top_indexes(count_num, index_file, index_length):
     total_indexes = sum(index_tally.values())
     for index, _ in sorted(index_tally.items(), key=(lambda x: x[1]), reverse=True)[:count_num]:
         percentage = (100.0 * index_tally[index] ) / total_indexes
-        print("{:<20} {:>20,} {:>10.2f}%".format(index, index_tally[index], percentage), file=sys.stderr)
+        print("{:<20} {:>20,} {:>10.2f}%".format(index, index_tally[index], percentage))
 
 
 def iter_sample_fast(iterable, samplesize, total_size):
