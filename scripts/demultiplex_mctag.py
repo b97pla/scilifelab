@@ -110,7 +110,7 @@ def print_progress(processed, total, type='text'):
         progress = int((term_cols * percentage_complete / 100))
         sys.stderr.write("[{progress:<{cols}}] {percentage:0.2f}%".format(progress="="*progress, cols=term_cols, percentage=percentage_complete))
     else:
-        sys.stderr.write("{processed}/{total} reads processed ({percentage_complete:0.2f}% finished)".format(processed=processed, total=total, percentage_complete=percentage_complete)) 
+        sys.stderr.write("{processed}/{total} items processed ({percentage_complete:0.2f}% finished)".format(processed=processed, total=total, percentage_complete=percentage_complete)) 
     sys.stderr.flush()
 
 # TODO sample subset of reads (200,000 or whatever)
@@ -126,26 +126,27 @@ def count_top_indexes(count_num, index_file, index_length):
     # This should perhaps be added to the FastQParser class
     print("Counting total number of lines in fastq file...", file=sys.stderr, end="")
     total_lines = int(subprocess.check_output(shlex.split("wc -l {}".format(index_file))).split()[0])
+    total_reads = total_lines / 4
     #total_lines = sum(1 for line in open(index_file))
     print(" complete.", file=sys.stderr)
 
     index_tally = collections.defaultdict(int)
     processed_reads = 0
     # Subsample if file is large
-    if total_lines / 4 > 200000:
-        print("Subsampling 200,000 reads from file...", file=sys.stderr, end="")
-        fqp_ind = iter_sample_fast(fqp_ind, 200000, total_lines / 4)
-        print(" complete.", file=sys.stderr)
-        total_lines = 200000
+    if (total_reads) > 200000:
+        print("Subsampling 200,000 reads from index file...", file=sys.stderr)
+        fqp_ind = iter_sample_fast(fqp_ind, 200000, total_reads)
+        print("Complete.", file=sys.stderr)
+        total_reads = 200000
 
-    print("Tallying indexes in {} records...".format(total_lines / 4), file=sys.stderr)
+    print("Tallying indexes in {} records...".format(total_reads), file=sys.stderr)
     for index in fqp_ind:
         index_read_seq = index[1]
         index_seq = index_read_seq[:index_length]
         index_tally[index_seq] += 1
         processed_reads += 1
 
-        print_progress(processed_reads, total_lines / 4)
+        print_progress(processed_reads, total_reads)
     print("\n", file=sys.stderr)
 
 
@@ -154,9 +155,8 @@ def count_top_indexes(count_num, index_file, index_length):
         count_num = len(index_tally.keys())
 
     print("{:<20} {:>20} {:>11}".format("Index", "Occurences", "Percentage"))
-    total_indexes = sum(index_tally.values())
     for index, _ in sorted(index_tally.items(), key=(lambda x: x[1]), reverse=True)[:count_num]:
-        percentage = (100.0 * index_tally[index] ) / total_indexes
+        percentage = (100.0 * index_tally[index] ) / total_reads
         print("{:<20} {:>20,} {:>10.2f}%".format(index, index_tally[index], percentage))
 
 
