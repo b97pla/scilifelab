@@ -20,8 +20,8 @@ import sys
 #from scilifelab.utils.fastq_utils import FastQParser
 
 # TODO add pairwise alignment of indexes to correct for sequencing error (biopython's Bio.pairwise2)
+# TODO ensure read 1,2 files are paired (SciLifeLab code)
 # TODO add directory processing
-# TODO switch from open() to subprocess pipes?
 
 
 def main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, force_overwrite=False):
@@ -33,7 +33,7 @@ def main(read_one, read_two, read_index, data_directory, read_index_num, output_
     if not index_file:
         raise SyntaxError("Must specify file containing indexes.")
     else:
-        index_dict = load_index_file(index_file)
+        index_dict = load_index_file(index_file, usecols=(1,2))
 
     if read_one and read_two and read_index:
         if data_directory or read_index_num:
@@ -98,27 +98,28 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, o
         print("\nWarning: no reads matched supplied indexes; nothing written.", file=sys.stderr)
     return reads_processed, num_match, num_nonmatch
 
-def print_progress(processed, total, type='text'):
+
+def print_progress(processed, total, type='text', leading_text=""):
     """
     Prints the progress, either in text or in visual form.
     """
     percentage_complete = 100 * (float(processed) / total)
+    _, term_cols = os.popen('stty size', 'r').read().split()
+    term_cols = int(term_cols) - 10 - len(leading_text)
+
     sys.stderr.write('\r')
-    if type == 'bar':
-        _, term_cols = os.popen('stty size', 'r').read().split()
-        term_cols = int(term_cols) - 10
+    if type == 'bar' and term_cols > 10:
         progress = int((term_cols * percentage_complete / 100))
-        sys.stderr.write("[{progress:<{cols}}] {percentage:0.2f}%".format(progress="="*progress, cols=term_cols, percentage=percentage_complete))
+        sys.stderr.write("{leading_text}[{progress:<{cols}}] {percentage:0.2f}%".format(leading_text=leading_text, progress="="*progress, cols=term_cols, percentage=percentage_complete))
     else:
-        sys.stderr.write("{processed}/{total} items processed ({percentage_complete:0.2f}% finished)".format(processed=processed, total=total, percentage_complete=percentage_complete)) 
+        sys.stderr.write("{leading_text}{processed}/{total} items processed ({percentage_complete:0.2f}% finished)".format(leading_text=leading_text, processed=processed, total=total, percentage_complete=percentage_complete))
     sys.stderr.flush()
 
-# TODO sample subset of reads (200,000 or whatever)
+
 def count_top_indexes(count_num, index_file, index_length):
     """
     Determine the most common indexes, sampling at most 200,000 reads.
     """
-
     assert(type(count_num) == int and count_num > 0), "Number passed must be a positive integer."
 
     fqp_ind = FastQParser(index_file)
@@ -149,9 +150,9 @@ def count_top_indexes(count_num, index_file, index_length):
         print_progress(processed_reads, total_reads)
     print("\n", file=sys.stderr)
 
-
     if count_num > len(index_tally.keys()):
         print("Number of indexes found ({}) is fewer than those requested ({}). Printing all indexes found.".format(len(index_tally.keys()), count_num), file=sys.stderr)
+        print("Printing indexes...", file=sys.stderr())
         count_num = len(index_tally.keys())
 
     print("{:<20} {:>20} {:>11}".format("Index", "Occurences", "Percentage"))
@@ -205,7 +206,6 @@ def create_output_dir(output_directory, force_overwrite):
     return output_directory
 
 
-# TODO see if it's faster to keep a dict of { index -> filehandle } -- probably not
 def write_reads_to_disk(read_list, sample_name, output_directory):
     """
     Write a Fastq read to the appropriate file.
@@ -217,7 +217,7 @@ def write_reads_to_disk(read_list, sample_name, output_directory):
             f.write("\n".join(read) + "\n")
 
 
-def load_index_file(csv_file):
+def load_index_file(csv_file, usecols=(0,1)):
     """
     Load known indexes from a csv file.
     csv file should be in format:
@@ -225,17 +225,23 @@ def load_index_file(csv_file):
     where index_name is optional.
     Returns a dict of sequence->name pairs.
     """
+    if not len(usecols) == 2:
+        raise ValueError("Warning: only two columns (index, sample_name) can be selected.", file=sys.stderr)
+
+    index_ind, name_ind = usecols
     index_dict          = {}
+
     with open(csv_file, 'r') as f:
         for line in f:
             # could also use csv.sniffer to dynamically determine delimiter
             index = re.split(r'[\t,;]', line.strip())
             try:
-                index_dict[index[0]]                = index[1]
+                index_dict[index[index_ind]]                = index[name_ind]
             except IndexError:
-                index_dict[index[0]]                = None
+                index_dict[index[index_ind]]                = None
     return index_dict
 
+# SCILIFELAB CODE
 # I'm just putting this class here temporarily so I can test this without needing to load in all the other scilifelab jazz
 class FastQParser(object):
     """Parser for fastq files, possibly compressed with gzip.
@@ -314,23 +320,6 @@ def parse_header(header):
             'is_filtered': (is_filtered == 'Y'),
             'control_number': int(control_number),
             'index': str(index)} # Note that MiSeq Reporter outputs a SampleSheet index rather than the index sequence
-
-# TODO these classes don't print the correct error message - maybe a problem with super? review docs
-class NoIndexMatchException(Exception):
-    def __init__(self, message, *args):
-        if not message:
-            message = "no match to supplied indexes."
-        super(NoIndexMatchException, self).__init__(self, message)
-        #Exception.__init__(self, message)
-        self.args = args
-
-class RevComMatchException(Exception):
-    def __init__(self, message, *args):
-        if not message:
-            message = "no match to supplied indexes but match to reverse complement of supplied indexes. Double-check read direction."
-        super(RevComMatchException, self).__init__(self, message)
-        Exception.__init__(self, message)
-        self.args = args
 
 
 if __name__ == "__main__":
