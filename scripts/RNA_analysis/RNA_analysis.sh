@@ -2,7 +2,7 @@
 #	This script generates some basic statistics and a report for a RNA-seq project
 #	and should be run from the intermediate directory of the project to be analysed.
 
-while getopts ":p:b:g:m:c:e:a:s:d:" option; do
+while getopts ":p:b:g:m:c:e:a:s:d:f:" option; do
     case ${option} in
         p) project_id=${OPTARG};;   
         b) bedfile=${OPTARG};;
@@ -13,6 +13,7 @@ while getopts ":p:b:g:m:c:e:a:s:d:" option; do
         a) analysis=${OPTARG};;
         s) stranded=${OPTARG};;
         d) date=${OPTARG};;
+        f) single=${OPTARG};;
     esac
 done
 shift $(( OPTIND - 1 ))
@@ -49,6 +50,12 @@ else
     analysisi_list=$name_list
 fi
 
+if [ $single = 'False' ]; then
+    single=''
+else
+    single='-e'
+fi
+
 DEPENDENCY='afterok'
 for i in $analysisi_list;do
     make_MarkDup_HT_cuff.py $i $gtf_file $mail $analysis_path $config_file $stranded $extra_arg
@@ -59,6 +66,17 @@ if [ $DEPENDENCY = 'afterok' ]; then
     dep=""
 else 
     dep=" --dependency=$DEPENDENCY"
+    echo "If you get a warning telling that the dependensy list is to long, you will have to restart the seting_dependensies.sh script manualy. This should be done after the folowing jobs are finished:
+    
+    $DEPENDENCY
+    
+    When all the jobbs are finished, start the rest of the pipeline by giving the command:
+
+    sbatch $WP/seting_dependensies.sh $names $bedfile $project_id $config_file $run_dir $analysis_path $gtf_file $WP $mail $single
+
+    This command is saved in the text file seting_dependensies.txt 
+    "
+    echo sbatch $WP/seting_dependensies.sh $names $bedfile $project_id $config_file $run_dir $analysis_path $gtf_file $WP $mail $single  >> seting_dependensies.txt
 fi
-echo $dep $WP/make_sbatch.sh $names $bedfile $project_id $config_file $run_dir $analysis_path $gtf_file $WP $mail
-sbatch$dep $WP/seting_dependensies.sh $names $bedfile $project_id $config_file $run_dir $analysis_path $gtf_file $WP $mail
+
+sbatch$dep $WP/seting_dependensies.sh $names $bedfile $project_id $config_file $run_dir $analysis_path $gtf_file $WP $mail $single

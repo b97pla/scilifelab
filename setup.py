@@ -7,6 +7,8 @@ import os
 import glob
 import subprocess
 
+# TEst tests tests 
+
 # Fetch version from git tags, and write to version.py.
 # Also, when git is not available (PyPi package), use stored version.py.
 version_py = os.path.join(os.path.dirname(__file__), 'version.py')

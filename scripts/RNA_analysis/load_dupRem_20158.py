@@ -111,15 +111,14 @@ for j,row in enumerate(content):
             except:
                 pass
         try:
-                if single:
-                        print dict[name]['aft_dup_rem']['mapq >= mapq_cut (unique)']
-                        M_reads_aft_dup_rem=str(round(float(dict[name]['aft_dup_rem']['mapq >= mapq_cut (unique)'])/1000000.0,2))
-                else:
-                        R1=dict[name]['aft_dup_rem']['Read-1']
-                        R2=dict[name]['aft_dup_rem']['Read-2']
-                        M_reads_aft_dup_rem=str(round((float(R2)+float(R1))/2000000,2))
-                client.UpdateCell(j+1, reads_colindex, M_reads_aft_dup_rem, ss_key, ws_key)
-                print name+' '+M_reads_aft_dup_rem
+            if single:
+                M_reads_aft_dup_rem=str(round(float(dict[name]['aft_dup_rem']['mapq >= mapq_cut (unique)'])/1000000.0,2))
+            else:
+                R1=dict[name]['aft_dup_rem']['Read-1']
+                R2=dict[name]['aft_dup_rem']['Read-2']
+                M_reads_aft_dup_rem=str(round((float(R2)+float(R1))/2000000,2))
+            client.UpdateCell(j+1, reads_colindex, M_reads_aft_dup_rem, ss_key, ws_key)
+            print name+' '+M_reads_aft_dup_rem
         except:
                 pass
 

@@ -5,7 +5,7 @@ if len(sys.argv) < 7:
         print """
 Usage:
 
-make_sbatch.py <project> <partition> <time> <jobname> <mail> <config_file> 
+make_sbatch.py <project> <partition> <time> <jobname> <mail> <config_file> [dependensy_list_arg]
 	project			eg: a2012042
 	partition		node/core
 	time			eg: 13:00:00
@@ -16,6 +16,11 @@ try:
         extra_arg = "#SBATCH "+config['sbatch']['extra_arg']
 except:
         extra_arg=""
+
+try:
+    dep="#SBATCH "+sys.argv[7]
+except:
+    dep=""
 
 f=open(sys.argv[4]+".sh",'w')
 print >>f, """#!/bin/bash -l
@@ -28,5 +33,6 @@ print >>f, """#!/bin/bash -l
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user={4}
 {5}
-""".format(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],extra_arg)
+{6}
+""".format(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],extra_arg,dep)
 

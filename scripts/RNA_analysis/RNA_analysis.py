@@ -15,7 +15,7 @@ def find_proj_from_view(proj_db, proj_id):
     return None
 
 
-def main(args,mail,conffile,analysis,stranded):
+def main(args,mail,conffile,analysis,stranded,single):
     project = args[0]
     runs = args[1:]
     conf = cl.load_config(conffile)
@@ -34,7 +34,7 @@ def main(args,mail,conffile,analysis,stranded):
     gtfpath = RNA_analysis_settings[reference_genome]['gtfpath']
     bedpath = RNA_analysis_settings[reference_genome]['bedpath']
     today = str(datetime.today().isoformat()).replace('-','_').split('.')[0].replace(':','_')
-    command=[os.environ['HOME']+'/opt/scilifelab/scripts/RNA_analysis/RNA_analysis.sh', '-p', project, '-b', bedpath, '-g', gtfpath, '-m', mail, '-c', conffile, '-e', '"'+extra_arg+'"' ,'-a', str(analysis),'-s' , str(stranded),'-d',today] + runs
+    command=[os.environ['HOME']+'/opt/scilifelab/scripts/RNA_analysis/RNA_analysis.sh', '-p', project, '-b', bedpath, '-g', gtfpath, '-m', mail, '-c', conffile, '-e', '"'+extra_arg+'"' ,'-a', str(analysis),'-s' , str(stranded),'-d',today, '-f', str(single)] + runs
     command=' '.join(command)
     os.system(command)
 
@@ -68,6 +68,7 @@ Arguments:
     help="Run tophat with --librarytype fr-firststranded option for strand-specific RNAseq.")
     parser.add_option('-a', '--analysis_on_all', action="store_true", dest="analysis", default="False",
     help="Run ht-seq and cufflinks on all samples. Default will be to run only on merged samples.")
+    parser.add_option('-f', '--single', action="store_true", dest="single", default="False", help="single end.")
     (opts, args) = parser.parse_args()
 
-    main(args,opts.mail,opts.conffile,opts.analysis,opts.stranded)
+    main(args,opts.mail,opts.conffile,opts.analysis,opts.stranded, opts.single)

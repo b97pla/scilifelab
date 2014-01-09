@@ -55,12 +55,12 @@ all_uniq=rbind(uniq,max_dup)
 keep = rowSums(all_uniq[3:end])>0
 all_uniq_0cov_rem = all_uniq[keep, ]
 
-all_uniq = all_uniq[,3:end]
-all_uniq_0cov_rem = all_uniq_0cov_rem[,3:end]
 ########## end cleening table ##########
 
 write.table(all_uniq, file="fpkm_table.txt", quote=F, row.names=F, sep="\t")
 
+all_uniq = all_uniq[,3:end]
+all_uniq_0cov_rem = all_uniq_0cov_rem[,3:end]
 pdf("FPKM_heatmap.pdf")
 if (end>20){pheatmap(cor(all_uniq), symm=T,fontsize = 4)}else{pheatmap(cor(all_uniq), symm=T)}
 dev.off()

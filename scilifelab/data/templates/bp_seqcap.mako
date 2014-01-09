@@ -118,8 +118,7 @@ following files:
 
 Finally, project-summary.csv is a text file summary containing various
 metrics, such as alignment statistics and data on the found
-variations. For instructions on how to access data at UPPMAX, see our
-FAQ [12]_.
+variations. 
 
 Analysis settings
 -----------------
@@ -182,6 +181,4 @@ References
 
 .. [11] P Cingolani. snpEff: Variant effect prediction. 2012. URL:
    http://snpeff.sourceforge.net.
-
-.. [12] URL: http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf
 

@@ -557,7 +557,6 @@ def make_stat(f,counts,single_end):
         bef_dup_rem['%uniq_mapped'] = round(100*(float(bef_dup_rem['mapq >= mapq_cut (unique)']))/(float(counts)),2)
         aft_dup_rem['%uniq_mapped'] = round(100*(float(aft_dup_rem['mapq >= mapq_cut (unique)']))/(float(counts)),2)
         aft_dup_rem['%spliced'] = round(100*float(aft_dup_rem['Splice reads'])/float(aft_dup_rem['mapq >= mapq_cut (unique)']))
-        print bef_dup_rem
     else:
         if float(counts) > 0:
             bef_dup_rem['%uniq_mapped'] = round(100*(float(bef_dup_rem['Read-1'])+float(bef_dup_rem['Read-2']))/(2*float(counts)),2)
@@ -622,6 +621,11 @@ def main(project_id,sample_names,single_end,config_file,Map_Stat,Read_Dist,FPKM,
     fp.write(tmpl.render(**d))
     fp.close()
     os.system('rst2pdf '+ rstfile)
+    print """
+    
+    If you are done with the RNA-seq analysis dont forget to upplode the results to status db. Run:
+    
+    best_practice_analysis_upload.py -p PROJECT_NAME"""
 
 
 if __name__ == "__main__":
