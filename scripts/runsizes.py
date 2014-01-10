@@ -16,6 +16,8 @@ import datetime
 import couchdb
 import re
 
+from scilifelab.utils import config
+
 
 def get_dirsizes(path="."):
     """Gets directory size.
@@ -62,10 +64,11 @@ def parse_dirsizes(path, dirsizes={"errors": []}):
     return dirsizes
 
 
-def send_db(server, db, data):
+def send_db(server, db, credentials, data):
     """ Submits provided data to database on server
     """
     couch = couchdb.Server(server)
+    couch.resource.credentials = credentials
     db = couch[db]
     db.save(data)
     #with open("runsizes.log", "w") as fh:
@@ -95,6 +98,16 @@ def main():
 
     args = parser.parse_args()
 
+    #Import DB credentials from pm.conf
+    c = config.load_config()
+    try:
+        user = c.get('db', 'user')
+        password = c.get('db', 'password')
+        credentials = (user, password)
+    except:
+        raise KeyError('Please specify DB credentials in your pm.conf file')
+
+
     for r in args.root:  # multiple --dir args provided
         if os.path.exists(r) and os.path.isdir(r):
             for d in os.listdir(r):
@@ -109,7 +122,7 @@ def main():
     if args.dry_run:
         print(dirsizes)
     else:
-        send_db(args.server, args.db, dirsizes)
+        send_db(args.server, args.db, credentials, dirsizes)
 
 
 if __name__ == "__main__":
