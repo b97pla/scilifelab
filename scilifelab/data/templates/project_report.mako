@@ -1,75 +1,25 @@
-.. image:: ${sll_logo_small}
-   :align: right
 
-===================
-Project status note
-===================
+Project overview - ${project.project_name}
+-------------------------------------------------
 
-SciLifeLab Stockholm
---------------------
+:Project name: ${project.project_name}
+:Project id: ${project.project_id}
+:Customer reference: ${project.customer_reference()}
+:Order received: ${project.order_received()}
+:Contract received: ${project.contract_received()}
+:Samples received: ${project.samples_received()}
+:Queue date: ${project.queued_date()}
+:Application: ${project.application}
+:Best practice bioinformatice: ${project.best_practice_bioinfo()}
+:Sequencing lanes ordered: ${project.sequencing_units_ordered()}
+:Number of samples: ${project.no_of_samples}
+:UPPNEX project id: ${project.uppnex_id}
+:Project path: /proj/${project.uppnex_id}/INBOX/${project.project_name}
 
-${date}
------------------
+${project.project_sample_name_table()}
 
-Project name
-^^^^^^^^^^^^
+${project.project_sample_status_table()}
 
-${project_name} ${'({})'.format(customer_reference) if customer_reference not in ['', 'N/A'] else ''}
-
-UPPNEX project id
-^^^^^^^^^^^^^^^^^
-
-${uppnex_project_id}
-
-Sequence data directories
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-/proj/${uppnex_project_id}/INBOX/${project_name}
-
-Samples
-^^^^^^^
-
-${sample_table}
-
-Comments
-^^^^^^^^
-
-${finished}
+${project.project_flowcell_summary_table()}
 
 
-Information
-^^^^^^^^^^^
-
-Naming conventions
-""""""""""""""""""
-
-The data is delivered in fastq format using Illumina 1.8 quality
-scores. There will be one file for the forward reads and one file for
-the reverse reads (if the run was a paired-end run). 
-
-The naming of the files follow the convention:
-
-  [LANE]_[DATE]_[FLOWCELL]_[SCILIFE NAME]_[READ].fastq.gz
-
-Data access at UPPMAX
-"""""""""""""""""""""
-
-Data from the sequencing will be uploaded to the UPPNEX (UPPMAX Next
-Generation sequence Cluster Storage, www.uppmax.uu.se), from which the
-user can access it. You can find the data in the INBOX folder of the UPPNEX project, which
-was created for you when your order was placed, e.g. 
-
-  /proj/b2013000/INBOX/J.Doe_13_01
-
-If you have problems to access your data, please
-contact SciLifeLab genomics_support@scilifelab.se. If you have
-questions regarding UPPNEX, please contact support@uppmax.uu.se.
- 
-Acknowledgement
-"""""""""""""""
-
-In publications based on data from the work covered by this contract, the 
-authors must acknowledge SciLifeLab, NGI and Uppmax: "The authors would 
-like to acknowledge support from Science for Life Laboratory, the National 
-Genomics Infrastructure, NGI, and Uppmax for providing assistance in massive 
-parallel sequencing and computational infrastructure."
