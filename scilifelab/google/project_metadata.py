@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 """Module for extracting a project's UppNex id from a spreadsheet on Google Docs"""
 
-import bcbio.google
-import bcbio.google.spreadsheet
 import os 
-
+from scilifelab.google.google_docs import SpreadSheet
+from scilifelab.google import get_credentials
 
 class ProjectMetaData:
     """A placeholder for metadata associated with a project.
@@ -14,55 +13,52 @@ class ProjectMetaData:
     def __init__(self, project_name, config):
         """Initialize the object"""
 
+        # Map internal attribute names to the GPL column headers
         col_mapping = self.column_mapping()
-        name_column = col_mapping["project_name"]
-        columns = []
-        attributes = []
-        for attr, col in col_mapping.items():
-            columns.append(col)
-            attributes.append(attr)
+        for attr in col_mapping.keys():
             setattr(self, attr, None)
 
-        # Get the credentials
-        encoded_credentials = bcbio.google.get_credentials(config)
-        assert encoded_credentials is not None, \
-        "The Google Docs credentials could not be found."
-
         # Get the name of the spreadsheet where uppnex ids can be found
-        gdocs_config = config.get("gdocs_upload", {})
-        ssheet_title = gdocs_config.get("projects_spreadsheet", None)
-        wsheet_title = gdocs_config.get("projects_worksheet", None)
+        gdocs_config = config.get("gdocs", config.get("gdocs_upload",{}))
+        cred_file = gdocs_config.get("credentials_file",gdocs_config.get("gdocs_credentials"))
+        ssheet_title = gdocs_config.get("projects_spreadsheet")
+        wsheet_title = gdocs_config.get("projects_worksheet")
 
+        # Get the credentials
+        credentials = get_credentials(cred_file)
+        assert credentials is not None, \
+        "The Google Docs credentials could not be found."
         assert ssheet_title is not None and wsheet_title is not None, \
             "The names of the projects spreadsheet and worksheet on Google \
             Docs could not be found."
 
         # Connect to the spread- and worksheet
-        client = bcbio.google.spreadsheet.get_client(encoded_credentials)
-        ssheet = bcbio.google.spreadsheet.get_spreadsheet(client, ssheet_title)
-
+        ssheet = SpreadSheet(credentials, ssheet_title)
         assert ssheet is not None, \
-            "Could not fetch %s from Google Docs." % ssheet_title
+            "Could not fetch '{}' from Google Docs.".format(ssheet_title)
 
         # We allow multiple, comma-separated worksheets to be searched
         for wtitle in wsheet_title.split(','):
-            wsheet = bcbio.google.spreadsheet.get_worksheet(client, ssheet, wtitle.strip())
+            wsheet = ssheet.get_worksheet(wtitle.strip())
             if not wsheet:
                 print("WARNING: Could not locate {} in {}".format(wsheet_title, ssheet_title))
                 continue
 
             # Get the rows for the project
-            rows = bcbio.google.spreadsheet.get_rows_columns_with_constraint( \
-                client, ssheet, wsheet, columns, {name_column: project_name})
-            if len(rows) == 0:
-                continue
+            rows = ssheet.get_cell_content(wsheet)
+            header = ssheet.get_header(wsheet)
+            column_indexes = {attr: ssheet.get_column_index(wsheet,col)-1 for attr, col in col_mapping.items()}
+            for row in rows:
+                # skip if this is not the project we're interested in
+                if row[column_indexes["project_name"]] != project_name:
+                    continue
+                
+                # Will only use the first result found to set each attribute
+                for attr, index in column_indexes.items():
+                    setattr(self, attr, row[index])
 
-            # Will only use the first result found to set each attribute
-            for i, val in enumerate(rows[0]):
-                setattr(self, attributes[i], val)
-
-            # We have found the project data so stop iterating
-            break
+                # We have found the project data so stop iterating
+                return
 
     @staticmethod
     def column_mapping():
@@ -72,6 +68,7 @@ class ProjectMetaData:
 
         return {
 	   "type" : "Type",
+           "ref_genome":"Ref genome",
            "project_id": "ID",
            "project_name": "Project name",
            "queue_date": "Queue date",
@@ -89,6 +86,12 @@ class ProjectMetaData:
 
     def _set_project_id(self, value):
         self._project_id = value
+
+    def _get_ref_genome(self):
+        return self._ref_genome
+
+    def _set_ref_genome(self, value):
+        self._ref_genome = value
 
     def _get_project_name(self):
         return self._project_name
@@ -150,7 +153,14 @@ class ProjectMetaData:
     def _set_type(self, value):
         self._type = value
 
+    def _get_ref_genome(self):
+        return self._ref_genome
+    
+    def _set_ref_genome(self, value):
+        self._ref_genome = value
+ 
     type = property(_get_type, _set_type)
+    ref_genome = property(_get_ref_genome,_set_ref_genome)
     project_id = property(_get_project_id, _set_project_id)
     project_name = property(_get_project_name, _set_project_name)
     queue_date = property(_get_queue_date, _set_queue_date)
@@ -161,3 +171,5 @@ class ProjectMetaData:
     application = property(_get_application, _set_application)
     no_finished_samples = property(_get_no_finished_samples, _set_no_finished_samples)
     uppnex_id = property(_get_uppnex_id, _set_uppnex_id)
+    ref_genome = property(_get_ref_genome,_set_ref_genome)
+    

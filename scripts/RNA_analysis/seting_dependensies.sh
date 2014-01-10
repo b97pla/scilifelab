@@ -2,9 +2,9 @@
 #SBATCH -A a2012043 
 #SBATCH -p core
 #SBATCH -t 01:00:00
-#SBATCH -J make_sbatch
-#SBATCH -e make_sbatch.err
-#SBATCH -o make_sbatch.out
+#SBATCH -J seting_dependensies
+#SBATCH -e seting_dependensies.err
+#SBATCH -o seting_dependensies.out
 while getopts ":e:" option; do
         case ${option} in
                 e) extra_arg=${OPTARG};;
@@ -21,27 +21,31 @@ path=$6
 gtf_file=$7
 WP=$8
 mail=$9
+single=${10}
 name_list=(`echo $names | tr "," "\n"`)
 
 cd $path
 DEPENDENCY='afterok'
-
+DEP_REPORT='afterok'
 for i in ${name_list[*]};do
 	## read distribution
     echo 'read distribution'
 	make_RseqQc_rd.py $i $bedfile $mail $config_file $path
     echo "..."
-	sbatch RSeQC_${i}_rd.sh
+	JOB=`sbatch RSeQC_${i}_rd.sh| sed -re 's/.+\s+([0-9]+)/\1/'`
+    DEP_REPORT=$DEP_REPORT:$JOB
     echo "make_RseqQc_gbc.py" 
 
     make_RseqQc_gbc.py $i $bedfile $mail $config_file $path
     echo '....'
-    sbatch RSeQC_${i}_gbc.sh
+    JOB=`sbatch RSeQC_${i}_gbc.sh| sed -re 's/.+\s+([0-9]+)/\1/'`
+    DEP_REPORT=$DEP_REPORT:$JOB
 	## statistics
     echo 'statistics'
 	get_stat.py ${i} $mail $config_file 
     echo '...'
-	sbatch ${i}_get_stat.sh
+	JOB=`sbatch ${i}_get_stat.sh| sed -re 's/.+\s+([0-9]+)/\1/'`
+    DEP_REPORT=$DEP_REPORT:$JOB
     echo 'complexity'
     ## lib complexity
     make_complexity_plots.py ${i} $mail $config_file $path
@@ -50,31 +54,34 @@ for i in ${name_list[*]};do
 done
 echo $DEPENDENCY
 ## make complexity plot
-sbatch --dependency=$DEPENDENCY ${WP}/GenerateComplexityPlots.sh ${WP}
+JOB=`sbatch --dependency=$DEPENDENCY ${WP}/GenerateComplexityPlots.sh ${WP}| sed -re 's/.+\s+([0-9]+)/\1/'`
+DEP_REPORT=$DEP_REPORT:$JOB
 
 ## seqQc_inferexpe
 RseqQc_inferexpe.py $bedfile $mail $config_file $path
-sbatch RseqQc_inferexpe.sh $bedfile
+JOB=`sbatch RseqQc_inferexpe.sh $bedfile| sed -re 's/.+\s+([0-9]+)/\1/'`
+DEP_REPORT=$DEP_REPORT:$JOB
 
 ## quantify_rRNA
 make_sbatch.py a2012043 node 01:00:00 quantify_rRNA $mail $config_file
 echo "cd $path
 quantify_rRNA.py $gtf_file" >> quantify_rRNA.sh
-sbatch quantify_rRNA.sh
+JOB=`sbatch quantify_rRNA.sh| sed -re 's/.+\s+([0-9]+)/\1/'`
+DEP_REPORT=$DEP_REPORT:$JOB
 
 ## correl
 make_sbatch.py a2012043 node 01:00:00 correl $mail $config_file
 echo "cd $path
 R CMD BATCH '--args ${name_list[*]}' $WP/correl.R" >> correl.sh
-sbatch correl.sh
+JOB=`sbatch correl.sh| sed -re 's/.+\s+([0-9]+)/\1/'`
+DEP_REPORT=$DEP_REPORT:$JOB
 
 ## analysis report
 cp $WP/sll_logo.gif .
-echo "#!/bin/bash -l" > analysis_report.sh
-echo "cd $path" >> analysis_report.sh
-echo "analysis_report.py $project_id -c $config_file -r -s -d -f -g -w -b" >> analysis_report.sh
-chmod 777 analysis_report.sh
-
+make_sbatch.py a2012043 core 01:00:00 analysis_report $mail $config_file
+echo "cd $path
+analysis_report.py $project_id -c $config_file -r -s -d -f -g -w -b $single" >> analysis_report.sh
+sbatch --dependency=$DEP_REPORT analysis_report.sh
 mkdir sbatch_scripts
 mv *.sh sbatch_scripts
 

@@ -1,0 +1,69 @@
+#!/usr/bin/env python
+
+import sys
+import logbook
+import ConfigParser
+import os
+import json
+import argparse
+
+from logbook.queues import RedisHandler
+
+l = logbook.Logger('Script', level=logbook.INFO)
+
+def load_config(config_file):
+    """Loads the provided configuration file. If not configuration file if provided
+
+    it tries to load ~/.pm/pm.conf
+    """
+    try:
+        if config_file is None:
+            config_file = os.path.join(os.environ.get('HOME'), '.pm', 'pm.conf')
+        config = ConfigParser.SafeConfigParser()
+        with open(config_file) as f:
+            config.readfp(f)
+        return config
+    except IOError:
+        raise IOError('There was a problem loading the configuration file. \
+                Please make sure that {} exists, that you have \
+                read permissions and that it is correctly formatted'.format(config_file))
+
+
+if __name__=='__main__':
+
+    parser = argparse.ArgumentParser(description="This script takes input from " \
+        "stdin and, for each read line, sends it to a Redis DB in a formatted record. " \
+        "The script expects a file ~/.pm/pm.conf with information about Redis parameters:" \
+        "Host, Port, Key and Password. A configuration file can be explicitly passed.")
+
+    parser.add_argument('program', type=str, help = "A key \"program\":<program> " \
+        "is added to the record sent to Redis. If <program> is json formatted, a " \
+        "new field per key in the json is added to the record")
+
+    parser.add_argument('--config', type=str, help="Configuration file with Redis " \
+        "credentials")
+
+    args = parser.parse_args()
+
+    h = logbook.StreamHandler(sys.stdout, bubble=True)
+    # Try to convert the -f param to a dict, otherwise add it as "program" key
+    _extra_fields = {}
+    try:
+        _extra_fields = json.loads(args.program)
+    except:
+        _extra_fields['program'] = str(args.program)
+    try:
+        config = load_config(args.config)
+        host = config.get('log', 'redis_host')
+        port = config.getint('log', 'redis_port')
+        key = config.get('log', 'redis_key')
+        password = config.get('log', 'redis_password')
+        h = RedisHandler(host=host, port=port, key=key, password=password,
+                extra_fields=_extra_fields, level=logbook.INFO, bubble=True)
+    except:
+        l.warn('Not loading RedisHandler')
+        pass
+    with h.applicationbound():
+        for input_line in sys.stdin:
+            l.info(input_line)
+    h.close()

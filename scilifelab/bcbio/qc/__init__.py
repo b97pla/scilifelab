@@ -497,6 +497,20 @@ class RunMetricsParser(dict):
             filter_fn = filter_function
         return filter(filter_fn, self.files)
 
+    def parse_json_files(self, filter_fn=None):
+        """Parse json files and return the corresponding dicts
+        """
+        def filter_function(f):
+            return f is not None and f.endswith(".json")
+        if not filter_fn:
+            filter_fn = filter_function
+        files = self.filter_files(None,filter_fn)
+        dicts = []
+        for f in files:
+            with open(f) as fh:
+                dicts.append(json.load(fh))
+        return dicts
+
 class SampleRunMetricsParser(RunMetricsParser):
     """Sample-level class for parsing run metrics data"""
 
@@ -727,6 +741,12 @@ class FlowcellRunMetricsParser(RunMetricsParser):
         self.log.debug("Found {} RTA files {}...".format(len(fn), ",".join(fn[0:10])))
         parser = IlluminaXMLParser()
         metrics = parser.parse(fn, fullRTA)
+        def filter_function(f):
+            return f is not None and f == "run_summary.json"
+        try:
+            metrics.update(self.parse_json_files(filter_fn=filter_function).pop(0))
+        except IndexError:
+            pass
         return metrics
 
     def parse_filter_metrics(self, fc_name, **kw):

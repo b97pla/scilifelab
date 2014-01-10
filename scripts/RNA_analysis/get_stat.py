@@ -3,27 +3,27 @@ from bcbio.pipeline.config_loader import load_config
 
 
 if len(sys.argv) < 3:        
-	print """
+    print """
 Usage:
 
 get_stat.py  <sample_name> <mail> [config]
-
-        sample_name		This name: /tophat_out_<sample name>
-        mail                  	eg: maya.brandi@scilifelab.se
-	config            	config file		
-        """
-        sys.exit()
+    sample_name		This name: /tophat_out_<sample name>
+    mail                  	eg: maya.brandi@scilifelab.se
+    config            	config file"""
+    sys.exit()
 
 name	  = sys.argv[1]
 mail	  = sys.argv[2]
 
 
 try:
-        config    = load_config(sys.argv[3])
-        extra_arg = "#SBATCH "+config['sbatch']['extra_arg']
+    config    = load_config(sys.argv[3])
+    extra_arg = "#SBATCH "+config['sbatch']['extra_arg']
+    rseqc_version = config['custom_algorithms']['RNA-seq analysis']['rseqc_version']
 except:
-	extra_arg = ""
-	pass
+    extra_arg = ""
+    rseqc_version = ""
+    pass
 
 f=open(name+"_get_stat.sh",'w')
 print >>f, """#! /bin/bash -l
@@ -40,6 +40,7 @@ print >>f, """#! /bin/bash -l
 
 module add bioinfo-tools
 module load samtools
+module load rseqc/""" + rseqc_version + """
 
 NAME="""+name+"""
 

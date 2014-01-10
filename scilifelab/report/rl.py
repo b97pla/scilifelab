@@ -53,10 +53,9 @@ def sample_note_paragraphs():
 Ordered amount: ${ordered_amount} million read${'{}'.format(' pair') if is_paired else ''}s."""))
 
     paragraphs["Method"] = dict(style=h3,
-                                tpl = Template("""Clustered on cBot
-and sequenced on ${instrument_version} according to manufacturer's
-instructions. Demultiplexing and conversion using ${casava_version}.
-The quality scale is Sanger / phred33 / Illumina 1.8+."""))
+                                tpl = Template("""Clustered using ${clustering_method} and sequenced on ${sequencing_platform} (${sequencing_software}) 
+                                with a ${sequencing_setup} setup in ${sequencing_mode} mode. Bcl to Fastq conversion was performed using bcl2Fastq v1.8.3 
+                                from the CASAVA software suite. The quality scale is Sanger / phred33 / Illumina 1.8+."""))
     paragraphs["Results"] = dict(style=h3,
                                  tpl = Template("""${rounded_read_count} million read${'{}'.format(' pair') if is_paired else ''}s${' in lane with PhiX error rate {}%'.format(phix_error_rate) if phix_error_rate != 'N/A' else ''}.
                                  Average quality score ${avg_quality_score} (${pct_q30_bases}% bases >= Q30)."""))
@@ -117,21 +116,26 @@ def project_note_paragraphs():
 
     paragraphs["Information"]["Naming conventions"] = dict(
         style=h4,
-        tpl=Template("""The data is delivered in fastq format using Illumina 1.8
-quality scores. There will be one file for the forward reads and
-one file for the reverse reads. More information on our naming
-conventions can be found at
-http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf."""))
+        tpl=Template("""The data is delivered in fastq format using Illumina 1.8 quality
+scores. There will be one file for the forward reads and one file for
+the reverse reads (if the run was a paired-end run). 
+
+The naming of the files follow the convention:
+
+  [LANE]_[DATE]_[FLOWCELL]_[SCILIFE NAME]_[READ].fastq.gz"""))
 
     paragraphs["Information"]["Data access at UPPMAX"] = dict(
         style=h4,
         tpl=Template("""Data from the sequencing will be uploaded to the UPPNEX (UPPMAX Next
-Generation sequence Cluster & Storage, www.uppmax.uu.se), from which
-the user can access it. If you have problems to access your data,
-please contact SciLifeLab genomics_support@scilifelab.se. If you have
-questions regarding UPPNEX, please contact support@uppmax.uu.se.
-Information on how to access your data can be found at
-http://www.scilifelab.se/archive/pdf/tmp/SciLifeLab_Sequencing_FAQ.pdf."""))
+Generation sequence Cluster Storage, www.uppmax.uu.se), from which the
+user can access it. You can find the data in the INBOX folder of the UPPNEX project, which
+was created for you when your order was placed, e.g. 
+
+  /proj/b2013000/INBOX/J.Doe_13_01
+
+If you have problems to access your data, please
+contact SciLifeLab genomics_support@scilifelab.se. If you have
+questions regarding UPPNEX, please contact support@uppmax.uu.se."""))
 
     paragraphs["Information"]["Acknowledgement"] = dict(
         style=h4,

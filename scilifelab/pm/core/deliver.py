@@ -6,6 +6,8 @@ import stat
 import shutil
 import itertools
 import glob
+import json
+
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractBaseController, AbstractExtendedBaseController
 from scilifelab.report import sequencing_success
@@ -148,11 +150,11 @@ class DeliveryController(AbstractBaseController):
         if self.pargs.interactive:
             to_process = []
             for sample in samples:
-                sname = sample.get("project_sample_name",None)
-                index = sample.get("sequence",None)
-                fcid = sample.get("flowcell",None)
-                lane = sample.get("lane",None)
-                date = sample.get("date",None)
+                sname = sample.get("project_sample_name")
+                index = sample.get("sequence")
+                fcid = sample.get("flowcell")
+                lane = sample.get("lane")
+                date = sample.get("date")
                 self.log.info("Sample: {}, Barcode: {}, Flowcell: {}, Lane: {}, Started on: {}".format(sname,
                                                                                                            index,
                                                                                                            fcid,
@@ -180,7 +182,6 @@ class DeliveryController(AbstractBaseController):
             self.pargs.rsync = True
             
         # Process each sample run 
-        md5 = []
         for id, files in to_copy.items():
             # get the sample database object
             [sample] = [s for s in samples if s.get('_id') == id]
@@ -191,7 +192,7 @@ class DeliveryController(AbstractBaseController):
             for f in files:
                 m = md5sum(f[0])
                 mfile = "{}.md5".format(f[1])
-                md5.append([m,mfile,f[2]])
+                md5.append([m,mfile,f[2],f[0]])
                 self.log.debug("md5sum for source file {}: {}".format(f[0],m))
                 
             # transfer files
@@ -200,7 +201,7 @@ class DeliveryController(AbstractBaseController):
             
             # write the md5sum to a file at the destination and verify the transfer
             passed = True
-            for m, mfile, read in md5:
+            for m, mfile, read, srcpath in md5:
                 dstfile = os.path.splitext(mfile)[0]
                 self.log.debug("Writing md5sum to file {}".format(mfile))
                 self.app.cmd.write(mfile,"{}  {}".format(m,os.path.basename(dstfile)),True)
@@ -222,20 +223,34 @@ class DeliveryController(AbstractBaseController):
                 
                 # Modify the permissions to ug+rw
                 for f in [dstfile, mfile]:
-                    self.app.cmd.chown(f,uid,gid)
                     self.app.cmd.chmod(f,stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP) 
         
+            # touch the flag to trigger uppmax inbox permission fix
+            self.app.cmd.safe_touchfile(os.path.join("/sw","uppmax","var","inboxfix","schedule",self.pargs.uppmax_project))
+            
             # log the transfer to statusdb if verification passed
             if passed:
                 self.log.info("Logging delivery to StatusDB document {}".format(id))
-                sample['raw_data_delivery'] = {'timestamp': utc_time(),
-                                               'files': {'R{}'.format(read):{
-                                                                             'md5': m, 
-                                                                             'path': os.path.splitext(mfile)[0], 
-                                                                             'size_in_bytes': self._getsize(os.path.splitext(mfile)[0])} for m, mfile, read in md5},
-                                               }
+                data = {'raw_data_delivery': {'timestamp': utc_time(),
+                                              'files': {'R{}'.format(read):{'md5': m, 
+                                                                            'path': os.path.splitext(mfile)[0], 
+                                                                            'size_in_bytes': self._getsize(os.path.splitext(mfile)[0]),
+                                                                            'source_location': srcpath} for m, mfile, read, srcpath in md5},
+                                              }
+                        }
+                jsonstr = json.dumps(data)
+                jsonfile = os.path.join(os.path.dirname(md5[0][3]),
+                                        "{}_{}_{}_{}_L{}_raw_data_delivery.json".format(sample.get("date"),
+                                                                                       sample.get("flowcell"),
+                                                                                       sample.get("project_sample_name"),
+                                                                                       sample.get("sequence"),
+                                                                                       sample.get("lane")))
+                self.log.debug("Writing delivery to json file {}".format(jsonfile))
+                self.app.cmd.write(jsonfile,data=jsonstr,overwrite=True)
                 self.log.debug("Saving delivery in StatusDB document {}".format(id))
+                sample.update(data)
                 self._save(s_con,sample)
+                self.log.debug(jsonstr)
         
     def _getsize(self, file):
         """Wrapper around getsize
@@ -279,7 +294,7 @@ class DeliveryController(AbstractBaseController):
                 self.log.warn("Sample and flowcell directory {} does not exist. Skipping sample".format(seqdir))
                 continue
             
-            for read in [1,2]:
+            for read in xrange(1,10):
                 # Locate the source file, allow a wildcard to accommodate sample names with index
                 fname = "{}*_{}_L00{}_R{}_001.fastq.gz".format(sname,sample.get("sequence",""),sample.get("lane",""),str(read))
                 file = glob.glob(os.path.join(seqdir,fname))

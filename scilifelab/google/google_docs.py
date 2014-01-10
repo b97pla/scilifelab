@@ -273,3 +273,19 @@ class SpreadSheet(GoogleConnection):
                 p['title-exact'] = 'false'
         
         return gdata.spreadsheet.service.DocumentQuery(params=p)
+
+    def get_column_index(self, wsheet, name):
+        """Get the index of the column with the specified name, or 0 if no column matches"""
+    
+        header = self.get_header(wsheet)
+        for i, column_name in enumerate(header):
+            if _to_unicode(name) == _to_unicode(column_name):
+                return int(i + 1)
+        return 0
+
+    def get_header(self, wsheet):
+        """Return the column header of the supplied worksheet as a list"""
+    
+        [header] = self.get_cell_content(wsheet, row_start=1, row_end=1)
+        return header
+

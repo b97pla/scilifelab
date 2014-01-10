@@ -62,16 +62,20 @@ def run_analysis(work_dir, post_process, fc_dir, run_info):
         analysis_script = DISTRIBUTED_ANALYSIS_SCRIPT
     else:
         analysis_script = PARALLELL_ANALYSIS_SCRIPT
-        
-    job_cl = [analysis_script, post_process, fc_dir, run_info]
-    
-    cp = config["distributed"]["cluster_platform"]
-    cluster = __import__("bcbio.distributed.{0}".format(cp), fromlist=[cp])
-    platform_args = config["distributed"]["platform_args"].split()
-    
-    LOG.info("Submitting job")
-    jobid = cluster.submit_job(platform_args, job_cl)
-    LOG.info('Your job has been submitted with id ' + jobid)
+
+    # Launches the pipeline using PM module
+    project_to_run, sample_to_run, flowcell_to_run = fc_dir.split('/')[-3:]
+    cmd = ["pm",
+           "production",
+           "run",
+           project_to_run,
+           "--sample",
+           sample_to_run,
+           "--flowcell",
+           flowcell_to_run,
+           "--drmaa",
+           "--force"]
+    subprocess.check_call(cmd)
 
     # Change back to the starting directory
     os.chdir(start_dir)
@@ -159,11 +163,11 @@ def setup_analysis_directory_structure(post_process_config_file, fc_dir, custom_
     assert os.path.exists(fc_dir), "ERROR: Flowcell directory %s does not exist" % fc_dir
     assert os.path.exists(analysis_dir), "ERROR: Analysis top directory %s does not exist" % analysis_dir
     
-    couch_credentials = config.get('couch_db',{})
-    couch_credentials['url'] = couch_credentials.get('maggie_url','localhost')
-    couch_credentials['port'] = couch_credentials.get('maggie_port','5984')
-    couch_credentials['username'] = couch_credentials.get('maggie_username','anonymous')
-    couch_credentials['password'] = couch_credentials.get('maggie_password','password')
+    couch_credentials = config.get('statusdb',{})
+    couch_credentials['url'] = couch_credentials.get('url','localhost')
+    couch_credentials['port'] = couch_credentials.get('port','5984')
+    couch_credentials['username'] = couch_credentials.get('username','anonymous')
+    couch_credentials['password'] = couch_credentials.get('password','password')
     
     # A list with the arguments to each run, when running by sample
     sample_run_arguments = []
@@ -400,15 +404,17 @@ def bcbb_configuration_from_samplesheet(csv_samplesheet, couch_credentials):
                                             'genome_build': 'phix'},
                          'RNA-seq (total RNA)': {'analysis': 'Align_standard',
                                                  'genome_build': 'phix'},
+                         'stranded RNA-seq (total RNA)': {'analysis': 'Align_standard',
+                                                          'genome_build': 'phix'},
                          'WG re-seq': {'analysis': 'Align_standard'},
                          'default': {'analysis': 'Align_standard'},
                          }
 
-    #Connect to maggie to get project application 
+    #Connect to statusdb to get project application 
     try:
         p_con = ProjectSummaryConnection(**couch_credentials)
     except:
-        LOG.warn("Can't connect to maggie to get application")
+        print("Can't connect to statusdb to get application")
         p_con = None
   
   # Replace the default analysis

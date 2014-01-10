@@ -150,7 +150,7 @@ def setup_merged_samples(flist, sample_group_fn=_group_samples, **kw):
             out_d = os.path.join(os.path.dirname(os.path.dirname(f)), MERGED_SAMPLE_OUTPUT_DIR)
             LOG.info("Sample {} has {} sample runs; setting up merge analysis in {}".format(k, len(v), out_d))
             dry_makedir(out_d, dry_run=False)
-            pp = kw.get("post_process") if kw.get("post_process", None) else f.replace("-bcbb-config.yaml", "-post_process.yaml")
+            pp = kw.get("post_process",f.replace("-bcbb-config.yaml", "-post_process.yaml"))
             with open(pp) as fh:
                 conf = yaml.load(fh)
             conf = update_pp_platform_args(conf, **{'jobname': "{}_total".format(k), 'workdir': out_d, 'output': "{}_total-bcbb.log".format(k) })
@@ -160,7 +160,7 @@ def setup_merged_samples(flist, sample_group_fn=_group_samples, **kw):
             # Setup merged bcbb-config file
             bcbb_config = merge_sample_config(v.values(), sample=k, out_d=out_d, dry_run=kw.get('dry_run', True))
             bcbb_config_file = os.path.join(out_d, os.path.basename(v.values()[0]))
-            bcbb_config = sort_sample_config_fastq(bcbb_config)
+            bcbb_config = sort_sample_config_fastq(bcbb_config, path=out_d)
             if not os.path.exists(bcbb_config_file) or kw.get('new_config', False):
                 dry_unlink(bcbb_config_file, dry_run=kw.get('dry_run', True))
                 dry_write(bcbb_config_file, yaml.safe_dump(bcbb_config, default_flow_style=False, allow_unicode=True, width=1000), dry_run=kw.get('dry_run', True))
