@@ -1,15 +1,155 @@
 import copy
 import datetime
 
-from scilifelab.db.statusdb import ProjectSummaryConnection, SampleRunMetricsConnection, FlowcellRunMetricsConnection
+from scilifelab.db.statusdb import ProjectSummaryConnection, SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectSummaryDocument
+from scilifelab.report.rst import render_rest_note, write_rest_note, _make_rst_table
 
 def report(ctrl, project_name, **kw):
     
+    #data = fetch_project_data(ctrl, project_name, kw.get('sample_name'), kw.get('flowcell_id'), **kw)
+    #import pprint
+    #pprint.pprint(data)
+
+
+    note = project_summary_report(ctrl,project_name,**kw)
+    write_rest_note("test.rst","/Users/pontus/Downloads/",contents=[note])
+
+def project_summary_report(ctrl, project_name, sample_name=None, flowcell_id=None, **kw):
+    
+    pcon = ProjectSummaryConnection(**kw)
+    assert pcon, "Could not connect to {} database in StatusDB".format("project")
+    fcon = FlowcellRunMetricsConnection(**kw)
+    assert fcon, "Could not connect to {} database in StatusDB".format("flowcell")
+    
+    project = pcon.get_entry(project_name)
+    if not project:
+        ctrl.warn("No such project '{}'".format(project_name))
+        return None
+    if project.get('source') != 'lims':
+        ctrl.warn("The source for data for project {} is not LIMS. This type of report can only be generated for data from LIMS. Please refer to older versions of pm".format(project_name))
+        return None
+    
+    psr = ProjectReportObject(ctrl, project, fcon)
+    
     import ipdb
     ipdb.set_trace()
-    data = fetch_project_data(ctrl, project_name, kw.get('sample_name'), kw.get('flowcell_id'), **kw)
-    import pprint
-    pprint.pprint(data)
+    return render_rest_note(tables={}, 
+                            report="project_report", 
+                            **{"project": psr,
+                               "skip_samples": sample_name,
+                               "skip_flowcells": flowcell_id})
+   
+class ReportObject():
+
+    def __init__(self, ctrl, dbobj):
+        self.ctrl = ctrl
+        self.dbobj = dbobj
+        
+    def __getattr__(self, name):
+        return self.dbobj.get(name)
+        
+    def __repr__(self):
+        return "<ReportObject>"
+
+class ProjectReportObject(ReportObject):
+    
+    def __init__(self, ctrl, dbobj, fcon=None):
+        ReportObject.__init__(self,ctrl,dbobj)
+        self.fcon = fcon
+        self.project_samples = sorted([ProjectSampleReportObject(ctrl,sample) for sample in self.dbobj.get("samples",{}).values()], key=lambda name: name.scilife_name)
+        
+    def __repr__(self):
+        return "<ProjectReportObject {}>".format(self.project_name)
+
+    def customer_reference(self):
+        return self.dbobj.get("details",{}).get("customer_project_reference")
+    def sequencing_units_ordered(self):
+        return self.dbobj.get("details",{}).get("sequence_units_ordered_(lanes)")
+    def best_practice_bioinfo(self):
+        return self.dbobj.get("details",{}).get("best_practice_bioinformatics")
+    def order_received(self):
+        return self._date_field("order_received")
+    def contract_received(self):
+        return self._date_field("contract_received")
+    def samples_received(self):
+        return self._date_field("samples_received")
+    def queued_date(self):
+        return self._date_field("queued")
+    def project_sample_names(self):
+        return [[sample.scilife_name, sample.customer_name] for sample in self.project_samples]
+    def project_sample_name_table(self):
+        return _make_rst_table([["SciLife ID", "Submitted ID"]] + self.project_sample_names())
+    def project_sample_status(self):
+        return [[sample.scilife_name, 
+                 sample.initial_QC_status or "N/A", 
+                 sample.library_prep_status(), 
+                 sample.status or "N/A", 
+                 sample.m_reads_sequenced] for sample in self.project_samples]
+    def project_sample_status_table(self):
+        return _make_rst_table([["SciLife ID", "Arrival QC", "Library QC", "Status", "M read( pair)s sequenced"]] + self.project_sample_status())
+    def project_flowcells(self):
+        """Fetch flowcell documents for project-related flowcells
+        """
+        # skip if we have already fetched the documents
+        if self.flowcells and len(self.flowcells) > 0:
+            return
+        self.flowcells = []
+        for fcid in sorted(list(set([fc for sample in self.project_samples for fc in sample.sample_run_flowcells()]))):
+            fcdoc = self.fcon.get_entry(fcid)
+            if not fcdoc:
+                self.ctrl.warn("Could not find flowcell document for {}".format(fcid))
+                continue
+            self.flowcells.append(FlowcellReportObject(self.ctrl,fcdoc))
+            
+    def project_flowcell_summary(self):
+        if not self.flowcells:
+            self.project_flowcells()        
+        return [[fc.Barcode,fc.FCPosition,fc.ScannerID,fc.run_setup] for fc in self.flowcells]
+    
+    def project_flowcell_summary_table(self):
+        return _make_rst_table([["Flowcell","Position","Instrument","Run setup"]] + self.project_flowcell_summary())
+    
+    def _date_field(self, field):
+        try:
+            return _parse_date(self.dbobj.get("details",{}).get(field)).strftime("%Y-%m-%d")
+        except ValueError:
+            return "N/A"
+        
+class ProjectSampleReportObject(ReportObject):
+    
+    def __init__(self, ctrl, dbobj):
+        ReportObject.__init__(self,ctrl,dbobj)
+        self.details = self.dbobj.get("details",{})
+        self.library_prep = self.dbobj.get("library_prep",{})
+    
+    def __repr__(self):
+        return "<ProjectSampleReportObject {}>".format(self.scilife_name)
+
+    def __getattr__(self, name):
+        return self.dbobj.get(name,self.details.get(name))
+    
+    def library_prep_status(self):
+        """Go through all preps and check if any of them have passed"""
+        return "PASS" if any([prep.get("prep_status","").lower() == "passed" for prep in self.library_prep.values()]) else "FAIL"
+    def library_preps(self):
+        return [[k,self.library_prep[k].get("prep_status")] for k in sorted(self.library_prep.keys())]
+    def library_prep_table(self):
+        return _make_rst_table([["Library prep", "Library validation"]] + self.library_preps)
+    def sample_run_flowcells(self, prep=None):
+        return list(set(["_".join(k.split("_")[1:3]) for lbl, data in self.library_prep.items() for k in data.get("sample_run_metrics",{}).keys() if not prep or prep == lbl]))
+
+class FlowcellReportObject(ReportObject):
+    
+    def __init__(self, ctrl, dbobj):
+        ReportObject.__init__(self,ctrl,dbobj)
+        self.RunParameters = self.dbobj.get("RunParameters",{})
+    
+    def __repr__(self):
+        return "<FlowcellReportObject {}>".format(self.name)
+
+    def __getattr__(self, name):
+        return self.dbobj.get(name,self.RunParameters.get(name))
+    
 
 def fetch_project_data(ctrl, project_name, sample_name=None, flowcell_id=None, **kw):
     """Fetch all relevant information from StatusDB for a project in order to make a sequencing report.
@@ -42,7 +182,7 @@ def fetch_project_data(ctrl, project_name, sample_name=None, flowcell_id=None, *
         if project.get('source') != 'lims':
             ctrl.warn("The source for data for project {} is not LIMS. This type of report can only be generated for data from LIMS. Please refer to older versions of pm".format(pname))
             continue
-        
+        return {"project": project}
         # Fetch the information frpom the project database
         pdata = _get_project_info(project,sample_name,flowcell_id)
         
@@ -311,10 +451,11 @@ def _get_sample_run_info(scon, project_id, sample_name=None, flowcell_id=None):
     return sinfo
 
 def _parse_date(val,fmt="%Y-%m-%d"):
+    org = val
     try:
         val = datetime.datetime.strptime(val,fmt)
     except TypeError, ValueError:
-        val = None
+        val = org
     return val
 
 def _parse_int(val):
