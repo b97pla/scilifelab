@@ -16,7 +16,7 @@ import datetime
 import couchdb
 import re
 
-from scilifelab.utils import load_config
+from scilifelab.utils import config
 
 
 def get_dirsizes(path="."):
