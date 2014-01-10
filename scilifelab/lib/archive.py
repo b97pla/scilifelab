@@ -119,7 +119,7 @@ def rm_tarball(arch, tarball):
     arch.log.info("removing {}".format(tarball))
     arch.app.cmd.safe_unlink(tarball)
     
-def package_run(arch, root, flowcell, workdir=None, excludes=None, compress_program=None, **kw):
+def package_run(arch, root, flowcell, workdir=None, excludes=None, compress_program=None, check_finished=False, **kw):
     """Package a run in preparation for archiving to swestore
     """
     
@@ -129,6 +129,10 @@ def package_run(arch, root, flowcell, workdir=None, excludes=None, compress_prog
         return None
     if not workdir:
         workdir = root
+    if check_finished and not os.path.exists(os.path.join(root, flowcell, 
+        'RTAComplete.txt')):
+        arch.log.error("check_finished option was enabled and the run has not " \
+            "finished synching yet.")
     elif not os.path.exists(workdir):
         arch.log.info("Creating non-existing working directory {}".format(workdir))
         arch.app.cmd.safe_makedir(workdir)
