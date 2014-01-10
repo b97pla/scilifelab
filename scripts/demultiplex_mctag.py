@@ -7,10 +7,12 @@ from __future__ import print_function
 import argparse
 import collections
 import datetime
+import fcntl
 import itertools
 import os
 import random
 import re
+import resource
 import shlex
 import shutil
 import subprocess
@@ -22,24 +24,29 @@ import time
 #from scilifelab.utils.fastq_utils import FastQParser
 
 # TODO add pairwise alignment of indexes to correct for sequencing error (biopython's Bio.pairwise2)
+#      or using the direct comparison method --> TIME THESE
 # TODO ensure read 1,2 files are paired (SciLifeLab code)
 # TODO add directory processing
+
 
 def main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, force_overwrite=False):
     check_input(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file)
     output_directory = create_output_dir(output_directory, force_overwrite)
     # TODO NOTE: I changed this just for Jimmy's run
     index_dict = load_index_file(index_file, usecols=(2,1))
+    start_time = datetime.datetime.now()
     if read_one and read_two and read_index:
         reads_processed, num_match, num_nonmatch = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory)
     else:
         for readset in parse_directory(data_directory, read_index_num):
             read_one, read_two, read_index = readset
             reads_processed, num_match, num_nonmatch = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory)
-    print(  "\nProcessing complete:\n\t" \
+    elapsed_time = (datetime.datetime.now() - start_time).total_seconds()
+    print(  "\nProcessing complete in {elapsed_time}:\n\t" \
             "{reads_processed} reads processed\n\t" \
             "{num_match:>{pad_length}} ({num_match_percent:>6.2f}%) matched to supplied indexes\n\t" \
             "{num_nonmatch:>{pad_length}} ({num_nonmatch_percent:>6.2f}%) unmatched to supplied indexes".format(
+                elapsed_time=elapsed_time,
                 reads_processed=reads_processed, num_match=num_match, num_nonmatch=num_nonmatch,
                 num_match_percent   = (100.0 * num_match)/reads_processed,
                 num_nonmatch_percent= (100.0 * num_nonmatch)/reads_processed,
@@ -81,28 +88,57 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, o
     # I think du -k * 16 / 1.024 should give approximately the right number for any number of reads greater than 1000 or so
     total_lines_in_file = int(subprocess.check_output(shlex.split("wc -l {}".format(read_1_fq))).split()[0])
     print(" complete.", file=sys.stderr)
+    index_fh_dict = collections.defaultdict(list)
     print("Demultiplexing...", file=sys.stderr)
     time_started = datetime.datetime.now()
+    time_profile_file = open(os.path.join(output_directory, "timing_profile.tsv"), 'w')
     for read_1, read_2, read_ind in itertools.izip(fqp_1, fqp_2, fqp_ind):
         read_ind_seq = read_ind[1]
         for supplied_index in index_dict.keys():
             if re.match(supplied_index, read_ind_seq):
-                index_len = len(supplied_index)
+                index_len   = len(supplied_index)
                 index, molecular_tag = read_ind_seq[:index_len], read_ind_seq[index_len:]
-                num_match += 1
+                num_match  += 1
                 modify_reads( (read_1, read_2), index, molecular_tag)
                 sample_name = index_dict[supplied_index] if index_dict[supplied_index] else supplied_index
-                write_reads_to_disk( (read_1, read_2), sample_name, output_directory)
+                data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict, index)
+               #write_reads_to_disk( (read_1, read_2), sample_name, output_directory)
                 break
         else:
             sample_name = "Undetermined"
-            write_reads_to_disk( (read_1, read_2), sample_name, output_directory)
+            data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict, index)
+           #write_reads_to_disk( (read_1, read_2), sample_name, output_directory)
             num_nonmatch += 1
         reads_processed += 1
         if reads_processed % 100 == 0:
             print_progress(reads_processed, (total_lines_in_file / 4), time_started=time_started)
+        if reads_processed % 10000 == 0:
+            elapsed_time = (datetime.datetime.now() - time_started).total_seconds()
+            time_profile_file.write("{}\t{}\n".format(elapsed_time, reads_processed))
     return reads_processed, num_match, num_nonmatch
 
+
+def data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict, index):
+    """
+    Writes data using FastQParser, closing files if we open too many.
+    """
+    for read_num, read in enumerate([read_1, read_2]):
+        try:
+            index_fh_dict[index][read_num].write(read)
+        except IndexError:
+            file_path   = os.path.join(output_directory, "{sample_name}_R{read_num}.fastq".format(sample_name=sample_name, read_num=read_num+1))
+            try:
+                index_fh_dict[index].append(FastQWriter(file_path))
+            except IOError as e:
+                # Too many open filehandles!
+                if e.errno == 24:
+                    print("Warning: too many open file handles. Closing...", file-sys.stderr)
+                    for fh1, fh2 in index_fh_dict.values():
+                        map(file.close, [ fh1, fh2 ] )
+                    index_fh_dict[index].append(FastQWriter(file_path))
+                    index_fh_dict[index][read_num].write(read)
+                else:
+                    raise IOError(e)
 
 def print_progress(processed, total, type='text', leading_text="", time_started=None):
     """
@@ -110,6 +146,7 @@ def print_progress(processed, total, type='text', leading_text="", time_started=
     """
     percentage_complete = float(processed) / total
     if time_started:
+        # This somewhat naively assumes a constant processing speed
         completion_time = estimate_completion_time(time_started, percentage_complete)
     else:
         time_started = "-"
@@ -318,6 +355,33 @@ class FastQParser(object):
         self._fh.seek(offset,whence)
 
     def close(self):
+        self._fh.close()
+
+class FastQWriter:
+
+    def __init__(self,file):
+        self.fname = file
+        if file.endswith(".gz") or file.endswith(".gzip"):
+            command = "gzip -c  > {}".format(file)
+            self._fh = subprocess.Popen(command, shell=True, stdin=subprocess.PIPE).stdin
+        else:
+            self._fh = open(file, 'w')
+            #self._fh = subprocess.Popen("cat >> {}".format(file), shell=True, stdin=subprocess.PIPE).stdin
+            #self._fh = subprocess.Popen(open(file, 'a+'), stdin=subprocess.PIPE)
+        self._records_written = 0
+
+    def name(self):
+        return self.fname
+
+    def write(self,record):
+        self._fh.write("{}\n".format("\n".join([r.strip() for r in record])))
+        self._records_written += 1
+
+    def rwritten(self):
+        return self._records_written
+
+    def close(self):
+        #self.stdin.flush()
         self._fh.close()
 
 def parse_header(header):
