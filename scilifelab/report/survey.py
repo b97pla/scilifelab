@@ -23,7 +23,7 @@ def send_survey(report, project, email, sender="genomics_support@scilifelab.se",
     """    
     text = generate_email(email, salt="{}{}".format(report._meta.salt,project))
     try:
-        msg = MIMEText(text)
+        msg = MIMEText(text, 'html')
         msg['To'] = ",".join(email)
         msg['Subject'] = "NGI Sweden user survey - {}".format(project)
         msg['From'] = sender

@@ -21,6 +21,7 @@ from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryCon
 from scilifelab.utils.misc import query_yes_no, filtered_walk, md5sum
 from scilifelab.report.gdocs_report import upload_to_gdocs
 from scilifelab.utils.timestamp import utc_time
+from ConfigParser import NoSectionError, NoOptionError
 
 BCBIO_EXCLUDE_DIRS = ['realign-split', 'variants-split', 'tmp', 'tx', 'fastqc', 'fastq_screen', 'alignments', 'nophix']
 
@@ -499,6 +500,8 @@ class DeliveryReportController(AbstractBaseController):
         for opt in ["smtphost","smtpport","sender"]:
             try:
                 kw[opt] = self.app.config.get("email",opt)
+            except NoSectionError:
+                pass
             except NoOptionError:
                 pass
         
