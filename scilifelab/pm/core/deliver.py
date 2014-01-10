@@ -494,11 +494,17 @@ class DeliveryReportController(AbstractBaseController):
         self._meta.date_format = "%Y-%m-%d"
         # This must be read from a non-public location
         self._meta.salt = "test salt"
+        
+        kw = vars(self.pargs)
+        for opt in ["smtphost","smtpport","sender"]:
+            try:
+                kw[opt] = self.app.config.get("email",opt)
+            except NoOptionError:
+                pass
+        
         initiated = initiate_survey(self,
                                     project=self.pargs.project_name,
-                                    url=self.pargs.url,
-                                    username=self.pargs.username,
-                                    password=self.pargs.password)
+                                    **kw)
        
     @controller.expose(help="Make best practice reports")
     def best_practice(self):

@@ -8,4 +8,4 @@
 
 <p>Thank you for your participation!</p>
 
-<p>Best regards,<br />SciLifeLab Stockholm</p>
+<p>Best regards<br />SciLifeLab Stockholm</p>

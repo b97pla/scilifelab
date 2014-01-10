@@ -18,18 +18,18 @@ def generate_email(email, salt):
     enddate = (datetime.datetime.now() + datetime.timedelta(days=90)).strftime("%B %d")
     return _render(tpl,**{'hash': hash, 'enddate': enddate})
 
-def send_survey(report, project, email, sender="genomics_support@scilifelab.se", smtphost="localhost", dryrun=False):
+def send_survey(report, project, email, sender="genomics_support@scilifelab.se", smtphost=None, smtpport=None, dryrun=False):
     """Send the survey to the supplied email address
-    """
+    """    
     text = generate_email(email, salt="{}{}".format(report._meta.salt,project))
     try:
         msg = MIMEText(text)
-        msg['To'] = email
+        msg['To'] = ",".join(email)
         msg['Subject'] = "NGI Sweden user survey - {}".format(project)
         msg['From'] = sender
         if not dryrun:
-            s = smtplib.SMTP(smtphost)
-            s.sendmail(msg['From'], recipients, msg.as_string())
+            s = smtplib.SMTP(host=smtphost, port=smtpport)
+            s.sendmail(msg['From'], email, msg.as_string())
             s.quit()  
     except Exception, e:
         report.log.error(e)
@@ -75,10 +75,10 @@ def project_email(report, project):
     """
     return [project.researcher.email]
     
-def initiate_survey(report, project=None, url=None, username=None, password=None):
+def initiate_survey(report, project, **kw):
      
     # Get a connection to the database
-    pcon = ProjectSummaryConnection(url=url,username=username,password=password)
+    pcon = ProjectSummaryConnection(**kw)
     if not pcon:
         report.log.error("Could not get connection to database".format(project))
         return False
@@ -96,11 +96,11 @@ def initiate_survey(report, project=None, url=None, username=None, password=None
         return False
         
     # check if project is closed
-    closed = datetime.datetime.now()#project_closed(lproj)
+    closed = project_closed(lproj)
     if closed is None:
         report.log.warn("Project {} is not closed".format(project))
         return False
-    report.log.debug("Project {} closed on {}".format(project,closed.strftime(report._meta.date_format)))
+    report.log.debug("Project {} closed on {}".format(project,datetime.datetime.strptime(closed,report._meta.date_format)))
 
     # check if a user survey has already been sent
     if survey_sent(lproj):
@@ -114,23 +114,34 @@ def initiate_survey(report, project=None, url=None, username=None, password=None
         report.log.warn("No email addresses found associated with project {}".format(project))
         return False
     
-    # send the survey email to each recipient
-    succeeded = False
+    # verify the format of the email address
+    recipients = []
     for email in emails:
         if email is None or not re.match(r'^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,3})$',email):
             report.log.warn("Illegal email format: {}".format(email))
             continue
-        
-        sent = send_survey(report, project, email, dryrun=report.pargs.dry_run)
-        # First time we send a successful email, update the project udf to indicate that we have sent out the survey
-        if sent and not succeeded:
-            lproj.udf.__setitem__('Survey sent',datetime.datetime.now().date())
+        recipients.append(email)
+    
+    # send the survey email to each recipient 
+    sent = send_survey(report, 
+                       project, 
+                       recipients, 
+                       sender = kw.get("sender"),
+                       smtphost=kw.get("smtphost"),
+                       smtpport=kw.get("smtpport"),
+                       dryrun=report.pargs.dry_run)
+    
+    # update the project udf to indicate that we have sent out the survey
+    if sent:
+        report.log.info("Survey sent to recipients {} successfully".format(",".join(recipients)))
+        lproj.udf.__setitem__('Survey sent',datetime.datetime.now().date())
+        if not report.pargs.dry_run:
             lproj.put()
-        elif not sent:
-            report.log.warn("Sending survey to recipient {} failed".format(email))
-        succeeded = succeeded or sent
+    elif not sent:
+        report.log.warn("Sending survey to recipients {} failed".format(",".join(recipients)))
         
-    return succeeded
+    return sent
+
 
         
     
