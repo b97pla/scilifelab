@@ -41,7 +41,7 @@ def main(read_one, read_two, read_index, data_directory, read_index_num, output_
         for readset in parse_directory(data_directory, read_index_num):
             read_one, read_two, read_index = readset
             reads_processed, num_match, num_nonmatch = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory)
-    elapsed_time = (datetime.datetime.now() - start_time).total_seconds()
+    elapsed_time = time.strftime('%H:%M:%S', time.gmtime((datetime.datetime.now() - start_time).total_seconds()))
     print(  "\nProcessing complete in {elapsed_time}:\n\t" \
             "{reads_processed} reads processed\n\t" \
             "{num_match:>{pad_length}} ({num_match_percent:>6.2f}%) matched to supplied indexes\n\t" \
@@ -50,7 +50,7 @@ def main(read_one, read_two, read_index, data_directory, read_index_num, output_
                 reads_processed=reads_processed, num_match=num_match, num_nonmatch=num_nonmatch,
                 num_match_percent   = (100.0 * num_match)/reads_processed,
                 num_nonmatch_percent= (100.0 * num_nonmatch)/reads_processed,
-                pad_length = len(str(reads_processed))), file=sys.stderr)
+                pad_length = len(str(reads_processed))), file=sys.stdout)
 
 
 def check_input(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file):
@@ -106,12 +106,13 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, o
                 break
         else:
             sample_name = "Undetermined"
-            data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict, index)
+            data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict, "Undetermined")
            #write_reads_to_disk( (read_1, read_2), sample_name, output_directory)
             num_nonmatch += 1
         reads_processed += 1
-        if reads_processed % 100 == 0:
+        if reads_processed % 1000 == 0:
             print_progress(reads_processed, (total_lines_in_file / 4), time_started=time_started)
+        # TODO make this a percentage of the total
         if reads_processed % 10000 == 0:
             elapsed_time = (datetime.datetime.now() - time_started).total_seconds()
             time_profile_file.write("{}\t{}\n".format(elapsed_time, reads_processed))
