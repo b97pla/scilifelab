@@ -29,14 +29,14 @@ import time
 # TODO add directory processing
 
 
-def main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, force_overwrite=False):
-    check_input(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file)
+def main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, force_overwrite=False, progress_interval=1000):
+    check_input(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, progress_interval)
     output_directory = create_output_dir(output_directory, force_overwrite)
     # TODO NOTE: I changed this just for Jimmy's run
     index_dict = load_index_file(index_file, usecols=(2,1))
     start_time = datetime.datetime.now()
     if read_one and read_two and read_index:
-        reads_processed, num_match, num_nonmatch = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory)
+        reads_processed, num_match, num_nonmatch = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory, progress_interval)
     else:
         for readset in parse_directory(data_directory, read_index_num):
             read_one, read_two, read_index = readset
@@ -53,7 +53,7 @@ def main(read_one, read_two, read_index, data_directory, read_index_num, output_
                 pad_length = len(str(reads_processed))), file=sys.stdout)
 
 
-def check_input(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file):
+def check_input(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, progress_interval):
     """
     Check user-supplied inputs for validity, completeness.
     """
@@ -67,7 +67,10 @@ def check_input(read_one, read_two, read_index, data_directory, read_index_num, 
         raise SyntaxError("Ambiguous: too many options specified. Specify either file paths or directory and read index number.")
     if not (read_one and read_two and read_index) or (data_directory and read_index_num):
         raise SyntaxError("Insufficient information: either a directory and read index number or explicit paths to sequencing files must be specified.")
-
+    try:
+        assert(type(progress_interval) == int and progress_interval > 0)
+    except AssertionError:
+        raise SyntaxError("Progress interval must be a positive integer.")
 
 def parse_directory(data_directory, read_index_num):
     """
@@ -77,7 +80,7 @@ def parse_directory(data_directory, read_index_num):
     # possibly implement as generator, calling parse_readset_byindexdict in a for loop from the calling loop
 
 
-def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, output_directory):
+def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, output_directory, progress_interval=1000):
     """
     Parse input fastq files, searching for matches to each index.
     """
@@ -88,10 +91,11 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, o
     # I think du -k * 16 / 1.024 should give approximately the right number for any number of reads greater than 1000 or so
     total_lines_in_file = int(subprocess.check_output(shlex.split("wc -l {}".format(read_1_fq))).split()[0])
     print(" complete.", file=sys.stderr)
+    if progress_interval > (total_lines_in_file / 4):
+        progress_interval = (total_lines_in_file / 4)
     index_fh_dict = collections.defaultdict(list)
     print("Demultiplexing...", file=sys.stderr)
     time_started = datetime.datetime.now()
-    time_profile_file = open(os.path.join(output_directory, "timing_profile.tsv"), 'w')
     for read_1, read_2, read_ind in itertools.izip(fqp_1, fqp_2, fqp_ind):
         read_ind_seq = read_ind[1]
         for supplied_index in index_dict.keys():
@@ -102,20 +106,14 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, o
                 modify_reads( (read_1, read_2), index, molecular_tag)
                 sample_name = index_dict[supplied_index] if index_dict[supplied_index] else supplied_index
                 data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict, index)
-               #write_reads_to_disk( (read_1, read_2), sample_name, output_directory)
                 break
         else:
             sample_name = "Undetermined"
             data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict, "Undetermined")
-           #write_reads_to_disk( (read_1, read_2), sample_name, output_directory)
             num_nonmatch += 1
         reads_processed += 1
-        if reads_processed % 1000 == 0:
+        if reads_processed % progress_interval == 0:
             print_progress(reads_processed, (total_lines_in_file / 4), time_started=time_started)
-        # TODO make this a percentage of the total
-        if reads_processed % 10000 == 0:
-            elapsed_time = (datetime.datetime.now() - time_started).total_seconds()
-            time_profile_file.write("{}\t{}\n".format(elapsed_time, reads_processed))
     return reads_processed, num_match, num_nonmatch
 
 
@@ -131,17 +129,20 @@ def data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict
             try:
                 index_fh_dict[index].append(FastQWriter(file_path))
             except IOError as e:
-                # Too many open filehandles!
+                # Too many open filehandles
                 if e.errno == 24:
-                    print("Warning: too many open file handles. Closing...", file-sys.stderr)
+                    #print("Warning: too many open file handles. Closing...", file-sys.stderr)
                     for fh1, fh2 in index_fh_dict.values():
                         map(file.close, [ fh1, fh2 ] )
                     index_fh_dict[index].append(FastQWriter(file_path))
                     index_fh_dict[index][read_num].write(read)
                 else:
                     raise IOError(e)
+            except ValueError:
+                # File was closed previously
+                index_fh_dict[index][read_num].reopen()
 
-def print_progress(processed, total, type='text', leading_text="", time_started=None):
+def print_progress(processed, total, type='text', time_started=None, leading_text=""):
     """
     Prints the progress, either in text or in visual form.
     """
@@ -182,7 +183,7 @@ def estimate_completion_time(start_time, percent_complete):
         return time.strftime('%H:%M:%S', time.gmtime(seconds_left))
 
 
-def count_top_indexes(count_num, index_file, index_length):
+def count_top_indexes(count_num, index_file, index_length, progress_interval):
     """
     Determine the most common indexes, sampling at most 200,000 reads.
     """
@@ -194,7 +195,7 @@ def count_top_indexes(count_num, index_file, index_length):
     total_reads = total_lines / 4
     print(" complete.", file=sys.stderr)
     index_tally = collections.defaultdict(int)
-    processed_reads = 0
+    reads_processed = 0
     # Subsample if file is large
     if (total_reads) > 200000:
         print("Subsampling 200,000 reads from index file...", file=sys.stderr)
@@ -207,8 +208,9 @@ def count_top_indexes(count_num, index_file, index_length):
         index_read_seq = index[1]
         index_seq = index_read_seq[:index_length]
         index_tally[index_seq] += 1
-        processed_reads += 1
-        print_progress(processed_reads, total_reads, start_time)
+        reads_processeds += 1
+        if reads_processed % progress_interval == 0:
+            print_progress(reads_processed, total_reads, start_time)
     print("\n", file=sys.stderr)
     if count_num > len(index_tally.keys()):
         print("Number of indexes found ({}) is fewer than those requested ({}). Printing all indexes found.".format(len(index_tally.keys()), count_num), file=sys.stderr)
@@ -262,17 +264,6 @@ def create_output_dir(output_directory, force_overwrite):
             print(" removed.", file=sys.stderr)
     os.makedirs(output_directory)
     return output_directory
-
-
-def write_reads_to_disk(read_list, sample_name, output_directory):
-    """
-    Write a Fastq read to the appropriate file.
-    """
-    for read_num, read in enumerate(read_list):
-        file_name = "{sample_name}_R{read_num}.fastq".format(sample_name=sample_name, read_num=read_num+1)
-        file_name = os.path.join(output_directory, file_name)
-        with open(file_name, 'a') as f:
-            f.write("\n".join(read) + "\n")
 
 
 def load_index_file(csv_file, usecols=(0,1)):
@@ -363,10 +354,10 @@ class FastQWriter:
     def __init__(self,file):
         self.fname = file
         if file.endswith(".gz") or file.endswith(".gzip"):
-            command = "gzip -c  > {}".format(file)
+            command = "gzip -c  >> {}".format(file)
             self._fh = subprocess.Popen(command, shell=True, stdin=subprocess.PIPE).stdin
         else:
-            self._fh = open(file, 'w')
+            self._fh = open(file, 'a')
             #self._fh = subprocess.Popen("cat >> {}".format(file), shell=True, stdin=subprocess.PIPE).stdin
             #self._fh = subprocess.Popen(open(file, 'a+'), stdin=subprocess.PIPE)
         self._records_written = 0
@@ -384,6 +375,10 @@ class FastQWriter:
     def close(self):
         #self.stdin.flush()
         self._fh.close()
+
+    def reopen(self):
+        _records_written = self._records_written
+        self.__init__(self.fname)
 
 def parse_header(header):
     """Parses the FASTQ header as specified by CASAVA 1.8.2 and returns the fields in a dictionary
@@ -432,6 +427,8 @@ if __name__ == "__main__":
                                 help="Find the n most common indexes. Pair with -l (index length) and -r (read index file). Does not perform any demultiplexing.")
     parser.add_argument("-l", "--index-length", type=int,
                                 help="The length of the index.")
+    parser.add_argument("-p", "--progress-interval", type=int, default=1000,
+                                help="Update progress, estimated completion time every N reads (default 1000).")
     arg_vars = vars(parser.parse_args())
     # It's my namespace and I'll clobber it if I want to
     locals().update(arg_vars)
@@ -441,6 +438,6 @@ if __name__ == "__main__":
         if not arg_vars['read_index']:
             raise SyntaxError("Must indicate file to parse for indexes.")
         else:
-            count_top_indexes(top_indexes, read_index, index_length)
+            count_top_indexes(top_indexes, read_index, index_length, progress_interval)
     else:
-        main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, force_overwrite)
+        main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, force_overwrite, progress_interval)
