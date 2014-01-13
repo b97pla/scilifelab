@@ -23,6 +23,7 @@ import time
 #from scilifelab.illumina.hiseq import HiSeqSampleSheet
 #from scilifelab.utils.fastq_utils import FastQParser
 
+# TODO change indexes to preconstructed regex objects
 # TODO add pairwise alignment of indexes to correct for sequencing error (biopython's Bio.pairwise2)
 #      or using the direct comparison method --> TIME THESE
 # TODO ensure read 1,2 files are paired (SciLifeLab code)
@@ -212,7 +213,7 @@ def count_top_indexes(count_num, index_file, index_length):
     print("\n", file=sys.stderr)
     if count_num > len(index_tally.keys()):
         print("Number of indexes found ({}) is fewer than those requested ({}). Printing all indexes found.".format(len(index_tally.keys()), count_num), file=sys.stderr)
-        print("Printing indexes...", file=sys.stderr())
+        print("Printing indexes...", file=sys.stderr)
         count_num = len(index_tally.keys())
     print("{:<20} {:>20} {:>11}".format("Index", "Occurences", "Percentage"))
     for index, _ in sorted(index_tally.items(), key=(lambda x: x[1]), reverse=True)[:count_num]:
