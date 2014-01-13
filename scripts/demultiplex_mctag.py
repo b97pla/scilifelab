@@ -107,7 +107,10 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, o
         read_ind_seq = read_ind[1]
         matches_dict = collections.defaultdict(list)
         for supplied_index in index_dict.keys():
-            matches_dict[ find_dist(supplied_index, read_ind_seq, max_mismatches) ].append(supplied_index)
+            mismatches = find_dist(supplied_index, read_ind_seq, max_mismatches)
+            matches_dict[mismatches].append(supplied_index)
+            if mismatches == 0:
+                break
         for x in range(0, max_mismatches+1):
             if matches_dict.get(x):
                 if len(matches_dict.get(x)) == 1:
@@ -164,7 +167,7 @@ def data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict
                 # File was closed previously
                 index_fh_dict[index][read_num].reopen()
 
-def find_dist(str_01, str_02, max_mismatches=None):
+def find_dist(str_01, str_02, max_mismatches=1):
     """
     Find the number of mismatches between two strings. The longer string is truncated to the length of the shorter.
     """
