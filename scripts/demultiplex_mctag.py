@@ -29,31 +29,33 @@ import time
 # TODO add directory processing
 
 
-def main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, force_overwrite=False, progress_interval=1000):
-    check_input(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, progress_interval)
+def main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, max_mismatches=1, force_overwrite=False, progress_interval=1000):
+    check_input(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, max_mismatches, progress_interval)
     output_directory = create_output_dir(output_directory, force_overwrite)
     # TODO NOTE: I changed this just for Jimmy's run
     index_dict = load_index_file(index_file, usecols=(2,1))
     start_time = datetime.datetime.now()
     if read_one and read_two and read_index:
-        reads_processed, num_match, num_nonmatch = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory, progress_interval)
+        reads_processed, num_match, num_ambigmatch, num_nonmatch = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory, max_mismatches, progress_interval)
     else:
         for readset in parse_directory(data_directory, read_index_num):
             read_one, read_two, read_index = readset
-            reads_processed, num_match, num_nonmatch = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory)
+            reads_processed, num_match, num_ambigmatch, num_nonmatch = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory)
     elapsed_time = time.strftime('%H:%M:%S', time.gmtime((datetime.datetime.now() - start_time).total_seconds()))
     print(  "\nProcessing complete in {elapsed_time}:\n\t" \
             "{reads_processed} reads processed\n\t" \
             "{num_match:>{pad_length}} ({num_match_percent:>6.2f}%) matched to supplied indexes\n\t" \
+            "{num_ambigmatch:>{pad_length}} ({num_ambigmatch_percent:>6.2f}%) matches to more than one supplied index.\n\t" \
             "{num_nonmatch:>{pad_length}} ({num_nonmatch_percent:>6.2f}%) unmatched to supplied indexes".format(
                 elapsed_time=elapsed_time,
-                reads_processed=reads_processed, num_match=num_match, num_nonmatch=num_nonmatch,
-                num_match_percent   = (100.0 * num_match)/reads_processed,
-                num_nonmatch_percent= (100.0 * num_nonmatch)/reads_processed,
+                reads_processed=reads_processed, num_match=num_match, num_nonmatch=num_nonmatch, num_ambigmatch=num_ambigmatch,
+                num_match_percent       = (100.0 * num_match)/reads_processed,
+                num_ambigmatch_percent  = (100.0 * num_ambigmatch)/reads_processed,
+                num_nonmatch_percent    = (100.0 * num_nonmatch)/reads_processed,
                 pad_length = len(str(reads_processed))), file=sys.stdout)
 
 
-def check_input(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, progress_interval):
+def check_input(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, max_mismatches, progress_interval):
     """
     Check user-supplied inputs for validity, completeness.
     """
@@ -71,6 +73,10 @@ def check_input(read_one, read_two, read_index, data_directory, read_index_num, 
         assert(type(progress_interval) == int and progress_interval > 0)
     except AssertionError:
         raise SyntaxError("Progress interval must be a positive integer.")
+    try:
+        assert(type(max_mismatches) == int and max_mismatches >= 0)
+    except AssertionError:
+        raise SyntaxError("Maximum mismatches in error correction must be >= 0.")
 
 def parse_directory(data_directory, read_index_num):
     """
@@ -80,41 +86,57 @@ def parse_directory(data_directory, read_index_num):
     # possibly implement as generator, calling parse_readset_byindexdict in a for loop from the calling loop
 
 
-def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, output_directory, progress_interval=1000):
+def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, output_directory, max_mismatches=1, progress_interval=1000):
     """
     Parse input fastq files, searching for matches to each index.
     """
     print("Processing read set associated with \"{}\" using user-supplied indexes.".format(read_1_fq), file=sys.stderr)
-    reads_processed, num_match, num_nonmatch = 0, 0, 0
+    print("Maximum number of mismatches for error correction is {}.".format(max_mismatches), file=sys.stderr)
+    reads_processed, num_match, num_ambigmatch, num_nonmatch = 0, 0, 0, 0
     fqp_1, fqp_2, fqp_ind = map(FastQParser, (read_1_fq, read_2_fq, read_index_fq))
     print("Counting total number of lines in fastq files...", file=sys.stderr, end="")
     # I think du -k * 16 / 1.024 should give approximately the right number for any number of reads greater than 1000 or so
     total_lines_in_file = int(subprocess.check_output(shlex.split("wc -l {}".format(read_1_fq))).split()[0])
     print(" complete.", file=sys.stderr)
-    if progress_interval > (total_lines_in_file / 4):
-        progress_interval = (total_lines_in_file / 4)
+    if not progress_interval: progress_interval = 1000
+    if progress_interval > (total_lines_in_file / 4): progress_interval = (total_lines_in_file / 4)
     index_fh_dict = collections.defaultdict(list)
     print("Demultiplexing...", file=sys.stderr)
     time_started = datetime.datetime.now()
     for read_1, read_2, read_ind in itertools.izip(fqp_1, fqp_2, fqp_ind):
         read_ind_seq = read_ind[1]
+        matches_dict = collections.defaultdict(list)
         for supplied_index in index_dict.keys():
-            if re.match(supplied_index, read_ind_seq):
-                index_len   = len(supplied_index)
-                index, molecular_tag = read_ind_seq[:index_len], read_ind_seq[index_len:]
-                num_match  += 1
-                modify_reads( (read_1, read_2), index, molecular_tag)
-                sample_name = index_dict[supplied_index] if index_dict[supplied_index] else supplied_index
-                data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict, index)
-                break
+            matches_dict[ find_dist(supplied_index, read_ind_seq, max_mismatches) ].append(supplied_index)
+        for x in range(0, max_mismatches+1):
+            if matches_dict.get(x):
+                if len(matches_dict.get(x)) == 1:
+                    # Single unamibiguous match
+                    index_seq       = matches_dict[x][0]
+                    index_len       = len(index_seq)
+                    molecular_tag   = read_ind_seq[index_len:]
+                    modify_reads( (read_1, read_2), index_seq, molecular_tag)
+                    sample_name     = index_dict[index_seq] if index_dict[index_seq] else index_seq
+                    data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict, index_seq)
+                    num_match      += 1
+                    break
+                else:
+                    # Ambiguous match
+                    sample_name     = "Ambiguous"
+                    index_seq_list  = ",".join(matches_dict.get(x))
+                    modify_reads( (read_1, read_2), index_seq_list, read_ind_seq)
+                    data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict, sample_name)
+                    num_ambigmatch += 1
+                    break
         else:
-            sample_name = "Undetermined"
-            data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict, "Undetermined")
-            num_nonmatch += 1
-        reads_processed += 1
+            sample_name     = "Undetermined"
+            modify_reads( (read_1, read_2), "", read_ind_seq)
+            data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict, sample_name)
+            num_nonmatch   += 1
+        reads_processed    += 1
         if reads_processed % progress_interval == 0:
             print_progress(reads_processed, (total_lines_in_file / 4), time_started=time_started)
-    return reads_processed, num_match, num_nonmatch
+    return reads_processed, num_match, num_ambigmatch, num_nonmatch
 
 
 def data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict, index):
@@ -141,6 +163,24 @@ def data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict
             except ValueError:
                 # File was closed previously
                 index_fh_dict[index][read_num].reopen()
+
+def find_dist(str_01, str_02, max_mismatches=None):
+    """
+    Find the number of mismatches between two strings. The longer string is truncated to the length of the shorter.
+    """
+    if len(str_01) > len(str_02):
+        str_01 = str_01[:len(str_02)]
+    elif len(str_02) > len(str_01):
+        str_02 = str_02[:len(str_01)]
+
+    mismatches = 0
+    for a, b in itertools.izip(str_01, str_02):
+        if a != b:
+            mismatches += 1
+            if mismatches > max_mismatches:
+                break
+
+    return mismatches
 
 def print_progress(processed, total, type='text', time_started=None, leading_text=""):
     """
@@ -278,16 +318,16 @@ def load_index_file(csv_file, usecols=(0,1)):
         raise ValueError("Warning: only two columns (index, sample_name) can be selected.", file=sys.stderr)
     if not usecols == (0,1):
         print("Warning: using non-standard columns for index, sample_name ({} instead of (0,1))".format(usecols), file=sys.stderr)
-    index_ind, name_ind = usecols
+    index_column, name_column = usecols
     index_dict          = {}
     with open(csv_file, 'r') as f:
         for line in f:
             # could also use csv.sniffer to dynamically determine delimiter
-            index = re.split(r'[\t,;]', line.strip())
+            index_line = re.split(r'[\t,;]', line.strip())
             try:
-                index_dict[index[index_ind]] = index[name_ind]
+                index_dict[ index_line[index_column] ] = index_line[name_column]
             except IndexError:
-                index_dict[index[index_ind]] = None
+                index_dict[ index_line[index_column] ] = None
     return index_dict
 
 # SCILIFELAB CODE
@@ -427,6 +467,8 @@ if __name__ == "__main__":
                                 help="Find the n most common indexes. Pair with -l (index length) and -r (read index file). Does not perform any demultiplexing.")
     parser.add_argument("-l", "--index-length", type=int,
                                 help="The length of the index.")
+    parser.add_argument("-m", "--mismatches", type=int, dest="max_mismatches", default=1,
+                                help="The maximum number of mismatches allowed when performing error correction. Default is 1; set to 0 for max speed.")
     parser.add_argument("-p", "--progress-interval", type=int, default=1000,
                                 help="Update progress, estimated completion time every N reads (default 1000).")
     arg_vars = vars(parser.parse_args())
@@ -440,4 +482,4 @@ if __name__ == "__main__":
         else:
             count_top_indexes(top_indexes, read_index, index_length, progress_interval)
     else:
-        main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, force_overwrite, progress_interval)
+        main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, max_mismatches, force_overwrite, progress_interval)
