@@ -327,7 +327,7 @@ def count_top_indexes(count_num, index_file, index_length, progress_interval):
     print("\n", file=sys.stderr)
     if count_num > len(index_tally.keys()):
         print("Number of indexes found ({}) is fewer than those requested ({}). Printing all indexes found.".format(len(index_tally.keys()), count_num), file=sys.stderr)
-        print("Printing indexes...", file=sys.stderr())
+        print("Printing indexes...", file=sys.stderr)
         count_num = len(index_tally.keys())
     print("{:<20} {:>20} {:>11}".format("Index", "Occurences", "Percentage"))
     for index, _ in sorted(index_tally.items(), key=(lambda x: x[1]), reverse=True)[:count_num]:
