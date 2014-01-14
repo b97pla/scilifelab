@@ -23,6 +23,7 @@ ngi_logo_medium = os.path.join(FILEPATH, os.pardir, "data", "grf", "NGI-medium-t
 TEMPLATEPATH=os.path.join(FILEPATH, os.pardir, "data", "templates")
 
 report_templates = {'project_report':Template(filename=os.path.join(TEMPLATEPATH, "project_report.mako")),
+                    'flowcell_report':Template(filename=os.path.join(TEMPLATEPATH, "flowcell_report.mako")),
                     'sample_report':Template(filename=os.path.join(TEMPLATEPATH, "sample_report.mako")),
                     'bp_seqcap':Template(filename=os.path.join(TEMPLATEPATH, "bp_seqcap.mako")),
                     'sequencing_report':Template(filename=os.path.join(TEMPLATEPATH, "sequencing_report.mako")),
