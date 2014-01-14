@@ -20,11 +20,9 @@ import sys
 import time
 
 #from Bio import Seq, pairwise2
-#from scilifelab.illumina.hiseq import HiSeqSampleSheet
-#from scilifelab.utils.fastq_utils import FastQParser
+#from scilifelab.utils.fastq_utils import FastQParser, FastQWriter
 
-# TODO add pairwise alignment of indexes to correct for sequencing error (biopython's Bio.pairwise2)
-#      or using the direct comparison method --> TIME THESE
+# TODO memoize sequence corrections? optimize somehow if possible
 # TODO ensure read 1,2 files are paired (SciLifeLab code)
 # TODO add directory processing
 
@@ -32,24 +30,27 @@ import time
 def main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, max_mismatches=1, force_overwrite=False, progress_interval=1000):
     check_input(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, max_mismatches, progress_interval)
     output_directory = create_output_dir(output_directory, force_overwrite)
-    # TODO NOTE: I changed this just for Jimmy's run
+    # TODO NOTE: I changed this just for Jimmie's run
     index_dict = load_index_file(index_file, usecols=(2,1))
+    check_index_distances(index_dict.keys(), max_mismatches)
     start_time = datetime.datetime.now()
     if read_one and read_two and read_index:
-        reads_processed, num_match, num_ambigmatch, num_nonmatch = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory, max_mismatches, progress_interval)
+        reads_processed, num_match, num_ambigmatch, num_nonmatch, num_corrected = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory, max_mismatches, progress_interval)
     else:
-        for readset in parse_directory(data_directory, read_index_num):
-            read_one, read_two, read_index = readset
-            reads_processed, num_match, num_ambigmatch, num_nonmatch = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory)
+        #for readset in parse_directory(data_directory, read_index_num):
+            #read_one, read_two, read_index = readset
+        reads_processed, num_match, num_ambigmatch, num_nonmatch, num_corrected = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory)
     elapsed_time = time.strftime('%H:%M:%S', time.gmtime((datetime.datetime.now() - start_time).total_seconds()))
     print(  "\nProcessing complete in {elapsed_time}:\n\t" \
             "{reads_processed} reads processed\n\t" \
             "{num_match:>{pad_length}} ({num_match_percent:>6.2f}%) matched to supplied indexes\n\t" \
+            "{num_corrected:>{pad_length}} ({num_corrected_percent:>6.2f}%) corrected indexes\n\t" \
             "{num_ambigmatch:>{pad_length}} ({num_ambigmatch_percent:>6.2f}%) matches to more than one supplied index.\n\t" \
             "{num_nonmatch:>{pad_length}} ({num_nonmatch_percent:>6.2f}%) unmatched to supplied indexes".format(
                 elapsed_time=elapsed_time,
-                reads_processed=reads_processed, num_match=num_match, num_nonmatch=num_nonmatch, num_ambigmatch=num_ambigmatch,
+                reads_processed=reads_processed, num_match=num_match, num_nonmatch=num_nonmatch, num_ambigmatch=num_ambigmatch, num_corrected=num_corrected,
                 num_match_percent       = (100.0 * num_match)/reads_processed,
+                num_corrected_percent   = (100.0 * num_corrected)/reads_processed,
                 num_ambigmatch_percent  = (100.0 * num_ambigmatch)/reads_processed,
                 num_nonmatch_percent    = (100.0 * num_nonmatch)/reads_processed,
                 pad_length = len(str(reads_processed))), file=sys.stdout)
@@ -78,6 +79,7 @@ def check_input(read_one, read_two, read_index, data_directory, read_index_num, 
     except AssertionError:
         raise SyntaxError("Maximum mismatches in error correction must be >= 0.")
 
+
 def parse_directory(data_directory, read_index_num):
     """
     Searches the directory for fastq file sets and calls parse_readset() on them.
@@ -92,7 +94,7 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, o
     """
     print("Processing read set associated with \"{}\" using user-supplied indexes.".format(read_1_fq), file=sys.stderr)
     print("Maximum number of mismatches for error correction is {}.".format(max_mismatches), file=sys.stderr)
-    reads_processed, num_match, num_ambigmatch, num_nonmatch = 0, 0, 0, 0
+    reads_processed, num_match, num_ambigmatch, num_nonmatch, num_corrected = 0, 0, 0, 0, 0
     fqp_1, fqp_2, fqp_ind = map(FastQParser, (read_1_fq, read_2_fq, read_index_fq))
     print("Counting total number of lines in fastq files...", file=sys.stderr, end="")
     # I think du -k * 16 / 1.024 should give approximately the right number for any number of reads greater than 1000 or so
@@ -106,7 +108,8 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, o
     for read_1, read_2, read_ind in itertools.izip(fqp_1, fqp_2, fqp_ind):
         read_ind_seq = read_ind[1]
         matches_dict = collections.defaultdict(list)
-        for supplied_index in index_dict.keys():
+        # Sort indexes by descending length to match longer indexes first
+        for supplied_index in sorted(index_dict.keys(), key=lambda x: (-len(x))):
             mismatches = find_dist(supplied_index, read_ind_seq, max_mismatches)
             matches_dict[mismatches].append(supplied_index)
             if mismatches == 0:
@@ -122,6 +125,8 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, o
                     sample_name     = index_dict[index_seq] if index_dict[index_seq] else index_seq
                     data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict, index_seq)
                     num_match      += 1
+                    if not x == 0:
+                        num_corrected += 1
                     break
                 else:
                     # Ambiguous match
@@ -132,6 +137,7 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, o
                     num_ambigmatch += 1
                     break
         else:
+            # No match
             sample_name     = "Undetermined"
             modify_reads( (read_1, read_2), "", read_ind_seq)
             data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict, sample_name)
@@ -139,7 +145,7 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, o
         reads_processed    += 1
         if reads_processed % progress_interval == 0:
             print_progress(reads_processed, (total_lines_in_file / 4), time_started=time_started)
-    return reads_processed, num_match, num_ambigmatch, num_nonmatch
+    return reads_processed, num_match, num_ambigmatch, num_nonmatch, num_corrected
 
 
 def data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict, index):
@@ -167,23 +173,30 @@ def data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict
                 # File was closed previously
                 index_fh_dict[index][read_num].reopen()
 
-def find_dist(str_01, str_02, max_mismatches=1):
+# TODO compare to Bio.align.pairwise2 for speed
+# TODO possibly @memoize somehow
+def find_dist(str_01, str_02, max_mismatches=None, approach="shorten"):
     """
-    Find the number of mismatches between two strings. The longer string is truncated to the length of the shorter.
+    Find the number of mismatches between two strings. The longer string is truncated to the length of the shorter unless approach "lengthen".
     """
     if len(str_01) > len(str_02):
-        str_01 = str_01[:len(str_02)]
+        if approach == "lengthen":
+            str_02 = "{:<{length}}".format(str_02, length=len(str_01))
+        else:
+            str_01 = str_01[:len(str_02)]
     elif len(str_02) > len(str_01):
-        str_02 = str_02[:len(str_01)]
-
+        if approach == "lengthen":
+            str_01 = "{:<{length}}".format(str_01, length=len(str_02))
+        else:
+            str_02 = str_02[:len(str_01)]
     mismatches = 0
     for a, b in itertools.izip(str_01, str_02):
         if a != b:
             mismatches += 1
-            if mismatches > max_mismatches:
+            if max_mismatches and mismatches > max_mismatches:
                 break
-
     return mismatches
+
 
 def print_progress(processed, total, type='text', time_started=None, leading_text=""):
     """
@@ -191,7 +204,6 @@ def print_progress(processed, total, type='text', time_started=None, leading_tex
     """
     percentage_complete = float(processed) / total
     if time_started:
-        # This somewhat naively assumes a constant processing speed
         completion_time = estimate_completion_time(time_started, percentage_complete)
     else:
         time_started = "-"
@@ -209,82 +221,20 @@ def print_progress(processed, total, type='text', time_started=None, leading_tex
 
 def estimate_completion_time(start_time, percent_complete):
     """
-    Determine how much time remains based on time elapsed in processing so far.
-    Percentage should be given as a fraction of 1 (e.g. 0.5 for 50%).
+    http://xkcd.com/612/
     """
     if not type(start_time) == datetime.datetime:
         return None
     seconds_elapsed = (datetime.datetime.now() - start_time).total_seconds()
     seconds_total = seconds_elapsed / percent_complete
     seconds_left = seconds_total - seconds_elapsed
-    # more than a day remaining
+    # More than a day remaining
     if seconds_left > 86400:
         days    = int(seconds_left // 86400)
         seconds = seconds_left - (days * 86400)
         return "{}:{}".format(days, time.strftime('%H:%M:%S', time.gmtime(seconds)))
     else:
         return time.strftime('%H:%M:%S', time.gmtime(seconds_left))
-
-
-def count_top_indexes(count_num, index_file, index_length, progress_interval):
-    """
-    Determine the most common indexes, sampling at most 200,000 reads.
-    """
-    assert(type(count_num) == int and count_num > 0), "Number passed must be a positive integer."
-    fqp_ind = FastQParser(index_file)
-    # This should perhaps be added to the FastQParser class
-    print("Counting total number of lines in fastq file...", file=sys.stderr, end="")
-    total_lines = int(subprocess.check_output(shlex.split("wc -l {}".format(index_file))).split()[0])
-    total_reads = total_lines / 4
-    print(" complete.", file=sys.stderr)
-    index_tally = collections.defaultdict(int)
-    reads_processed = 0
-    # Subsample if file is large
-    if (total_reads) > 200000:
-        print("Subsampling 200,000 reads from index file...", file=sys.stderr)
-        fqp_ind = iter_sample_fast(fqp_ind, 200000, total_reads)
-        print("Complete.", file=sys.stderr)
-        total_reads = 200000
-    print("Tallying indexes in {} records...".format(total_reads), file=sys.stderr)
-    start_time = datetime.datetime.now()
-    for index in fqp_ind:
-        index_read_seq = index[1]
-        index_seq = index_read_seq[:index_length]
-        index_tally[index_seq] += 1
-        reads_processeds += 1
-        if reads_processed % progress_interval == 0:
-            print_progress(reads_processed, total_reads, start_time)
-    print("\n", file=sys.stderr)
-    if count_num > len(index_tally.keys()):
-        print("Number of indexes found ({}) is fewer than those requested ({}). Printing all indexes found.".format(len(index_tally.keys()), count_num), file=sys.stderr)
-        print("Printing indexes...", file=sys.stderr())
-        count_num = len(index_tally.keys())
-    print("{:<20} {:>20} {:>11}".format("Index", "Occurences", "Percentage"))
-    for index, _ in sorted(index_tally.items(), key=(lambda x: x[1]), reverse=True)[:count_num]:
-        percentage = (100.0 * index_tally[index] ) / total_reads
-        print("{:<20} {:>20,} {:>10.2f}%".format(index, index_tally[index], percentage))
-
-
-def iter_sample_fast(iterable, samplesize, total_size):
-    """
-    http://stackoverflow.com/questions/12581437/python-random-sample-with-a-generator/12583436#12583436
-    """
-    results = []
-    iterator = iter(iterable)
-    # Fill in the first samplesize elements:
-    try:
-        for _ in xrange(samplesize):
-            results.append(iterator.next())
-            print_progress(len(results), 200000)
-    except StopIteration:
-        raise ValueError("Sample larger than population.")
-    random.shuffle(results)  # Randomize their positions
-    for i, v in enumerate(iterator, samplesize):
-        r = random.randint(0, i)
-        if r < samplesize:
-            results[r] = v  # at a decreasing rate, replace random items
-            print_progress(i, total_size)
-    return results
 
 
 def modify_reads(read_list, index, molecular_tag):
@@ -333,13 +283,90 @@ def load_index_file(csv_file, usecols=(0,1)):
                 index_dict[ index_line[index_column] ] = None
     return index_dict
 
+
+def check_index_distances(index_list, max_mismatches):
+    """
+    Determines if too many mismatches are allowed for this set of indexes to resolve unambiguously.
+    """
+    for i1, i2 in  itertools.combinations(index_list, r=2):
+        if find_dist(i1, i2, max_mismatches, approach="lengthen") <= max_mismatches:
+            print("Warning: indexes \"{}\" and \"{}\" are insufficiently different for the specified number of mismatches ({}). Reads matching either index will be classified as ambiguous.".format(i1, i2, max_mismatches), file=sys.stderr)
+
+
+###
+
+# TODO This doesn't really belong here and should probably be its own module
+def count_top_indexes(count_num, index_file, index_length, progress_interval):
+    """
+    Determine the most common indexes, sampling at most 200,000 reads.
+    """
+    assert(type(count_num) == int and count_num > 0), "Number passed must be a positive integer."
+    fqp_ind = FastQParser(index_file)
+    # This should perhaps be added to the FastQParser class
+    print("Counting total number of lines in fastq file...", file=sys.stderr, end="")
+    total_lines = int(subprocess.check_output(shlex.split("wc -l {}".format(index_file))).split()[0])
+    total_reads = total_lines / 4
+    print(" complete.", file=sys.stderr)
+    index_tally = collections.defaultdict(int)
+    reads_processed = 0
+    # Subsample if file is large
+    if (total_reads) > 200000:
+        print("Subsampling 200,000 reads from index file...", file=sys.stderr)
+        fqp_ind = iter_sample_fast(fqp_ind, 200000, total_reads)
+        print("Complete.", file=sys.stderr)
+        total_reads = 200000
+    print("Tallying indexes in {} records...".format(total_reads), file=sys.stderr)
+    start_time = datetime.datetime.now()
+    for index in fqp_ind:
+        index_read_seq = index[1]
+        index_seq = index_read_seq[:index_length]
+        index_tally[index_seq] += 1
+        reads_processeds += 1
+        if reads_processed % progress_interval == 0:
+            print_progress(reads_processed, total_reads, start_time)
+    print("\n", file=sys.stderr)
+    if count_num > len(index_tally.keys()):
+        print("Number of indexes found ({}) is fewer than those requested ({}). Printing all indexes found.".format(len(index_tally.keys()), count_num), file=sys.stderr)
+        print("Printing indexes...", file=sys.stderr())
+        count_num = len(index_tally.keys())
+    print("{:<20} {:>20} {:>11}".format("Index", "Occurences", "Percentage"))
+    for index, _ in sorted(index_tally.items(), key=(lambda x: x[1]), reverse=True)[:count_num]:
+        percentage = (100.0 * index_tally[index] ) / total_reads
+        print("{:<20} {:>20,} {:>10.2f}%".format(index, index_tally[index], percentage))
+
+def iter_sample_fast(iterable, samplesize, total_size):
+    """
+    http://stackoverflow.com/questions/12581437/python-random-sample-with-a-generator/12583436#12583436
+    """
+    results = []
+    iterator = iter(iterable)
+    # Fill in the first samplesize elements:
+    try:
+        for _ in xrange(samplesize):
+            results.append(iterator.next())
+            print_progress(len(results), 200000)
+    except StopIteration:
+        raise ValueError("Sample larger than population.")
+    random.shuffle(results)  # Randomize their positions
+    for i, v in enumerate(iterator, samplesize):
+        r = random.randint(0, i)
+        if r < samplesize:
+            results[r] = v  # at a decreasing rate, replace random items
+            print_progress(i, total_size)
+    return results
+
+
+
 # SCILIFELAB CODE
 # I'm just putting this class here temporarily so I can test this without needing to load in all the other scilifelab jazz
+# TODO I wonder if I can adjust this to use a larger byte size instead of scanning the lines as it probably does now -- the increased read block size would help speed enormously
 class FastQParser(object):
-    """Parser for fastq files, possibly compressed with gzip.
-       Iterates over one record at a time. A record consists
-       of a list with 4 elements corresponding to 1) Header,
-       2) Nucleotide sequence, 3) Optional header, 4) Qualities"""
+    """
+    Parser for fastq files, possibly compressed with gzip.
+    Iterates over one record at a time. A record consists
+    of a list with 4 elements corresponding to 1) Header,
+    2) Nucleotide sequence, 3) Optional header, 4) Qualities
+    """
 
     def __init__(self, file, filter=None):
         self.fname = file
@@ -348,6 +375,7 @@ class FastQParser(object):
         if file.endswith(".gz"):
             self._fh = subprocess.Popen(["gunzip", "-d", "-c", file], stdout = subprocess.PIPE, bufsize = 1).stdout
         else:
+            # TODO I'm not sure this is faster than just open(file, 'w')
             self._fh = subprocess.Popen(["cat", file], stdout = subprocess.PIPE, bufsize = 1).stdout
         self._records_read = 0
         self._next = self.setup_next()
