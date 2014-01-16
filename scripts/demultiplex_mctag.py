@@ -153,7 +153,7 @@ def parse_readset_byindexdict(read_1_fq, read_2_fq, read_index_fq, index_dict, o
 
 def data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict, index):
     """
-    Writes data using FastQParser, closing files if we open too many.
+    Writes data using FastQAppender, closing files if we open too many.
     """
     for read_num, read in enumerate([read_1, read_2]):
         try:
@@ -376,6 +376,7 @@ class FastQAppender(FastQWriter):
     def reopen(self):
         _records_written = self._records_written
         self.__init__(self.fname)
+        self._records_written = _records_written
 
 
 if __name__ == "__main__":
