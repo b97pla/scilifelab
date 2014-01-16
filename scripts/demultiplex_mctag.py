@@ -20,7 +20,7 @@ import sys
 import time
 
 #from Bio import Seq, pairwise2
-#from scilifelab.utils.fastq_utils import FastQParser, FastQWriter
+from scilifelab.utils.fastq_utils import FastQParser, FastQWriter
 
 # TODO memoize sequence corrections? optimize somehow if possible
 # TODO ensure read 1,2 files are paired (SciLifeLab code)
@@ -30,13 +30,13 @@ import time
 def main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, max_mismatches=1, force_overwrite=False, progress_interval=1000):
     check_input(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, max_mismatches, progress_interval)
     output_directory = create_output_dir(output_directory, force_overwrite)
-    # TODO NOTE: I changed this just for Jimmie's run
-    index_dict = load_index_file(index_file, usecols=(2,1))
+    index_dict = load_index_file(index_file)
     check_index_distances(index_dict.keys(), max_mismatches)
     start_time = datetime.datetime.now()
     if read_one and read_two and read_index:
         reads_processed, num_match, num_ambigmatch, num_nonmatch, num_corrected = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory, max_mismatches, progress_interval)
     else:
+        # TODO automatic directory processing not yet implemented (raises an exception)
         #for readset in parse_directory(data_directory, read_index_num):
             #read_one, read_two, read_index = readset
         reads_processed, num_match, num_ambigmatch, num_nonmatch, num_corrected = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory)
@@ -158,14 +158,13 @@ def data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict
         except IndexError:
             file_path   = os.path.join(output_directory, "{sample_name}_R{read_num}.fastq".format(sample_name=sample_name, read_num=read_num+1))
             try:
-                index_fh_dict[index].append(FastQWriter(file_path))
+                index_fh_dict[index].append(FastQAppender(file_path))
             except IOError as e:
                 # Too many open filehandles
                 if e.errno == 24:
-                    #print("Warning: too many open file handles. Closing...", file-sys.stderr)
                     for fh1, fh2 in index_fh_dict.values():
                         map(file.close, [ fh1, fh2 ] )
-                    index_fh_dict[index].append(FastQWriter(file_path))
+                    index_fh_dict[index].append(FastQAppender(file_path))
                     index_fh_dict[index][read_num].write(read)
                 else:
                     raise IOError(e)
@@ -356,121 +355,23 @@ def iter_sample_fast(iterable, samplesize, total_size):
     return results
 
 
-
-# SCILIFELAB CODE
-# I'm just putting this class here temporarily so I can test this without needing to load in all the other scilifelab jazz
-# TODO I wonder if I can adjust this to use a larger byte size instead of scanning the lines as it probably does now -- the increased read block size would help speed enormously
-class FastQParser(object):
+class FastQAppender(FastQWriter):
     """
-    Parser for fastq files, possibly compressed with gzip.
-    Iterates over one record at a time. A record consists
-    of a list with 4 elements corresponding to 1) Header,
-    2) Nucleotide sequence, 3) Optional header, 4) Qualities
+    A good deal like the FastQWriter but appends instead of writing.
+    Also allows file re-opening.
     """
-
-    def __init__(self, file, filter=None):
+    def __init__(self, file):
         self.fname = file
-        self.filter = filter
-
+        fh = open(file,"ab")
         if file.endswith(".gz"):
-            self._fh = subprocess.Popen(["gunzip", "-d", "-c", file], stdout = subprocess.PIPE, bufsize = 1).stdout
+            self._fh = gzip.GzipFile(fileobj=fh)
         else:
-            # TODO I'm not sure this is faster than just open(file, 'w')
-            self._fh = subprocess.Popen(["cat", file], stdout = subprocess.PIPE, bufsize = 1).stdout
-        self._records_read = 0
-        self._next = self.setup_next()
-
-    def __iter__(self):
-        return self
-
-    def next(self):
-        return self._next(self)
-
-    def setup_next(self):
-        """Return the function to return the next record
-        """
-        if self.filter is None or len(self.filter.keys()) == 0:
-            def _next(self):
-                self._records_read += 1
-                return [self._fh.next().strip() for n in range(4)]
-        else:
-            def _next(self):
-                while True:
-                    record = [self._fh.next().strip() for n in range(4)]
-                    header = parse_header(record[0])
-                    skip = False
-                    for k, v in self.filter.items():
-                        if k in header and header[k] not in v:
-                            skip = True
-                            break
-                    if not skip:
-                        self._records_read += 1
-                        return record
-        return _next
-
-    def name(self):
-        return self.fname
-
-    def rread(self):
-        return self._records_read
-
-    def seek(self,offset,whence=None):
-        self._fh.seek(offset,whence)
-
-    def close(self):
-        self._fh.close()
-
-class FastQWriter:
-
-    def __init__(self,file):
-        self.fname = file
-        if file.endswith(".gz") or file.endswith(".gzip"):
-            command = "gzip -c  >> {}".format(file)
-            self._fh = subprocess.Popen(command, shell=True, stdin=subprocess.PIPE).stdin
-        else:
-            self._fh = open(file, 'a')
-            #self._fh = subprocess.Popen("cat >> {}".format(file), shell=True, stdin=subprocess.PIPE).stdin
-            #self._fh = subprocess.Popen(open(file, 'a+'), stdin=subprocess.PIPE)
+            self._fh = fh
         self._records_written = 0
-
-    def name(self):
-        return self.fname
-
-    def write(self,record):
-        self._fh.write("{}\n".format("\n".join([r.strip() for r in record])))
-        self._records_written += 1
-
-    def rwritten(self):
-        return self._records_written
-
-    def close(self):
-        #self.stdin.flush()
-        self._fh.close()
 
     def reopen(self):
         _records_written = self._records_written
         self.__init__(self.fname)
-
-def parse_header(header):
-    """Parses the FASTQ header as specified by CASAVA 1.8.2 and returns the fields in a dictionary
-       @<instrument>:<run number>:<flowcell ID>:<lane>:<tile>:<x-pos>:<y-pos> <read>:<is filtered>:<control number>:<index sequence>
-    """
-    if header[0] != '@':
-        return None
-
-    instrument, run_number, flowcell_id, lane, tile, x_pos, y_pos_read, is_filtered, control_number, index = header[1:].split(":")
-    y_pos, read = y_pos_read.split()
-    return {'instrument': str(instrument),
-            'run_number': int(run_number),
-            'flowcell_id': str(flowcell_id),
-            'lane': int(lane),
-            'tile': int(tile),
-            'x_pos': int(x_pos),
-            'y_pos': int(y_pos),
-            'read': int(read),
-            'is_filtered': (is_filtered == 'Y'),
-            'control_number': int(control_number),
-            'index': str(index)} # Note that MiSeq Reporter outputs a SampleSheet index rather than the index sequence
 
 
 if __name__ == "__main__":
