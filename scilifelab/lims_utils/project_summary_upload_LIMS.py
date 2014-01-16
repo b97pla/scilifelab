@@ -26,24 +26,33 @@ def  main(proj_name, all_projects, days, conf):
     if all_projects:
         projects = lims.get_projects()
         for proj in projects:
+            LOG.info(proj.name)
             try:
                 closed = proj.close_date
                 closed = date(*map(int, proj.close_date.split('-')))
-                delta = today-closed
-                delta = delta.days 
+                days_closed = today-closed
+                days_closed = days_closed.days 
             except:
-                delta = 0
+                days_closed = 0
             opened = proj.open_date
             if opened:
-                if comp_dates(first_of_july, opened) and (delta < days):
-                    proj_time = time.time()
-                    obj = DB.ProjectDB(proj.id)
-                    key = find_proj_from_view(proj_db, proj.name)
-                    obj.project['_id'] = find_or_make_key(key)
-                    info = save_couchdb_obj(proj_db, obj.project)
-                    LOG.info('project %s %s : _id = %s' % (proj.name, info, obj.project['_id']))
+                if comp_dates(first_of_july, opened):
+                    if (days_closed < days):
+                        proj_time = time.time()
+                        try:
+                            obj = DB.ProjectDB(proj.id)
+                            key = find_proj_from_view(proj_db, proj.name)
+                            obj.project['_id'] = find_or_make_key(key)
+                            info = save_couchdb_obj(proj_db, obj.project)
+                            LOG.info('project %s is handeled and %s : _id = %s' % (proj.name, info, obj.project['_id']))
+                        except:
+                            LOG.info('Issues geting info for %s. The"Application" udf might be missing' % proj.name)
+                    else:
+                        LOG.info('Project is not updated because the project has been closed for %s days.' % days_closed)  
+                else:
+                    LOG.info('Project is not updated because the project was opened before 2013-06-30 (%s)'%opened)
             else:
-                LOG.info('Open date missing for project %s' % proj.name)
+                LOG.info('Project is not updated because open date missing for project %s' % proj.name)
     elif proj_name is not None:
         proj = lims.get_projects(name = proj_name)
         if len(proj) == 0:
@@ -61,7 +70,7 @@ def  main(proj_name, all_projects, days, conf):
                     key = find_proj_from_view(proj_db, proj.name)
                     obj.project['_id'] = find_or_make_key(key)
                     info = save_couchdb_obj(proj_db, obj.project)
-                    LOG.info('project %s %s : _id = %s' % (proj_name, info, obj.project['_id']))
+                    LOG.info('project %s is handeled and %s : _id = %s' % (proj_name, info, obj.project['_id']))
             else:
                 LOG.info('Open date missing for project %s' % proj.name)
 
@@ -75,7 +84,7 @@ if __name__ == '__main__':
     parser.add_option("-a", "--all_projects", dest="all_projects", action="store_true", default=False,
     help = "Upload all Lims projects into couchDB. Don't use with -f flagg.")
 
-    parser.add_option("-d", "--days", dest="days", default=30,         
+    parser.add_option("-d", "--days", dest="days", default=60,         
     help="Projects with a close_date older than DAYS days are not updated. Default is 30 days. Use with -a flagg")
 
     parser.add_option("-c", "--conf", dest="conf", 
@@ -84,6 +93,6 @@ if __name__ == '__main__':
 
     (options, args) = parser.parse_args()
 
-    LOG = scilifelab.log.file_logger('LOG',options.conf ,'lims2db_projects.log')
+    LOG = scilifelab.log.file_logger('LOG',options.conf ,'lims2db_projects.log', 'log_dir_tools')
     main(options.project_name, options.all_projects, options.days, options.conf)
 
