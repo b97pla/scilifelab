@@ -54,7 +54,7 @@ def _get_databases_info(source, destination):
     return s_couch, d_couch, s_dbs, d_dbs
 
 
-def _setup_continuous(source, destination, security):
+def _setup_continuous(source, destination, copy_security):
     """Set up a continuous replication of all databases in source to destination.
     """
     s_couch, d_couch, s_dbs, d_dbs = _get_databases_info(source, destination)
@@ -81,14 +81,14 @@ def _setup_continuous(source, destination, security):
         #Put the replicator document in source and set security object in destination
         l.info("Putting replicator document in _replicator database of source")
         s_rep.create(doc)
-        if security:
+        if copy_security:
             l.info("Copying security object to {} database in destination".format(db))
             d_couch[db].resource.put('_security', security)
 
     l.info("DONE!")
 
 
-def _clone(source, destination, security):
+def _clone(source, destination, copy_security):
     """Creates a complete clone of source in destination.
 
     WARNING: This action will remove ALL content from destination.
@@ -113,7 +113,7 @@ def _clone(source, destination, security):
         dest_db = '/'.join([destination, db])
         l.info("Copying data from {} in source to destination".format(db))
         d_couch.replicate(source_db, dest_db)
-        if security:
+        if copy_security:
             l.info("Copying security object to {} database in destination".format(db))
             d_couch[db].resource.put('_security', security)
 
@@ -147,7 +147,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     source = args.source
     destination = args.destination
-    security = False if args.no_security else True
+    copy_security = False if args.no_security else True
     action = args.action
 
     if not all([source, destination]):
@@ -160,7 +160,7 @@ if __name__ == "__main__":
     l.info("Starting replication - source: {}, destination: {}".format( \
             source.split('@')[-1], destination.split('@')[-1]))
     if action == "continuous":
-        _setup_continuous(source, destination, security)
+        _setup_continuous(source, destination, copy_security)
     else:
-        _clone(source, destination, security)
+        _clone(source, destination, copy_security)
 
