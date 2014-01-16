@@ -1,5 +1,4 @@
 """Utilities for handling FastQ data"""
-import subprocess
 import gzip
 import os
 import re
@@ -14,11 +13,11 @@ class FastQParser:
     def __init__(self,file,filter=None):
         self.fname = file
         self.filter = filter
-        
+        fh = open(file,"rb")
         if file.endswith(".gz"):
-            self._fh = subprocess.Popen(["gunzip", "-d", "-c", file], stdout = subprocess.PIPE, bufsize = 1).stdout
+            self._fh = gzip.GzipFile(fileobj=fh)
         else:
-            self._fh = subprocess.Popen(["cat", file], stdout = subprocess.PIPE, bufsize = 1).stdout
+            self._fh = fh
         self._records_read = 0
         self._next = self.setup_next()
         
@@ -70,18 +69,18 @@ class FastQWriter:
        
     def __init__(self,file):
         self.fname = file
+        fh = open(file,"wb")
         if file.endswith(".gz"):
-            command = "gzip -c  > {}".format(file)
-            self._fh = subprocess.Popen(command , shell= True,  stdin=subprocess.PIPE)
-        else:
-            self._fh = subprocess.Popen(file, stdin=subprocess.PIPE)
+            self._fh = gzip.GzipFile(fileobj=fh)
+        else:    
+            self._fh = fh
         self._records_written = 0
         
     def name(self):
         return self.fname
     
     def write(self,record):
-        self._fh.stdin.write("{}\n".format("\n".join([r.strip() for r in record])))
+        self._fh.write("{}\n".format("\n".join([r.strip() for r in record])))
         self._records_written += 1
     
     def rwritten(self):
@@ -140,15 +139,6 @@ def gtQ30(record,offset=33):
             g += 1
     return round(100*float(g)/len(qual),1)
 
-def gtQ30count(record,offset=33):
-    qual = record[3].strip()
-    cutoff = 30 + offset
-    g = 0
-    for c in qual:
-        if ord(c) >= cutoff:
-            g += 1
-    return g
-
 def parse_header(header):
     """Parses the FASTQ header as specified by CASAVA 1.8.2 and returns the fields in a dictionary
        @<instrument>:<run number>:<flowcell ID>:<lane>:<tile>:<x-pos>:<y-pos> <read>:<is filtered>:<control number>:<index sequence>
@@ -169,9 +159,6 @@ def parse_header(header):
             'is_filtered': (is_filtered == 'Y'),
             'control_number': int(control_number),
             'index': str(index)} # Note that MiSeq Reporter outputs a SampleSheet index rather than the index sequence
-
-
-
 
 def is_read_pair(rec1, rec2, casava18=True):
     """Returns true if the two records belong to the same read pair, determined by matching the header strings and disregarding
