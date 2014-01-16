@@ -27,19 +27,20 @@ from scilifelab.utils.fastq_utils import FastQParser, FastQWriter
 # TODO add directory processing
 
 
-def main(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, max_mismatches=1, force_overwrite=False, progress_interval=1000):
-    check_input(read_one, read_two, read_index, data_directory, read_index_num, output_directory, index_file, max_mismatches, progress_interval)
+def main(read_one, read_two, read_index, data_directory, read_index_num, output_directory,
+            index_file, max_mismatches=1, force_overwrite=False, progress_interval=1000):
+    check_input(read_one, read_two, read_index, data_directory, read_index_num,\
+                output_directory, index_file, max_mismatches, progress_interval)
     output_directory = create_output_dir(output_directory, force_overwrite)
     index_dict = load_index_file(index_file)
     check_index_distances(index_dict.keys(), max_mismatches)
     start_time = datetime.datetime.now()
     if read_one and read_two and read_index:
-        reads_processed, num_match, num_ambigmatch, num_nonmatch, num_corrected = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory, max_mismatches, progress_interval)
+        reads_processed, num_match, num_ambigmatch, num_nonmatch, num_corrected = \
+                parse_readset_byindexdict(read_one, read_two, read_index, index_dict, \
+                                      output_directory, max_mismatches, progress_interval)
     else:
-        # TODO automatic directory processing not yet implemented (raises an exception)
-        #for readset in parse_directory(data_directory, read_index_num):
-            #read_one, read_two, read_index = readset
-        reads_processed, num_match, num_ambigmatch, num_nonmatch, num_corrected = parse_readset_byindexdict(read_one, read_two, read_index, index_dict, output_directory)
+        parse_directory() # not yet implemented
     elapsed_time = time.strftime('%H:%M:%S', time.gmtime((datetime.datetime.now() - start_time).total_seconds()))
     print(  "\nProcessing complete in {elapsed_time}:\n\t" \
             "{reads_processed} reads processed\n\t" \
@@ -67,9 +68,11 @@ def check_input(read_one, read_two, read_index, data_directory, read_index_num, 
     if not (read_one and read_index):
         raise SyntaxError("Must speify both data and index reads.")
     if (read_one or read_two or read_index) and (data_directory or read_index_num):
-        raise SyntaxError("Ambiguous: too many options specified. Specify either file paths or directory and read index number.")
+        raise SyntaxError("Ambiguous: too many options specified. Specify either file paths " \
+                          "or directory and read index number.")
     if not (read_one and read_two and read_index) or (data_directory and read_index_num):
-        raise SyntaxError("Insufficient information: either a directory and read index number or explicit paths to sequencing files must be specified.")
+        raise SyntaxError("Insufficient information: either a directory and read index number " \
+                          "or explicit paths to sequencing files must be specified.")
     try:
         assert(type(progress_interval) == int and progress_interval > 0)
     except AssertionError:
@@ -80,7 +83,7 @@ def check_input(read_one, read_two, read_index, data_directory, read_index_num, 
         raise SyntaxError("Maximum mismatches in error correction must be >= 0.")
 
 
-def parse_directory(data_directory, read_index_num):
+def parse_directory():
     """
     Searches the directory for fastq file sets and calls parse_readset() on them.
     """
@@ -156,7 +159,8 @@ def data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict
         try:
             index_fh_dict[index][read_num].write(read)
         except IndexError:
-            file_path   = os.path.join(output_directory, "{sample_name}_R{read_num}.fastq".format(sample_name=sample_name, read_num=read_num+1))
+            file_path   = os.path.join(output_directory, "{sample_name}_R{read_num}.fastq".format( \
+                                                           sample_name=sample_name, read_num=read_num+1))
             try:
                 index_fh_dict[index].append(FastQAppender(file_path))
             except IOError as e:
@@ -172,11 +176,13 @@ def data_write_loop(read_1, read_2, sample_name, output_directory, index_fh_dict
                 # File was closed previously
                 index_fh_dict[index][read_num].reopen()
 
+# TODO make this faster
 # TODO compare to Bio.align.pairwise2 for speed
 # TODO possibly @memoize somehow
 def find_dist(str_01, str_02, max_mismatches=None, approach="shorten"):
     """
-    Find the number of mismatches between two strings. The longer string is truncated to the length of the shorter unless approach "lengthen".
+    Find the number of mismatches between two strings. The longer string is truncated
+    to the length of the shorter unless approach is "lengthen".
     """
     if len(str_01) > len(str_02):
         if approach == "lengthen":
@@ -291,8 +297,6 @@ def check_index_distances(index_list, max_mismatches):
         if find_dist(i1, i2, max_mismatches, approach="lengthen") <= max_mismatches:
             print("Warning: indexes \"{}\" and \"{}\" are insufficiently different for the specified number of mismatches ({}). Reads matching either index will be classified as ambiguous.".format(i1, i2, max_mismatches), file=sys.stderr)
 
-
-###
 
 # TODO This doesn't really belong here and should probably be its own module
 def count_top_indexes(count_num, index_file, index_length, progress_interval):
