@@ -34,27 +34,23 @@ class ProjectDB():
     https://docs.google.com/a/scilifelab.se/document/d/1OHRsSI9btaBU4Hb1TiqJ5wwdRqUQ4BAyjJR-Nn5qGHg/edit#"""
     def __init__(self, project_id):
         self.lims_project = Project(lims,id = project_id)
-        self.preps = ProcessInfo(lims.get_processes(projectname = self.lims_project.name, type = AGRLIBVAL.values()))
+        preps = lims.get_processes(projectname = self.lims_project.name, type = AGRLIBVAL.values())
         runs = lims.get_processes(projectname = self.lims_project.name, type = SEQUENCING.values())
-        self.runs = ProcessInfo(runs)
         project_summary = lims.get_processes(projectname = self.lims_project.name, type = SUMMARY.values())
-        self.project = {'source' : 'lims',
-            'samples':{},
-            'open_date' : self.lims_project.open_date,
-            'close_date' : self.lims_project.close_date,
-            'entity_type' : 'project_summary',
-            'contact' : self.lims_project.researcher.email,
-            'project_name' : self.lims_project.name,
-            'project_id' : self.lims_project.id}
-        self.project = get_udfs('details', self.project, self.lims_project.udf.items(), PROJ_UDF_EXCEPTIONS)
-        if dict(self.lims_project.researcher.lab.udf.items()).has_key('Affiliation'):
-            self.project['affiliation'] = dict(self.lims_project.researcher.lab.udf.items())['Affiliation']
+        proj_status = {}
         if len(project_summary) == 1:
-            self.project = get_udfs('project_summary', self.project, project_summary[0].udf.items())
+            for key,val in project_summary[0].udf.items():
+                try: val = val.isoformat()
+                except: pass 
+                proj_status[key.lower().replace(' ','_')] = val
         elif len(project_summary) > 1:
-            print 'Warning. project summary process run more than once'
-
-        #################Temporary solution untill 20158 implemented in lims >>>>>>>>>>>>>>>>>>>>>>>
+            print 'Warning. project summary process run more than once' 
+        print '****'
+        print preps
+        print '****'
+        self.preps = ProcessInfo(preps)
+        self.runs  = ProcessInfo(runs)
+        #Temporary solution untill 20158 implemented in lims >>>>>>>>>>>>>>>>>>>>>>>
         try:
             googledocs_status = load_status_from_google_docs.get(self.lims_project.name)
         except:
@@ -64,7 +60,7 @@ class ProjectDB():
         seq_finished = None
         if self.lims_project.close_date and len(runs) > 0:
             d = '2000-10-10'
-            for run in runs:
+            for run in runs:   
                 try:
                     new_date = dict(run.udf.items())['Finish Date'].isoformat()
                     if comp_dates(d,new_date):
@@ -72,18 +68,39 @@ class ProjectDB():
                     seq_finished = d
                 except:
                     pass
-        self.project['sequencing_finished'] = seq_finished
         #Temporary solution untill 20158 implemented in lims <<<<<<<<<<<<<<<<<<<<<<<
-
-
+        proj_inf = {'source' : 'lims',
+            'sequencing_finished' : seq_finished,
+            'open_date' : self.lims_project.open_date,
+            'close_date' : self.lims_project.close_date,
+            'entity_type' : 'project_summary',
+            'details' : {},
+            'contact' : self.lims_project.researcher.email,
+            'project_name' : self.lims_project.name,
+            'project_id' : self.lims_project.id}
+        if dict(self.lims_project.researcher.lab.udf.items()).has_key('Affiliation'):
+            proj_inf['affiliation'] = dict(self.lims_project.researcher.lab.udf.items())['Affiliation']
+        for key, val in self.lims_project.udf.items():
+            db_key = key.replace(' ','_').lower()
+            try: val = val.isoformat()
+            except: pass
+            try: val=_to_unicode(_from_unicode(val))
+            except: pass
+            if db_key in PROJ_UDF_EXCEPTIONS:
+                proj_inf[db_key] = val
+            else:
+                proj_inf['details'][db_key] = val
+        self.project = dict(proj_inf.items())
+        self.project['project_summary'] = dict(proj_status.items())
         samples = lims.get_samples(projectlimsid = self.lims_project.id)
         self.project['no_of_samples'] = len(samples)
         if len(samples) > 0:
-            self.project['first_initial_qc'] = '3000-10-10'
+            self.project['samples'] = {}
+            self.project['first_initial_qc'] = '3000-10-10' 
             for samp in samples:
-                sampDB = SampleDB(samp.id,
-                                self.project['project_name'],
-                                self.project['application'],
+                sampDB = SampleDB(samp.id, 
+                                self.project['project_name'], 
+                                self.project['application'], 
                                 self.preps.info,
                                 self.runs.info,
                                 googledocs_status) #googledocs_status Temporary solution untill 20158 implemented in lims!!
@@ -96,7 +113,6 @@ class ProjectDB():
                 except:
                     pass
         self.project = delete_Nones(self.project)
-
 
 class ProcessInfo():
     """This class takes a list of process type names. Eg 'Aggregate QC (Library Validation) 4.0'
@@ -153,13 +169,29 @@ class SampleDB():
     A detailed documentation of the source of all values is found in
     https://docs.google.com/a/scilifelab.se/document/d/1OHRsSI9btaBU4Hb1TiqJ5wwdRqUQ4BAyjJR-Nn5qGHg/edit#"""
     def __init__(self, sample_id, project_name, application = None, prep_info = [], run_info = [], googledocs_status = {}): # googledocs_status temporary solution untill 20158 implemented in lims!!
+        if application is None: ##temp
+            application = 'Finished library'
         self.lims_sample = Sample(lims, id = sample_id)
         self.name = self.lims_sample.name
         self.application = application
         self.outin, self.inout = make_sample_artifact_maps(self.name)
-        self.obj = {'scilife_name' : self.name}
-        self.obj = get_udfs('details', self.obj, self.lims_sample.udf.items(), SAMP_UDF_EXCEPTIONS)
-        preps = self.get_initQC_preps_and_libval(prep_info)
+        self.obj = {'scilife_name' : self.name, 'details' : {}}
+        for key,val in self.lims_sample.udf.items():
+            try: val=_to_unicode(_from_unicode(val))
+            except: pass
+            db_key = key.replace(' ','_').lower()
+            try: val = val.isoformat()
+            except: pass
+            if db_key in SAMP_UDF_EXCEPTIONS:
+                self.obj[db_key] = val
+            else:
+                self.obj['details'][db_key] = val
+        if self.application == 'Finished library':
+            preps = self.get_initQC_preps_and_libval_finished_lib(prep_info)
+        else:
+            print 'ssss'
+            preps = self.get_initQC_preps_and_libval(prep_info)
+            print preps
         self.obj['first_prep_start_date'] = self.get_firts_day(self.name, PREPSTART.values() + PREPREPSTART.values())
         self.obj['first_initial_qc_start_date'] = self.get_firts_day(self.name, INITALQC.values())
         if preps:
@@ -183,6 +215,42 @@ class SampleDB():
             pass
         self.obj = delete_Nones(self.obj)
 
+    
+    def get_initQC_preps_and_libval_finished_lib(self, AgrLibQCs):
+        """Input: AgrLibQCs - instance of the ProcessInfo class with AGRLIBVAL processes as argument
+        For each AGRLIBVAL process run on the sample, this function steps bacward in the artifact history of the 
+        output artifact of the AGRLIBVAL process to find the folowing information:
+
+        initial_qc/start_date   The date_run of the first of all INITALQC steps found for in the artifact 
+                                history of the output artifact of one of the AGRINITQC steps.  
+        initial_qc/finish_date  The date_run of the of the AGRINITQC step 
+
+        Preps are  defined by the AGRINITQC step
+
+        prep_status             The qc_flag of the input artifact of process type AGRLIBVAL
+        library_validation/start_date   First of all LIBVAL steps found for in the artifact history 
+                                of the output artifact of one of the AGRLIBVAL step 
+        library_validation/finish_date  date-run of AGRLIBVAL step 
+        average_size_bp         udf ('Size (bp)') of the input artifact to the process AGRLIBVAL"""
+        sample_runs = {}
+        library_prep = {}
+        for AgrLibQC_id, AgrLibQC_info in AgrLibQCs.items():
+            if AgrLibQC_info['samples'].has_key(self.name):
+                inart, outart = AgrLibQC_info['samples'][self.name].items()[0][1]
+                history = get_analyte_hist(outart.id, self.outin, self.inout)
+                sample_runs['initial_qc'] = self.get_initial_qc_dates(history)
+                lib_val_dates = {'start_date': self.get_lib_val_start_dates(history),
+                        'finish_date': AgrLibQC_info['start_date']}
+                prep = {'prep_status':inart.qc_flag,'reagent_labels':self.lims_sample.artifact.reagent_labels}
+                if dict(inart.udf.items()).has_key('Size (bp)'):
+                    prep['average_size_bp'] = dict(inart.udf.items())['Size (bp)']
+                if not library_prep.has_key('Finished'):
+                    library_prep['Finished'] = delete_Nones(prep)
+                    library_prep['Finished']['library_validation'] = {}
+                library_prep['Finished']['library_validation'][AgrLibQC_id] = delete_Nones(lib_val_dates)
+        sample_runs['library_prep'] = delete_Nones(library_prep)
+        return delete_Nones(sample_runs)
+
     def get_firts_day(self, sample_name ,process_list):
         """process_list is a list of process type names, 
         sample_name is a sample name :)"""
@@ -190,95 +258,74 @@ class SampleDB():
         day = date.today().isoformat()
         for a in arts:
             new_day = a.parent_process.date_run
-            if comp_dates(new_day, day):
+            if comp_dates(new_day, day): 
                 day = new_day
         if day==date.today().isoformat():
             day = None
         return day
- 
-        sample_runs['library_prep'] = delete_Nones(library_prep)
-        return delete_Nones(sample_runs)
 
     def get_initQC_preps_and_libval(self, AgrLibQCs):
         """Input: AgrLibQCs - instance of the ProcessInfo class with AGRLIBVAL processes as argument.
         For each AGRLIBVAL process run on the sample, this function steps bacward in the artifact history of the 
         output artifact of the AGRLIBVAL process to find the folowing information:
 
+        initial_qc/start_date           The date_run of the first of all INITALQC steps found for in the artifact 
+                                        history of the output artifact of one of the AGRINITQC steps 
+        initial_qc/finish_date          The date_run of the of the AGRINITQC step 
+
+        Preps are  defined by the date of any PREPSTART step
+
         prep_status                     The qc_flag of the input artifact of process type AGRLIBVAL
         prep_start_date                 The date-run of the PREPSTART step 
         prep_finished_date              The date-run of a PREPEND step.
         pre_prep_start_date             The date-run of process 'Shear DNA (SS XT) 4.0'. Only for 
                                         'Exome capture' projects
-                          
-        Preps are  defined by the date of any PREPSTART step"""
-        initial_qc = {}
-        library_prep ={}
-        top_level_agrlibval_steps = self.get_top_level_agrlibval_steps(AgrLibQCs)
-        for AgrLibQC_id in top_level_agrlibval_steps.keys():
-            AgrLibQC_info = AgrLibQCs[AgrLibQC_id]
-            if AgrLibQC_info['samples'].has_key(self.name):
-                inart, outart = AgrLibQC_info['samples'][self.name].items()[0][1]
-                history = get_analyte_hist(outart.id, self.outin, self.inout)
-                initial_qc = self.get_initial_qc_dates(history)
-                prep_id, prep_info = self.get_lib_prep(history, inart)
-                if not library_prep.has_key(prep_id):
-                    library_prep[prep_id] = prep_info
-                library_prep[prep_id]['library_validation'][AgrLibQC_id] = self.get_libval(history, AgrLibQC_info, inart)
-        return {'library_prep':library_prep,'initial_qc':initial_qc}
-
-    def get_lib_prep(self, history, inart):
-        if self.application == 'Finished library':
-            return 'Finished', {'prep_status':inart.qc_flag,'reagent_labels':self.lims_sample.artifact.reagent_labels,  'library_validation':{}}
-        prep_info = {'prep_status' : inart.qc_flag, 'reagent_labels' : inart.reagent_labels, 'library_validation':{}}
-        libPrep_id = None
-        for step, info in history.items():
-            if info['type'] in PREPREPSTART.keys():
-                libPrep_id = info['id']
-                prep_info['pre_prep_start_date'] = info['date']
-            elif info['type'] in PREPSTART.keys():
-                if self.application !='Exome capture':
-                    libPrep_id = info['id']
-                prep_info['prep_start_date'] = info['date']
-            elif info['type'] in PREPEND.keys():
-                prep_info['prep_finished_date'] = info['date']
-                prep_info['prep_id'] = info['id']
-            elif info['type'] in WORKSET.keys():
-                prep_info['workset_setup'] = info['id']
-        return libPrep_id, prep_info 
-
-    def get_libval(self, history, AgrLibQC_info, inart):
-        """library_validation/start_date   First of all LIBVAL steps found for in the artifact history 
+        library_validation/start_date   First of all LIBVAL steps found for in the artifact history 
                                         of the output artifact of one of the AGRLIBVAL step 
         library_validation/finish_date  date-run of AGRLIBVAL step 
         average_size_bp                 udf ('Size (bp)') of the input artifact to the process AGRLIBVAL"""
-        lib_val_dates = {'start_date' : self.get_lib_val_start_dates(history),
-                         'finish_date' : AgrLibQC_info['start_date']}
-        if dict(inart.udf.items()).has_key('Size (bp)'):
-            size_bp = dict(inart.udf.items())['Size (bp)']
-        else:
-            size_bp = None
-        library_validation = delete_Nones(lib_val_dates)
-        library_validation['average_size_bp'] = size_bp
-        return delete_Nones(library_validation)
-
-    def get_top_level_agrlibval_steps(self, AgrLibQCs):
-        topLevel_AgrLibQC={}
+        sample_runs = {}
+        library_prep ={}
+        print self.name
+        print 'preps ***************'
         for AgrLibQC_id, AgrLibQC_info in AgrLibQCs.items():
             if AgrLibQC_info['samples'].has_key(self.name):
-                topLevel_AgrLibQC[AgrLibQC_id]=[]
+                print AgrLibQC_id
+                print AgrLibQC_info['start_date']
                 inart, outart = AgrLibQC_info['samples'][self.name].items()[0][1]
                 history = get_analyte_hist(outart.id, self.outin, self.inout)
+                sample_runs['initial_qc'] = self.get_initial_qc_dates(history)
+                lib_val_dates = {'start_date' : self.get_lib_val_start_dates(history), #kolla att detta verkligen r den snaste
+                                 'finish_date' : AgrLibQC_info['start_date']}
+                prep = {'prep_status' : inart.qc_flag, 'reagent_labels' : inart.reagent_labels}
+                if dict(inart.udf.items()).has_key('Size (bp)'):
+                     size_bp = dict(inart.udf.items())['Size (bp)']
+                else:
+                    size_bp = None
+                libPrep = None
                 for step, info in history.items():
-                    if info['type'] in LIBVAL.keys():
-                        topLevel_AgrLibQC[AgrLibQC_id].append(step)
-        for AgrLibQC, LibQC in topLevel_AgrLibQC.items():
-            LibQC=set(LibQC)
-            for AgrLibQC_comp, LibQC_comp in topLevel_AgrLibQC.items():
-                LibQC_comp=set(LibQC_comp)
-                if AgrLibQC_comp != AgrLibQC:
-                    if LibQC.issubset(LibQC_comp) and topLevel_AgrLibQC.has_key(AgrLibQC):
-                        topLevel_AgrLibQC.pop(AgrLibQC) 
-        return topLevel_AgrLibQC
+                    if info['type'] in PREPREPSTART.keys():
+                        print info['type']
+                        libPrep = info
+                        prep['pre_prep_start_date'] = info['date']
+                    elif info['type'] in PREPSTART.keys():
+                        print info['type']
+                        if self.application !='Exome capture':
+                            libPrep = info
+                        prep['prep_start_date'] = info['date']
+                    elif info['type'] in PREPEND.keys():
+                        prep['prep_finished_date'] = info['date']
+                        prep['prep_id'] = info['id']
+                    elif info['type'] in WORKSET.keys():
+                        prep['workset_setup'] = info['id']
+                if libPrep:
+                    if not library_prep.has_key(libPrep['id']):
+                        library_prep[libPrep['id']] = delete_Nones(prep)
+                        library_prep[libPrep['id']]['library_validation'] = {}
+                    library_prep[libPrep['id']]['library_validation'][AgrLibQC_id] = delete_Nones(lib_val_dates)
+                    library_prep[libPrep['id']]['library_validation'][AgrLibQC_id]['average_size_bp'] = size_bp
+        sample_runs['library_prep'] = delete_Nones(library_prep)
+        return delete_Nones(sample_runs)
 
     def get_prep_leter(self, prep_info):
         """Get preps and prep names; A,B,C... based on prep dates for sample_name. 
