@@ -174,8 +174,8 @@ def _set_roles(server):
     security_obj['admins']['roles'] = config.roles['admins']
     security_obj['members']['roles'] = config.roles['members']
 
-    l.info("Setting roles to destination databases: {}".format(str(security_obj)))
     s_couch, d_couch, s_dbs, d_dbs = _get_databases_info(source, destination)
+    l.info("Setting roles to destination databases: {}".format(str(security_obj)))
     for db in d_dbs:
         d_couch[db].resource.put('_security', security_obj)
 
