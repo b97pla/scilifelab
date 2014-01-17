@@ -14,21 +14,44 @@ from couchdb import PreconditionFailed
 #Set up logging
 l = minimal_logger("CouchDB replicator")
 
-def _get_config():
-    """Looks for a configuration file and load credentials.
+class Config(object):
+    """Singleton class that holds the confiuration for the CouchDB replicator.
     """
-    config = ConfigParser.SafeConfigParser()
-    try:
-        with open(os.path.join(os.environ['HOME'], '.couchrc'), 'r') as f:
-            config.readfp(f)
 
-        SOURCE = config.get('replication', 'SOURCE').rstrip()
-        DESTINATION = config.get('replication', 'DESTINATION').rstrip()
-    except:
-        l.error("Please make sure you've created your own configuration file \
-            (i.e: ~/.couchrc)")
-        sys.exit(-1)
-    return SOURCE, DESTINATION
+    _instance = None
+
+    def __new__(self, *args, **kwargs):
+        if not self._instance:
+            self._instance = super(Config, self).__new__(self, *args, **kwargs)
+        return self._instance
+
+
+    def __init__(self, config_file=None):
+        config = ConfigParser.SafeConfigParser()
+        try:
+            if not config_file:
+                config_file = os.path.join(os.environ['HOME'], '.couchrc')
+            with open(config_file, 'r') as f:
+                config.readfp(f)
+
+            self.source = config.get('replication', 'SOURCE').rstrip()
+            self.destination = config.get('replication', 'DESTINATION').rstrip()
+        except:
+            l.error("Please make sure you've created your own configuration file \
+                (i.e: ~/.couchrc), and that it contains a source and a destination servers")
+            sys.exit(-1)
+
+        self.exceptions = [] if not config.has_section('exceptions') else \
+                [exception for _, exception in config.items('exceptions')]
+
+        self.roles = {"members": [],
+                      "admins": []
+                      }
+        if config.has_section('roles'):
+            if config.has_option('roles', 'members'):
+                self.roles['members'] = config.get('roles', 'members').split(',')
+            if config.has_option('roles', 'admins'):
+                self.roles['admins'] = config.get('roles', 'admins').split(',')
 
 
 def _get_databases_info(source, destination):
@@ -88,13 +111,14 @@ def _setup_continuous(source, destination, copy_security):
     l.info("DONE!")
 
 
-def _clone(source, destination, copy_security):
+def _clone(source, destination, copy_security, with_exceptions=False):
     """Creates a complete clone of source in destination.
 
     WARNING: This action will remove ALL content from destination.
     """
     l.info("Performing a complete clone from source to destination")
     s_couch, d_couch, s_dbs, d_dbs = _get_databases_info(source, destination)
+    config = Config()
 
     #Delete all databases in destination
     l.info("Removing all databases from destination")
@@ -116,8 +140,46 @@ def _clone(source, destination, copy_security):
         if copy_security:
             l.info("Copying security object to {} database in destination".format(db))
             d_couch[db].resource.put('_security', security)
+        if with_exceptions:
+            exceptions = config.exceptions
+            if not exceptions:
+                l.warn("--with-exceptions option was present, but didn't find " \
+                        "any EXCEPTIONS list in your .couchrc file.")
+            else:
+                l.info("--with-exceptions option was present, removing following documents: {}".format(", ".join(exceptions)))
+                for exception in exceptions:
+                    try:
+                        d_couch[db].delete(d_couch[db].get(exception))
+                    except:
+                        l.warn("Document {} not found, not deleteing".format(exception))
+
 
     l.info("DONE!")
+
+
+def _set_roles(server):
+    """Apply the list of roles present in .couchrc to all databases in the server.
+    """
+    security_obj = {"admins": {
+                        "names":[],
+                        "roles":[]
+                        },
+                    "members": {
+                        "names":[],
+                        "roles":[]
+                        }
+                    }
+
+    config = Config()
+    security_obj['admins']['roles'] = config.roles['admins']
+    security_obj['members']['roles'] = config.roles['members']
+
+    l.info("Setting roles to destination databases: {}".format(str(security_obj)))
+    s_couch, d_couch, s_dbs, d_dbs = _get_databases_info(source, destination)
+    for db in d_dbs:
+        d_couch[db].resource.put('_security', security_obj)
+
+
 
 
 if __name__ == "__main__":
@@ -143,15 +205,23 @@ if __name__ == "__main__":
             with the credentials included in the URL. I.E: http://admin:passw@destination_db:5984")
     parser.add_argument('--no-security', action='store_const', const=True, \
             help='Do not copy security objects')
+    parser.add_argument('--with-exceptions', action='store_const', const=True, \
+            help='List of files to be deleted from the DataBases after being copied. ' \
+            'To be specified in your .couchrc file')
+    parser.add_argument('--set-roles', action='store_const', const=True, \
+            help='List of roles to apply to  each database after copied. Only if' \
+            '--no-security is present.')
 
     args = parser.parse_args()
     source = args.source
     destination = args.destination
     copy_security = False if args.no_security else True
     action = args.action
+    config = Config()
 
     if not all([source, destination]):
-        source, destination = _get_config()
+        source = config.source
+        destination = config.destination
 
     actions = ['continuous', 'clone']
     if action not in actions:
@@ -162,5 +232,11 @@ if __name__ == "__main__":
     if action == "continuous":
         _setup_continuous(source, destination, copy_security)
     else:
-        _clone(source, destination, copy_security)
+        _clone(source, destination, copy_security, with_exceptions=args.with_exceptions)
+        if args.set_roles:
+            if not args.no_security:
+                l.warn('--set-roles option only takes effect if applied together ' \
+                        'with --no-security. Ignoring it')
+            else:
+                _set_roles(destination)
 
