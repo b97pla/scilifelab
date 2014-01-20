@@ -41,7 +41,7 @@ def minimal_logger(namespace, extra_fields=None, debug=False):
                 extra_fields=extra_fields, level=logbook.INFO, bubble=True)
         log.handlers.append(r_h)
     except:
-        log.warn('Not loading RedisHandler')
+        log.debug('Not loading RedisHandler')
         pass
 
     # FIX ME: really don't want to hard check sys.argv like this but
