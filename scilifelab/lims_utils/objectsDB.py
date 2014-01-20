@@ -55,12 +55,18 @@ class ProjectDB():
             print 'Warning. project summary process run more than once'
 
         #################Temporary solution untill 20158 implemented in lims >>>>>>>>>>>>>>>>>>>>>>>
-        try:
-            googledocs_status = load_status_from_google_docs.get(self.lims_project.name)
-        except:
+        ## can be reooved when all project opened before 2014-01-27 have been closed for more than 60 days
+        ## then we also need to block old projects so that they are not overwriten in case of someone manualy 
+        ## updating it with the -p flagg
+        opened = self.lims_project.open_date
+        if opened:
             googledocs_status = {}
-            print 'issues finding status from 20158'
-            pass
+            if comp_dates(opened, '2014-01-27'):
+                try:
+                    googledocs_status = load_status_from_google_docs.get(self.lims_project.name)
+                except:
+                    print 'issues finding status from 20158'
+                    pass
         seq_finished = None
         if self.lims_project.close_date and len(runs) > 0:
             d = '2000-10-10'
@@ -161,7 +167,10 @@ class SampleDB():
         self.obj = get_udfs('details', self.obj, self.lims_sample.udf.items(), SAMP_UDF_EXCEPTIONS)
         preps = self.get_initQC_preps_and_libval(prep_info)
         self.obj['first_prep_start_date'] = self.get_firts_day(self.name, PREPSTART.values() + PREPREPSTART.values())
-        self.obj['first_initial_qc_start_date'] = self.get_firts_day(self.name, INITALQC.values())
+        if self.application == 'Finished library':
+            self.obj['first_initial_qc_start_date'] = self.get_firts_day(self.name, INITALQCFINISHEDLIB.values())
+        else:
+            self.obj['first_initial_qc_start_date'] = self.get_firts_day(self.name, INITALQC.values())
         if preps:
             runs = self.get_sample_run_metrics(run_info, preps)
             if preps.has_key('library_prep'):
@@ -251,14 +260,11 @@ class SampleDB():
                                         of the output artifact of one of the AGRLIBVAL step 
         library_validation/finish_date  date-run of AGRLIBVAL step 
         average_size_bp                 udf ('Size (bp)') of the input artifact to the process AGRLIBVAL"""
-        lib_val_dates = {'start_date' : self.get_lib_val_start_dates(history),
+        library_validation = {'start_date' : self.get_lib_val_start_dates(history),
                          'finish_date' : AgrLibQC_info['start_date']}
-        if dict(inart.udf.items()).has_key('Size (bp)'):
-            size_bp = dict(inart.udf.items())['Size (bp)']
-        else:
-            size_bp = None
-        library_validation = delete_Nones(lib_val_dates)
-        library_validation['average_size_bp'] = size_bp
+        for key, val in inart.udf.items():
+            key = key.replace(' ', '_').lower()
+            library_validation[key] = val   
         return delete_Nones(library_validation)
 
     def get_top_level_agrlibval_steps(self, AgrLibQCs):
