@@ -394,7 +394,7 @@ class FlowcellRunMetricsConnection(Couch):
         super(FlowcellRunMetricsConnection, self).__init__(**kwargs)
         self.db = self.con[dbname]
         self.name_view = {k.key:k.id for k in self.db.view("names/name", reduce=False)}
-        self.id_view = {k.key:k.value for k in self.db.view("info/storage_status")}
+        self.storage_status_view = {k.key:k.value for k in self.db.view("info/storage_status")}
         self.stat_view = {k.key:k.value for k in self.db.view("names/Barcode_lane_stat", reduce=False)}
 
     def set_db(self):
@@ -476,7 +476,7 @@ class FlowcellRunMetricsConnection(Couch):
         """Get all runs with the specified storage status.
         """
         self.log.info("Fetching all Flowcells with storage status \"{}\"".format(status))
-        return {run: info for run, info in self.id_view.iteritems() if info.get("storage_status") == status}
+        return {run: info for run, info in self.storage_status_view.iteritems() if info.get("storage_status") == status}
 
     def set_storage_status(self, run, doc_id, status):
         """Sets the run storage status.
