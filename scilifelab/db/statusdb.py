@@ -393,7 +393,8 @@ class FlowcellRunMetricsConnection(Couch):
         super(FlowcellRunMetricsConnection, self).__init__(**kwargs)
         self.db = self.con[dbname]
         self.name_view = {k.key:k.id for k in self.db.view("names/name", reduce=False)}
-	self.stat_view = {k.key:k.value for k in self.db.view("names/Barcode_lane_stat", reduce=False)}
+        self.id_view = {k.key:k.value for k in self.db.view("info/storage_status")}
+        self.stat_view = {k.key:k.value for k in self.db.view("names/Barcode_lane_stat", reduce=False)}
 
     def set_db(self):
         """Make sure we don't change db from flowcells"""
@@ -469,6 +470,11 @@ class FlowcellRunMetricsConnection(Couch):
             return None
         reads = fc.get('RunInfo', {}).get('Reads', [])
         return len([read for read in reads if read.get('IsIndexedRead','N') == 'N']) == 2
+
+    def get_status(self, status):
+        """Get all runs with the specified storage status.
+        """
+        return {run: info for run, info in self.id_view.iteritems() if info.get("status") == status}
 
 
 class ProjectSummaryConnection(Couch):
