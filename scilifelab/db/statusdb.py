@@ -5,6 +5,7 @@ from itertools import izip
 from scilifelab.db import Couch
 from scilifelab.utils.timestamp import utc_time
 from scilifelab.utils.misc import query_yes_no
+from scilifelab.db.statusDB_utils import save_couchdb_obj
 from uuid import uuid4
 from scilifelab.log import minimal_logger
 
@@ -471,10 +472,27 @@ class FlowcellRunMetricsConnection(Couch):
         reads = fc.get('RunInfo', {}).get('Reads', [])
         return len([read for read in reads if read.get('IsIndexedRead','N') == 'N']) == 2
 
-    def get_status(self, status):
+    def get_storage_status(self, status):
         """Get all runs with the specified storage status.
         """
-        return {run: info for run, info in self.id_view.iteritems() if info.get("status") == status}
+        self.log.info("Fetching all Flowcells with storage status \"{}\"".format(status))
+        return {run: info for run, info in self.id_view.iteritems() if info.get("storage_status") == status}
+
+    def set_storage_status(self, run, doc_id, status):
+        """Sets the run storage status.
+        """
+        self.log.info("Setting storage status to {} for the run {}".format(status, run))
+        db_run = self.db.get(doc_id)
+        if not db_run:
+            self.log.error("Document with id {} not found, could not update the " \
+                           "storage status")
+        else:
+            self.log.info("Updatin storage status of run {} from {} to {}".format(
+                            db_run.get('RunInfo').get('Id'), db_run.get('storage_status'), status))
+            db_run['storage_status'] = status
+            save_couchdb_obj(self.db, db_run)
+
+
 
 
 class ProjectSummaryConnection(Couch):
