@@ -27,10 +27,12 @@ INITALQC = {'63' : 'Quant-iT QC (DNA) 4.0',
     '48' : 'NanoDrop QC (DNA) 4.0'}
 AGRINITQC = {'7' : 'Aggregate QC (DNA) 4.0',
     '9' : 'Aggregate QC (RNA) 4.0'}
+PREPREPSTART = {"74": "Shear DNA (SS XT) 4.0"}
 PREPSTART = {'10' : 'Aliquot Libraries for Hybridization (SS XT)',
     '47' : 'mRNA Purification, Fragmentation & cDNA synthesis (TruSeq RNA) 4.0',
-    '33' : 'Fragment DNA (TruSeq DNA) 4.0'}
-PREPEND = {'111' : 'Amplify Captured Libraries to Add Index Tags (SS XT) 4.0',
+    '33' : 'Fragment DNA (TruSeq DNA) 4.0',
+    '117' : 'Applications Generic Process'}
+PREPEND = {'157': 'Applications Finish Prep',
     '109' : 'CA Purification'}
 LIBVAL = {'62' : 'qPCR QC (Library Validation) 4.0',
     '64' : 'Quant-iT QC (Library Validation) 4.0',
@@ -38,10 +40,48 @@ LIBVAL = {'62' : 'qPCR QC (Library Validation) 4.0',
     '20' : 'CaliperGX QC (DNA)',
     '17' : 'Bioanalyzer QC (Library Validation) 4.0'}
 AGRLIBVAL = {'8': 'Aggregate QC (Library Validation) 4.0'}
-SEQSTART = {'40' : 'Library Normalization (MiSeq) 4.0',
+SEQSTART = {'23':'Cluster Generation (Illumina SBS) 4.0',
+    '26':'Denature, Dilute and Load Sample (MiSeq) 4.0'}
+DILSTART = {'40' : 'Library Normalization (MiSeq) 4.0',
     '39' : 'Library Normalization (Illumina SBS) 4.0'}
 SEQUENCING = {'38' : 'Illumina Sequencing (Illumina SBS) 4.0',
     '46' : 'MiSeq Run (MiSeq) 4.0'}
+WORKSET = {'204' : 'Setup Workset/Plate'}
+SUMMARY = {'404' : 'Project Summary 1.3'}
+
+PROJ_UDF_EXCEPTIONS = ['customer_reference','uppnex_id','reference_genome','application']
+
+SAMP_UDF_EXCEPTIONS = ['customer_name','reads_requested_(millions)','min_reads','m_reads','dup_rm','status_auto','status_manual','average_size_bp','incoming_qc_status']
+
+def get_udfs(udf_key, obj, udfs, exeptions = []):
+    """Transforms udf names to statusdb keys (underscore and lowercase) and places them under
+    details in obj. If exeptions are pased as argument, those will be placed on the 
+    top level of obj
+
+    Arguments:
+    udf_key     string. name of key under wich udfs are collected.
+    obj         dictionary. Eg instance of the Samples or Project classes
+    udfs        udf dictionary
+    exeptions   list of exception udf keys (underscore and lowercase)"""
+    if not obj.has_key(udf_key):
+        obj[udf_key]={}
+    for key,val in udfs:
+        try:
+            val=_to_unicode(_from_unicode(val))
+        except:
+            pass
+        db_key = key.replace(' ','_').lower()
+        try:
+            val = val.isoformat()
+        except:
+            pass
+        if db_key in exeptions:
+            obj[db_key] = val
+        else:
+            obj[udf_key][db_key] = val
+    return obj
+
+
 
 def get_sequencing_info(fc):
     """Input: a process object 'fc', of type 'Illumina Sequencing (Illumina SBS) 4.0',
