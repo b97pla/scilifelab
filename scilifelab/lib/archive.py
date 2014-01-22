@@ -8,6 +8,8 @@ import shlex
 from cStringIO import StringIO
 from fabric.api import task, run, execute, cd, settings, local
 from fabric.network import disconnect_all
+from datetime import datetime
+
 from scilifelab.utils.misc import filtered_walk
 from scilifelab.utils.misc import query_yes_no, md5sum
 
@@ -134,11 +136,21 @@ def package_run(arch, root, flowcell, workdir=None, excludes=None, compress_prog
         arch.log.info("Creating non-existing working directory {}".format(workdir))
         arch.app.cmd.safe_makedir(workdir)
 
-    if check_finished and not os.path.exists(os.path.join(root, flowcell,
-        'RTAComplete.txt')):
-        arch.log.error("check_finished option was enabled and the run has not " \
-            "finished synching yet.")
-        return None
+    if check_finished:
+        if not os.path.exists(os.path.join(root, flowcell, 'RTAComplete.txt')):
+            arch.log.error("check_finished option was enabled and the run has not " \
+                "finished synching yet.")
+            return None
+        else:
+            #Even if RTAComplete.txt is present we give a threashold of 24 hours
+            #just in case we're transfering the whole run. We cannot ensure that
+            #RTAComplete.txt is the last file to be transfered
+            stats = os.stats(os.path.join(root, flowcell, 'RTAComplete.txt'))
+            mod_time = datetime.now() - datetime.fromtimestamp(stats.st_mtime)
+            if not mod_time.days:
+                arch.log.warn("RTAComplete.txt file is present, but it is not " \
+                              "older than 1 day. Not packaging the run.")
+                return None
 
     dest_path = os.path.join(workdir,"{}.tar{}".format(flowcell,arch._meta.compress_suffix))
     dest_path_md5 = "{}.md5".format(dest_path)
