@@ -101,6 +101,13 @@ def find_proj_from_view(proj_db, project_name):
             return proj.value
     return None
 
+def find_proj_from_samp(proj_db, sample_name):
+    view = proj_db.view('samples/sample_project_name')
+    for samp in view:
+        if samp.key == sample_name:
+            return samp.value
+    return None
+
 def find_samp_from_view(samp_db, proj_name):
     view = samp_db.view('names/id_to_proj')
     samps = {}
