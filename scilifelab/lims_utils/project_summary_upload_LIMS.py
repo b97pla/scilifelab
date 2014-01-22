@@ -28,10 +28,8 @@ def  main(proj_name, all_projects, days, conf):
         for proj in projects:
             LOG.info(proj.name)
             try:
-                closed = proj.close_date
                 closed = date(*map(int, proj.close_date.split('-')))
-                days_closed = today-closed
-                days_closed = days_closed.days 
+                days_closed = (today-closed).days
             except:
                 days_closed = 0
             opened = proj.open_date
@@ -85,7 +83,7 @@ if __name__ == '__main__':
     help = "Upload all Lims projects into couchDB. Don't use with -f flagg.")
 
     parser.add_option("-d", "--days", dest="days", default=60,         
-    help="Projects with a close_date older than DAYS days are not updated. Default is 30 days. Use with -a flagg")
+    help="Projects with a close_date older than DAYS days are not updated. Default is 60 days. Use with -a flagg")
 
     parser.add_option("-c", "--conf", dest="conf", 
     default=os.path.join(os.environ['HOME'],'opt/config/post_process.yaml'),         

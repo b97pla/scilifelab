@@ -46,8 +46,7 @@ def  main(flowcell, all_flowcells,days,conf):
             except:
                 pass
     elif flowcell is not None:
-       #try:
-        if 1==1:
+        try:
             if '-' in flowcell:
                 flowcell_name = flowcell
                 fc = lims.get_processes(type = 'MiSeq Run (MiSeq) 4.0', udf = {'Flow Cell ID' : flowcell_name})[0]
@@ -63,8 +62,8 @@ def  main(flowcell, all_flowcells,days,conf):
                 info = save_couchdb_obj(fc_db, dbobj)
                 LOG.info('flowcell %s %s : _id = %s' % (flowcell_name, info, key))
                 
-#       except:
-#            pass
+        except:
+            pass
 
 if __name__ == '__main__':
     usage = "Usage:       python flowcell_summary_upload_LIMS.py [options]"

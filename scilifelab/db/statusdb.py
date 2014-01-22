@@ -510,7 +510,7 @@ class ProjectSummaryConnection(Couch):
     def get_project_sample(self, project_name, barcode_name=None, extensive_matching=False):
         """Get project sample name for a SampleRunMetrics barcode_name.
 
-        :param project_id: the project name
+        :param project_name: the project name
         :param barcode_name: the barcode name of a sample run
         :param extensive_matching: do extensive matching of barcode names
 
