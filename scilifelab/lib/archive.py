@@ -145,7 +145,7 @@ def package_run(arch, root, flowcell, workdir=None, excludes=None, compress_prog
             #Even if RTAComplete.txt is present we give a threashold of 24 hours
             #just in case we're transfering the whole run. We cannot ensure that
             #RTAComplete.txt is the last file to be transfered
-            stats = os.stats(os.path.join(root, flowcell, 'RTAComplete.txt'))
+            stats = os.stat(os.path.join(root, flowcell, 'RTAComplete.txt'))
             mod_time = datetime.now() - datetime.fromtimestamp(stats.st_mtime)
             if not mod_time.days:
                 arch.log.warn("RTAComplete.txt file is present, but it is not " \
