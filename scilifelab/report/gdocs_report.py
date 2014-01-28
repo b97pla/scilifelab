@@ -120,6 +120,9 @@ def summarize_project(ssheet, project_data=None):
             # Skip a QC worksheet
             if wsheet_title.endswith("_QC"):
                 continue
+            # Skip a pre-existing Summary worksheet
+            if wsheet_title == "Summary":
+                continue
             
             # Skip a worksheet if it doesn't have the [DATE]_[FCID] name pattern
             s = wsheet_title.split("_")
@@ -160,9 +163,9 @@ def summarize_project(ssheet, project_data=None):
             sample_summary['Lane'] = sample_summary.get('Lane',"").split(";") + [sample.get('Lane','')]
             sample_summary['Lane'] = ";".join([s for s in sample_summary['Lane'] if len(s) > 0])
             
-            sample_summary['Total reads'] = sample_summary.get('Total reads',0) + int(sample.get('Total reads',sample.get('Read (pair) count',0)))
-            sample_summary['Read pair count'] = sample_summary.get('Read pair count',0) + int(sample.get('Read pair count',sample.get('Read (pair) count',0)))
-            sample_summary['Read pairs (Mbases)'] = sample_summary.get('Read pairs (Mbases)',0) + float(sample.get('Read pairs (Mbases)',sample.get('Read (pair) count (millions)',0)))
+            sample_summary['Total reads'] = sample_summary.get('Total reads',0) + int(sample.get('Total reads',sample.get('Read pair count',0)))
+            sample_summary['Read pair count'] = sample_summary.get('Read pair count',0) + int(sample.get('Read pair count',sample.get('Read pair count',0)))
+            sample_summary['Read pairs (Mbases)'] = sample_summary.get('Read pairs (Mbases)',0) + float(sample.get('Read pairs (Mbases)',sample.get('Read pair count (millions)',0)))
             
             sample_summary['Barcode sequence'] = sample_summary.get('Barcode sequence',"").split(";") + [sample.get('Barcode sequence','')]
             sample_summary['Barcode sequence'] = ";".join([s for s in sample_summary['Barcode sequence'] if len(s) > 0])
