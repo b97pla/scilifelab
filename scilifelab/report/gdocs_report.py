@@ -117,9 +117,6 @@ def summarize_project(log, ssheet, project_data=None):
             # Skip a QC worksheet
             if wsheet_title.endswith("_QC"):
                 continue
-            # Skip a pre-existing Summary worksheet
-            if wsheet_title == "Summary":
-                continue
             
             # Skip a worksheet if it doesn't have the [DATE]_[FCID] name pattern
             s = wsheet_title.split("_")
