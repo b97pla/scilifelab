@@ -10,6 +10,7 @@ Flowcell summary - ${flowcell.Flowcell}
 :Setup: ${flowcell.run_setup}
 :Index setup: ${flowcell.index_setup()}
 
-${flowcell.flowcell_lane_summary_table}
+${flowcell.flowcell_lane_summary_table(project.flowcell_lanes.get(flowcell.name))}
+
 
 
