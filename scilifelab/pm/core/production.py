@@ -3,9 +3,13 @@
 import os
 import re
 import yaml
+import platform
+import time
+import glob
+import shutil
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractExtendedBaseController
-from scilifelab.utils.misc import query_yes_no, filtered_walk
+from scilifelab.utils.misc import query_yes_no, filtered_walk, last_lines
 from scilifelab.bcbio import prune_pp_platform_args
 from scilifelab.bcbio.flowcell import Flowcell
 from scilifelab.bcbio.status import status_query
@@ -33,7 +37,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
         group.add_argument('--to_pre_casava', help="Use pre-casava directory structure for delivery", action="store_true", default=False)
         group.add_argument('--transfer_dir', help="Transfer data to transfer_dir instead of sample_prj dir", action="store", default=None)
         base_app.args.add_argument('--brief', help="Output brief information from status queries", action="store_true", default=False)
-    
+
     def _process_args(self):
         # Set root path for parent class
         ## FIXME: use abspath?
@@ -76,10 +80,10 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
         for s in samples:
             fc = Flowcell(s)
             fc_new = fc.subset("sample_prj", self.pargs.project)
-            fc_new.collect_files(os.path.dirname(s))        
+            fc_new.collect_files(os.path.dirname(s))
             fc_list.append(fc_new)
         return fc_list
-            
+
     def _to_casava_structure(self, fc):
         transfer_status = {}
         outdir_pfx = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project, "data"))
@@ -120,7 +124,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                 continue
             self.app.cmd.safe_unlink(pp)
             self.app.cmd.write(pp, yaml.safe_dump(newconf, default_flow_style=False, allow_unicode=True, width=1000))
-            
+
         # Write transfer summary
         self.app._output_data["stderr"].write("Transfer summary\n")
         self.app._output_data["stderr"].write("{:<18}{:>18}{:>18}\n".format("Sample","Transferred files", "Results"))
@@ -158,16 +162,16 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
             self.log.warn("No run information available for {}".format(self.pargs.flowcell))
             return
         fc_new = fc.subset("sample_prj", self.pargs.project)
-        fc_new.collect_files(indir)        
+        fc_new.collect_files(indir)
         return fc_new
 
     def _prune_sequence_files(self, flist):
         """Sometimes fastq and fastq.gz files are present for the same
         read. Make sure only one file is used, giving precedence to
         the zipped file.
-        
+
         :param flist: list of files
-        
+
         :returns: pruned list of files
         """
         samples = {k[0]:{} for k in [strip_extensions(x, ['.gz']) for x in flist]}
@@ -208,7 +212,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
             else:
                 self._to_casava_structure(fc)
 
-    ## Command for touching file that indicates finished samples 
+    ## Command for touching file that indicates finished samples
     @controller.expose(help="Touch finished samples. Creates a file FINISHED_AND_DELIVERED with a utc time stamp.")
     def touch_finished(self):
         if not self._check_pargs(["project", "sample"]):
@@ -241,7 +245,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                 t_utc = utc_time()
                 fh.write(t_utc)
 
-    ## Command for removing samples that have a FINISHED_FILE flag 
+    ## Command for removing samples that have a FINISHED_FILE flag
     @controller.expose(help="Remove finished samples for a project. Searches for FINISHED_AND_DELIVERED and removes sample contents if file is present.")
     def remove_finished(self):
         if not self._check_pargs(["project"]):
@@ -264,7 +268,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                 continue
             if len(flist) > 0 and not query_yes_no("Will remove directory {} containing {} files; continue?".format(s, len(flist)), force=self.pargs.force):
                 continue
-            self.app.log.info("Removing {} files from {}".format(len(flist), spath))            
+            self.app.log.info("Removing {} files from {}".format(len(flist), spath))
             for f in flist:
                 if f == os.path.join(spath, FINISHED_FILE):
                     continue
@@ -276,4 +280,45 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                 with open(os.path.join(spath, REMOVED_FILE), "w") as fh:
                     t_utc = utc_time()
                     fh.write(t_utc)
-        
+
+    @controller.expose(help="Cleans up the storage systems for production environment. " \
+            "It will distinguish between primary storage systems (i.e production NAS) " \
+            "and analysis machines (i.e b5/UPPMAX)")
+    def storage_cleanup(self):
+        storage_conf = self.app.config.get_section_dict('storage')
+        servers = [server for server in storage_conf.keys()]
+        server = platform.node().split('.')[0]
+        if server in servers:
+            self.app.log.info("Performing cleanup on production server \"{}\"...".format(server))
+            dirs = [d.lstrip() for d in storage_conf.get(server).split(',')]
+            #Collect finished runs
+            fc_list = []
+            for d in dirs:
+                fcs = glob.glob(os.path.join(d, '1*'))
+                for fc in fcs:
+                    if os.path.exists(os.path.join(fc, 'RTAComplete.txt')):
+                        fc_list.append(fc)
+
+            #NAS servers have to check for the status of lsync process. As it may
+            #happen that we check the lsync log when it is being written, we'll
+            #try several times
+            if 'nas' in server:
+                retries = 5
+                for fc in fc_list:
+                    fc_name = os.path.basename(fc)
+                    while retries:
+                        if 'Finished' in last_lines(storage_conf.get('lsyncd_log'), 1)[0]:
+                            break
+                        retries -= 1
+                        time.sleep(3)
+                    if retries:
+                        self.app.log.info("lsyncd process seems to be up to speed, and run {} " \
+                                "is finished, moving it to nosync".format(fc_name))
+                        shutil.move(fc, os.path.join(os.path.dirname(fc), 'nosync'))
+
+                    else:
+                        self.app.log.warn("lsyncd process doesn't seem to be finished. " \
+                                "Skipping run {}".format(os.path.basename(fc)))
+        else:
+            self.app.log.warn("You're running the cleanup functionality in {}. But this " \
+                    "server doen't seem to be on your pm.conf file. Are you on the correct server?")
