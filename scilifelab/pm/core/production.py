@@ -291,20 +291,16 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
     def storage_cleanup(self):
         storage_conf = self.app.config.get_section_dict('storage')
         db_info = self.app.config.get_section_dict('db')
+        f_conn = FlowcellRunMetricsConnection(username=db_info.get('user'),
+                                              password=db_info.get('password'),
+                                              url=db_info.get('url'))
         servers = [server for server in storage_conf.keys()]
         server = platform.node().split('.')[0]
         if server in servers:
             self.app.log.info("Performing cleanup on production server \"{}\"...".format(server))
             dirs = [d.lstrip() for d in storage_conf.get(server).split(',')]
 
-            #Collect newly finished runs
-            fc_list = []
-            for d in dirs:
-                for fc in glob.glob(os.path.join(d, '1*')):
-                    if os.path.exists(os.path.join(fc, 'RTAComplete.txt')):
-                        fc_list.append(fc)
-
-            #Collect old runs (> 30 days in nosync folder)to remove
+            #Collect old runs (> 30 days in nosync folder) to remove
             old_runs = []
             for d in dirs:
                 nosync_dir = os.path.join(d, 'nosync')
@@ -315,7 +311,14 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                         old_runs.append(fc)
 
             #NAS servers
-            if 'gui' in server:
+            if 'nas' in server:
+                #Collect newly finished runs
+                fc_list = []
+                for d in dirs:
+                    for fc in glob.glob(os.path.join(d, '1*')):
+                        if os.path.exists(os.path.join(fc, 'RTAComplete.txt')):
+                            fc_list.append(fc)
+
                 #Move to nosync
                 retries = 5
                 for fc in fc_list:
@@ -332,7 +335,8 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                         #Touch RTAComplete.txt file to that the modification date is the date when
                         #it was moved to nosync
                         open(os.path.join(os.path.dirname(fc), 'nosync', os.path.basename(fc), 'RTAComplete.txt'), 'w').close()
-
+                        fc_db_id = f_conn.id_view.get(fc_name)
+                        f_conn.set_storage_status(fc_db_id, 'NAS_nosync')
                     else:
                         self.app.log.warn("lsyncd process doesn't seem to be finished. " \
                                 "Skipping run {}".format(os.path.basename(fc)))
@@ -341,21 +345,36 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                 for fc in old_runs:
                     fc_name = os.path.basename(fc)
                     #Check that the run has been archived in swestore before removing permanently
-                    f_conn = FlowcellRunMetricsConnection(username=db_info.get('user'),
-                                                          password=db_info.get('password'),
-                                                          url=db_info.get('url'))
                     if fc_name in f_conn.get_storage_status('swestore_archived').keys():
                         self.app.log.info("Run {} has been in nosync for more than 30 days " \
                             "and is archived in swestore. Permanently removing it from the NAS".format(fc_name))
                         shutil.rmtree(fc)
                     else:
                         self.app.log.warn("Run {} has been in nosync for more than 30 " \
-                            "days, but is not yet archived in swestore. " \
+                            "days, but has not yet been archived in swestore. " \
                             "Not removing, please check it".format(fc_name))
 
-            #For the rest of the production servers, check that the processing has finished
+            #Processing servers (b5)
             else:
-                pass
+                #Collect finished runs
+                fc_list = []
+                for d in dirs:
+                    for fc in glob.glob(os.path.join(d, '1*')):
+                        if os.path.exists(os.path.join(fc, 'second_read_processing_completed.txt')):
+                            fc_list.append(fc)
+
+                #Move to nosync
+                for fc in fc_list:
+                    fc_name = os.path.basename(fc)
+                    self.app.log.info("Moving run {} to nosync".format(fc_name))
+                    shutil.move(fc, os.path.join(os.path.dirname(fc), 'nosync'))
+
+                #Remove old runs
+                for fc in old_runs:
+                    fc_name = os.path.basename(fc)
+                    self.app.log.info("Run {} has been in nosync for more than 30 " \
+                        "days, permanently removing it from {}".format(fc_name, server))
+                    shutil.rmtree(fc)
         else:
             self.app.log.warn("You're running the cleanup functionality in {}. But this " \
                     "server doen't seem to be on your pm.conf file. Are you on the correct server?")
