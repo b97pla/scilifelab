@@ -395,6 +395,7 @@ class FlowcellRunMetricsConnection(Couch):
         self.db = self.con[dbname]
         self.name_view = {k.key:k.id for k in self.db.view("names/name", reduce=False)}
         self.storage_status_view = {k.key:k.value for k in self.db.view("info/storage_status")}
+        self.id_view = {k.key:k.value for k in self.db.view("info/id")}
         self.stat_view = {k.key:k.value for k in self.db.view("names/Barcode_lane_stat", reduce=False)}
 
     def set_db(self):
