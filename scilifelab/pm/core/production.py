@@ -295,7 +295,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                                               password=db_info.get('password'),
                                               url=db_info.get('url'))
         servers = [server for server in storage_conf.keys()]
-        server = platform.node().split('.')[0]
+        server = platform.node().split('.')[0].lower()
         if server in servers:
             self.app.log.info("Performing cleanup on production server \"{}\"...".format(server))
             dirs = [d.lstrip() for d in storage_conf.get(server).split(',')]
@@ -377,4 +377,4 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                     shutil.rmtree(fc)
         else:
             self.app.log.warn("You're running the cleanup functionality in {}. But this " \
-                    "server doen't seem to be on your pm.conf file. Are you on the correct server?")
+                    "server doen't seem to be on your pm.conf file. Are you on the correct server?".format(server))
