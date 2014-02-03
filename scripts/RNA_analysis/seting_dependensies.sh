@@ -21,6 +21,7 @@ path=$6
 gtf_file=$7
 WP=$8
 mail=$9
+single=${10}
 name_list=(`echo $names | tr "," "\n"`)
 
 cd $path
@@ -79,7 +80,7 @@ DEP_REPORT=$DEP_REPORT:$JOB
 cp $WP/sll_logo.gif .
 make_sbatch.py a2012043 core 01:00:00 analysis_report $mail $config_file
 echo "cd $path
-analysis_report.py $project_id -c $config_file -r -s -d -f -g -w -b" >> analysis_report.sh
+analysis_report.py $project_id -c $config_file -r -s -d -f -g -w -b $single" >> analysis_report.sh
 sbatch --dependency=$DEP_REPORT analysis_report.sh
 mkdir sbatch_scripts
 mv *.sh sbatch_scripts

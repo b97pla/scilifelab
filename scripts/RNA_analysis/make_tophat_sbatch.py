@@ -105,7 +105,7 @@ def frag_len_from_couch(fpath, files, single,samp, info):
         except:
             size = raw_input("Could not find information on statusDB. Enter manualy fragment size including adapters for sample " + samp + ": ")
             pass
-        innerdist = str(int(size) - 101 - 101 - 121)
+        innerdist = str(int(size) - 101 - 101 - 136)
         size=str(size)
         if not size.isdigit(): sys.exit(0)
     return innerdist, innnerdistflagg, R1, R2

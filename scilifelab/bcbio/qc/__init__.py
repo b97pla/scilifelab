@@ -77,6 +77,17 @@ class MetricsParser():
     
         return timestamp
 
+    def parse_software_versions(self, in_handle):
+        sver = {}
+        for line in in_handle:
+            try:
+                s = line.split()
+                if len(s) == 2:
+                    sver[s[0]] = s[1]
+            except:
+                pass
+        return sver
+
 class ExtendedPicardMetricsParser(PicardMetricsParser):
     """Extend basic functionality and parse all picard metrics"""
 
@@ -573,6 +584,22 @@ class SampleRunMetricsParser(RunMetricsParser):
         
         return checkpoints
 
+    def parse_software_versions(self, barcode_name, sample_prj, flowcell, **kw):
+        self.log.debug("parse_software_versions for sample {}, project {} in run {}".format(barcode_name, sample_prj, flowcell))
+        parser = MetricsParser()
+        pattern = "bcbb_software_versions.txt"
+        files = self.filter_files(pattern)
+        self.log.debug("files {}".format(",".join(files)))
+        data = {}
+        try:
+            fp = open(files[0])
+            data = parser.parse_software_versions(fp)
+            fp.close()
+        except:
+            self.log.warn("no bcbb_software_versions.txt for sample {}".format(barcode_name))
+        
+        return data
+
     def read_fastqc_metrics(self, barcode_name, sample_prj, lane, flowcell, barcode_id, **kw):
         self.log.debug("read_fastqc_metrics for sample {}, project {}, lane {} in run {}".format(barcode_name, sample_prj, lane, flowcell))
         if barcode_name == "unmatched":
@@ -741,6 +768,12 @@ class FlowcellRunMetricsParser(RunMetricsParser):
         self.log.debug("Found {} RTA files {}...".format(len(fn), ",".join(fn[0:10])))
         parser = IlluminaXMLParser()
         metrics = parser.parse(fn, fullRTA)
+        def filter_function(f):
+            return f is not None and f == "run_summary.json"
+        try:
+            metrics.update(self.parse_json_files(filter_fn=filter_function).pop(0))
+        except IndexError:
+            pass
         return metrics
 
     def parse_filter_metrics(self, fc_name, **kw):

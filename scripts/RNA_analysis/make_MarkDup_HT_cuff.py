@@ -77,12 +77,12 @@ java -Xmx2g -jar {8}/MarkDuplicates.jar INPUT=accepted_hits_sorted_{0}.bam OUTPU
 java -Xmx2g -jar {8}/CollectInsertSizeMetrics.jar INPUT=accepted_hits_{0}.bam OUTPUT={0}.picard_estimated_insert_size HISTOGRAM_FILE={0}.picard_histogram_file
 
 samtools view accepted_hits_sorted_dupRemoved_{0}.bam |sort > accepted_hits_sorted_dupRemoved_prehtseq_{0}.sam
-python -m HTSeq.scripts.count -s {12} -q accepted_hits_sorted_dupRemoved_prehtseq_{0}.sam {2} > {0}.counts
-
+python -m HTSeq.scripts.count -s {12} -q accepted_hits_sorted_dupRemoved_prehtseq_{0}.sam {2} > {0}.counts_dup_rem
 rm accepted_hits_sorted_dupRemoved_prehtseq_{0}.sam
 
-samtools index accepted_hits_sorted_dupRemoved_{0}.bam
-cufflinks -p 8 {11} -G {2} -o cufflinks_out_dupRemoved_{0} accepted_hits_sorted_dupRemoved_{0}.bam
+samtools view accepted_hits_sorted_{0}.bam |sort > accepted_hits_sorted_prehtseq_{0}.sam
+python -m HTSeq.scripts.count -s {12} -q accepted_hits_sorted_prehtseq_{0}.sam {2} > {0}.counts
+rm accepted_hits_sorted_prehtseq_{0}.sam
 
 samtools index accepted_hits_sorted_{0}.bam
 cufflinks -p 8 {11} -G {2} -o cufflinks_out_{0} accepted_hits_sorted_{0}.bam

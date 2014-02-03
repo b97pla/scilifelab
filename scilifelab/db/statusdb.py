@@ -240,6 +240,9 @@ def update_fn(cls, db, obj, viewname = "names/id_to_name", key="name"):
         obj["modification_time"] = t_utc
         obj["_rev"] = dbobj.get("_rev")
         obj["_id"] = dbobj.get("_id")
+        #Do not overwrite the content of the field [illumina][run_summary]
+        if obj.has_key('illumina') and dbobj.get('illumina', {}).has_key('run_summary'):
+            obj['illumina']['run_summary'] = dbobj['illumina']['run_summary']
         return (obj, dbid)
 
 ##############################
@@ -483,7 +486,7 @@ class ProjectSummaryConnection(Couch):
     def get_project_sample(self, project_name, barcode_name=None, extensive_matching=False):
         """Get project sample name for a SampleRunMetrics barcode_name.
 
-        :param project_id: the project name
+        :param project_name: the project name
         :param barcode_name: the barcode name of a sample run
         :param extensive_matching: do extensive matching of barcode names
 

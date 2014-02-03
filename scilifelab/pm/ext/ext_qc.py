@@ -129,8 +129,7 @@ class RunMetricsController(AbstractBaseController):
                     obj["bc_count"] = parser.get_bc_count(run_setup=setup, **sample_kw)
                     obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
                     obj["bcbb_checkpoints"] = parser.parse_bcbb_checkpoints(**sample_kw)
-                    for data in parser.parse_json_files():
-                        obj.update(data)
+                    obj["software_versions"] = parser.parse_software_versions(**sample_kw)
                     qc_objects.append(obj)
         else:
             for d in runinfo:
@@ -167,8 +166,7 @@ class RunMetricsController(AbstractBaseController):
                 obj["bc_count"] = parser.get_bc_count(demultiplex_stats=demultiplex_stats, run_setup=setup, **sample_kw)
                 obj["fastqc"] = parser.read_fastqc_metrics(**sample_kw)
                 obj["bcbb_checkpoints"] = parser.parse_bcbb_checkpoints(**sample_kw)
-                for data in parser.parse_json_files():
-                    obj.update(data)
+                obj["software_versions"] = parser.parse_software_versions(**sample_kw)
                 qc_objects.append(obj)
         return qc_objects
 
@@ -218,9 +216,6 @@ class RunMetricsController(AbstractBaseController):
         fcobj["run_info_yaml"] = parser.parse_run_info_yaml(**fc_kw)
         read_setup = fcobj["RunInfo"].get('Reads',[])
         fcobj["run_setup"] = self._run_setup(read_setup)
-        # Parse generic information from json files
-        for data in parser.parse_json_files():
-            fcobj.update(data)
         qc_objects.append(fcobj)
         qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, "{}{}".format(fc_pos,fc_name), fcdir, as_yaml=as_yaml, setup=read_setup)
         return qc_objects
@@ -260,9 +255,6 @@ class RunMetricsController(AbstractBaseController):
             read_setup = fcobj["RunInfo"].get('Reads',[])
             fcobj["run_setup"] = self._run_setup(read_setup)
             demux_stats = fcobj["illumina"]["Demultiplex_Stats"]
-            # Parse generic information from json files
-            for data in parser.parse_json_files():
-                fcobj.update(data)
             qc_objects.append(fcobj)
         qc_objects = self._parse_samplesheet(runinfo, qc_objects, fc_date, "{}{}".format(fc_pos,fc_name), fcdir, demultiplex_stats=demux_stats, setup=read_setup)
         return qc_objects
