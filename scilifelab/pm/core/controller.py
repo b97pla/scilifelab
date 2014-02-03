@@ -35,16 +35,16 @@ class AbstractBaseController(controller.CementBaseController):
         """
         Takes the remaining arguments from self.app.argv and parses for a
         command to dispatch, and if so... dispatches it.
-        
+
         """
         self._add_arguments_to_parser()
         self._parse_args()
         self._process_args()
-        
+
         if not self.command:
             self.app.log.debug("no command to dispatch")
-        else:    
-            func = self.exposed[self.command]     
+        else:
+            func = self.exposed[self.command]
             self.app.log.debug("dispatching command: %s.%s" % \
                       (func['controller'], func['label']))
 
@@ -82,10 +82,10 @@ class AbstractExtendedBaseController(AbstractBaseController):
     """
     This is an abstract extended base controller.
 
-    All extended controllers should inherit from this class. The main difference to the AbstractBaseController is that this controller adds arguments for compressing and cleaning. 
+    All extended controllers should inherit from this class. The main difference to the AbstractBaseController is that this controller adds arguments for compressing and cleaning.
 
-    """ 
-    
+    """
+
     class Meta:
         compress_opt = "-v"
         compress_prog = "gzip"
@@ -159,7 +159,7 @@ class AbstractExtendedBaseController(AbstractBaseController):
             self._meta.include_dirs += ["tmp", "tx"]
         if self.pargs.glob:
             self._meta.file_ext += [self.pargs.glob]
-            
+
         ## Setup zip program
         if self.pargs.pbzip2:
             self._meta.compress_prog = "pbzip2"
@@ -177,9 +177,9 @@ class AbstractExtendedBaseController(AbstractBaseController):
         elif self.pargs.rsync:
             self.pargs.copy = False
 
-        if self._meta.path_id:
+        if self._meta.path_id and not self.command == "swestore":
             assert os.path.exists(os.path.join(self._meta.root_path, self._meta.path_id)), "no such folder '{}' in {} directory '{}'".format(self._meta.path_id, self._meta.label, self._meta.root_path)
-            
+
     def _filter_fn(self, f):
         if not self._meta.pattern:
             return False
@@ -234,7 +234,7 @@ class AbstractExtendedBaseController(AbstractBaseController):
             self._meta.compress_suffix = ".bz2"
         self._meta.pattern = "|".join(["{}{}$".format(x, self._meta.compress_suffix) for x in self._meta.file_ext])
         self._compress(label="decompress")
-        
+
     ## compress
     @controller.expose(help="Compress files")
     def compress(self):
@@ -257,7 +257,7 @@ class AbstractExtendedBaseController(AbstractBaseController):
                     self.app._output_data["stdout"].write("\n".join(flist))
             else:
                 self._ls(os.path.join(self._meta.root_path, self._meta.path_id))
-        
+
 class PmController(controller.CementBaseController):
     """
     Main Pm Controller.

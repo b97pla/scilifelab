@@ -3,7 +3,11 @@ from uuid import uuid4
 import time
 from  datetime  import  datetime
 import couchdb
-import bcbio.pipeline.config_utils as cl
+#Make it backwards compatible
+try:
+    import bcbio.pipeline.config_utils as cl
+except ImportError:
+    import bcbio.pipeline.config_loader as cl
 
 def load_couch_server(config_file):
     """loads couch server with settings specified in 'config_file'"""
@@ -56,7 +60,7 @@ def save_couchdb_ref_obj(db, obj):
 def comp_obj(obj, dbobj):
     ####temporary
     if dbobj.has_key('entity_type'):
-        if dbobj['entity_type']=='project_summary': 
+        if dbobj['entity_type']=='project_summary':
             obj=dont_load_status_if_20158_not_found(obj, dbobj)
     ###end temporary
     """compares the two dictionaries obj and dbobj"""

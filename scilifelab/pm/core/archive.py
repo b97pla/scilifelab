@@ -26,6 +26,7 @@ class ArchiveController(AbstractExtendedBaseController):
         base_app.args.add_argument('--as_yaml', action="store_true", default=False, help="list runinfo as yaml file")
         base_app.args.add_argument('-P', '--list-projects', action="store_true", default=False, help="list projects of flowcell")
         base_app.args.add_argument('--package-run', action="store_true", default=False, help="package a run in preparation for archiving to swestore")
+        base_app.args.add_argument('--check-finished', action="store_true", default=False, help="Whether to check if a run has finished transfer before packing it")
         base_app.args.add_argument('--excludes', action="store", default=None, help="a file containing file and directory name patterns to exclude from tarball")
         base_app.args.add_argument('--workdir', action="store", default=None, help="the folder to create tarballs in (default is parent of the run folder)")
         base_app.args.add_argument('--force-overwrite', action="store_true", default=False, help="will replace any existing package")
@@ -101,7 +102,7 @@ class ArchiveController(AbstractExtendedBaseController):
             if not self._check_pargs(["flowcell"]):
                 return
         
-            self.pargs.tarball = package_run(self,self.config.get('archive','root'), **vars(self.pargs))
+            self.pargs.tarball = package_run(self,self.config.get('archive','swestore_staging'), **vars(self.pargs))
             if not self.pargs.tarball:
                 self.log.error("No tarball was created, exiting")
                 return
