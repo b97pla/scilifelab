@@ -16,8 +16,8 @@ def load_couch_server(config_file):
         url = db_conf['username']+':'+db_conf['password']+'@'+db_conf['url']+':'+str(db_conf['port'])
         couch = couchdb.Server("http://" + url)
         return couch
-    except:
-        return None
+    except KeyError:
+        raise RuntimeError("\"statusdb\" section missing from configuration file.")
 
 def find_or_make_key(key):
     if not key:
