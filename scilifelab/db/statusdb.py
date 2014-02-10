@@ -395,6 +395,7 @@ class FlowcellRunMetricsConnection(Couch):
         self.db = self.con[dbname]
         self.name_view = {k.key:k.id for k in self.db.view("names/name", reduce=False)}
         self.storage_status_view = {k.key:k.value for k in self.db.view("info/storage_status")}
+        self.id_view = {k.key:k.value for k in self.db.view("info/id")}
         self.stat_view = {k.key:k.value for k in self.db.view("names/Barcode_lane_stat", reduce=False)}
 
     def set_db(self):
@@ -478,16 +479,15 @@ class FlowcellRunMetricsConnection(Couch):
         self.log.info("Fetching all Flowcells with storage status \"{}\"".format(status))
         return {run: info for run, info in self.storage_status_view.iteritems() if info.get("storage_status") == status}
 
-    def set_storage_status(self, run, doc_id, status):
+    def set_storage_status(self, doc_id, status):
         """Sets the run storage status.
         """
-        self.log.info("Setting storage status to {} for the run {}".format(status, run))
         db_run = self.db.get(doc_id)
         if not db_run:
             self.log.error("Document with id {} not found, could not update the " \
                            "storage status")
         else:
-            self.log.info("Updatin storage status of run {} from {} to {}".format(
+            self.log.info("Updating storage status of run {} from {} to {}".format(
                             db_run.get('RunInfo').get('Id'), db_run.get('storage_status'), status))
             db_run['storage_status'] = status
             save_couchdb_obj(self.db, db_run)

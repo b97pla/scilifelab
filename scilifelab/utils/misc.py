@@ -8,20 +8,22 @@ import hashlib
 import scilifelab.log
 import collections
 
+from subprocess import check_output
+
 LOG = scilifelab.log.minimal_logger(__name__)
 
 ## yes or no: http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input
 def query_yes_no(question, default="yes", force=False):
     """Ask a yes/no question via raw_input() and return their answer.
-    
+
     "question" is a string that is presented to the user.
     "default" is the presumed answer if the user just hits <Enter>.
     It must be "yes" (the default), "no" or None (meaning
     an answer is required of the user). The force option simply
     sets the answer to default.
-    
+
     The "answer" return value is one of "yes" or "no".
-    
+
     :param question: the displayed question
     :param default: the default answer
     :param force: set answer to default
@@ -55,7 +57,7 @@ def query_yes_no(question, default="yes", force=False):
 def query_ok(statement="", force=False):
     """Prompt a statement requiring an interactive <enter> from the user.
 
-    :param statement: the displayed statement 
+    :param statement: the displayed statement
     :param force: proceed without waiting for input
 
     :returns: True
@@ -75,17 +77,17 @@ def query_ok(statement="", force=False):
 def walk(rootdir):
     """
     Perform a directory walk
-    
+
     :param rootdir: Root directory of search
 
-    :returns: List of files 
+    :returns: List of files
     """
     flist = []
     for root, dirs, files in os.walk(rootdir):
         flist = flist + [os.path.join(root, x) for x in files]
     return flist
 
-def filtered_walk(rootdir, filter_fn, include_dirs=None, exclude_dirs=None, get_dirs=False): 
+def filtered_walk(rootdir, filter_fn, include_dirs=None, exclude_dirs=None, get_dirs=False):
     """Perform a filtered directory walk.
 
     :param rootdir: Root directory
@@ -93,7 +95,7 @@ def filtered_walk(rootdir, filter_fn, include_dirs=None, exclude_dirs=None, get_
     :param include_dirs: Only traverse these directories (list)
     :param exclude_dirs: Exclude these directories (list)
 
-    :returns: Filtered file list 
+    :returns: Filtered file list
     """
     flist = []
     dlist = []
@@ -118,7 +120,7 @@ def filtered_walk(rootdir, filter_fn, include_dirs=None, exclude_dirs=None, get_
 def filtered_output(pattern, data):
     """
     Filter output
-    
+
     :param pattern: a list or string of patterns
     :param data: a data list to filter
 
@@ -174,7 +176,7 @@ def opt_to_dict(opts):
     """Transform option list to a dictionary.
 
     :param opts: option list
-    
+
     :returns: option dictionary
     """
     if isinstance(opts, dict):
@@ -189,7 +191,7 @@ def prune_option_list(opts, keys):
 
     :param opts: option list
     :param keys: keys to remove
-    
+
     :returns: a reduced option list
     """
     opt_d = opt_to_dict(opts)
@@ -203,15 +205,15 @@ def md5sum(infile):
     """
     # Implementation taken from: http://stackoverflow.com/a/4213255
     md5 = hashlib.md5()
-    with open(infile,'rb') as f: 
-        for chunk in iter(lambda: f.read(128*md5.block_size), b''): 
+    with open(infile,'rb') as f:
+        for chunk in iter(lambda: f.read(128*md5.block_size), b''):
             md5.update(chunk)
     return md5.hexdigest()
 
 def soft_update(a, b):
-    """Do a "soft" update of two dictionaries, meaning that the entries for 
+    """Do a "soft" update of two dictionaries, meaning that the entries for
     overlapping keys will be merged rather than overwritten
-    
+
     Taken from: http://stackoverflow.com/a/3233356
     """
     for k, v in b.iteritems():
@@ -222,5 +224,7 @@ def soft_update(a, b):
             a[k] = b[k]
     return a
 
-    
-        
+def last_lines(filename, n):
+    """Return the last n lines from the specified file.
+    """
+    return check_output(['tail', '-n', str(n), filename]).rstrip().split('\n')
