@@ -1,5 +1,5 @@
 
-Project overview - ${project.project_name} (${project.customer_reference()})
+Project overview - ${project.project_name} (${project.customer_project_reference})
 ----------------------------------------------------------------------------
 
 :Project name: ${project.project_name}

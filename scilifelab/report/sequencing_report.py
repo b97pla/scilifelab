@@ -106,7 +106,9 @@ class ReportObject():
     def __repr__(self):
         return "<ReportObject>"
     
-    def _parse_date(self, val,fmt=self.date_format):
+    def _parse_date(self, val, fmt=None):
+        if fmt is None:
+            fmt = self.date_format
         org = val
         try:
             val = datetime.datetime.strptime(val,fmt)
@@ -114,9 +116,11 @@ class ReportObject():
             val = org
         return val
 
-    def _date_field(self, field, fmt=self.date_format):
+    def _date_field(self, field, fmt=None):
+        if fmt is None:
+            fmt = self.date_format
         try:
-            return self._parse_date(self.__getattr__(field)).strftime(fmt)
+            return self._parse_date(getattr(self,field)).strftime(fmt)
         except AttributeError:
             return "N/A"
 
@@ -136,6 +140,7 @@ class ProjectReportObject(ReportObject):
         
         """ 
         ReportObject.__init__(self,ctrl,dbobj,fcon)
+        self.details = self.dbobj.get("details",{})
         self.project_samples = sorted([ProjectSampleReportObject(ctrl,sample,self.project_name,scon) for sample in self.dbobj.get("samples",{}).values()], key=lambda name: name.scilife_name)
         self.project_flowcells()     
         
@@ -155,12 +160,10 @@ class ProjectReportObject(ReportObject):
         return self._date_field("samples_received")
     def queued_date(self):
         return self._date_field("queued")
-    def project_sample_names(self):
-        return [[sample.scilife_name, sample.customer_name] for sample in self.project_samples]
     def project_sample_name_table(self):
-        return _make_rst_table([["SciLife ID", "Submitted ID"]] + self.project_sample_names())
+        return _make_rst_table([["SciLife ID", "Submitted ID"]] + [sample.project_sample_name_table_data() for sample in self.project_samples])
     def project_sample_status_table(self):
-        return _make_rst_table([["SciLife ID", "Arrival QC", "Library QC", "Status", "M read( pair)s sequenced"]] + [sample.sample_status() for sample in self.project_samples])
+        return _make_rst_table([["SciLife ID", "Arrival QC", "Library QC", "Status", "M read( pair)s sequenced"]] + [sample.sample_status_table_data() for sample in self.project_samples])
     def project_flowcells(self):
         """Fetch flowcell documents for project-related flowcells
         """
@@ -182,7 +185,7 @@ class ProjectReportObject(ReportObject):
                 continue
             self.flowcells.append(FlowcellReportObject(self.ctrl,fcdoc))
             
-    def project_flowcell_summary(self):
+    def project_flowcell_summary_table_data(self):
         if not self.flowcells:
             self.project_flowcells()        
         return [[fc.Date,
@@ -196,7 +199,7 @@ class ProjectReportObject(ReportObject):
                  str(fc.phix(lane))] for fc in self.flowcells for lane in self.flowcell_lanes[fc.name]]
     
     def project_flowcell_summary_table(self):
-        return _make_rst_table([["Date","Flowcell","Instrument","Run setup","Position","Lane","Clusters (M)","Q30 (%)","PhiX (%)"]] + self.project_flowcell_summary())
+        return _make_rst_table([["Date","Flowcell","Instrument","Run setup","Position","Lane","Clusters (M)","Q30 (%)","PhiX (%)"]] + self.project_flowcell_summary_table_data())
         
 class ProjectSampleReportObject(ReportObject):
     
@@ -237,13 +240,13 @@ class ProjectSampleReportObject(ReportObject):
     def library_prep_status(self):
         """Go through all preps and check if any of them have passed"""
         return "PASS" if any([prep.get("prep_status","").lower() == "passed" for prep in self.library_prep.values()]) else "FAIL"
-    def library_preps(self):
+    def library_prep_table_data(self):
         return [[k,
                  self.library_prep_fragment_size(k),
                  ", ".join(self.library_prep[k].get("reagent_labels",[])),
                  self.library_prep[k].get("prep_status")] for k in sorted(self.library_prep.keys())]
     def library_prep_table(self):
-        return _make_rst_table([["Library prep", "Average fragment size (bp)", "Index", "Library validation"]] + self.library_preps())
+        return _make_rst_table([["Library prep", "Average fragment size (bp)", "Index", "Library validation"]] + self.library_prep_table_data())
     def library_prep_fragment_size(self, prep):
         validation = self._latest_library_validation(prep)
         if not validation:
@@ -251,7 +254,9 @@ class ProjectSampleReportObject(ReportObject):
         return validation.get("average_size_bp")
     def sample_run_flowcells(self, prep=None):
         return list(set(["_".join(k.split("_")[0:3]) for lbl, data in self.library_prep.items() for k in data.get("sample_run_metrics",{}).keys() if not prep or prep == lbl]))
-    def sample_status(self):
+    def project_sample_name_table_data(self):
+        return [self.scilife_name, self.customer_name]
+    def sample_status_table_data(self):
         return [self.scilife_name, 
                 self.initial_QC_status or "N/A", 
                 self.library_prep_status(), 
@@ -278,9 +283,9 @@ class ProjectSampleReportObject(ReportObject):
         return validations[keys[0]]
 
     def sample_run_table(self, project, flowcell=None):
-        return _make_rst_table([["Library prep", "Sequencing started", "Flowcell ID", "Flowcell position", "Lane", "Reads (M)", "Yield (Mbases)", "Average Q", "Q30 (%)", "Perfect index read (%)"]] + [summary for prep in sorted(self.library_prep.keys()) for summary in self.sample_run(project, prep, flowcell)])
+        return _make_rst_table([["Library prep", "Sequencing started", "Flowcell ID", "Flowcell position", "Lane", "Reads (M)", "Yield (Mbases)", "Average Q", "Q30 (%)", "Perfect index read (%)"]] + [summary for prep in sorted(self.library_prep.keys()) for summary in self.sample_run_table_data(project, prep, flowcell)])
         
-    def sample_run(self, project, prep=None, flowcell=None):
+    def sample_run_table_data(self, project, prep=None, flowcell=None):
         """Compile the results related to a sample run by combining information from the sample object and the flowcell object
         """
         sample_run_data = []
@@ -316,19 +321,8 @@ class ProjectSampleReportObject(ReportObject):
                                             spl.mm0])
         return sample_run_data
 
-    def sample_delivery(self, prep=None):
-        deliveries = []
-        for lprep in self.library_prep.keys():
-            if prep is not None and prep != lprep:
-                continue
-            for lane_run, data in self.library_prep[lprep].get("sample_run_metrics",{}).items():
-                sample_run = data.get("sample_run_metrics_doc",{})
-                for read, delivery in sample_run.get("raw_data_delivery",{}).get("files",{}).items():
-                    deliveries.append([lprep,lane_run.split("_")[2],lane_run.split("_")[0],read,delivery.get("md5"),delivery.get("size_in_bytes"),delivery.get("path")])
-        return deliveries
-    
     def sample_delivery_table(self):
-        return _make_rst_table([["Library prep", "Flowcell ID", "Lane", "Read", "File size (bytes)", "Checksum", "Path"]] + [f for obj in sorted(self.sample_run_objs, key=lambda o: "_".join([o.library_prep,o.flowcell,o.lane])) for f in obj.sample_delivery()])
+        return _make_rst_table([["Library prep", "Flowcell ID", "Lane", "Read", "File size (bytes)", "Checksum", "Path"]] + [f for obj in sorted(self.sample_run_objs, key=lambda o: "_".join([o.library_prep,o.flowcell,o.lane])) for f in obj.sample_delivery_table_data()])
         
         
 class FlowcellReportObject(ReportObject):
@@ -422,7 +416,7 @@ class FlowcellReportObject(ReportObject):
             demuxed += np.sum([int(s.reads) for s in sample[lane].values() if s.index != "Undetermined"])
         return 100.*demuxed/total
     
-    def lane_summary(self, lane):
+    def flowcell_lane_summary_table_data(self, lane):
         return [lane, 
                 self.lane_cluster_density(lane),
                 self.lane_clusters_raw(lane)/1e6, 
@@ -443,12 +437,12 @@ class FlowcellReportObject(ReportObject):
         return [self._get_lane_summary(lane,"{} R{}".format(field,str(r+1))) for r in xrange(self.template_reads())]
     
     def flowcell_lane_summary_table(self, lanes):
-        return _make_rst_table([["Lane", "Cluster density (K/mm2)", "Clusters Raw (M)", "Clusters PF (M)", "Yield (Gb)", "Demultiplex recovery (%)", "Prephasing (%)", "Phasing (%)", "Average Q", "Q30 (%)", "PhiX(%)", "QC"]] + [self.lane_summary(lane) for lane in lanes])
+        return _make_rst_table([["Lane", "Cluster density (K/mm2)", "Clusters Raw (M)", "Clusters PF (M)", "Yield (Gb)", "Demultiplex recovery (%)", "Prephasing (%)", "Phasing (%)", "Average Q", "Q30 (%)", "PhiX(%)", "QC"]] + [self.flowcell_lane_summary_table_data(lane) for lane in lanes])
     
     def flowcell_lane_sample_summary_table(self, lanes, samples):
-        return _make_rst_table([["Lane", "Sample", "Index", "Reads (M)", "Yield (Mbases)", "Perfect index read (%)", "Percentage of lane (%)", "Average Q", "Q30 (%)"]] + [summary for lane in lanes for summary in self.lane_sample_summary(lane, samples)])
+        return _make_rst_table([["Lane", "Sample", "Index", "Reads (M)", "Yield (Mbases)", "Perfect index read (%)", "Percentage of lane (%)", "Average Q", "Q30 (%)"]] + [summary for lane in lanes for summary in self.flowcell_lane_sample_summary_table_data(lane, samples)])
     
-    def lane_sample_summary(self, lane, samples):
+    def flowcell_lane_sample_summary_table_data(self, lane, samples):
         summary = []
         for id in samples + ["lane{}".format(lane)]:
             if id not in self.flowcell_samples:
@@ -495,7 +489,7 @@ class SampleRunReportObject(ReportObject):
     def __init__(self, ctrl, dbobj):
         ReportObject.__init__(self,ctrl,dbobj)
     
-    def sample_delivery(self):
+    def sample_delivery_table_data(self):
         if self.raw_data_delivery is None:
             return [[self.library_prep,
                      self.flowcell, 
