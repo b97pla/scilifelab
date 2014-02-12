@@ -12,5 +12,5 @@ Flowcell summary - ${flowcell.Flowcell}
 
 ${flowcell.flowcell_lane_summary_table(project.flowcell_lanes.get(flowcell.name))}
 
-
+${flowcell.flowcell_lane_sample_summary_table(project.flowcell_lanes.get(flowcell.name),[s[0] for s in project.project_sample_names()])}
 

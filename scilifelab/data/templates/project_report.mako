@@ -1,16 +1,16 @@
 
-Project overview - ${project.project_name}
--------------------------------------------------
+Project overview - ${project.project_name} (${project.customer_reference()})
+----------------------------------------------------------------------------
 
 :Project name: ${project.project_name}
 :Project id: ${project.project_id}
-:Customer reference: ${project.customer_reference()}
+:Customer reference: ${project.customer_project_reference}
 :Order received: ${project.order_received()}
 :Contract received: ${project.contract_received()}
 :Samples received: ${project.samples_received()}
 :Queue date: ${project.queued_date()}
 :Application: ${project.application}
-:Best practice bioinformatice: ${project.best_practice_bioinfo()}
+:Best practice bioinformatice: ${project.best_practice_bioinformatics}
 :Sequencing lanes ordered: ${project.sequencing_units_ordered()}
 :Number of samples: ${project.no_of_samples}
 :UPPNEX project id: ${project.uppnex_id}
