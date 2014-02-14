@@ -291,7 +291,7 @@ def send_to_swestore(arch, tarball, swestore_path=None, remote_swestore=False, r
             arch.log.error("archiving script failed")
 
     if not passed:
-        arch.log.error("sending of {} to swestore  ailed".format(tarball))
+        arch.log.error("sending of {} to swestore  failed".format(tarball))
     else:
         arch.log.info("{} uploaded to {} in swestore successfully".format(tarball,swestore_path))
 
