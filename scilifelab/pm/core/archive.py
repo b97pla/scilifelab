@@ -26,6 +26,7 @@ class ArchiveController(AbstractExtendedBaseController):
         base_app.args.add_argument('--as_yaml', action="store_true", default=False, help="list runinfo as yaml file")
         base_app.args.add_argument('-P', '--list-projects', action="store_true", default=False, help="list projects of flowcell")
         base_app.args.add_argument('--package-run', action="store_true", default=False, help="package a run in preparation for archiving to swestore")
+        base_app.args.add_argument('--clean-from-staging', action="store_true", default=False, help="Removes the uncompressed run from staging if archiving was OK")
         base_app.args.add_argument('--check-finished', action="store_true", default=False, help="Whether to check if a run has finished transfer before packing it")
         base_app.args.add_argument('--excludes', action="store", default=None, help="a file containing file and directory name patterns to exclude from tarball")
         base_app.args.add_argument('--workdir', action="store", default=None, help="the folder to create tarballs in (default is parent of the run folder)")
@@ -96,6 +97,10 @@ class ArchiveController(AbstractExtendedBaseController):
     def swestore(self):
         """This function is the entry point for tasks having to do with packaging and sending runs to swestore
         """
+        db_info = self.app.config.get_section_dict('db')
+        f_conn = FlowcellRunMetricsConnection(username=db_info.get('user'),
+                                              password=db_info.get('password'),
+                                              url=db_info.get('url'))
         # Create a tarball out of the run folder
         if self.pargs.package_run:
 
@@ -109,6 +114,13 @@ class ArchiveController(AbstractExtendedBaseController):
                 return
             if self.pargs.clean:
                 rm_run(self,self.config.get('archive','root'), flowcell=self.pargs.flowcell)
+
+            if self.pargs.clean_from_staging:
+                #Check that the run has been archived on the NAS before removing it, otherwise it will keep synching
+                if self.pargs.flowcell in f_conn.get_storage_status('NAS_nosync').keys():
+                    rm_run(self,self.config.get('archive','swestore_staging'), flowcell=self.pargs.flowcell)
+                else:
+                    self.log.warn("Run storage status is not NAS_nosync, not removing run from swestore_stage!")
 
         if not self.pargs.tarball:
             self.log.error("Required argument --tarball was not specified")
@@ -135,6 +147,9 @@ class ArchiveController(AbstractExtendedBaseController):
                 sys.exit(1)
             if self.pargs.clean:
                 rm_tarball(self,tarball=self.pargs.tarball)
+            #Set the run as archived in StatusDB
+            fc_db_id = f_conn.id_view.get(self.pargs.flowcell)
+            f_conn.set_storage_status(fc_db_id, 'swestore_archived')
             # Log to statusdb
             if self.pargs.log_to_db:
                 # implement this
