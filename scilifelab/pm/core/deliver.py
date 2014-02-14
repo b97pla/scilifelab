@@ -443,7 +443,7 @@ class DeliveryReportController(AbstractBaseController):
         
         gdocs_folder = self.app.config.get("gdocs","gdocs_folder")
         
-        out_data = upload_to_gdocs(os.path.join(self.app.config.get("archive","root"),self.pargs.run_id),
+        out_data = upload_to_gdocs(self.log,os.path.join(self.app.config.get("archive","root"),self.pargs.run_id),
                                    credentials_file=os.path.expanduser(cfile), gdocs_folder=gdocs_folder)
         
     @controller.expose(help="Print summary QC data for a flowcell/project for application QC control")
