@@ -8,6 +8,7 @@ from cement.core import controller
 from scilifelab.pm.core.controller import AbstractExtendedBaseController
 from scilifelab.bcbio.flowcell import *
 from scilifelab.lib.archive import *
+from scilifelab.db.statusdb import FlowcellRunMetricsConnection
 
 ## Main archive controller
 class ArchiveController(AbstractExtendedBaseController):
