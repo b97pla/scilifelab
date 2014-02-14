@@ -37,10 +37,11 @@ class ArchiveController(AbstractExtendedBaseController):
         base_app.args.add_argument('--remote-host', action="store", default=None, help="remote host to use for remote upload")
         base_app.args.add_argument('--remote-path', action="store", default=None, help="remote path to use for remote upload")
         base_app.args.add_argument('--send-to-swestore', action="store_true", default=False, help="send a packaged run to swestore using irods")
+        base_app.args.add_argument('--clean-swestore', action="store_true", default=False, help="Clean the tarball after successfuly archiving in swestore")
         base_app.args.add_argument('--swestore-path', action="store", default=None, help="the path to the project's folder on the swestore area")
         base_app.args.add_argument('--remote-swestore', action="store_true", default=False, help="run the swestore archiving script on the remote host instead of locally")
         base_app.args.add_argument('--log-to-db', action="store_true", default=False, help="log the swestore archiving progress to db")
-        
+
 
     def _process_args(self):
         # Set root path for parent class
@@ -68,7 +69,7 @@ class ArchiveController(AbstractExtendedBaseController):
             return
         if self.pargs.as_yaml:
             self.app._output_data['stdout'].write(str(fc.as_yaml()))
-        else:            
+        else:
             self.app._output_data['stdout'].write(str(fc))
 
     @controller.expose(help="Verify flowcells that can be deleted from archive")
@@ -84,11 +85,11 @@ class ArchiveController(AbstractExtendedBaseController):
     def rm(self):
         """Remove a specified flowcell run folder from archive
         """
-        
+
         # We require a flowcell argument
         if not self._check_pargs(["flowcell"]):
             return
-        
+
         rm_run(self,self.config.get('archive','root'), flowcell=self.pargs.flowcell)
 
     @controller.expose(help="Archive a run in swestore")
@@ -97,26 +98,26 @@ class ArchiveController(AbstractExtendedBaseController):
         """
         # Create a tarball out of the run folder
         if self.pargs.package_run:
-            
+
             # We require a flowcell argument
             if not self._check_pargs(["flowcell"]):
                 return
-        
+
             self.pargs.tarball = package_run(self,self.config.get('archive','swestore_staging'), **vars(self.pargs))
             if not self.pargs.tarball:
                 self.log.error("No tarball was created, exiting")
                 return
             if self.pargs.clean:
                 rm_run(self,self.config.get('archive','root'), flowcell=self.pargs.flowcell)
-        
+
         if not self.pargs.tarball:
             self.log.error("Required argument --tarball was not specified")
             return
-        
+
         if not os.path.exists(self.pargs.tarball):
             self.log.error("Tarball {} does not exist".format(self.pargs.tarball))
             return
-         
+
         # Upload a tarball to a remote host
         if self.pargs.remote_upload:
             result = upload_tarball(self,
@@ -125,7 +126,7 @@ class ArchiveController(AbstractExtendedBaseController):
                 return
             if self.pargs.clean:
                 rm_tarball(self,tarball=self.pargs.tarball)
-                
+
         # Send the tarball to Swestore using irods
         if self.pargs.send_to_swestore:
             result = send_to_swestore(self,**dict(self.config.get_section_dict('archive').items() + vars(self.pargs).items()))
@@ -138,4 +139,4 @@ class ArchiveController(AbstractExtendedBaseController):
             if self.pargs.log_to_db:
                 # implement this
                 raise NotImplementedError("logging to db functionality not implemented")
-            
+
