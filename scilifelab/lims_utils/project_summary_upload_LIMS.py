@@ -38,7 +38,7 @@ def  main(proj_name, all_projects, days, conf):
                     if (days_closed < days):
                         proj_time = time.time()
                         try:
-                            obj = DB.ProjectDB(proj.id)
+                            obj = DB.ProjectDB(lims, proj.id)
                             key = find_proj_from_view(proj_db, proj.name)
                             obj.project['_id'] = find_or_make_key(key)
                             info = save_couchdb_obj(proj_db, obj.project)
@@ -64,7 +64,7 @@ def  main(proj_name, all_projects, days, conf):
                 else:
                     cont = raw_input('The project %s is opened before 2013-07-01. Do you still want to load the data from lims into statusdb? (yes/no): ' % proj_name)
                 if cont == 'yes':
-                    obj = DB.ProjectDB(proj.id)
+                    obj = DB.ProjectDB(lims, proj.id)
                     key = find_proj_from_view(proj_db, proj.name)
                     obj.project['_id'] = find_or_make_key(key)
                     info = save_couchdb_obj(proj_db, obj.project)
