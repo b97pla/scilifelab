@@ -28,9 +28,9 @@ setup(name = "scilifelab",
     description = "Useful scripts for use at SciLifeLab",
     license = "MIT",
     scripts = glob.glob('scripts/*.py') +
-                glob.glob('scripts/analysisDB/*.py') + 
-                glob.glob('scripts/RNA_analysis/*.py') + 
-                glob.glob('scripts/bcbb_helpers/*.py') + 
+                glob.glob('scripts/analysisDB/*.py') +
+                glob.glob('scripts/RNA_analysis/*.py') +
+                glob.glob('scripts/bcbb_helpers/*.py') +
                 glob.glob('scilifelab/lims_utils/*.py') +
                 ['scripts/pm', 'scripts/stdin_to_redis'],
     install_requires = [
@@ -39,18 +39,17 @@ setup(name = "scilifelab",
         "sphinx >= 1.1.3",
         "couchdb >= 0.8",
         "reportlab >= 2.5",
-        "cement >= 2.0.2",
+        "cement == 2.0.2",
         "mock",
         "PIL",
         "pyPdf",
         "logbook >= 0.4",
-        # pandas screws up installation; tries to look for local site
-        # packages and not in virtualenv
-        #"pandas >= 0.9",
         "biopython",
         "rst2pdf",
         "fabric",
-        #"psutil",
+        "beautifulsoup4",
+        "texttable",
+        "gdata",
         ],
       test_suite = 'nose.collector',
       packages=find_packages(exclude=['tests']),

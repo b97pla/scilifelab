@@ -5,11 +5,8 @@ import re
 import string
 from cStringIO import StringIO
 from scilifelab.bcbio.qc import FlowcellRunMetricsParser
-import scilifelab.log
 import scilifelab.google as google
 from scilifelab.google.google_docs import SpreadSheet
-
-LOG = scilifelab.log.minimal_logger(__name__)
 
 def _column_mapping():
     """Return the mapping between casava report headers and google docs headers"""
@@ -57,20 +54,20 @@ def _run_setup(reads):
     
     return setup
 
-def upload_to_gdocs(fcdir, credentials_file=None, gdocs_folder=None):
+def upload_to_gdocs(log, fcdir, credentials_file=None, gdocs_folder=None):
 
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
     
     if not os.path.exists(fcdir):
-        LOG.error("The run folder, {} does not exist!".format(os.path.basename(fcdir)))
+        log.error("The run folder, {} does not exist!".format(os.path.basename(fcdir)))
         return output_data
     
     credentials = google.get_credentials(credentials_file)
     if credentials is None:
-        LOG.error("Could not parse the Google Docs credentials")
+        log.error("Could not parse the Google Docs credentials")
         return output_data
     
-    metrics = collect_metrics(fcdir)
+    metrics = collect_metrics(fcdir, log)
     samples = _format_samples(metrics)
     
     ssheet_name = _demultiplex_spreadsheet(metrics['RunInfo'].get('Date',None))
@@ -98,16 +95,16 @@ def upload_to_gdocs(fcdir, credentials_file=None, gdocs_folder=None):
         ssheet.move_to_folder(gdocs_folder)
         # Truncate the summary worksheet so that it won't show the wrong information in case upload fails
         write_flowcell_metrics([], ssheet, "Summary")
-        project_samples = summarize_project(ssheet,{wsheet_name: project_samples})
+        project_samples = summarize_project(log, ssheet,{wsheet_name: project_samples})
         write_flowcell_metrics(project_samples, ssheet, wsheet_name)
         
         # Create the summary over all worksheets in the project
-        summary_samples = summarize_project(ssheet)
+        summary_samples = summarize_project(log, ssheet)
         write_flowcell_metrics(summary_samples, ssheet, "Summary")
     
     return output_data
 
-def summarize_project(ssheet, project_data=None):
+def summarize_project(log, ssheet, project_data=None):
     """Parse the flowcell worksheets for a project and sum the counts for each sample
     """
     
@@ -160,9 +157,13 @@ def summarize_project(ssheet, project_data=None):
             sample_summary['Lane'] = sample_summary.get('Lane',"").split(";") + [sample.get('Lane','')]
             sample_summary['Lane'] = ";".join([s for s in sample_summary['Lane'] if len(s) > 0])
             
-            sample_summary['Total reads'] = sample_summary.get('Total reads',0) + int(sample.get('Total reads',sample.get('Read (pair) count',0)))
-            sample_summary['Read pair count'] = sample_summary.get('Read pair count',0) + int(sample.get('Read pair count',sample.get('Read (pair) count',0)))
-            sample_summary['Read pairs (Mbases)'] = sample_summary.get('Read pairs (Mbases)',0) + float(sample.get('Read pairs (Mbases)',sample.get('Read (pair) count (millions)',0)))
+            try:
+                sample_summary['Total reads'] = sample_summary.get('Total reads',0) + int(sample.get('Total reads',sample.get('Read pair count',0)))
+                sample_summary['Read pair count'] = sample_summary.get('Read pair count',0) + int(sample.get('Read pair count',sample.get('Read pair count',0)))
+                sample_summary['Read pairs (Mbases)'] = sample_summary.get('Read pairs (Mbases)',0) + float(sample.get('Read pairs (Mbases)',sample.get('Read pair count (millions)',0)))
+            except Exception, e:
+                log.error("Encountered exception when summarizing sample {} in {}:{}: {}, skipping sample...".format(sample_key,ssheet.ssheet.title.text,wsheet,str(e)))
+                continue
             
             sample_summary['Barcode sequence'] = sample_summary.get('Barcode sequence',"").split(";") + [sample.get('Barcode sequence','')]
             sample_summary['Barcode sequence'] = ";".join([s for s in sample_summary['Barcode sequence'] if len(s) > 0])
@@ -253,12 +254,12 @@ def write_flowcell_metrics(samples, ssheet, wsheet_name):
     return ssheet.write_rows(wsheet,header,rows)
 
 
-def collect_metrics(path):
+def collect_metrics(path, log):
     parser = FlowcellRunMetricsParser(path)
     run_info = parser.parseRunInfo()
     fcid = run_info.get('Flowcell',None)
     if fcid is None:
-        LOG.error("Could not parse flowcell id from RunInfo.xml")
+        log.error("Could not parse flowcell id from RunInfo.xml")
         return {}
     
     # Insert a dummy character as the parse method expects a flowcell position

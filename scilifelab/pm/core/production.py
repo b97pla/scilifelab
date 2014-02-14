@@ -3,15 +3,23 @@
 import os
 import re
 import yaml
+import platform
+import time
+import glob
+import shutil
+
+from datetime import datetime
+
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractExtendedBaseController
-from scilifelab.utils.misc import query_yes_no, filtered_walk
+from scilifelab.utils.misc import query_yes_no, filtered_walk, last_lines
 from scilifelab.bcbio import prune_pp_platform_args
 from scilifelab.bcbio.flowcell import Flowcell
 from scilifelab.bcbio.status import status_query
 from scilifelab.utils.string import strip_extensions
 from scilifelab.pm.core.bcbio import BcbioRunController
 from scilifelab.utils.timestamp import utc_time
+from scilifelab.db.statusdb import FlowcellRunMetricsConnection
 
 FINISHED_FILE = "FINISHED_AND_DELIVERED"
 REMOVED_FILE = "FINISHED_AND_REMOVED"
@@ -33,7 +41,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
         group.add_argument('--to_pre_casava', help="Use pre-casava directory structure for delivery", action="store_true", default=False)
         group.add_argument('--transfer_dir', help="Transfer data to transfer_dir instead of sample_prj dir", action="store", default=None)
         base_app.args.add_argument('--brief', help="Output brief information from status queries", action="store_true", default=False)
-    
+
     def _process_args(self):
         # Set root path for parent class
         ## FIXME: use abspath?
@@ -76,10 +84,10 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
         for s in samples:
             fc = Flowcell(s)
             fc_new = fc.subset("sample_prj", self.pargs.project)
-            fc_new.collect_files(os.path.dirname(s))        
+            fc_new.collect_files(os.path.dirname(s))
             fc_list.append(fc_new)
         return fc_list
-            
+
     def _to_casava_structure(self, fc):
         transfer_status = {}
         outdir_pfx = os.path.abspath(os.path.join(self.app.config.get("project", "root"), self.pargs.project, "data"))
@@ -120,7 +128,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                 continue
             self.app.cmd.safe_unlink(pp)
             self.app.cmd.write(pp, yaml.safe_dump(newconf, default_flow_style=False, allow_unicode=True, width=1000))
-            
+
         # Write transfer summary
         self.app._output_data["stderr"].write("Transfer summary\n")
         self.app._output_data["stderr"].write("{:<18}{:>18}{:>18}\n".format("Sample","Transferred files", "Results"))
@@ -158,16 +166,16 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
             self.log.warn("No run information available for {}".format(self.pargs.flowcell))
             return
         fc_new = fc.subset("sample_prj", self.pargs.project)
-        fc_new.collect_files(indir)        
+        fc_new.collect_files(indir)
         return fc_new
 
     def _prune_sequence_files(self, flist):
         """Sometimes fastq and fastq.gz files are present for the same
         read. Make sure only one file is used, giving precedence to
         the zipped file.
-        
+
         :param flist: list of files
-        
+
         :returns: pruned list of files
         """
         samples = {k[0]:{} for k in [strip_extensions(x, ['.gz']) for x in flist]}
@@ -208,7 +216,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
             else:
                 self._to_casava_structure(fc)
 
-    ## Command for touching file that indicates finished samples 
+    ## Command for touching file that indicates finished samples
     @controller.expose(help="Touch finished samples. Creates a file FINISHED_AND_DELIVERED with a utc time stamp.")
     def touch_finished(self):
         if not self._check_pargs(["project", "sample"]):
@@ -241,7 +249,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                 t_utc = utc_time()
                 fh.write(t_utc)
 
-    ## Command for removing samples that have a FINISHED_FILE flag 
+    ## Command for removing samples that have a FINISHED_FILE flag
     @controller.expose(help="Remove finished samples for a project. Searches for FINISHED_AND_DELIVERED and removes sample contents if file is present.")
     def remove_finished(self):
         if not self._check_pargs(["project"]):
@@ -264,7 +272,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                 continue
             if len(flist) > 0 and not query_yes_no("Will remove directory {} containing {} files; continue?".format(s, len(flist)), force=self.pargs.force):
                 continue
-            self.app.log.info("Removing {} files from {}".format(len(flist), spath))            
+            self.app.log.info("Removing {} files from {}".format(len(flist), spath))
             for f in flist:
                 if f == os.path.join(spath, FINISHED_FILE):
                     continue
@@ -276,4 +284,102 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                 with open(os.path.join(spath, REMOVED_FILE), "w") as fh:
                     t_utc = utc_time()
                     fh.write(t_utc)
-        
+
+    @controller.expose(help="Cleans up the storage systems for production environment. " \
+            "It will distinguish between primary storage systems (i.e production NAS) " \
+            "and analysis machines (i.e b5/UPPMAX)")
+    def storage_cleanup(self):
+        storage_conf = self.app.config.get_section_dict('storage')
+        db_info = self.app.config.get_section_dict('db')
+        f_conn = FlowcellRunMetricsConnection(username=db_info.get('user'),
+                                              password=db_info.get('password'),
+                                              url=db_info.get('url'))
+        servers = [server for server in storage_conf.keys()]
+        server = platform.node().split('.')[0].lower()
+        if server in servers:
+            self.app.log.info("Performing cleanup on production server \"{}\"...".format(server))
+            dirs = [d.lstrip() for d in storage_conf.get(server).split(',')]
+
+            #Collect old runs (> 30 days in nosync folder) to remove
+            old_runs = []
+            for d in dirs:
+                nosync_dir = os.path.join(d, 'nosync')
+                for fc in glob.glob(os.path.join(nosync_dir, '1*')):
+                    fc_name = os.path.basename(fc)
+                    #Check that there is no check file indicating to not remove the run
+                    if not os.path.exists(os.path.join(fc, 'no_remove.txt')):
+                        stats = os.stat(os.path.join(fc, 'RTAComplete.txt'))
+                        mod_time = datetime.now() - datetime.fromtimestamp(stats.st_mtime)
+                        if mod_time.days >= 30:
+                            old_runs.append(fc)
+                    else:
+                        self.app.log.warn("no_remove.txt file found in {}, skipping run".format(fc_name))
+
+            #NAS servers
+            if 'nas' in server:
+                #Collect newly finished runs
+                fc_list = []
+                for d in dirs:
+                    for fc in glob.glob(os.path.join(d, '1*')):
+                        if os.path.exists(os.path.join(fc, 'RTAComplete.txt')):
+                            fc_list.append(fc)
+
+                #Move to nosync
+                retries = 5
+                for fc in fc_list:
+                    fc_name = os.path.basename(fc)
+                    while retries:
+                        if 'Finished' in last_lines(storage_conf.get('lsyncd_log'), 1)[0]:
+                            break
+                        retries -= 1
+                        time.sleep(3)
+                    if retries:
+                        self.app.log.info("lsyncd process seems to be up to speed, and run {} " \
+                                "is finished, moving it to nosync".format(fc_name))
+                        shutil.move(fc, os.path.join(os.path.dirname(fc), 'nosync'))
+                        #Touch RTAComplete.txt file to that the modification date is the date when
+                        #it was moved to nosync
+                        open(os.path.join(os.path.dirname(fc), 'nosync', os.path.basename(fc), 'RTAComplete.txt'), 'w').close()
+                        fc_db_id = f_conn.id_view.get(fc_name)
+                        f_conn.set_storage_status(fc_db_id, 'NAS_nosync')
+                    else:
+                        self.app.log.warn("lsyncd process doesn't seem to be finished. " \
+                                "Skipping run {}".format(os.path.basename(fc)))
+
+                #Remove old runs
+                for fc in old_runs:
+                    fc_name = os.path.basename(fc)
+                    #Check that the run has been archived in swestore before removing permanently
+                    if fc_name in f_conn.get_storage_status('swestore_archived').keys():
+                        self.app.log.info("Run {} has been in nosync for more than 30 days " \
+                            "and is archived in swestore. Permanently removing it from the NAS".format(fc_name))
+                        shutil.rmtree(fc)
+                    else:
+                        self.app.log.warn("Run {} has been in nosync for more than 30 " \
+                            "days, but has not yet been archived in swestore. " \
+                            "Not removing, please check it".format(fc_name))
+
+            #Processing servers (b5)
+            else:
+                #Collect finished runs
+                fc_list = []
+                for d in dirs:
+                    for fc in glob.glob(os.path.join(d, '1*')):
+                        if os.path.exists(os.path.join(fc, 'second_read_processing_completed.txt')):
+                            fc_list.append(fc)
+
+                #Move to nosync
+                for fc in fc_list:
+                    fc_name = os.path.basename(fc)
+                    self.app.log.info("Moving run {} to nosync".format(fc_name))
+                    shutil.move(fc, os.path.join(os.path.dirname(fc), 'nosync'))
+
+                #Remove old runs
+                for fc in old_runs:
+                    fc_name = os.path.basename(fc)
+                    self.app.log.info("Run {} has been in nosync for more than 30 " \
+                        "days, permanently removing it from {}".format(fc_name, server))
+                    shutil.rmtree(fc)
+        else:
+            self.app.log.warn("You're running the cleanup functionality in {}. But this " \
+                    "server doen't seem to be on your pm.conf file. Are you on the correct server?".format(server))
