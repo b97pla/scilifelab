@@ -421,7 +421,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                 self.app.log.error("Rsync of run {} failed, please check that you have " \
                         "the correct username and server in your pm.conf file, " \
                         "current ones are {} and {}".format(flowcell, archive_conf.get('user'),
-                            archive.archive_conf.get('server')))
+                                                            archive_conf.get('server')))
                 sys.exit(0)
 
         else:
