@@ -393,7 +393,6 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
         archive_conf = self.app.config.get_section_dict('archive')
         swestore_dir = self.app.config.get_section_dict('archive').get('swestore_staging')
         servers = [server for server in storage_conf.keys()]
-        servers = [server for server in storage_conf.keys()]
         server = platform.node().split('.')[0].lower()
         flowcell = self.pargs.flowcell
         if not flowcell:
