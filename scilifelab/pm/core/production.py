@@ -398,6 +398,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
         flowcell = self.pargs.flowcell
         if not flowcell:
             self.app.log.error("Flowcell parameter is required.")
+            sys.exit(0)
         if server in servers:
             #Find the run of the run directories
             run_dir = ''
