@@ -404,14 +404,14 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
             run_dir = ''
             for d in [d.lstrip() for d in storage_conf.get(server).split(',')]:
                 if os.path.exists(os.path.join(d, flowcell)):
-                    run_dir = os.path.exists(os.path.join(d, flowcell))
+                    run_dir = os.path.join(d, flowcell)
             if not run_dir:
                 self.app.log.error("Run {} not found on the server. ")
                 sys.exit(0)
 
             cl = ['rsync',
                   '--recursive',
-                  flowcell,
+                  run_dir,
                   '{}@{}:{}'.format(archive_conf.get('user'),
                                     archive_conf.get('server'),
                                     archive_conf.get('swestore_staging'))]
