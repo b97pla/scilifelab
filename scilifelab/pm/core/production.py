@@ -413,7 +413,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                   '--recursive',
                   flowcell,
                   '{}@{}:{}'.format(archive_conf.get('user'),
-                                    server=archive.archive_conf.get('server'),
+                                    server=archive_conf.get('server'),
                                     swestore_dir=archive_conf.get('swestore_staging'))]
             try:
                 subprocess.check_call(cl)
