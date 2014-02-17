@@ -391,7 +391,8 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
     def sync_run(self):
         storage_conf = self.app.config.get_section_dict('storage')
         archive_conf = self.app.config.get_section_dict('archive')
-        swestore_dir = storage_conf = self.app.config.get_section_dict('archive').get('swestore_staging')
+        swestore_dir = self.app.config.get_section_dict('archive').get('swestore_staging')
+        servers = [server for server in storage_conf.keys()]
         servers = [server for server in storage_conf.keys()]
         server = platform.node().split('.')[0].lower()
         flowcell = self.pargs.flowcell
