@@ -413,8 +413,8 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                   '--recursive',
                   flowcell,
                   '{}@{}:{}'.format(archive_conf.get('user'),
-                                    server=archive_conf.get('server'),
-                                    swestore_dir=archive_conf.get('swestore_staging'))]
+                                    archive_conf.get('server'),
+                                    archive_conf.get('swestore_staging'))]
             try:
                 subprocess.check_call(cl)
             except subprocess.CalledProcessError():
