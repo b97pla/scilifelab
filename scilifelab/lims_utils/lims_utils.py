@@ -15,6 +15,12 @@ In the lims_utils context, processes are categorised into groups that define,
 or are used to define a certain type of statusdb key. The categories and their 
 processes are defined here:"""
 
+INITALQCFINISHEDLIB = {'24' : 'Customer Gel QC',
+    '62' : 'qPCR QC (Library Validation) 4.0',
+    '64' : 'Quant-iT QC (Library Validation) 4.0',
+    '67' : 'Qubit QC (Library Validation) 4.0',
+    '20' : 'CaliperGX QC (DNA)',
+    '17' : 'Bioanalyzer QC (Library Validation) 4.0'}
 INITALQC = {'63' : 'Quant-iT QC (DNA) 4.0',
     '65' : 'Quant-iT QC (RNA) 4.0',
     '66' : 'Qubit QC (DNA) 4.0',
