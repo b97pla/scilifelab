@@ -493,18 +493,20 @@ class DeliveryReportController(AbstractBaseController):
             return
         # Send out a user survey if necessary
         self._meta.date_format = "%Y-%m-%d"
-        # This must be read from a non-public location
-        self._meta.salt = "test salt"
         
         kw = vars(self.pargs)
-        for opt in ["smtphost","smtpport","sender"]:
+        for opt in ["smtphost","smtpport","sender","salt"]:
             try:
                 kw[opt] = self.app.config.get("email",opt)
             except NoSectionError:
                 pass
             except NoOptionError:
+                if opt == "salt":
+                    self.log.error("You must specify a salt in the 'email' section of the config file for encryption of survey link")
+                    return
                 pass
-        
+            
+        self._meta.salt = kw["salt"]
         initiated = initiate_survey(self,
                                     project=self.pargs.project_name,
                                     **kw)

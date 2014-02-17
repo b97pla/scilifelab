@@ -10,22 +10,22 @@ from scilifelab.report.rst import _render, email_templates
 from genologics.lims import *
 from genologics.config import BASEURI, USERNAME, PASSWORD
 
-def generate_email(email, salt):
+def generate_email(email, salt, project):
     """Generate the email text for the survey based on the template
     """
     tpl = email_templates.get('survey')
-    hash = hashlib.md5(salt).hexdigest()
+    hash = hashlib.md5("{}{}".format(salt,project)).hexdigest()
     enddate = (datetime.datetime.now() + datetime.timedelta(days=90)).strftime("%B %d")
-    return _render(tpl,**{'hash': hash, 'enddate': enddate})
+    return _render(tpl,**{'hash': hash, 'pname': project})
 
 def send_survey(report, project, email, sender="genomics_support@scilifelab.se", smtphost=None, smtpport=None, dryrun=False):
     """Send the survey to the supplied email address
     """    
-    text = generate_email(email, salt="{}{}".format(report._meta.salt,project))
+    text = generate_email(email, report._meta.salt, project)
     try:
         msg = MIMEText(text, 'html')
         msg['To'] = ",".join(email)
-        msg['Subject'] = "NGI Sweden user survey - {}".format(project)
+        msg['Subject'] = "Please give feedback about the NGI Sweden service for your project {}".format(project)
         msg['From'] = sender
         if not dryrun:
             s = smtplib.SMTP(host=smtphost, port=smtpport)
@@ -75,7 +75,7 @@ def project_email(report, project):
     """
     return [project.researcher.email]
     
-def initiate_survey(report, project, **kw):
+def (report, project, **kw):
      
     # Get a connection to the database
     pcon = ProjectSummaryConnection(**kw)
