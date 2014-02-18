@@ -404,7 +404,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                 if os.path.exists(os.path.join(d, flowcell)):
                     run_dir = os.path.join(d, flowcell)
             if not run_dir:
-                self.app.log.error("Run {} not found on the server. ")
+                self.app.log.error("Run {} not found on the server.".format(flowcell))
                 return
 
             cl = ['rsync',
