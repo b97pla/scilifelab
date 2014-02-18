@@ -74,8 +74,29 @@ def project_email(report, project):
     """Obtain the project-associated email addresses from a LIMS project instance
     """
     return [project.researcher.email]
+
+def closed_projects(report, since=None, **kw):
+
+    finished = []
+
+    # Get a connection to the database
+    pcon = ProjectSummaryConnection(**kw)
+    if not pcon:
+        report.log.error("Could not get connection to database".format(project))
+        return False
     
-def (report, project, **kw):
+    for item in pcon.db.view("test/project2queueDate_closeDate", reduce=False):
+        try:
+            project = item.key[1]
+            closed = datetime.datetime.strptime(item.value.get("Close date","0000-00-00"),"%Y-%m-%d")
+            if since is not None and closed < since:
+                continue
+            finished.append({'name': project, 'closed': datetime.datetime.strftime(closed,"%Y-%m-%d")})
+        except ValueError:
+            continue
+    return finished
+
+def initiate_survey(report, project, **kw):
      
     # Get a connection to the database
     pcon = ProjectSummaryConnection(**kw)

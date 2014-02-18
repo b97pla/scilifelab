@@ -7,6 +7,7 @@ import shutil
 import itertools
 import glob
 import json
+import datetime
 
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractBaseController, AbstractExtendedBaseController
@@ -15,7 +16,7 @@ from scilifelab.report.rl import *
 from scilifelab.report.qc import application_qc, fastq_screen, QC_CUTOFF
 from scilifelab.bcbio.run import find_samples
 from scilifelab.report.delivery_notes import sample_status_note, project_status_note, data_delivery_note
-from scilifelab.report.survey import initiate_survey
+from scilifelab.report.survey import initiate_survey, closed_projects
 from scilifelab.report.best_practice import best_practice_note, SEQCAP_KITS
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, get_scilife_to_customer_name
 from scilifelab.utils.misc import query_yes_no, filtered_walk, md5sum
@@ -396,6 +397,7 @@ class DeliveryReportController(AbstractBaseController):
         group.add_argument('--include_all_samples', help="Include all samples in project status report. Default is to only use the latest library prep.",  action="store_true", default=False)
         group.add_argument('--run-id', help="Run id (e.g. 130423_SN9999_0100_BABC123CXX). Required for reporting to Google docs",  action="store", default=None, type=str)
         group.add_argument('--credentials-file', help="Text file containing base64-encoded Google Docs credentials",  action="store", default=None, type=str)
+        group.add_argument('--since', help="Consider projects closed since this date, specified on the form 'YYYY-MM-DD'", default=None, action="store", type=str)
         super(DeliveryReportController, self)._setup(app)
 
     def _process_args(self):
@@ -510,6 +512,21 @@ class DeliveryReportController(AbstractBaseController):
         initiated = initiate_survey(self,
                                     project=self.pargs.project_name,
                                     **kw)
+       
+    @controller.expose(help="List projects that have been closed")
+    def closed_projects(self):
+        
+        kw = vars(self.pargs)
+        # Check that, if specified, the since date is parseable
+        if self.pargs.since is not None:
+            try:
+                kw["since"] = datetime.strptime(self.pargs.since,"%Y-%m-%d")
+            except ValueError:
+                self.log.error("Please specify the date using the format 'YYYY-MM-DD'")
+                return
+            
+        for project in closed_projects(self,**kw):
+            print("{}\t{}".format(project["name"],project["closed"]))
        
     @controller.expose(help="Make best practice reports")
     def best_practice(self):
