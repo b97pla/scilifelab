@@ -8,7 +8,6 @@ import time
 import glob
 import shutil
 import subprocess
-import sys
 
 from datetime import datetime
 
@@ -397,7 +396,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
         flowcell = self.pargs.flowcell
         if not flowcell:
             self.app.log.error("Flowcell parameter is required.")
-            sys.exit(0)
+            return
         if server in servers:
             #Find the run of the run directories
             run_dir = ''
@@ -406,7 +405,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                     run_dir = os.path.join(d, flowcell)
             if not run_dir:
                 self.app.log.error("Run {} not found on the server. ")
-                sys.exit(0)
+                return
 
             cl = ['rsync',
                   '--recursive',
@@ -421,7 +420,7 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                         "the correct username and server in your pm.conf file, " \
                         "current ones are {} and {}".format(flowcell, archive_conf.get('user'),
                                                             archive_conf.get('server')))
-                sys.exit(0)
+                return
 
         else:
             self.app.log.warn("You're running the cleanup functionality in {}. But this " \
