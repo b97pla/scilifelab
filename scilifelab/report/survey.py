@@ -7,8 +7,13 @@ from email.mime.text import MIMEText
 
 from scilifelab.db.statusdb import ProjectSummaryConnection
 from scilifelab.report.rst import _render, email_templates
-from genologics.lims import *
-from genologics.config import BASEURI, USERNAME, PASSWORD
+
+try:
+    from genologics.lims import *
+    from genologics.config import BASEURI, USERNAME, PASSWORD
+except ImportError:
+    pass
+
 
 def generate_email(email, salt, project):
     """Generate the email text for the survey based on the template
