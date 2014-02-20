@@ -162,10 +162,3 @@ def initiate_survey(report, project, **kw):
         report.log.warn("Sending survey to recipients {} failed".format(",".join(recipients)))
         
     return sent
-
-
-        
-    
-        
-    
-    
