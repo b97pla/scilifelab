@@ -177,7 +177,9 @@ class AbstractExtendedBaseController(AbstractBaseController):
         elif self.pargs.rsync:
             self.pargs.copy = False
 
-        if self._meta.path_id and not self.command == "swestore":
+        #We don't want to check on produciton root for all commands that require flowcell
+        no_check = ['swestore', 'sync_run']
+        if self._meta.path_id and not self.command in no_check:
             assert os.path.exists(os.path.join(self._meta.root_path, self._meta.path_id)), "no such folder '{}' in {} directory '{}'".format(self._meta.path_id, self._meta.label, self._meta.root_path)
 
     def _filter_fn(self, f):

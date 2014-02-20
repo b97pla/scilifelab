@@ -7,6 +7,7 @@ import platform
 import time
 import glob
 import shutil
+import subprocess
 
 from datetime import datetime
 
@@ -380,6 +381,47 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                     self.app.log.info("Run {} has been in nosync for more than 30 " \
                         "days, permanently removing it from {}".format(fc_name, server))
                     shutil.rmtree(fc)
+        else:
+            self.app.log.warn("You're running the cleanup functionality in {}. But this " \
+                    "server doen't seem to be on your pm.conf file. Are you on the correct server?".format(server))
+
+    @controller.expose(help="Syncs a run to UPPMAX swestre_staging dir. It uses a regular " \
+            "rsync command without preserving modification times.")
+    def sync_run(self):
+        storage_conf = self.app.config.get_section_dict('storage')
+        archive_conf = self.app.config.get_section_dict('archive')
+        swestore_dir = self.app.config.get_section_dict('archive').get('swestore_staging')
+        servers = [server for server in storage_conf.keys()]
+        server = platform.node().split('.')[0].lower()
+        flowcell = self.pargs.flowcell
+        if not flowcell:
+            self.app.log.error("Flowcell parameter is required.")
+            return
+        if server in servers:
+            #Find the run of the run directories
+            run_dir = ''
+            for d in [d.lstrip() for d in storage_conf.get(server).split(',')]:
+                if os.path.exists(os.path.join(d, flowcell)):
+                    run_dir = os.path.join(d, flowcell)
+            if not run_dir:
+                self.app.log.error("Run {} not found on the server.".format(flowcell))
+                return
+
+            cl = ['rsync',
+                  '--recursive',
+                  run_dir,
+                  '{}@{}:{}'.format(archive_conf.get('user'),
+                                    archive_conf.get('server'),
+                                    archive_conf.get('swestore_staging'))]
+            try:
+                subprocess.check_call(cl)
+            except subprocess.CalledProcessError():
+                self.app.log.error("Rsync of run {} failed, please check that you have " \
+                        "the correct username and server in your pm.conf file, " \
+                        "current ones are {} and {}".format(flowcell, archive_conf.get('user'),
+                                                            archive_conf.get('server')))
+                return
+
         else:
             self.app.log.warn("You're running the cleanup functionality in {}. But this " \
                     "server doen't seem to be on your pm.conf file. Are you on the correct server?".format(server))

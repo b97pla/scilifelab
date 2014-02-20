@@ -279,7 +279,7 @@ def send_to_swestore(arch, tarball, swestore_path=None, remote_swestore=False, r
         command_kw = {'capture':True, 'ignore_error':False, 'shell':True}
         # Execute the archiving script
         try:
-            cmd = "swestore_archive_run.sh {}{}{} {}".format("-d " if arch.pargs.clean else "",
+            cmd = "swestore_archive_run.sh {}{}{} {}".format("-d " if arch.pargs.clean_swestore else "",
                                                              "-n " if arch.pargs.dry_run else "",
                                                              tarball,
                                                              swestore_path)
@@ -291,7 +291,7 @@ def send_to_swestore(arch, tarball, swestore_path=None, remote_swestore=False, r
             arch.log.error("archiving script failed")
 
     if not passed:
-        arch.log.error("sending of {} to swestore failed".format(tarball))
+        arch.log.error("sending of {} to swestore  failed".format(tarball))
     else:
         arch.log.info("{} uploaded to {} in swestore successfully".format(tarball,swestore_path))
 
