@@ -40,7 +40,7 @@ def survey_sent(project):
     """Return True if the field for user survey sent is set, fasle otherwise
     """
     try:
-        if type(project.udf.__getitem__('Survey sent')) == datetime.date:
+        if type(project.udf['Survey sent']) == datetime.date:
             return True
     except:
         pass
@@ -85,10 +85,10 @@ def closed_projects(report, since=None, **kw):
         report.log.error("Could not get connection to database".format(project))
         return False
     
-    for item in pcon.db.view("test/project2queueDate_closeDate", reduce=False):
+    for item in pcon.db.view("project/project_dates", reduce=False):
         try:
-            project = item.key[1]
-            closed = datetime.datetime.strptime(item.value.get("Close date","0000-00-00"),"%Y-%m-%d")
+            project = item.key
+            closed = datetime.datetime.strptime(item.value.get("close_date","0000-00-00"),"%Y-%m-%d")
             if since is not None and closed < since:
                 continue
             finished.append({'name': project, 'closed': datetime.datetime.strftime(closed,"%Y-%m-%d")})
@@ -155,7 +155,7 @@ def initiate_survey(report, project, **kw):
     # update the project udf to indicate that we have sent out the survey
     if sent:
         report.log.info("Survey sent to recipients {} successfully".format(",".join(recipients)))
-        lproj.udf.__setitem__('Survey sent',datetime.datetime.now().date())
+        lproj.udf['Survey sent'] = datetime.datetime.now().date()
         if not report.pargs.dry_run:
             lproj.put()
     elif not sent:
