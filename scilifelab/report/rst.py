@@ -27,6 +27,9 @@ report_templates = {'project_report':Template(filename=os.path.join(TEMPLATEPATH
 rst_templates = {
                  'make':Template(filename=os.path.join(TEMPLATEPATH, "rst", "Makefile.mako"))
                  }
+email_templates = {
+                   'survey':Template(filename=os.path.join(TEMPLATEPATH, "survey.mako"))
+                   }
 
 
 def _render(tpl, **kw):
