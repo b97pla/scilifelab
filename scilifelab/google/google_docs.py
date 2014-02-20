@@ -46,7 +46,6 @@ class Document(GoogleConnection):
     def __init__(self, credentials):
         # Create a client class which will make HTTP requests with Google Docs server.
         self.client = gdata.docs.service.DocsService()
-        self.new_doc = False
         super(Document, self).__init__(credentials)
 
 
@@ -83,6 +82,7 @@ class SpreadSheet(GoogleConnection):
         super(SpreadSheet, self).__init__(credentials)
 
         self.doc = Document(self.credentials)
+        self.new_doc = False
         self.ssheet = None
         if name is not None:
             self.ssheet = self.get_spreadsheet(title=name)
