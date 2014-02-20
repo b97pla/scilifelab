@@ -397,7 +397,8 @@ class DeliveryReportController(AbstractBaseController):
         group.add_argument('--include_all_samples', help="Include all samples in project status report. Default is to only use the latest library prep.",  action="store_true", default=False)
         group.add_argument('--run-id', help="Run id (e.g. 130423_SN9999_0100_BABC123CXX). Required for reporting to Google docs",  action="store", default=None, type=str)
         group.add_argument('--credentials-file', help="Text file containing base64-encoded Google Docs credentials",  action="store", default=None, type=str)
-        group.add_argument('--since', help="Consider projects closed since this date, specified on the form 'YYYY-MM-DD'", default=None, action="store", type=str)
+        group.add_argument('--from-date', help="Consider projects closed on or after this date, specified on the form 'YYYY-MM-DD'", default=None, action="store", type=str)
+        group.add_argument('--to-date', help="Consider projects closed on or before this date, specified on the form 'YYYY-MM-DD'", default=None, action="store", type=str)
         super(DeliveryReportController, self)._setup(app)
 
     def _process_args(self):
@@ -517,15 +518,16 @@ class DeliveryReportController(AbstractBaseController):
     def closed_projects(self):
         
         kw = vars(self.pargs)
-        # Check that, if specified, the since date is parseable
-        if self.pargs.since is not None:
-            try:
-                kw["since"] = datetime.strptime(self.pargs.since,"%Y-%m-%d")
-            except ValueError:
-                self.log.error("Please specify the date using the format 'YYYY-MM-DD'")
-                return
-            
-        for project in closed_projects(self,**kw):
+        # Check that, if specified, the dates are parseable
+        for date in ["from_date","to_date"]:
+            if kw[date] is not None:
+                try:
+                    kw[date] = datetime.strptime(kw[date],"%Y-%m-%d")
+                except ValueError:
+                    self.log.error("Please specify the date using the format 'YYYY-MM-DD'")
+                    return
+                
+        for project in sorted(closed_projects(self,**kw), key=lambda d: d.get("closed","0000-00-00")):
             print("{}\t{}".format(project["name"],project["closed"]))
        
     @controller.expose(help="Make best practice reports")

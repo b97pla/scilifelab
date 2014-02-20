@@ -75,7 +75,7 @@ def project_email(report, project):
     """
     return [project.researcher.email]
 
-def closed_projects(report, since=None, **kw):
+def closed_projects(report, from_date=None, to_date=None, **kw):
 
     finished = []
 
@@ -85,11 +85,15 @@ def closed_projects(report, since=None, **kw):
         report.log.error("Could not get connection to database".format(project))
         return False
     
+    # Loop over the entries in the project_dates view
     for item in pcon.db.view("project/project_dates", reduce=False):
         try:
             project = item.key
             closed = datetime.datetime.strptime(item.value.get("close_date","0000-00-00"),"%Y-%m-%d")
-            if since is not None and closed < since:
+            # Skip the entry if the date is outside the range we're insterested in
+            if from_date is not None and closed < from_date:
+                continue
+            if to_date is not None and closed > to_date:
                 continue
             finished.append({'name': project, 'closed': datetime.datetime.strftime(closed,"%Y-%m-%d")})
         except ValueError:
