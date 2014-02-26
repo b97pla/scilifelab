@@ -29,8 +29,8 @@ VIEWS = {'samples' : {'names': {'name' : '''function(doc) {if (!doc["name"].matc
          }
 
 # Regular expressions for general use
-re_project_id = "^(P[0-9][0-9][0-9])"
-re_project_id_nr = "^P([0-9][0-9][0-9])"
+re_project_id = "^(P[0-9]{3,})"
+re_project_id_nr = "^P([0-9]{3,})"
 
 # http://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
 # FIX ME: make override work
