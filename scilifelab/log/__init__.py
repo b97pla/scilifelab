@@ -41,7 +41,7 @@ def minimal_logger(namespace, extra_fields=None, debug=False):
                 extra_fields=extra_fields, level=logbook.INFO, bubble=True)
         log.handlers.append(r_h)
     except:
-        log.warn('Not loading RedisHandler')
+        log.debug('Not loading RedisHandler')
         pass
 
     # FIX ME: really don't want to hard check sys.argv like this but
@@ -61,28 +61,31 @@ def minimal_logger(namespace, extra_fields=None, debug=False):
     return log
 
 
-
-def file_logger(namespace, config_file, log_file):
-        CONFIG = cl.load_config(config_file)
+def file_logger(namespace, config_file , log_file, log_path_key = None):
+    CONFIG = cl.load_config(config_file)
+    if not log_path_key:
         log_path = CONFIG['log_dir'] + '/' + log_file
+    else:
+        log_path = CONFIG[log_path_key] + '/' + log_file
 
-        logger = logging.getLogger(namespace)
-        logger.setLevel(logging.DEBUG)
+    logger = logging.getLogger(namespace)
+    logger.setLevel(logging.DEBUG)
 
-        # file handler
-        fh = logging.FileHandler(log_path)
-        fh.setLevel(logging.INFO)
+    # file handler:
+    fh = logging.FileHandler(log_path)
+    fh.setLevel(logging.INFO)
 
-        # console handler
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.DEBUG)
+    # console handler
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
 
-        # formatter
-        formatter = logging.Formatter("%(asctime)s (%(levelname)s) : %(message)s")
-        fh.setFormatter(formatter)
+    # formatter
+    formatter = logging.Formatter("%(asctime)s (%(levelname)s) : %(message)s")
+    fh.setFormatter(formatter)
 
-        # add handlers to logger
-        logger.addHandler(ch)
-        logger.addHandler(fh)
+    # add handlers to logger
+    logger.addHandler(ch)
+    logger.addHandler(fh)
 
-        return logger
+    return logger
+

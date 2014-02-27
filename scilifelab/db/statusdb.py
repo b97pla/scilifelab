@@ -5,6 +5,7 @@ from itertools import izip
 from scilifelab.db import Couch
 from scilifelab.utils.timestamp import utc_time
 from scilifelab.utils.misc import query_yes_no
+from scilifelab.db.statusDB_utils import save_couchdb_obj
 from uuid import uuid4
 from scilifelab.log import minimal_logger
 
@@ -28,8 +29,8 @@ VIEWS = {'samples' : {'names': {'name' : '''function(doc) {if (!doc["name"].matc
          }
 
 # Regular expressions for general use
-re_project_id = "^(P[0-9][0-9][0-9])"
-re_project_id_nr = "^P([0-9][0-9][0-9])"
+re_project_id = "^(P[0-9]{3,})"
+re_project_id_nr = "^P([0-9]{3,})"
 
 # http://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
 # FIX ME: make override work
@@ -406,6 +407,8 @@ class FlowcellRunMetricsConnection(Couch):
         super(FlowcellRunMetricsConnection, self).__init__(**kwargs)
         self.db = self.con[dbname]
         self.name_view = {k.key:k.id for k in self.db.view("names/name", reduce=False)}
+        self.storage_status_view = {k.key:k.value for k in self.db.view("info/storage_status")}
+        self.id_view = {k.key:k.value for k in self.db.view("info/id")}
         self.stat_view = {k.key:k.value for k in self.db.view("names/Barcode_lane_stat", reduce=False)}
 
     def set_db(self):
@@ -483,6 +486,27 @@ class FlowcellRunMetricsConnection(Couch):
         reads = fc.get('RunInfo', {}).get('Reads', [])
         return len([read for read in reads if read.get('IsIndexedRead','N') == 'N']) == 2
 
+    def get_storage_status(self, status):
+        """Get all runs with the specified storage status.
+        """
+        self.log.info("Fetching all Flowcells with storage status \"{}\"".format(status))
+        return {run: info for run, info in self.storage_status_view.iteritems() if info.get("storage_status") == status}
+
+    def set_storage_status(self, doc_id, status):
+        """Sets the run storage status.
+        """
+        db_run = self.db.get(doc_id)
+        if not db_run:
+            self.log.error("Document with id {} not found, could not update the " \
+                           "storage status")
+        else:
+            self.log.info("Updating storage status of run {} from {} to {}".format(
+                            db_run.get('RunInfo').get('Id'), db_run.get('storage_status'), status))
+            db_run['storage_status'] = status
+            save_couchdb_obj(self.db, db_run)
+
+
+
 
 class ProjectSummaryConnection(Couch):
     _doc_type = ProjectSummaryDocument
@@ -499,7 +523,7 @@ class ProjectSummaryConnection(Couch):
     def get_project_sample(self, project_name, barcode_name=None, extensive_matching=False):
         """Get project sample name for a SampleRunMetrics barcode_name.
 
-        :param project_id: the project name
+        :param project_name: the project name
         :param barcode_name: the barcode name of a sample run
         :param extensive_matching: do extensive matching of barcode names
 
