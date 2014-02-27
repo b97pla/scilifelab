@@ -4,6 +4,7 @@ import csv
 import yaml
 import ast
 import itertools
+import re
 from collections import defaultdict
 
 from cement.core import backend, controller, handler, hook
@@ -273,6 +274,29 @@ class RunMetricsController(AbstractBaseController):
         
         return setup
 
+    @controller.expose(help="Upload analysis results to statusdb")
+    def upload_analysis(self):
+        kw = vars(self.pargs)
+        if not kw.get("flowcell"):
+            kw["flowcell"] = "TOTAL"
+        
+        # Traverse the folder hierarchy and determine paths to process
+        to_process = []
+        for pdir in os.listdir(self._meta.root_path):
+            pdir = os.path.join(self._meta.root_path,pdir)
+            if not os.path.isdir(pdir):
+                continue
+            plist = []
+            for sdir in [d for d in os.listdir(pdir) if re.match(r'^P[0-9]{3,}_[0-9]+',d)]:
+                fdir = os.path.join(pdir,sdir,kw.get("flowcell"))
+                if not os.path.exists(fdir) or not modified_within_days(fdir, self.pargs.mtime):
+                    continue
+                plist.append(fdir)
+            if plist:
+                to_process.append(plist)
+        
+        for path in to_process:
+            self.log.info("Processing {}".format(path))
     
     @controller.expose(help="Upload run metrics to statusdb")
     def upload_qc(self):
