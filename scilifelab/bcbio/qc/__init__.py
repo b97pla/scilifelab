@@ -522,6 +522,20 @@ class RunMetricsParser(dict):
                 dicts.append(json.load(fh))
         return dicts
 
+    def parse_csv_files(self, filter_fn=None):
+        """Parse csv files and return a dict with filename as key and the corresponding dicts as value
+        """
+        def filter_function(f):
+            return f is not None and f.endswith(".csv")
+        if not filter_fn:
+            filter_fn = filter_function
+        files = self.filter_files(None,filter_fn)
+        dicts = {}
+        for f in files:
+            with open(f) as fh:
+                dicts[f] = [r for r in csv.DictReader(fh)]
+        return dicts
+
 class SampleRunMetricsParser(RunMetricsParser):
     """Sample-level class for parsing run metrics data"""
 
@@ -616,6 +630,52 @@ class SampleRunMetricsParser(RunMetricsParser):
             self.log.warn("Exception: {}".format(e))
             self.log.warn("no fastqc metrics for sample {} using pattern '{}'".format(barcode_name, pattern))
             return {'stats':{}}
+
+    def parse_eval_metrics(self, lane, sample_prj, flowcell, barcode_id, **kw):
+        """Parse the json output from the GATK genotype evaluation"""
+        self.log.debug("parse_eval_metrics for lane {}, project {} in flowcell {}".format(lane, sample_prj, flowcell))
+        pattern = "{}_[0-9]+_[0-9A-Za-z]+(_{})?(_nophix)?.*.eval_metrics".format(lane, barcode_id)
+        def filter_function(f):
+            return re.search(pattern, f) != None
+        metrics = self.parse_json_files(filter_fn=filter_function)
+        if metrics:
+            return metrics[0]
+        return {}
+
+    def parse_project_summary(self, lane, sample_prj, flowcell, barcode_id, **kw):
+        """Parse the project summary output"""
+        self.log.debug("parse_project_summary for lane {}, project {} in flowcell {}".format(lane, sample_prj, flowcell))
+        pattern = "project-summary.csv"
+        def filter_function(f):
+            return os.path.basename(f) == pattern
+        metrics = self.parse_csv_files(filter_fn=filter_function)
+        if metrics:
+            return metrics.values()[0][0]
+        return {}
+
+    def parse_snpeff_genes(self, lane, sample_prj, flowcell, barcode_id, **kw):
+        """Parse the SNPEFF genes output"""
+        self.log.debug("parse_project_summary for lane {}, project {} in flowcell {}".format(lane, sample_prj, flowcell))
+        snpeff_out = os.path.join(self.path,"snpEff_genes.txt")
+        if not os.path.exists(snpeff_out):
+            return {}
+        with open(snpeff_out) as fh:
+            # Discard first comment row
+            fh.next()
+            # Create a csv reader to read the tab-separated output
+            reader = csv.DictReader(fh,dialect=csv.excel_tab)
+            fields = [f for f in reader.fieldnames if f.startswith('Count')]
+            genecountkey = 'Count (GENES)'
+            biotypes = {}
+            for r in reader:
+                bt = r['BioType']
+                if bt not in biotypes:
+                    biotypes[bt] = {f:0 for f in fields}
+                    biotypes[bt][genecountkey] = 0
+                for f in fields:
+                    biotypes[bt][f] += int(r[f])
+                biotypes[bt][genecountkey] += 1
+            return biotypes
 
     def parse_filter_metrics(self, **kw):
         """CASAVA: Parse filter metrics at sample level"""

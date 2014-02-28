@@ -593,3 +593,11 @@ class ProjectSummaryConnection(Couch):
         project = self.get_entry(project_name)
         return project.get('source', None)
 
+
+class AnalysisConnection(Couch):
+    _doc_type = AnalysisDocument
+    _update_fn = update_fn
+    def __init__(self, dbname="analysis", **kwargs):
+        super(AnalysisConnection, self).__init__(**kwargs)
+        self.db = self.con[dbname]
+
