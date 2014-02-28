@@ -59,9 +59,6 @@ Ordered amount: ${ordered_amount} million read${'{}'.format(' pair') if is_paire
     paragraphs["Results"] = dict(style=h3,
                                  tpl = Template("""${rounded_read_count} million read${'{}'.format(' pair') if is_paired else ''}s${' in lane with PhiX error rate {}%'.format(phix_error_rate) if phix_error_rate != 'N/A' else ''}.
                                  Average quality score ${avg_quality_score} (${pct_q30_bases}% bases >= Q30)."""))
-
-    paragraphs["Comments"] = dict(style=h3,
-                                  tpl = Template("${success}"))
     return paragraphs
 
 def sample_note_headers():
