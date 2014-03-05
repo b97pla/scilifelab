@@ -110,7 +110,7 @@ def _split_project_summary_sample_name(samplename):
         info['Lane'] = samplename.split(";")[1]
         info['Sequence'] = samplename.split(";")[2]
     if info['description']:
-        m = re.match("([0-9A-Za-z\.\_]+)_(P[0-9][0-9][0-9]_[0-9A-Za-z\_]+)", info['description'])
+        m = re.match("([0-9A-Za-z\.\_]+)_(P[0-9]{3,}_[0-9A-Za-z\_]+)", info['description'])
         if m.groups():
             info['sample_prj'] = m.groups()[0]
             info['Sample'] = m.groups()[1]

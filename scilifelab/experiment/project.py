@@ -3,7 +3,7 @@ import os
 import re
 from scilifelab.utils.misc import filtered_walk
 # By default samples are named P###.*
-re_sample = "^(P[0-9][0-9][0-9])"
+re_sample = "^(P[0-9]{3,})"
 
 def validate_sample_directories(plist, pdir):
     """Validate that paths in plist are indeed in subdirectories of pdir.

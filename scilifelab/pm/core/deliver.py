@@ -7,6 +7,7 @@ import shutil
 import itertools
 import glob
 import json
+import datetime
 
 from cement.core import controller
 from scilifelab.pm.core.controller import AbstractBaseController, AbstractExtendedBaseController
@@ -15,11 +16,13 @@ from scilifelab.report.rl import *
 from scilifelab.report.qc import application_qc, fastq_screen, QC_CUTOFF
 from scilifelab.bcbio.run import find_samples
 from scilifelab.report.delivery_notes import sample_status_note, project_status_note, data_delivery_note
+from scilifelab.report.survey import initiate_survey, closed_projects
 from scilifelab.report.best_practice import best_practice_note, SEQCAP_KITS
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, get_scilife_to_customer_name
 from scilifelab.utils.misc import query_yes_no, filtered_walk, md5sum
 from scilifelab.report.gdocs_report import upload_to_gdocs
 from scilifelab.utils.timestamp import utc_time
+from ConfigParser import NoSectionError, NoOptionError
 
 BCBIO_EXCLUDE_DIRS = ['realign-split', 'variants-split', 'tmp', 'tx', 'fastqc', 'fastq_screen', 'alignments', 'nophix']
 
@@ -310,8 +313,6 @@ class DeliveryController(AbstractBaseController):
                 to_copy[sample.get('_id')].append([file,os.path.join(dest_proj_path,sname,runname,dstfile),read])
     
         return to_copy
-
-
         
     @controller.expose(help="Deliver best practice results")
     def best_practice(self):
@@ -396,6 +397,8 @@ class DeliveryReportController(AbstractBaseController):
         group.add_argument('--include_all_samples', help="Include all samples in project status report. Default is to only use the latest library prep.",  action="store_true", default=False)
         group.add_argument('--run-id', help="Run id (e.g. 130423_SN9999_0100_BABC123CXX). Required for reporting to Google docs",  action="store", default=None, type=str)
         group.add_argument('--credentials-file', help="Text file containing base64-encoded Google Docs credentials",  action="store", default=None, type=str)
+        group.add_argument('--from-date', help="Consider projects closed on or after this date, specified on the form 'YYYY-MM-DD'", default=None, action="store", type=str)
+        group.add_argument('--to-date', help="Consider projects closed on or before this date, specified on the form 'YYYY-MM-DD'", default=None, action="store", type=str)
         super(DeliveryReportController, self)._setup(app)
 
     def _process_args(self):
@@ -486,7 +489,47 @@ class DeliveryReportController(AbstractBaseController):
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
         self.app._output_data['debug'].write(out_data['debug'].getvalue())
+
+    @controller.expose(help="Send out a user survey")
+    def survey(self):
+        if not self._check_pargs(["project_name"]):
+            return
+        # Send out a user survey if necessary
+        self._meta.date_format = "%Y-%m-%d"
         
+        kw = vars(self.pargs)
+        for opt in ["smtphost","smtpport","sender","salt"]:
+            try:
+                kw[opt] = self.app.config.get("email",opt)
+            except NoSectionError:
+                pass
+            except NoOptionError:
+                if opt == "salt":
+                    self.log.error("You must specify a salt in the 'email' section of the config file for encryption of survey link")
+                    return
+                pass
+            
+        self._meta.salt = kw["salt"]
+        initiated = initiate_survey(self,
+                                    project=self.pargs.project_name,
+                                    **kw)
+       
+    @controller.expose(help="List projects that have been closed")
+    def closed_projects(self):
+        
+        kw = vars(self.pargs)
+        # Check that, if specified, the dates are parseable
+        for date in ["from_date","to_date"]:
+            if kw[date] is not None:
+                try:
+                    kw[date] = datetime.strptime(kw[date],"%Y-%m-%d")
+                except ValueError:
+                    self.log.error("Please specify the date using the format 'YYYY-MM-DD'")
+                    return
+                
+        for project in sorted(closed_projects(self,**kw), key=lambda d: d.get("closed","0000-00-00")):
+            print("{}\t{}".format(project["name"],project["closed"]))
+       
     @controller.expose(help="Make best practice reports")
     def best_practice(self):
         self.log.info("Until best practice results are stored in statusDB, best practice reports are generated via the 'pm project bpreport' subcommand. This requires that best practice analyses have been run in the project folder.")
