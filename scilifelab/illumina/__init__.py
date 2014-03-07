@@ -15,6 +15,7 @@ def map_index_name(index, mismatch=0):
     
     names = []
     for name, sequence in BASIC_LOOKUP.items():
+        sequence = sequence.replace('-','')
         try:
             if index != sequence and hamming_distance(index,sequence) > mismatch:
                 continue
