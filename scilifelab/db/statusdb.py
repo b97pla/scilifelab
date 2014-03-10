@@ -207,6 +207,14 @@ class SampleRunMetricsDocument(StatusDocument):
             self["project_id"] = m.group(1)
         return
 
+class AnalysisDocument(StatusDocument):
+    """Project level document for holding analysis data."""
+    _entity_type = "bp_analysis"
+    _fields = ["project_name"]
+    _dict_fields = ["samples"]
+    def __init__(self, **kw):
+        StatusDocument.__init__(self, **kw)
+
 # Updating function for object comparison
 def update_fn(cls, db, obj, viewname = "names/id_to_name", key="name"):
     """Compare object with object in db if present.
@@ -584,4 +592,12 @@ class ProjectSummaryConnection(Couch):
         """
         project = self.get_entry(project_name)
         return project.get('source', None)
+
+
+class AnalysisConnection(Couch):
+    _doc_type = AnalysisDocument
+    _update_fn = update_fn
+    def __init__(self, dbname="analysis", **kwargs):
+        super(AnalysisConnection, self).__init__(**kwargs)
+        self.db = self.con[dbname]
 

@@ -4,6 +4,8 @@ import csv
 import yaml
 import ast
 import itertools
+import re
+import glob
 from collections import defaultdict
 
 from cement.core import backend, controller, handler, hook
@@ -12,7 +14,7 @@ from scilifelab.pm.core.controller import AbstractBaseController
 from scilifelab.utils.timestamp import modified_within_days
 from scilifelab.bcbio.qc import FlowcellRunMetricsParser, SampleRunMetricsParser
 from scilifelab.pm.bcbio.utils import validate_fc_directory_format, fc_id, fc_parts, fc_fullname
-from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectSummaryConnection, SampleRunMetricsDocument, FlowcellRunMetricsDocument
+from scilifelab.db.statusdb import SampleRunMetricsConnection, FlowcellRunMetricsConnection, ProjectSummaryConnection, SampleRunMetricsDocument, FlowcellRunMetricsDocument, AnalysisConnection, AnalysisDocument
 from scilifelab.utils.dry import dry
 import scilifelab.log
 
@@ -111,7 +113,7 @@ class RunMetricsController(AbstractBaseController):
         """Parse samplesheet information and populate sample run metrics object"""
         if as_yaml:
             for info in runinfo:
-                if not info.get("multiplex", None):
+                if not info.get("multiplex"):
                     self.app.log.warn("No multiplex information for lane {}".format(info.get("lane")))
                     sample = {}
                     sample.update({k: info.get(k, None) for k in ('analysis', 'description', 'flowcell_id', 'lane')})
@@ -273,7 +275,95 @@ class RunMetricsController(AbstractBaseController):
         
         return setup
 
-    
+    @controller.expose(help="Upload analysis results to statusdb")
+    def upload_analysis(self):
+        kw = vars(self.pargs)
+        if not kw.get("flowcell"):
+            kw["flowcell"] = "TOTAL"
+        
+        # Get a connection to the analysis database
+        acon = AnalysisConnection(**kw)
+        
+        # Traverse the folder hierarchy and determine paths to process
+        to_process = {}
+        for pdir in os.listdir(self._meta.root_path):
+            pdir = os.path.join(self._meta.root_path,pdir)
+            if not os.path.isdir(pdir):
+                continue
+            plist = []
+            for sdir in [d for d in os.listdir(pdir) if re.match(r'^P[0-9]{3,}_[0-9]+',d)]:
+                fdir = os.path.join(pdir,sdir,kw.get("flowcell"))
+                if not os.path.exists(fdir) or not modified_within_days(fdir, self.pargs.mtime):
+                    continue
+                plist.append(fdir)
+            if plist:
+                to_process[os.path.basename(pdir)] = plist
+        
+        # Collect the data from each folder
+        for project_name, sdirs in to_process.items():
+            self.log.info("Processing {}".format(project_name))
+            samples = {}
+            for sdir in sdirs:
+                config = glob.glob(os.path.join(sdir,"*-bcbb-config.yaml"))
+                if not config:
+                    self.log.error("Could not find sample configuration file in {}. Skipping sample.".format(sdir))
+                    continue
+                if len(config) > 1:
+                    self.log.warn("Multiple sample configuration files found in {}. Will only use {}.".format(sdir,os.path.basename(config[0])))
+                
+                # Parse the config file and get the flowcell, lane and index sequence that may be needed to parse
+                info = {}
+                sinfos = []
+                with open(config[0]) as fh:
+                    info = yaml.load(fh)
+                fcdate = info.get("fc_date")
+                fcname = info.get("fc_name")
+                for laneinfo in info.get("details",[]):
+                    for sampleinfo in laneinfo.get("multiplex",[laneinfo]):
+                        linfo = laneinfo
+                        linfo.update(sampleinfo)
+                        name = linfo.get("name",linfo.get("description","unknown"))
+                        m = re.match(r'(P[0-9_]{4,}[0-9])',name)
+                        if m:
+                            name = m.group(1)
+                        sample_kw = {'flowcell': linfo.get("flowcell_id") if not fcname else fcname,
+                                     'date': fcdate,
+                                     'lane': linfo.get("lane"),
+                                     'barcode_name': name,
+                                     'sample_prj': linfo.get("sample_prj",project_name),
+                                     'barcode_id': linfo.get("barcode_id","1"),
+                                     'sequence': linfo.get("sequence","NoIndex")}
+                        sinfos.append(sample_kw)
+                
+                # Create a parser object and collect the metrics
+                parser = SampleRunMetricsParser(sdir)
+                sinfo = sinfos[0]
+                name = sinfo.get("barcode_name","unknown")
+                samples[name] = {}
+                samples[name]["bcbb_checkpoints"] = parser.parse_bcbb_checkpoints(**sinfo)
+                samples[name]["software_versions"] = parser.parse_software_versions(**sinfo)
+                samples[name]["project_summary"] = parser.parse_project_summary(**sinfo)
+                samples[name]["snpeff_genes"] = parser.parse_snpeff_genes(**sinfo)
+                for sinfo in sinfos:
+                    picard = parser.read_picard_metrics(**sinfo)
+                    if picard:
+                        samples[name]["picard_metrics"] = picard
+                    fq_scr = parser.parse_fastq_screen(**sinfo)
+                    if fq_scr:
+                        samples[name]["fastq_scr"] = fq_scr
+                    fastqc = parser.read_fastqc_metrics(**sinfo)
+                    if fastqc.get("stats"):
+                        samples[name]["fastqc"] = fastqc
+                    gteval = parser.parse_eval_metrics(**sinfo)
+                    if gteval:
+                        samples[name]["gatk_variant_eval"] = gteval
+                        
+            # Store the collected metrics in an analysis document
+            obj = AnalysisDocument(**{'project_name': project_name,
+                                      'name': project_name,
+                                      'samples': samples})
+            dry("Saving object {}".format(repr(obj)), acon.save(obj))
+
     @controller.expose(help="Upload run metrics to statusdb")
     def upload_qc(self):
         if not self._check_pargs(['flowcell']):
