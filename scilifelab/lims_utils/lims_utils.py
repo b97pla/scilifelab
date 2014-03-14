@@ -13,7 +13,7 @@ lims = Lims(BASEURI, USERNAME, PASSWORD)
 
 In the lims_utils context, processes are categorised into groups that define, 
 or are used to define a certain type of statusdb key. The categories and their 
-processes are defined here:"""
+processes are defined here:""" 'hh'
 
 INITALQCFINISHEDLIB = {'24' : 'Customer Gel QC',
     '62' : 'qPCR QC (Library Validation) 4.0',
