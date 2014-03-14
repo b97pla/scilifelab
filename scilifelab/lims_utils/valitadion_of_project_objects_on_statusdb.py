@@ -49,31 +49,31 @@ import objectsDB as DB
 from datetime import date
 import scilifelab.log
 
-def comp_obj(stage, prod):
+def comp_obj(proj_tools_dev, proj_tools):
     """compares the two dictionaries obj and dbobj"""
-    LOG.info('project %s is being handeled' % stage['project_name'])
-    diff = recursive_comp(stage, prod)
-    LOG.info('tools and tools-dev are differing for proj %s: %s' % ( stage['project_name'],diff))
+    LOG.info('project %s is being handeled' % proj_tools_dev['project_name'])
+    diff = recursive_comp(proj_tools_dev, proj_tools)
+    LOG.info('tools and tools-dev are differing for proj %s: %s' % ( proj_tools_dev['project_name'],diff))
 
-def recursive_comp(stage, prod):
+def recursive_comp(proj_tools_dev, proj_tools):
     diff = False
-    keys = list(set(stage.keys() + prod.keys()))
+    keys = list(set(proj_tools_dev.keys() + proj_tools.keys()))
     for key in keys:
-        if not (stage.has_key(key)):
-            LOG.info('Key %s missing in tools to db object ' % key)
+        if not (proj_tools_dev.has_key(key)):
+            LOG.info('Key %s missing in tools-dev to for object ' % key)
             diff = True
-        elif not  prod.has_key(key):
-            LOG.info('Key %s missing in tools-dev to db object ' % key)
+        elif not proj_tools.has_key(key):
+            LOG.info('Key %s missing in tools for db object ' % key)
             diff = True
         else:
-            prod_val = prod[key]
-            stage_val = stage[key]
-            if (prod_val != stage_val):
+            proj_tools_val = proj_tools[key]
+            proj_tools_dev_val = proj_tools_dev[key]
+            if (proj_tools_val != proj_tools_dev_val):
                 diff = True
-                if (type(prod_val) is dict) and (type(stage_val) is dict):
-                    diff = diff and recursive_comp(stage_val, prod_val)
+                if (type(proj_tools_val) is dict) and (type(proj_tools_dev_val) is dict):
+                    diff = diff and recursive_comp(proj_tools_dev_val, proj_tools_val)
                 else:
-                    LOG.info('Key %s differing: tools gives: %s. tools-dev gives %s. ' %( key,prod_val,stage_val))
+                    LOG.info('Key %s differing: tools gives: %s. tools-dev gives %s. ' %( key,proj_tools_val,proj_tools_dev_val))
     return diff
 
 def  main(proj_name, all_projects, conf_tools_dev):
@@ -90,7 +90,7 @@ def  main(proj_name, all_projects, conf_tools_dev):
                 if not proj_tools_dev:
                     LOG.warning("""Found no projects on tools-dev with name %s""" % proj_name)
                 else:
-                    comp_obj(proj_tools, proj_tools_dev)
+                    comp_obj(proj_tools_dev, proj_tools)
             except:
                 LOG.info('Failed comparing stage and prod for proj %s' % proj_name)    
     elif proj_name is not None:
@@ -100,7 +100,7 @@ def  main(proj_name, all_projects, conf_tools_dev):
         if (not proj_tools) | (not proj_tools_dev):
             LOG.warning("Found no project named %s" %(proj_name))
         else:
-            comp_obj(proj_tools, proj_tools_dev)
+            comp_obj(proj_tools_dev, proj_tools)
 
 if __name__ == '__main__':
     parser = OptionParser(usage=usage)
