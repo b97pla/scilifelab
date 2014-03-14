@@ -21,7 +21,7 @@ INITALQCFINISHEDLIB = {'24' : 'Customer Gel QC',
     '67' : 'Qubit QC (Library Validation) 4.0',
     '20' : 'CaliperGX QC (DNA)',
     '17' : 'Bioanalyzer QC (Library Validation) 4.0'}
-INITALQC = {'63' : 'Quant-iT QC (DNA) 4.0',
+INITALQC ={'63' : 'Quant-iT QC (DNA) 4.0',
     '65' : 'Quant-iT QC (RNA) 4.0',
     '66' : 'Qubit QC (DNA) 4.0',
     '68' : 'Qubit QC (RNA) 4.0',
@@ -30,21 +30,29 @@ INITALQC = {'63' : 'Quant-iT QC (DNA) 4.0',
     '16' : 'Bioanalyzer QC (DNA) 4.0',
     '18' : 'Bioanalyzer QC (RNA) 4.0',
     '116' : 'CaliperGX QC (RNA)',
-    '48' : 'NanoDrop QC (DNA) 4.0'}
+    '504' : 'Volume Measurement QC'}
 AGRINITQC = {'7' : 'Aggregate QC (DNA) 4.0',
     '9' : 'Aggregate QC (RNA) 4.0'}
-PREPREPSTART = {"74": "Shear DNA (SS XT) 4.0"}
+PREPREPSTART = {'74': 'Shear DNA (SS XT) 4.0',
+    '304' : "Ligate 3' adapters (TruSeq small RNA) 1.0"}
 PREPSTART = {'10' : 'Aliquot Libraries for Hybridization (SS XT)',
     '47' : 'mRNA Purification, Fragmentation & cDNA synthesis (TruSeq RNA) 4.0',
     '33' : 'Fragment DNA (TruSeq DNA) 4.0',
+    '407' : 'Fragment DNA (Thruplex)',
+    '308': 'Library Pooling (TruSeq Small RNA) 1.0',
     '117' : 'Applications Generic Process'}
 PREPEND = {'157': 'Applications Finish Prep',
-    '109' : 'CA Purification'}
+    '109' : 'CA Purification',
+    '456' : 'Purification (ThruPlex)',
+    '111' : 'Amplify Captured Libraries to Add Index Tags (SS XT) 4.0',
+    '406' : 'End repair, size selection, A-tailing and adapter ligation (TruSeq PCR-free DNA) 4.0',
+    '311': 'Sample Placement (Size Selection)'}
 LIBVAL = {'62' : 'qPCR QC (Library Validation) 4.0',
     '64' : 'Quant-iT QC (Library Validation) 4.0',
     '67' : 'Qubit QC (Library Validation) 4.0',
     '20' : 'CaliperGX QC (DNA)',
-    '17' : 'Bioanalyzer QC (Library Validation) 4.0'}
+    '17' : 'Bioanalyzer QC (Library Validation) 4.0',
+    '24' : 'Customer Gel QC'}
 AGRLIBVAL = {'8': 'Aggregate QC (Library Validation) 4.0'}
 SEQSTART = {'23':'Cluster Generation (Illumina SBS) 4.0',
     '26':'Denature, Dilute and Load Sample (MiSeq) 4.0'}
@@ -53,7 +61,7 @@ DILSTART = {'40' : 'Library Normalization (MiSeq) 4.0',
 SEQUENCING = {'38' : 'Illumina Sequencing (Illumina SBS) 4.0',
     '46' : 'MiSeq Run (MiSeq) 4.0'}
 WORKSET = {'204' : 'Setup Workset/Plate'}
-SUMMARY = {'404' : 'Project Summary 1.3'}
+SUMMARY = {'356' : 'Project Summary 1.3'}
 
 PROJ_UDF_EXCEPTIONS = ['customer_reference','uppnex_id','reference_genome','application']
 
