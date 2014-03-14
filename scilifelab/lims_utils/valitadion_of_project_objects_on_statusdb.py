@@ -45,12 +45,9 @@ from optparse import OptionParser
 from scilifelab.db.statusDB_utils import *
 from helpers import *
 from pprint import pprint
-from genologics.lims import *
-from genologics.config import BASEURI, USERNAME, PASSWORD
 import objectsDB as DB
 from datetime import date
 import scilifelab.log
-lims = Lims(BASEURI, USERNAME, PASSWORD)
 
 def comp_obj(stage, prod):
     """compares the two dictionaries obj and dbobj"""
@@ -80,8 +77,6 @@ def recursive_comp(stage, prod):
     return diff
 
 def  main(proj_name, all_projects, conf_tools_dev):
-    first_of_july = '2013-06-30'
-    today = date.today()
     couch_tools = load_couch_server(os.path.join(os.environ['HOME'],'opt/config/post_process.yaml'))
     couch_tools_dev = load_couch_server(conf_tools_dev)
     proj_db_tools = couch_tools['projects']
@@ -122,6 +117,6 @@ if __name__ == '__main__':
 
     (options, args) = parser.parse_args()
 
-    LOG = scilifelab.log.file_logger('LOG',options.conf ,'validate_LIMS_upgrade.log', 'log_dir_tools')
+    LOG = scilifelab.log.file_logger('LOG',options.conf ,'validate_projects_statusdb.log', 'log_dir_tools')
     main(options.project_name, options.all_projects, options.conf)
 
