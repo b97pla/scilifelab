@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/home/hiseq.bioinfo/.virtualenvs/lims2db/bin/python
 
 """Script to load project info from Lims into the project database in statusdb.
 
@@ -32,9 +32,14 @@ def  main(proj_name, all_projects, days, conf):
                 days_closed = (today-closed).days
             except:
                 days_closed = 0
-            opened = proj.open_date
-            if opened:
-                if comp_dates(first_of_july, opened):
+            if proj.open_date:
+                ordered_opened = proj.open_date
+            elif 'Order received' in dict(proj.udf.items()).keys():
+                ordered_opened = proj.udf['Order received'].isoformat()
+            else:
+                LOG.info("Project is not updated because 'Order received' date and 'open date' is missing for project %s" % proj.name)
+            if ordered_opened:
+                if comp_dates(first_of_july, ordered_opened):
                     if (days_closed < days):
                         proj_time = time.time()
                         try:
@@ -48,29 +53,30 @@ def  main(proj_name, all_projects, days, conf):
                     else:
                         LOG.info('Project is not updated because the project has been closed for %s days.' % days_closed)  
                 else:
-                    LOG.info('Project is not updated because the project was opened before 2013-06-30 (%s)'%opened)
-            else:
-                LOG.info('Project is not updated because open date missing for project %s' % proj.name)
+                    LOG.info('Project is not updated because the project was opened or ordered before 2013-06-30 (%s)'%ordered_opened)
     elif proj_name is not None:
         proj = lims.get_projects(name = proj_name)
         if len(proj) == 0:
             LOG.warning('No project named %s in Lims' % proj_name)
         else:
             proj = proj[0]
-            opened = proj.open_date
-            if opened:
-                if comp_dates(first_of_july, opened):
+            if proj.open_date:
+                ordered_opened = proj.open_date
+            elif 'Order received' in dict(proj.udf.items()).keys():
+                ordered_opened = proj.udf['Order received'].isoformat()
+            else:
+                LOG.info("Project is not updated because 'Order received' date and 'open date' is missing for project %s" % proj.name)
+            if ordered_opened:
+                if comp_dates(first_of_july, ordered_opened):
                     cont = 'yes'
                 else:
-                    cont = raw_input('The project %s is opened before 2013-07-01. Do you still want to load the data from lims into statusdb? (yes/no): ' % proj_name)
+                    cont = raw_input('The project %s is ordered before 2013-07-01. Do you still want to load the data from lims into statusdb? (yes/no): ' % proj_name)
                 if cont == 'yes':
                     obj = DB.ProjectDB(lims, proj.id)
                     key = find_proj_from_view(proj_db, proj.name)
                     obj.project['_id'] = find_or_make_key(key)
                     info = save_couchdb_obj(proj_db, obj.project)
                     LOG.info('project %s is handeled and %s : _id = %s' % (proj_name, info, obj.project['_id']))
-            else:
-                LOG.info('Open date missing for project %s' % proj.name)
 
 if __name__ == '__main__':
     usage = "Usage:       python project_summary_upload_LIMS.py [options]"
