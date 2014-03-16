@@ -97,6 +97,6 @@ if __name__ == '__main__':
 
     (options, args) = parser.parse_args()
 
-    LOG = scilifelab.log.file_logger('LOG',options.conf ,'lims2db_projects.log', 'log_dir_tools')
+    LOG = scilifelab.log.file_logger('LOG',options.conf ,'lims2db_projects-tools-dev.log', 'log_dir_tools')
     main(options.project_name, options.all_projects, options.days, options.conf)
 
