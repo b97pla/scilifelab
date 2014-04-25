@@ -8,6 +8,7 @@ import math
 import csv
 import yaml
 import texttable
+import unicodedata
 from cStringIO import StringIO
 from collections import Counter
 from scilifelab.db.statusdb import SampleRunMetricsConnection, ProjectSummaryConnection, FlowcellRunMetricsConnection, calc_avg_qv
@@ -248,7 +249,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         }
     # key mapping from sample_run_metrics to parameter keys
     srm_to_parameter = {"project_name":"sample_prj", "FC_id":"flowcell",
-                        "scilifelab_name":"barcode_name", "start_date":"date", 
+                        "scilifelab_name":"barcode_name", "start_date":"date",
                         "rounded_read_count":"bc_count", "lane": "lane"}
 
     LOG.debug("got parameters {}".format(parameters))
@@ -345,7 +346,7 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
         output_data["stdout"].write("{:>18}\t{:>6}\t{:>12}\t{:>12}\t{:>12}\t{:>12}\n".format(s["barcode_name"], s["lane"], s_param["phix_error_rate"], err_stat, s_param["avg_quality_score"], qv_stat))
 
         # Update/set remaning sample run parameters, falling back on project defaults if *key* is missing
-        s_param['ordered_amount'] = s_param.get('ordered_amount', 
+        s_param['ordered_amount'] = s_param.get('ordered_amount',
                                                 p_con.get_ordered_amount(project_name,
                                                                          samples=p_con.get_entry(project_name,'samples')))
         s_param['customer_reference'] = s_param.get('customer_reference', project.get('customer_reference'))
@@ -382,6 +383,9 @@ def sample_status_note(project_name=None, flowcell=None, username=None, password
                     LOG.warn("inconsistent mapping for '{}': '{}' != '{}' (project summary id)".format(s["name"], s["_id"], project_sample_d[s["name"]]))
             s_param['customer_name'] = project_sample_item.get("customer_name", None)
 
+            # Always normalize submitted id, since module textttable does not support unicode
+            if type(s_param['customer_name']) is unicode:
+                s_param['customer_name'] = unicodedata.normalize('NFKD', s_param['customer_name']).encode('ascii', 'ignore')
         # No project sample found. Manual upload to database necessary.
         else:
             s_param['customer_name'] = None
@@ -450,6 +454,11 @@ def _set_sample_table_values(sample_name, project_sample, barcode_seq, ordered_m
         param["ordered_amount"] = _get_ordered_million_reads(sample_name, ordered_million_reads)
     vals['MOrdered'] = param["ordered_amount"]
     vals['BarcodeSeq'] = barcode_seq
+
+    # Always normalize submitted id, since module textttable does not support unicode
+    if type(vals['SubmittedID']) is unicode:
+        vals['SubmittedID'] = unicodedata.normalize('NFKD', vals['SubmittedID']).encode('ascii', 'ignore')
+
     vals.update({k:"N/A" for k in vals.keys() if vals[k] is None or vals[k] == ""})
     return vals
 
@@ -457,27 +466,27 @@ def data_delivery_note(**kw):
     """Create an easily parseable information file with information about the data delivery
     """
     output_data = {'stdout':StringIO(), 'stderr':StringIO(), 'debug':StringIO()}
-    
+
     project_name = kw.get('project_name',None)
     flowcell = kw.get('flowcell',None)
     LOG.debug("Generating data delivery note for project {}{}.".format(project_name,' and flowcell {}'.format(flowcell if flowcell else '')))
-    
+
     # Get a connection to the project and sample databases
     p_con = ProjectSummaryConnection(**kw)
     assert p_con, "Could not connect to project database"
     s_con = SampleRunMetricsConnection(**kw)
     assert s_con, "Could not connect to sample database"
-    
+
     # Get the entry for the project and samples from the database
     LOG.debug("Fetching samples from sample database")
     samples = s_con.get_samples(sample_prj=project_name, fc_id=flowcell)
     LOG.debug("Got {} samples from database".format(len(samples)))
-    
+
     # Get the customer sample names from the project database
     LOG.debug("Fetching samples from project database")
     project_samples = p_con.get_entry(project_name, "samples")
     customer_names = {sample_name:sample.get('customer_name','N/A') for sample_name, sample in project_samples.items()}
-    
+
     data = [['SciLifeLab ID','Submitted ID','Flowcell','Lane','Barcode','Read','Path','MD5','Size (bytes)','Timestamp']]
     for sample in samples:
         sname = sample.get('project_sample_name','N/A')
@@ -501,7 +510,7 @@ def data_delivery_note(**kw):
                          file.get('md5','N/A'),
                          file.get('size_in_bytes','N/A'),
                          tstamp,])
-    
+
     # Write the data to a csv file
     outfile = "{}{}_data_delivery.csv".format(project_name,'_{}'.format(flowcell) if flowcell else '')
     LOG.debug("Writing delivery data to {}".format(outfile))
@@ -509,14 +518,14 @@ def data_delivery_note(**kw):
         csvw = csv.writer(outh)
         for row in data:
             csvw.writerow(row)
-    
+
     # Write Texttable formatted output to stdout
     tt = texttable.Texttable(180)
     tt.add_rows(data)
     output_data['stdout'].write(tt.draw())
-        
+
     return output_data
-    
+
 
 def project_status_note(project_name=None, username=None, password=None, url=None,
                         use_ps_map=True, use_bc_map=False, check_consistency=False,

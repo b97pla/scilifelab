@@ -149,7 +149,8 @@ class ArchiveController(AbstractExtendedBaseController):
             if self.pargs.clean:
                 rm_tarball(self,tarball=self.pargs.tarball)
             #Set the run as archived in StatusDB
-            fc_db_id = f_conn.id_view.get(self.pargs.flowcell)
+            fc_id = self.pargs.flowcell if self.pargs.flowcell else self.pargs.tarball.split('.')[0]
+            fc_db_id = f_conn.id_view.get(fc_id)
             f_conn.set_storage_status(fc_db_id, 'swestore_archived')
             # Log to statusdb
             if self.pargs.log_to_db:
