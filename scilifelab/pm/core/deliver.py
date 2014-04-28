@@ -97,57 +97,57 @@ class DeliveryController(AbstractBaseController):
     def raw_data(self):
         if not self._check_pargs(["project"]):
             return
-        
+
         # if necessary, reformat flowcell identifier
         if self.pargs.flowcell:
             self.pargs.flowcell = self.pargs.flowcell.split("_")[-1]
-        
+
         # get the uid and gid to use for destination files
         uid = os.getuid()
         gid = os.getgid()
         if self.pargs.group is not None and len(self.pargs.group) > 0:
             gid = grp.getgrnam(group).gr_gid
-                
+
         self.log.debug("Connecting to project database")
         p_con = ProjectSummaryConnection(**vars(self.pargs))
         assert p_con, "Could not get connection to project databse"
         self.log.debug("Connecting to samples database")
         s_con = SampleRunMetricsConnection(**vars(self.pargs))
         assert s_con, "Could not get connection to samples databse"
-        
+
         # Fetch the Uppnex project to deliver to
         if not self.pargs.uppmax_project:
             self.pargs.uppmax_project = p_con.get_entry(self.pargs.project, "uppnex_id")
             if not self.pargs.uppmax_project:
                 self.log.error("Uppmax project was not specified and could not be fetched from project database")
                 return
-        
+
         # Extract the list of samples and runs associated with the project and sort them
-        samples = sorted(s_con.get_samples(fc_id=self.pargs.flowcell, sample_prj=self.pargs.project), key=lambda k: (k.get('project_sample_name','NA'), k.get('flowcell','NA'), k.get('lane','NA'))) 
-        
+        samples = sorted(s_con.get_samples(fc_id=self.pargs.flowcell, sample_prj=self.pargs.project), key=lambda k: (k.get('project_sample_name','NA'), k.get('flowcell','NA'), k.get('lane','NA')))
+
         # Setup paths and verify parameters
         self._meta.production_root = self.app.config.get("production", "root")
         self._meta.root_path = self._meta.production_root
         proj_base_dir = os.path.join(self._meta.root_path, self.pargs.project)
         assert os.path.exists(self._meta.production_root), "No such directory {}; check your production config".format(self._meta.production_root)
         assert os.path.exists(proj_base_dir), "No project {} in production path {}".format(self.pargs.project,self._meta.root_path)
-        
+
         try:
             self._meta.uppnex_project_root = self.app.config.get("deliver", "uppnex_project_root")
         except Exception as e:
             self.log.warn("{}, will use '/proj' as uppnext_project_root".format(e))
             self._meta.uppnex_project_root = '/proj'
-        
+
         try:
             self._meta.uppnex_delivery_dir = self.app.config.get("deliver", "uppnex_project_delivery_path")
         except Exception as e:
             self.log.warn("{}, will use 'INBOX' as uppnext_project_delivery_path".format(e))
             self._meta.uppnex_delivery_dir = 'INBOX'
-        
+
         destination_root = os.path.join(self._meta.uppnex_project_root,self.pargs.uppmax_project,self._meta.uppnex_delivery_dir)
         assert os.path.exists(destination_root), "Delivery destination folder {} does not exist".format(destination_root)
         destination_root = os.path.join(destination_root,self.pargs.project)
-        
+
         # If interactively select, build a list of samples to skip
         if self.pargs.interactive:
             to_process = []
@@ -165,30 +165,37 @@ class DeliveryController(AbstractBaseController):
                 if query_yes_no("Deliver sample?", default="no"):
                     to_process.append(sample)
             samples = to_process
-            
+
+        # Find uncompressed fastq
+        uncompressed = self._find_uncompressed_fastq_files(proj_base_dir,samples)
+        if len(uncompressed) > 0:
+            self.log.warn("The following samples have uncompressed *.fastq files that cannot be delivered: {}".format(",".join(uncompressed)))
+            if not query_yes_no("Continue anyway?", default="no"):
+                return
+
         self.log.info("Will deliver data for {} samples from project {} to {}".format(len(samples),self.pargs.project,destination_root))
         if not query_yes_no("Continue?"):
             return
-        
+
         # Get the list of files to transfer and the destination
         self.log.debug("Gathering list of files to copy")
         to_copy = self.get_file_copy_list(proj_base_dir,
                                           destination_root,
                                           samples)
-        
+
         # Make sure that transfer will be with rsync
         if not self.pargs.rsync:
             self.log.warn("Files must be transferred using rsync")
             if not query_yes_no("Do you wish to continue delivering using rsync?", default="yes"):
                 return
             self.pargs.rsync = True
-            
-        # Process each sample run 
+
+        # Process each sample run
         for id, files in to_copy.items():
             # get the sample database object
             [sample] = [s for s in samples if s.get('_id') == id]
             self.log.info("Processing sample {} and flowcell {}".format(sample.get("project_sample_name","NA"),sample.get("flowcell","NA")))
-            
+
             # calculate md5sums on the source side and write it on the destination
             md5 = []
             for f in files:
@@ -196,11 +203,11 @@ class DeliveryController(AbstractBaseController):
                 mfile = "{}.md5".format(f[1])
                 md5.append([m,mfile,f[2],f[0]])
                 self.log.debug("md5sum for source file {}: {}".format(f[0],m))
-                
+
             # transfer files
             self.log.debug("Transferring {} fastq files".format(len(files)))
             self._transfer_files([f[0] for f in files], [f[1] for f in files])
-            
+
             # write the md5sum to a file at the destination and verify the transfer
             passed = True
             for m, mfile, read, srcpath in md5:
@@ -208,7 +215,7 @@ class DeliveryController(AbstractBaseController):
                 self.log.debug("Writing md5sum to file {}".format(mfile))
                 self.app.cmd.write(mfile,"{}  {}".format(m,os.path.basename(dstfile)),True)
                 self.log.debug("Verifying md5sum for file {}".format(dstfile))
-                
+
                 # if dry-run, make sure verification pass
                 if self.pargs.dry_run:
                     dm = m
@@ -222,20 +229,20 @@ class DeliveryController(AbstractBaseController):
                     self.app.cmd.safe_unlink(mfile)
                     passed = False
                     continue
-                
+
                 # Modify the permissions to ug+rw
                 for f in [dstfile, mfile]:
-                    self.app.cmd.chmod(f,stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP) 
-        
+                    self.app.cmd.chmod(f,stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP)
+
             # touch the flag to trigger uppmax inbox permission fix
             self.app.cmd.safe_touchfile(os.path.join("/sw","uppmax","var","inboxfix","schedule",self.pargs.uppmax_project))
-            
+
             # log the transfer to statusdb if verification passed
             if passed:
                 self.log.info("Logging delivery to StatusDB document {}".format(id))
                 data = {'raw_data_delivery': {'timestamp': utc_time(),
-                                              'files': {'R{}'.format(read):{'md5': m, 
-                                                                            'path': os.path.splitext(mfile)[0], 
+                                              'files': {'R{}'.format(read):{'md5': m,
+                                                                            'path': os.path.splitext(mfile)[0],
                                                                             'size_in_bytes': self._getsize(os.path.splitext(mfile)[0]),
                                                                             'source_location': srcpath} for m, mfile, read, srcpath in md5},
                                               }
@@ -253,7 +260,7 @@ class DeliveryController(AbstractBaseController):
                 sample.update(data)
                 self._save(s_con,sample)
                 self.log.debug(jsonstr)
-        
+
     def _getsize(self, file):
         """Wrapper around getsize
         """
@@ -263,29 +270,49 @@ class DeliveryController(AbstractBaseController):
         except OSError:
             pass
         return size
-    
+
     def _save(self, con, obj):
         """Dry-run aware wrapper around statusdb save
         """
         def runpipe():
             con.save(obj)
         return self.app.cmd.dry("storing object {} in {}".format(obj.get('_id'),con.db), runpipe)
-        
+
+    def _find_uncompressed_fastq_files(self, proj_base_dir, samples):
+        """Finds uncompressed fastq files in project folder that should stop the delivery process
+        Returns a list of file names if found
+        """
+
+        uncompressed = []
+        for sample in samples:
+            date = sample.get("date",False)
+            fcid = sample.get("flowcell",False)
+            dname = sample.get("barcode_name",False)
+            runname = "{}_{}".format(date,fcid)
+
+            path = os.path.join(proj_base_dir,dname,runname,"*.fastq")
+            files = glob.glob(path)
+            if len(files) > 0:
+                uncompressed.append(dname)
+
+        return set(uncompressed)
+
+
     def get_file_copy_list(self, proj_base_dir, dest_proj_path, samples):
         """Traverse the project folder and collect the files that should be delivered. Returns
         a list of 2-element lists with elements source_path and destination_path
         """
-        
+
         to_copy = {}
         for sample in samples:
             sfiles = []
             sname = sample.get("project_sample_name",None)
-            
+
             dname = sample.get("barcode_name",None)
             if not dname:
                 self.log.warn("Could not fetch sample directory (barcode name) for {} from database document {}. Skipping sample".format(sname,sample.get('_id')))
                 continue
-            
+
             date = sample.get("date","NA")
             fcid = sample.get("flowcell","NA")
             lane = sample.get("lane","")
@@ -295,7 +322,7 @@ class DeliveryController(AbstractBaseController):
             if not os.path.exists(seqdir):
                 self.log.warn("Sample and flowcell directory {} does not exist. Skipping sample".format(seqdir))
                 continue
-            
+
             for read in xrange(1,10):
                 # Locate the source file, allow a wildcard to accommodate sample names with index
                 fname = "{}*_{}_L00{}_R{}_001.fastq.gz".format(sname,sample.get("sequence",""),sample.get("lane",""),str(read))
@@ -305,15 +332,15 @@ class DeliveryController(AbstractBaseController):
                         self.log.warn("Did not find expected fastq file {} in folder {}".format(fname,seqdir))
                     continue
                 file = file[0]
-                
+
                 # Construct the destination file name according to the convention
                 dstfile = "{}_{}_{}_{}_{}.fastq.gz".format(lane,date,fcid,sname,str(read))
                 if sample.get('_id') not in to_copy:
-                    to_copy[sample.get('_id')] = [] 
+                    to_copy[sample.get('_id')] = []
                 to_copy[sample.get('_id')].append([file,os.path.join(dest_proj_path,sname,runname,dstfile),read])
-    
+
         return to_copy
-        
+
     @controller.expose(help="Deliver best practice results")
     def best_practice(self):
         if not self._check_pargs(["project", "uppmax_project"]):
@@ -369,7 +396,7 @@ class DeliveryController(AbstractBaseController):
             if not os.path.exists(os.path.dirname(tgt)):
                 self.app.cmd.safe_makedir(os.path.dirname(tgt))
             self.app.cmd.transfer_file(src, tgt)
-            
+
 ## Main delivery controller
 class DeliveryReportController(AbstractBaseController):
     """
@@ -427,28 +454,28 @@ class DeliveryReportController(AbstractBaseController):
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
         self.app._output_data['debug'].write(out_data['debug'].getvalue())
-        
+
     @controller.expose(help="Report the run statistics to Google Docs")
     def report_to_gdocs(self):
         if self.pargs.project_name is not None:
             self.log.warn("You have specified a project_name, note that this parameter will NOT be used")
-        
+
         if self.pargs.flowcell is not None:
             self.log.warn("You have specified a flowcell, note that this parameter will NOT be used")
-        
+
         if not self._check_pargs(["run_id"]):
             self.log.error("You must specify a run id, using the --run-id parameter")
             return
-        
+
         cfile = self.app.config.get("gdocs","credentials_file")
         if self.pargs.credentials_file is not None:
             cfile = self.pargs.credentials_file
-        
+
         gdocs_folder = self.app.config.get("gdocs","gdocs_folder")
-        
+
         out_data = upload_to_gdocs(self.log,os.path.join(self.app.config.get("archive","root"),self.pargs.run_id),
                                    credentials_file=os.path.expanduser(cfile), gdocs_folder=gdocs_folder)
-        
+
     @controller.expose(help="Print summary QC data for a flowcell/project for application QC control")
     def application_qc(self):
         if not self._check_pargs(["project_name"]):
@@ -456,7 +483,7 @@ class DeliveryReportController(AbstractBaseController):
         out_data = application_qc(**vars(self.pargs))
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
-            
+
 
     @controller.expose(help="Make sample status note")
     def sample_status(self):
@@ -479,7 +506,7 @@ class DeliveryReportController(AbstractBaseController):
         self.app._output_data['stdout'].write(out_data['stdout'].getvalue())
         self.app._output_data['stderr'].write(out_data['stderr'].getvalue())
         self.app._output_data['debug'].write(out_data['debug'].getvalue())
-        
+
     @controller.expose(help="Make data delivery note")
     def data_delivery(self):
         if not self._check_pargs(["project_name"]):
@@ -496,7 +523,7 @@ class DeliveryReportController(AbstractBaseController):
             return
         # Send out a user survey if necessary
         self._meta.date_format = "%Y-%m-%d"
-        
+
         kw = vars(self.pargs)
         for opt in ["smtphost","smtpport","sender","salt"]:
             try:
@@ -508,15 +535,15 @@ class DeliveryReportController(AbstractBaseController):
                     self.log.error("You must specify a salt in the 'email' section of the config file for encryption of survey link")
                     return
                 pass
-            
+
         self._meta.salt = kw["salt"]
         initiated = initiate_survey(self,
                                     project=self.pargs.project_name,
                                     **kw)
-       
+
     @controller.expose(help="List projects that have been closed")
     def closed_projects(self):
-        
+
         kw = vars(self.pargs)
         # Check that, if specified, the dates are parseable
         for date in ["from_date","to_date"]:
@@ -526,10 +553,10 @@ class DeliveryReportController(AbstractBaseController):
                 except ValueError:
                     self.log.error("Please specify the date using the format 'YYYY-MM-DD'")
                     return
-                
+
         for project in sorted(closed_projects(self,**kw), key=lambda d: d.get("closed","0000-00-00")):
             print("{}\t{}".format(project["name"],project["closed"]))
-       
+
     @controller.expose(help="Make best practice reports")
     def best_practice(self):
         self.log.info("Until best practice results are stored in statusDB, best practice reports are generated via the 'pm project bpreport' subcommand. This requires that best practice analyses have been run in the project folder.")
