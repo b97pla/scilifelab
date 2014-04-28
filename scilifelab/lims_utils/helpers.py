@@ -22,3 +22,5 @@ def delete_Nones(dict):
                     new_dict[key] = val
     if new_dict != {}:
         return new_dict
+    else:
+        return None

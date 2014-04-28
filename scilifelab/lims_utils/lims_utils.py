@@ -103,7 +103,6 @@ def get_sequencing_info(fc):
     fc_summary={}
     for iom in fc.input_output_maps:
         art = Artifact(lims,id = iom[0]['limsid'])
-        #art = iom[0]['uri']
         lane = art.location[1].split(':')[0]
         if not fc_summary.has_key(lane):
             fc_summary[lane]= dict(art.udf.items()) #"%.2f" % val ----round??
@@ -111,45 +110,76 @@ def get_sequencing_info(fc):
     return fc_summary
 
 
-
 def make_sample_artifact_maps(sample_name):
-    """
-    outin: connects each out_art for a specific sample to its 
-    corresponding in_art and process. one-one relation
+    """outin: connects each out_art for a specific sample to its 
+    corresponding in_art and process. one-one relation"""
     
-    inout: connects each in_art for a specific sample to all its 
-    coresponding out_arts and processes. one-many relation"""
     outin = {}
-    inout = {}
-    artifacts = lims.get_artifacts(sample_name = sample_name)
+    artifacts = lims.get_artifacts(sample_name = sample_name, type = 'Analyte') 
     for outart in artifacts:
-        try: 
+        try:
             pro = outart.parent_process
             inarts = outart.input_artifact_list()
             for inart in inarts:
                 for samp in inart.samples:
                     if samp.name == sample_name:
                         outin[outart.id] = (pro, inart.id)
-                        if not inout.has_key(inart.id): inout[inart.id] = {}
-                        inout[inart.id][pro] = outart.id
         except:
             pass
-    return outin, inout
+    return outin
 
-def get_analyte_hist(analyte, outin, inout):
-    """Makes a history map of an analyte, using the inout-map 
-    and outin-map of the corresponding sample."""
+def get_analyte_hist(out_analyte, outin, inart = None):
+    """Makes a history map of an analyte, using the outin-map 
+    of the corresponding sample."""
     history = {}
-    while outin.has_key(analyte):
-        hist_process, inart = outin[analyte]
-        for process, outart in inout[inart].items():
-            if (process == hist_process) or (process.type.id in INITALQC.keys()) or (process.type.id in LIBVAL.keys()) or (process.type.id in AGRINITQC.keys()) or (process.type.id in AGRLIBVAL.keys()) or (process.type.id in SEQSTART.keys()):
-                history[process.id] = {'date' : process.date_run,
+    if inart:
+        hist_process = Artifact(lims,id=out_analyte).parent_process
+        history, out_analyte = add_out_art_process_conection(hist_process , inart, out_analyte, history)
+    while outin.has_key(out_analyte):
+        hist_process, inart = outin[out_analyte]
+        history, out_analyte = add_out_art_process_conection(hist_process, inart, out_analyte, history)
+    return history
+
+def get_analyte_hist_sorted(out_analyte, outin, inart = None):## temp dev
+    """Makes a history map of an analyte, using the outin-map 
+    of the corresponding sample."""
+    history = {}
+    hist_list = []
+    if inart:
+        hist_process = Artifact(lims,id=out_analyte).parent_process
+        history, out_analyte = add_out_art_process_conection_list(hist_process , inart, out_analyte, history)
+        hist_list.append(inart)
+    while outin.has_key(out_analyte):
+        hist_process, inart = outin[out_analyte]
+        hist_list.append(inart)
+        history, out_analyte = add_out_art_process_conection_list(hist_process, inart, out_analyte, history)
+    print hist_list
+    return history, hist_list
+
+def add_out_art_process_conection_list(hist_process, inart, out_analyte, history = {}):##temp dev
+    for process in lims.get_processes(inputartifactlimsid = inart):
+        outart = out_analyte if hist_process == process else None
+        step_info = {'date' : process.date_run,
+                        'id' : process.id,
+                        'outart' : outart,
+                        'inart' : inart,
+                        'type' : process.type.id,
+                        'name' : process.type.name}
+        if history.has_key(inart):
+            history[inart][process.id] = step_info
+        else:
+            history[inart] = {process.id : step_info}
+    return history, inart
+
+def add_out_art_process_conection(hist_process, inart, out_analyte, history = {}):
+    for process in lims.get_processes(inputartifactlimsid = inart):
+        outart = out_analyte if hist_process == process else None
+        history[process.id] = {'date' : process.date_run,
                             'id' : process.id,
                             'outart' : outart,
                             'inart' : inart,
                             'type' : process.type.id,
                             'name' : process.type.name}
-        analyte = inart
-    return history
+    return history, inart
+
 
