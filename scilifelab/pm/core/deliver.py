@@ -279,8 +279,8 @@ class DeliveryController(AbstractBaseController):
         return self.app.cmd.dry("storing object {} in {}".format(obj.get('_id'),con.db), runpipe)
 
     def _find_uncompressed_fastq_files(self, proj_base_dir, samples):
-        """Finds uncompressed fastq files in project folder that should stop the delivery process
-        Returns a list of file names if found
+        """Finds samples with uncompressed fastq files in project/fc_id/sample_id directories
+        Returns a list of sample names
         """
 
         uncompressed = []
