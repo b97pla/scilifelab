@@ -287,7 +287,7 @@ class DeliveryController(AbstractBaseController):
         for sample in samples:
             date = sample.get("date",False)
             fcid = sample.get("flowcell",False)
-            dname = sample.get("barcode_name",False)
+            dname = sample.get("barcode_name","")
             runname = "{}_{}".format(date,fcid)
 
             path = os.path.join(proj_base_dir,dname,runname,"*.fastq")
