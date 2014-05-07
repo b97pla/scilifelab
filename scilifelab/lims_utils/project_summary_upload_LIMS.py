@@ -1,5 +1,5 @@
 #!/home/hiseq.bioinfo/.virtualenvs/lims2db/bin/python
-
+from __future__ import print_function
 """Script to load project info from Lims into the project database in statusdb.
 
 Maya Brandi, Science for Life Laboratory, Stockholm, Sweden.
@@ -18,7 +18,14 @@ from datetime import date
 import scilifelab.log
 lims = Lims(BASEURI, USERNAME, PASSWORD)
 
-def  main(proj_name, all_projects, days, conf):
+def print_couchdb_obj_to_file(obj, output_f=None):
+    if output_f is not None:
+        with open(output_f, 'w') as f:
+            print(obj, file=f)
+    else:
+        print(obj, file=sys.stdout)
+
+def  main(proj_name, all_projects, days, conf, upload_data=True, output_f=None):
     first_of_july = '2013-06-30'
     today = date.today()
     couch = load_couch_server(conf)
@@ -46,7 +53,10 @@ def  main(proj_name, all_projects, days, conf):
                             obj = DB.ProjectDB(lims, proj.id)
                             key = find_proj_from_view(proj_db, proj.name)
                             obj.project['_id'] = find_or_make_key(key)
-                            info = save_couchdb_obj(proj_db, obj.project)
+                            if upload_data:
+                                info = save_couchdb_obj(proj_db, obj.project)
+                            else:
+                                info = print_couchdb_obj_to_file(obj.project, output_f)
                             LOG.info('project %s is handeled and %s : _id = %s' % (proj.name, info, obj.project['_id']))
                         except:
                             LOG.info('Issues geting info for %s. The"Application" udf might be missing' % proj.name)
@@ -75,7 +85,10 @@ def  main(proj_name, all_projects, days, conf):
                     obj = DB.ProjectDB(lims, proj.id)
                     key = find_proj_from_view(proj_db, proj.name)
                     obj.project['_id'] = find_or_make_key(key)
-                    info = save_couchdb_obj(proj_db, obj.project)
+                    if upload_data:
+                        info = save_couchdb_obj(proj_db, obj.project)
+                    else:
+                        info = print_couchdb_obj_to_file(obj.project, output_f)
                     LOG.info('project %s is handeled and %s : _id = %s' % (proj_name, info, obj.project['_id']))
 
 if __name__ == '__main__':
@@ -95,8 +108,15 @@ if __name__ == '__main__':
     default=os.path.join(os.environ['HOME'],'opt/config/post_process.yaml'),         
     help = "Config file.  Default: ~/opt/config/post_process.yaml")
 
+    parser.add_option("--no_upload", dest="upload", default=True, action="store_false",
+            help = ("Use this tag if project objects should not be uploaded, but printed to output_f, "
+                    "or to stdout"))
+
+    parser.add_option("--output_f", dest="output_f",
+            help = ("Output file that will be used only if --no_upload tag is used"))
+
     (options, args) = parser.parse_args()
 
     LOG = scilifelab.log.file_logger('LOG',options.conf ,'lims2db_projects-tools-dev.log', 'log_dir_tools')
-    main(options.project_name, options.all_projects, options.days, options.conf)
+    main(options.project_name, options.all_projects, options.days, options.conf, upload_data=options.upload, output_f=options.output_f)
 
