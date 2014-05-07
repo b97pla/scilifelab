@@ -135,6 +135,7 @@ def get_analyte_hist(out_analyte, outin, inart = None):
     if inart:
         hist_process = Artifact(lims,id=out_analyte).parent_process
         history, out_analyte = add_out_art_process_conection(hist_process , inart, out_analyte, history)
+
     while outin.has_key(out_analyte):
         hist_process, inart = outin[out_analyte]
         history, out_analyte = add_out_art_process_conection(hist_process, inart, out_analyte, history)
@@ -142,7 +143,30 @@ def get_analyte_hist(out_analyte, outin, inart = None):
 
 def get_analyte_hist_sorted(out_analyte, outin, inart = None):## temp dev
     """Makes a history map of an analyte, using the outin-map 
-    of the corresponding sample."""
+    of the corresponding sample.
+    The outin object is built up from analytes. This means that it will not contain output-inpit info for 
+    processes wich have only files as output. This is cusial since the outinobject is used for building 
+    upp the ANALYTE history of a sample. If you want to make the analyte history based on a resultfile, 
+    that is; if you want to give a resultfile as out_analyte here, and be given the historylist of analytes 
+    and fprocesses for that file, you will also have to give the input artifact for the process that generated 
+    the resultfile for wich you want to get the history. In other words, if you want to get the History of 
+    the folowing scenario:        
+
+    History --- > Input_analyte -> Process -> Output_result_file
+    
+    then the arguments to this function should be:
+
+    out_analyte = Output_result_file
+    inart = Input_analyte
+
+    If you instead want the History of the folowing scenario:
+    
+    History --- > Input_analyte -> Process -> Output_analyte
+
+    the you can skip the inart argument and only set:
+    
+    out_analyte = Output_analyte 
+    """
     history = {}
     hist_list = []
     if inart:
@@ -153,12 +177,12 @@ def get_analyte_hist_sorted(out_analyte, outin, inart = None):## temp dev
         hist_process, inart = outin[out_analyte]
         hist_list.append(inart)
         history, out_analyte = add_out_art_process_conection_list(hist_process, inart, out_analyte, history)
-    print hist_list
     return history, hist_list
 
 def add_out_art_process_conection_list(hist_process, inart, out_analyte, history = {}):##temp dev
     for process in lims.get_processes(inputartifactlimsid = inart):
-        outart = out_analyte if hist_process == process else None
+        outputs = map(lambda a: a.id,process.all_outputs())
+        outart = out_analyte if out_analyte in outputs else None #hist_process == process else None
         step_info = {'date' : process.date_run,
                         'id' : process.id,
                         'outart' : outart,

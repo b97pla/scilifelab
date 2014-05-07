@@ -25,6 +25,8 @@ url = db_conf['username']+':'+db_conf['password']+'@'+db_conf['url']+':'+str(db_
 url='production:MmJjYmE2M2JlZD@tools.scilifelab.se:5984'
 samp_db = couchdb.Server("http://" + url)['samples']
 
+#############-------------- ProjectDB class --------------#############
+
 class ProjectDB():
     """Instances of this class holds a dictionary formatted for building up the project database on statusdb. 
     Source of information come from different lims artifacts and processes. A detailed documentation of the 
@@ -104,6 +106,7 @@ class ProjectDB():
                     pass
         self.project = delete_Nones(self.project)
 
+#############-------------- ProcessInfo class and help functions --------------#############
 
 class ProcessInfo():
     """This class takes a list of process type names. Eg 'Aggregate QC (Library Validation) 4.0'
@@ -164,12 +167,16 @@ def get_last_first( process_list, last=True):
     else:
         return None
 
+#############-------------- SampleDB class --------------#############
+
 class SampleDB():
     """Instances of this class holds a dictionary formatted for building up the samples in the project 
     database on status db. Source of information come from different lims artifacts and processes. 
     A detailed documentation of the source of all values is found in
     https://docs.google.com/a/scilifelab.se/document/d/1OHRsSI9btaBU4Hb1TiqJ5wwdRqUQ4BAyjJR-Nn5qGHg/edit#"""
-    def __init__(self,lims_instance , sample_id, project_name, application = None, prep_info = [], run_info = [],googledocs_status = {}): # googledocs_status temporary solution untill 20158 implemented in lims!!
+    def __init__(self,lims_instance , sample_id, project_name, application = None, 
+                                prep_info = [], run_info = [],googledocs_status = {}): 
+             # googledocs_status temporary solution untill 20158 implemented in lims!!
         self.lims = lims_instance
         self.AgrLibQCs = prep_info
         self.lims_sample = Sample(self.lims, id = sample_id)
@@ -245,7 +252,6 @@ class SampleDB():
                         lane = lane_art.location[1].split(':')[1]
                     else:
                         lane = lane_art.location[1].split(':')[0]
-                    #history = get_analyte_hist(lane_art.id, self.outin)
                     hist_sort, hist_list = get_analyte_hist_sorted(outart.id, self.outin, lane_art.id)
                     self.prepstarts = []
                     self.preprepstarts = []
@@ -265,27 +271,16 @@ class SampleDB():
                         # 3) PREPREPLIBVALEND
                         if self.prepstarts:
                             prepreplibvalends += filter(lambda pro: pro['type'] in AGRLIBVAL, art_steps.values())
-                        # 4) DILSTART
-                        self.dilstarts += filter(lambda pro: pro['type'] in DILSTART, art_steps.values())
-                        # 5) SEQSTART
-                        self.seqstarts += filter(lambda pro: pro['type'] in SEQSTART, art_steps.values())
+                        # 4) DILSTART dubbelkolla
+                        if not self.dilstarts:
+                            self.dilstarts = filter(lambda pro: (pro['type'] in DILSTART) and pro['outart']==inart, art_steps.values())
+                        # 5) SEQSTART dubbelkolla
+                        if not self.seqstarts:
+                            self.seqstarts = filter(lambda pro: (pro['type'] in SEQSTART) and pro['outart']==inart, art_steps.values())
                     self.prepstart = get_last_first(self.prepstarts, last = False)
                     self.preprepstart = get_last_first(self.preprepstarts, last = False)
                     self.dilstart = get_last_first(self.dilstarts, last = False)
                     self.seqstart = get_last_first(self.seqstarts, last = False)
-                    print 'prepekkl'
-                    print self.prepstart
-                    print self.preprepstart
-                    #for step , info in history.items():
-                    #    if info['type'] in PREPSTART.keys():
-                    #        prep_start_key = info['id']
-                    #    elif info['type'] in PREPREPSTART.keys():
-                    #        pre_prep_stert_key = info['id']
-                    #    elif info['type'] in DILSTART.keys():
-                    #        dillution_and_pooling_start_date = info['date']
-                    #        type = info['type']
-                    #    elif info['type'] in SEQSTART.keys():
-                    #        sequencing_start_date = info['date']
                     if self.application == 'Finished library':
                         key = 'Finished'
                     elif self.preprepstart:
@@ -294,18 +289,9 @@ class SampleDB():
                         key = self.prepstart['id'] 
                     else:
                         key = None 
-                    print 'keyr'
-                    print key
-                    print self.preprepstart['id']
                     if key:
-                        print preps[key].keys()
-                        print preps[key]['reagent_labels']
                         barcode = self.get_barcode(preps[key]['reagent_labels'])
                         samp_run_met_id = '_'.join([lane, date, fcid, barcode])
-                        print samp_run_met_id
-                        #except:
-                        #    print 'SSSSSSSSSSS'
-                            #samp_run_met_id = None
                         dict = {'dillution_and_pooling_start_date': self.dilstart['date'] if self.dilstart else None,
                                 'sequencing_start_date':self.seqstart['date'] if self.seqstart else None,
                                 'sequencing_run_QC_finished': run['start_date'],
@@ -313,9 +299,7 @@ class SampleDB():
                                 'sample_run_metrics_id': find_sample_run_id_from_view(samp_db, samp_run_met_id) }
                         dict = delete_Nones(dict)
                         if not sample_runs.has_key(key):
-                            print 'AAAAAAAAA'
                             sample_runs[key] = {}
-                        print samp_run_met_id
                         sample_runs[key][samp_run_met_id] = dict
         return sample_runs
 
@@ -351,8 +335,10 @@ class SampleDB():
                     preps[prep.id2AB]['library_validation'].update(prep.library_validations)
                 if prep.pre_prep_library_validations:
                     preps[prep.id2AB]['pre_prep_library_validation'].update(prep.pre_prep_library_validations)
-        if prep.pre_prep_library_validations:
+        try:
             latest_pre_libvals = dict(map(lambda l: (l[0], max(l[1]['pre_prep_library_validation'].keys())), preps.items()))
+        except:
+            latest_pre_libvals = None
         latest_libvals = map(lambda l: (l[0], max(l[1]['library_validation'].keys())), preps.items())
         for prep_id, latest_libval_id in latest_libvals:
             latest_libval = preps[prep_id]['library_validation'][latest_libval_id]
@@ -369,11 +355,14 @@ class SampleDB():
 
     def _get_initialqc(self):
         outarts = self.lims.get_artifacts(sample_name = self.name, process_type = AGRINITQC.values())
+        parent_proc = map(lambda a: a.parent_process ,outarts)
+        print parent_proc
         initialqc = {}
         if outarts:
             outart = Artifact(lims, id = max(map(lambda a: a.id, outarts)))
             latestInitQc = outart.parent_process
-            inart = latestInitQc.input_per_output(outart.id)
+            print latestInitQc
+            inart = latestInitQc.input_per_sample(self.name)[0].id
             hist_sort, hist_list = get_analyte_hist_sorted(outart.id, self.outin, inart)
             if hist_list:
                 if self.application == 'Finished library':
@@ -402,10 +391,13 @@ class SampleDB():
                         topLevel_AgrLibQC.pop(AgrLibQC)
         return topLevel_AgrLibQC
 
+#############-------------- InitialQC class --------------#############
+
 class InitialQC():
     def __init__(self, hist_sort, hist_list, chategory = INITALQC):
         self.chategory = chategory
         self.initialqcend = None
+        self.initialqcends = []
         self.initialqcs = []
         self.initialqstart = None
         self._set_initialqc_processes(hist_sort, hist_list)
@@ -414,11 +406,10 @@ class InitialQC():
         for inart in hist_list:
             art_steps = hist_sort[inart]
             # INITALQCEND          - get last agr initialqc val step after prepreplibval
-            if not self.initialqcend:
-                initialqcend = filter(lambda pro: pro['type'] in AGRINITQC, art_steps.values())
-                self.initialqcend = initialqcend[0] if initialqcend else None
+            self.initialqcends += filter(lambda pro: pro['type'] in AGRINITQC, art_steps.values())
             # INITALQCSTART        - get all lib val step after prepreplibval
             self.initialqcs += filter(lambda pro: pro['type'] in self.chategory, art_steps.values())
+        self.initialqcend = get_last_first(self.initialqcends, last = True)
         self.initialqstart =  get_last_first(self.initialqcs, last = False)
 
     def set_initialqc_info(self):
@@ -433,6 +424,9 @@ class InitialQC():
             initialqc_info['finish_date'] = self.initialqcend['date']
             initialqc_info['initial_qc_status'] = inart.qc_flag
         return initialqc_info
+
+
+#############-------------- Prep class --------------#############
 
 class Prep():
     def __init__(self, hist_sort, hist_list):
@@ -451,25 +445,27 @@ class Prep():
         self.preprepstart = None
         self.workset = None                 #5
         self._set_prep_processes(hist_sort, hist_list)
-        self.library_validations = self._get_lib_val_info(self.libvalends, self.libvalstart) if self.libvalend else None
-        self.pre_prep_library_validations = self._get_lib_val_info(self.prepreplibvalends, self.prepreplibvalstart) if self.prepreplibvalend else None
+        self.library_validations = self._get_lib_val_info(self.libvalends, 
+                                            self.libvalstart) if self.libvalend else None
+        self.pre_prep_library_validations = self._get_lib_val_info(self.prepreplibvalends, 
+                                self.prepreplibvalstart) if self.prepreplibvalend else None
 
     def _set_prep_processes(self, hist_sort, hist_list):
         for inart in hist_list:
             art_steps = hist_sort[inart]
             # 2) PREPEND            - get latest prep end
             if not self.prepend:
-                prepend = filter(lambda pro: pro['type'] in PREPEND, art_steps.values()) 
+                prepend = filter(lambda pro: (pro['type'] in PREPEND) and pro['outart'], art_steps.values()) 
                 self.prepend = get_last_first(prepend, last = True)
             # 2) PREPSTART          - get all prep starts after prepreplibval
             if not self.prepreplibvalends:
-                self.prepstarts += filter(lambda pro: pro['type'] in PREPSTART, art_steps.values())
+                self.prepstarts += filter(lambda pro: (pro['type'] in PREPSTART) and pro['outart'], art_steps.values())
             # 3) PREPREPLIBVALEND   - get last lib val step before prepstart
             if self.prepstarts:
                 self.prepreplibvalends += filter(lambda pro: pro['type'] in AGRLIBVAL, art_steps.values())
             # 3)PREPREPLIBVALSTART
             if self.prepstarts:
-                self.prepreplibvals += filter(lambda pro: pro['type'] in LIBVAL, art_steps.values())
+                self.prepreplibvals += filter(lambda pro: (pro['type'] in LIBVAL) and pro['outart'], art_steps.values())
             # 1) LIBVALEND          - get last agr lib val step after prepreplibval
             if not self.prepreplibvalends:
                 self.libvalends += filter(lambda pro: pro['type'] in AGRLIBVAL, art_steps.values())
@@ -478,10 +474,10 @@ class Prep():
                 self.libvals += filter(lambda pro: pro['type'] in LIBVAL, art_steps.values())
             # 4) PREPREPEND         - get latest pre prep end ? No?
             # 4) PREPREPSTART       - get all pre prep starts
-            self.preprepstarts += filter(lambda pro: pro['type'] in PREPREPSTART, art_steps.values())
+            self.preprepstarts += filter(lambda pro: (pro['type'] in PREPREPSTART) and pro['outart'], art_steps.values())
             # 5) WORKSET            - get latest workset
             if not self.workset:
-                workset = filter(lambda pro: pro['type'] in WORKSET, art_steps.values())
+                workset = filter(lambda pro: (pro['type'] in WORKSET) and pro['outart'], art_steps.values())
                 self.workset = workset[0] if workset else None
         self.libvalstart = get_last_first(self.libvals, last = False)
         self.libvalend = get_last_first(self.libvalends, last = True)
@@ -501,21 +497,21 @@ class Prep():
             self.prep_info['prep_id'] = self.prepend['id'] if self.prepend else None
             self.prep_info['workset_setup'] = self.workset['id'] if self.workset else None
             if self.preprepstarts:
-                self.preprepstart = get_last_first(self.preprepstarts, last = False)
                 self.prep_info['pre_prep_start_date'] = self.preprepstart['date'] if self.preprepstart else None
                 self.id2AB = self.preprepstart['id'] if self.preprepstart else None
                 if self.preprepstart['outart']:
                     self.prep_info = udf_dict(Artifact(lims, id = self.preprepstart['outart']), self.prep_info)
             elif self.prepstart:
                 self.id2AB = self.prepstart['id']
-                self.prep_info = udf_dict(Artifact(lims, id = self.prepstart['outart']), self.prep_info)
+                if self.prepstart['outart']:
+                    self.prep_info = udf_dict(Artifact(lims, id = self.prepstart['outart']), self.prep_info)
         
     def _get_lib_val_info(self, agrlibQCsteps, libvalstart):
         library_validations = {}
         for agrlibQCstep in agrlibQCsteps:
             inart = Artifact(lims, id = agrlibQCstep['inart'])
             library_validation = {'start_date' : libvalstart['date'],
-                                  'finish_date' : agrlibQCstep['date'], ##??korrect?
+                                  'finish_date' : agrlibQCstep['date'],
                                   'well_location' : inart.location[1],
                                   'prep_status' : inart.qc_flag,
                                   'reagent_labels' : inart.reagent_labels}
@@ -526,5 +522,4 @@ class Prep():
                 library_validation["average_size_bp"] = average_size_bp
             library_validation['initials'] = initials if initials else None
             library_validations[agrlibQCstep['id']] = delete_Nones(library_validation)
-        return delete_Nones(library_validations)
-
+        return delete_Nones(library_validations) 
