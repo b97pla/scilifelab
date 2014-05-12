@@ -52,17 +52,28 @@ import scilifelab.log
 def comp_obj(proj_tools_dev, diff):
     """compares the two dictionaries obj and dbobj"""
     if proj_tools_dev.has_key('project_name'):
-        LOG.info('tools and tools-dev are differing for proj %s: %s' % ( proj_tools_dev['project_name'],diff))
+        LOG.info('tools and tools-dev are differing for proj %s: %s' % ( 
+                                    proj_tools_dev['project_name'],diff))
     elif proj_tools_dev:
         LOG.info('project_name missing in %s' % (proj_tools_dev['_id']))
 
 
 def recursive_comp(proj_tools_dev, proj_tools, diff = False):
-    new_tools_dev_keys = ["24-24787","24-27741","24-34649","24-34802","24-39673","24-40232","24-40233","_obsolete_assign_status","amount_(ng)","amount_taken_(ng)","average_size_bp","conc_units","concentration","contact","dillution_and_pooling_start_date","first_initial_qc","initial_qc","initial_qc_status","initials","prep_status","reagent_labels","rin","sample_run_metrics","volume_(ul)","well_location"]
+    new_tools_dev_keys = ["24-24787","24-27741","24-34649","24-34802","24-39673"
+    ,"24-40232","24-40233","_obsolete_assign_status","amount_(ng)",
+    "amount_taken_(ng)","average_size_bp","conc_units","concentration",
+    "contact","dillution_and_pooling_start_date","first_initial_qc",
+    "initial_qc","initial_qc_status","initials","prep_status","reagent_labels",
+    "rin","sample_run_metrics","volume_(ul)","well_location"]
     G20158 = ['m_reads_sequenced','status','size_(bp)']
     BASEDIF = ['_rev','modification_time']
     changes = ['first_initial_qc_start_date']
     keys = list(set(proj_tools_dev.keys() + proj_tools.keys()))
+    try:
+        print proj_tools_dev['_id']
+        print proj_tools_dev['application']
+    except:
+        pass
     for key in keys:
         if key not in BASEDIF+G20158:
             if not proj_tools_dev.has_key(key) and key not in changes:
@@ -71,17 +82,45 @@ def recursive_comp(proj_tools_dev, proj_tools, diff = False):
             elif not proj_tools.has_key(key) and key not in new_tools_dev_keys:
                 LOG.info('Key %s missing in tools for db object ' % key)
                 diff = True
-            elif proj_tools.has_key(key) and proj_tools_dev.has_key(key):# ['concentration','order_received','contract_sent','aborted','queued','modification_time', '_rev']:
+            elif proj_tools.has_key(key) and proj_tools_dev.has_key(key):
+            # ['concentration','order_received','contract_sent',
+            #'aborted','queued','modification_time', '_rev']:
                 proj_tools_val = proj_tools[key]
                 proj_tools_dev_val = proj_tools_dev[key]
                 if (proj_tools_val != proj_tools_dev_val):
                     diff = True
-                    if (type(proj_tools_val) is dict) and (type(proj_tools_dev_val) is dict):
-                        diff = recursive_comp(proj_tools_dev_val, proj_tools_val, diff = diff)
+                    if (type(proj_tools_val) is dict) and (
+                                            type(proj_tools_dev_val) is dict):
+                        diff = recursive_comp(proj_tools_dev_val, proj_tools_val,
+                                                                    diff = diff)
                     else:
-                        LOG.info('Key %s differing: tools gives: %s. tools-dev gives %s. ' %( key,proj_tools_val,proj_tools_dev_val))
+                        LOG.info('Key %s differing: tools gives: %s. tools-dev '
+                          'gives %s. ' %( key,proj_tools_val,proj_tools_dev_val))
     comp_obj(proj_tools_dev, diff)
     return diff
+
+def missing_keys(proj_tools_dev, proj_tools, diff = False):
+    keys = list(set(proj_tools_dev.keys() + proj_tools.keys()))
+    try:
+        LOG.info( proj_tools_dev['_id'])
+        LOG.info('appl'+ proj_tools_dev['application'])
+    except:
+        pass
+    for key in keys:
+        if proj_tools.has_key(key) and proj_tools_dev.has_key(key):
+            proj_tools_val = proj_tools[key]
+            proj_tools_dev_val = proj_tools_dev[key]
+            if (proj_tools_val != proj_tools_dev_val):
+                diff = True
+                if (type(proj_tools_val) is dict) and (
+                                        type(proj_tools_dev_val) is dict):
+                    diff = missing_keys(proj_tools_dev_val, 
+                                                proj_tools_val, diff = diff)
+        elif not proj_tools_dev.has_key(key):
+            LOG.info('Tools dev is missing Key %s' %(key))
+            diff = True
+    return diff
+
 
 def differing_keys(proj_tools_dev, proj_tools, diff = False):
     G20158 = ['m_reads_sequenced','status','size_(bp)']
@@ -94,11 +133,14 @@ def differing_keys(proj_tools_dev, proj_tools, diff = False):
                 proj_tools_val = proj_tools[key]
                 proj_tools_dev_val = proj_tools_dev[key]
                 if (proj_tools_val != proj_tools_dev_val):
-                    if (type(proj_tools_val) is dict) and (type(proj_tools_dev_val) is dict):
-                        diff = differing_keys(proj_tools_dev_val, proj_tools_val, diff = diff)
+                    if (type(proj_tools_val) is dict) and (type(
+                                                   proj_tools_dev_val) is dict):
+                        diff = differing_keys(proj_tools_dev_val, proj_tools_val, 
+                                                                    diff = diff)
                     else:
                         diff = True
-                        LOG.info('Key %s differing: tools gives: %s. tools-dev gives %s. ' %( key,proj_tools_val,proj_tools_dev_val))
+                        LOG.info('Key %s differing: tools gives: %s. tools-dev '
+                         'gives %s. ' %( key,proj_tools_val,proj_tools_dev_val))
     return diff
 
 def  main(proj_name, all_projects, conf_tools_dev, conf_tools):
@@ -122,6 +164,7 @@ def  main(proj_name, all_projects, conf_tools_dev, conf_tools):
                     LOG.warning("""Found no projects on tools-dev with name %s""" % proj_name)
                 else:
                     diff = differing_keys(proj_tools_dev, proj_tools)
+                    diff = missing_keys(proj_tools_dev, proj_tools, diff = diff)
                     comp_obj(proj_tools_dev, diff)
             #except:
             #    LOG.info('Failed comparing stage and prod for proj %s' % proj_name)    
@@ -134,6 +177,7 @@ def  main(proj_name, all_projects, conf_tools_dev, conf_tools):
             LOG.warning("Found no project named %s" %(proj_name))
         else:
             diff = differing_keys(proj_tools_dev, proj_tools)
+            diff = missing_keys(proj_tools_dev, proj_tools, diff = diff)
             comp_obj(proj_tools_dev, diff)
 
 if __name__ == '__main__':
