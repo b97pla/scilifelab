@@ -162,12 +162,8 @@ def udf_dict(element, dict = {}):
     return dict
 
 def get_last_first( process_list, last=True):
-    #print process_list
     if process_list:
-        #pids = map(lambda i: i['id'], process_list)
-        #pid = max(pids) if last else min(pids)
         process = process_list[0]
-        print process_list
         for pro in process_list:
             new_date = int(pro['date'].replace('-',''))
             old_date = int(process['date'].replace('-',''))
@@ -175,8 +171,6 @@ def get_last_first( process_list, last=True):
                 process = pro
             elif not last and (new_date < old_date):
                 process = pro
-        #print pid
-        print process
         return process #filter(lambda pro: pro['id'] == pid, process_list)[0]
     else:
         return None
@@ -229,11 +223,8 @@ class SampleDB():
         sample name :)"""
         arts = self.lims.get_artifacts(sample_name = sample_name, 
                                         process_type = process_list)
-        for a in arts:
-            print a.parent_process.date_run
         days = map(lambda a: a.parent_process.date_run , arts)
         days = filter(lambda d: d!=None  , days)
-        print days
         if days:
             return max(days) if last_day else min(days)
         else:
@@ -426,10 +417,14 @@ class SampleDB():
             if AgrLibQC_info['samples'].has_key(self.name):
                 topLevel_AgrLibQC[AgrLibQC_id]=[]
                 inart, outart = AgrLibQC_info['samples'][self.name].items()[0][1]
-                history = get_analyte_hist(outart.id, self.outin, inart.id)
-                for step, info in history.items():
-                    if info['type'] in AGRLIBVAL.keys():
-                        topLevel_AgrLibQC[AgrLibQC_id].append(step)
+                hist_sort, hist_list = get_analyte_hist_sorted(outart.id,
+                                                          self.outin, inart.id)
+                for inart in hist_list:
+                    proc_info = hist_sort[inart]
+                    proc_info = filter(lambda p : p['type'] in AGRLIBVAL.keys(),proc_info.values())
+                    proc_ids = map(lambda p : p['id'], proc_info) 
+                    topLevel_AgrLibQC[AgrLibQC_id] = topLevel_AgrLibQC[AgrLibQC_id] + proc_ids
+                    #topLevel_AgrLibQC[AgrLibQC_id].append(proc_info['id'])
         for AgrLibQC, LibQC in topLevel_AgrLibQC.items():
             LibQC=set(LibQC)
             for AgrLibQC_comp, LibQC_comp in topLevel_AgrLibQC.items():
