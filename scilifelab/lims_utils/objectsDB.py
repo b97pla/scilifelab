@@ -229,7 +229,11 @@ class SampleDB():
         sample name :)"""
         arts = self.lims.get_artifacts(sample_name = sample_name, 
                                         process_type = process_list)
+        for a in arts:
+            print a.parent_process.date_run
         days = map(lambda a: a.parent_process.date_run , arts)
+        days = filter(lambda d: d!=None  , days)
+        print days
         if days:
             return max(days) if last_day else min(days)
         else:
