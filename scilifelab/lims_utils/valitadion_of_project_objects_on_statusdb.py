@@ -69,11 +69,6 @@ def recursive_comp(proj_tools_dev, proj_tools, diff = False):
     BASEDIF = ['_rev','modification_time']
     changes = ['first_initial_qc_start_date']
     keys = list(set(proj_tools_dev.keys() + proj_tools.keys()))
-    try:
-        print proj_tools_dev['_id']
-        print proj_tools_dev['application']
-    except:
-        pass
     for key in keys:
         if key not in BASEDIF+G20158:
             if not proj_tools_dev.has_key(key) and key not in changes:
@@ -101,11 +96,6 @@ def recursive_comp(proj_tools_dev, proj_tools, diff = False):
 
 def missing_keys(proj_tools_dev, proj_tools, diff = False):
     keys = list(set(proj_tools_dev.keys() + proj_tools.keys()))
-    try:
-        LOG.info( proj_tools_dev['_id'])
-        LOG.info('appl'+ proj_tools_dev['application'])
-    except:
-        pass
     for key in keys:
         if proj_tools.has_key(key) and proj_tools_dev.has_key(key):
             proj_tools_val = proj_tools[key]

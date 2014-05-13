@@ -162,10 +162,22 @@ def udf_dict(element, dict = {}):
     return dict
 
 def get_last_first( process_list, last=True):
+    #print process_list
     if process_list:
-        pids = map(lambda i: i['id'], process_list)
-        pid = max(pids) if last else min(pids)
-        return filter(lambda pro: pro['id'] == pid, process_list)[0]
+        #pids = map(lambda i: i['id'], process_list)
+        #pid = max(pids) if last else min(pids)
+        process = process_list[0]
+        print process_list
+        for pro in process_list:
+            new_date = int(pro['date'].replace('-',''))
+            old_date = int(process['date'].replace('-',''))
+            if last and (new_date > old_date):
+                process = pro
+            elif not last and (new_date < old_date):
+                process = pro
+        #print pid
+        print process
+        return process #filter(lambda pro: pro['id'] == pid, process_list)[0]
     else:
         return None
 
@@ -193,16 +205,18 @@ class SampleDB():
         self.obj['scilife_name'] = self.name
         self.obj['well_location'] = self.lims_sample.artifact.location[1]
         preps = self._get_preps_and_libval()
-        initialqc = self._get_initialqc()
         if preps:
             runs = self.get_sample_run_metrics(run_info, preps)
             for prep_id in runs.keys():
                 if preps.has_key(prep_id):
                     preps[prep_id]['sample_run_metrics'] = runs[prep_id]
             self.obj['library_prep'] = self._get_prep_leter(preps)
+        initialqc = self._get_initialqc()
         self.obj['initial_qc'] = initialqc if initialqc else None
-        self.obj['first_initial_qc_start_date'] = (initialqc['start_date'] 
-                                                        if initialqc else None)
+        init_qc = (INITALQCFINISHEDLIB.values()  if self.application 
+                                == 'Finished library' else INITALQC.values() )
+        self.obj['first_initial_qc_start_date'] = self._get_firts_day(self.name,
+                                                                        init_qc)
         self.obj['first_prep_start_date'] = self._get_firts_day(self.name, 
                                     PREPSTART.values() + PREPREPSTART.values())
         if googledocs_status and self.name in googledocs_status.keys():
