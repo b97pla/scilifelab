@@ -228,3 +228,24 @@ def last_lines(filename, n):
     """Return the last n lines from the specified file.
     """
     return check_output(['tail', '-n', str(n), filename]).rstrip().split('\n')
+
+
+def merge(d1, d2):
+    """ Will merge dictionary d1 into dictionary d2.
+
+    On the case of finding the same key, the one in d2 will be used.
+
+    :param d1: Dictionary object
+    :param s2: Dictionary object
+    """
+    for key in d2:
+        if key in d1:
+            if isinstance(d1[key], dict) and isinstance(d2[key], dict):
+                merge(d1[key], d2[key])
+            elif d1[key] == d2[key]:
+                pass # same leaf value
+            else:
+                log.DEBUG("Values for key {key} in d1 and d2 differ, using d1's value".format(key=key))
+        else:
+            d1[key] = d2[key]
+    return d1
