@@ -231,9 +231,9 @@ def last_lines(filename, n):
 
 
 def merge(d1, d2):
-    """ Will merge dictionary d1 into dictionary d2.
+    """ Will merge dictionary d2 into dictionary d1.
 
-    On the case of finding the same key, the one in d2 will be used.
+    On the case of finding the same key, the one in d1 will be used.
 
     :param d1: Dictionary object
     :param s2: Dictionary object
