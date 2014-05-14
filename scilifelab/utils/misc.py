@@ -245,7 +245,7 @@ def merge(d1, d2):
             elif d1[key] == d2[key]:
                 pass # same leaf value
             else:
-                LOG.DEBUG("Values for key {key} in d1 and d2 differ, using d1's value".format(key=key))
+                LOG.debug("Values for key {key} in d1 and d2 differ, using d1's value".format(key=key))
         else:
             d1[key] = d2[key]
     return d1
