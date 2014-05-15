@@ -4,7 +4,7 @@ import collections
 from itertools import izip
 from scilifelab.db import Couch
 from scilifelab.utils.timestamp import utc_time
-from scilifelab.utils.misc import query_yes_no
+from scilifelab.utils.misc import query_yes_no, merge
 from scilifelab.db.statusDB_utils import save_couchdb_obj
 from uuid import uuid4
 from scilifelab.log import minimal_logger
@@ -245,13 +245,14 @@ def update_fn(cls, db, obj, viewname = "names/id_to_name", key="name"):
     if equal(obj, dbobj):
         return (None, dbid)
     else:
+        # Merge the newly created object with the one found in the database, replacing
+        # the information found in the database for the new one if found the same key
+        merge(obj, dbobj)
+        # We need the original times and id from the DB object though
         obj["creation_time"] = dbobj.get("creation_time")
         obj["modification_time"] = t_utc
         obj["_rev"] = dbobj.get("_rev")
         obj["_id"] = dbobj.get("_id")
-        #Do not overwrite the content of the field [illumina][run_summary]
-        if obj.has_key('illumina') and dbobj.get('illumina', {}).has_key('run_summary'):
-            obj['illumina']['run_summary'] = dbobj['illumina']['run_summary']
         return (obj, dbid)
 
 ##############################
