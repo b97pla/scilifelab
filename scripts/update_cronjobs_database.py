@@ -78,5 +78,6 @@ if __name__=='__main__':
         couch.resource.credentials = (user, password)
         update_cronjobs_database(couch)
     except IOError as e:
-        raise e("Please make sure you've created your own configuration file " +  
-            "(i.e: ~/.pm/pm.conf), and that it contains a source and a destination servers")
+        print "Please make sure you've created your own configuration file " + \
+              "(i.e: ~/.pm/pm.conf), and that it contains a source and a destination servers"
+        raise
