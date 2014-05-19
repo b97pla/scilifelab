@@ -2,6 +2,7 @@
 
 import argparse
 import ConfigParser
+import datetime
 import getpass
 import os
 import platform
@@ -20,7 +21,7 @@ def update_cronjobs_database(couch):
     try:
         cdb = couch['cronjobs']
         server_view = cdb.view('server/alias')
-        crontab_json = {'server': server, 'cronjobs': {}}
+        crontab_json = {'server': server, 'cronjobs': {}, 'Last updated': str(datetime.datetime.now())}
 
         for job_id, job in enumerate(crontab.crons):
             job_json = {}
@@ -33,8 +34,6 @@ def update_cronjobs_database(couch):
             job_json['Day of month'] = str(job.dom)
             job_json['Month'] = str(job.month)
             job_json['Day of week'] = str(job.day)
-            job_json['Frequency'] = job.frequency()
-            job_json['Frequency per day'] = job.frequency_per_day()
             crontab_json['cronjobs'][job_id] = job_json
                  
         # There can only be one document per server, if so
@@ -46,7 +45,7 @@ def update_cronjobs_database(couch):
             server_doc.update(crontab_json)
         else:
             server_doc = crontab_json
-        print cdb.save(server_doc)
+        cdb.save(server_doc)
         
     except ResourceNotFound as e:
         raise e('ERROR while looking for cronjobs database in {}'.format(couch.resource.url))
