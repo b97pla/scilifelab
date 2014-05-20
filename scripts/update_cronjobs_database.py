@@ -43,9 +43,7 @@ def update_cronjobs_database(couch):
                 server_doc = cdb.get(row.value)
                 # Update the doc with the new user's cronjobs
                 server_doc['users'][getpass.getuser()] = user_crontab
-        if server_doc:
-            server_doc.update(crontab_json)
-        else:
+        if not server_doc:
             crontab_json['users'] = {getpass.getuser(): user_crontab}
             server_doc = crontab_json
         cdb.save(server_doc)
