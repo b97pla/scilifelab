@@ -21,11 +21,11 @@ def update_cronjobs_database(couch):
     try:
         cdb = couch['cronjobs']
         server_view = cdb.view('server/alias')
-        crontab_json = {'server': server, 'cronjobs': {}, 'Last updated': str(datetime.datetime.now())}
+        crontab_json = {'server': server, 'users': {}, 'Last updated': str(datetime.datetime.now())}
+        user_crontab = {}
 
         for job_id, job in enumerate(crontab.crons):
             job_json = {}
-            job_json['User'] = getpass.getuser()
             job_json['Command'] = job.command
             job_json['Enabled'] = job.enabled
             job_json['Comment'] = job.comment
@@ -34,19 +34,20 @@ def update_cronjobs_database(couch):
             job_json['Day of month'] = str(job.dom)
             job_json['Month'] = str(job.month)
             job_json['Day of week'] = str(job.day)
-            crontab_json['cronjobs'][job_id] = job_json
-                 
+            user_crontab[job_id] = job_json
+
         # There can only be one document per server, if so
         server_doc = {}
         for row in server_view.rows:
             if row.key == server:
                 server_doc = cdb.get(row.value)
-        if server_doc:
-            server_doc.update(crontab_json)
-        else:
+                # Update the doc with the new user's cronjobs
+                server_doc['users'][getpass.getuser()] = user_crontab
+        if not server_doc:
+            crontab_json['users'] = {getpass.getuser(): user_crontab}
             server_doc = crontab_json
         cdb.save(server_doc)
-        
+
     except ResourceNotFound as e:
         raise e('ERROR while looking for cronjobs database in {}'.format(couch.resource.url))
 
@@ -60,7 +61,7 @@ if __name__=='__main__':
     Requires module python-crontab: pip install python-crontab
     """
     parser = argparse.ArgumentParser(description=DESCRIPTION)
-    parser.add_argument('--config', type=str, help="Configuration file with StatusDB " + 
+    parser.add_argument('--config', type=str, help="Configuration file with StatusDB " +
         "credentials. By default will try to load ~/.pm/pm.conf")
     args = parser.parse_args()
 
