@@ -35,12 +35,23 @@ AGRINITQC = {'7' : 'Aggregate QC (DNA) 4.0',
     '9' : 'Aggregate QC (RNA) 4.0'}
 PREPREPSTART = {'74': 'Shear DNA (SS XT) 4.0',
     '304' : "Ligate 3' adapters (TruSeq small RNA) 1.0"}
+POOLING = {'42': "Library Pooling (Illumina SBS) 4.0",
+    '43': "Library Pooling (MiSeq) 4.0",
+    '44': "Library Pooling (TruSeq Amplicon) 4.0",
+    '45': "Library Pooling (TruSeq Exome) 4.0",
+    '58': "Pooling For Multiplexed Sequencing (SS XT) 4.0",
+    '255': "Library Pooling (Finished Libraries) 4.0",
+    '308': "Library Pooling (TruSeq Small RNA) 1.0",
+    '404': "Pre-Pooling (Illumina SBS) 4.0",
+    '506': "Pre-Pooling (MiSeq) 4.0",
+    '508': "Applications Pre-Pooling"}
 PREPSTART = {'10' : 'Aliquot Libraries for Hybridization (SS XT)',
     '47' : 'mRNA Purification, Fragmentation & cDNA synthesis (TruSeq RNA) 4.0',
     '33' : 'Fragment DNA (TruSeq DNA) 4.0',
     '407' : 'Fragment DNA (Thruplex)',
     '308': 'Library Pooling (TruSeq Small RNA) 1.0',
-    '117' : 'Applications Generic Process'}
+    '117' : 'Applications Generic Process',
+    '405' : 'RiboZero depletion, Fragmentation & cDNA synthesis (TruSeq RNA) 4.0'}
 PREPEND = {'157': 'Applications Finish Prep',
     '109' : 'CA Purification',
     '456' : 'Purification (ThruPlex)',
@@ -157,17 +168,22 @@ def get_analyte_hist_sorted(out_analyte, outin, inart = None):
     history = {}
     hist_list = []
     if inart:
+        Inart = Artifact(lims,id=inart)
+        try:
+            pro = Inart.parent_process.id
+        except:
+            pro = None
         history, out_analyte = add_out_art_process_conection_list(inart, 
-                                                    out_analyte, history)
+                                                    out_analyte, history, pro)
         hist_list.append(inart)
     while outin.has_key(out_analyte):
-        inart = outin[out_analyte][1]
+        pro, inart = outin[out_analyte]
         hist_list.append(inart)
         history, out_analyte = add_out_art_process_conection_list(inart, 
-                                                        out_analyte, history)
+                                                   out_analyte, history, pro.id)
     return history, hist_list
 
-def add_out_art_process_conection_list(inart, out_analyte, history = {}):
+def add_out_art_process_conection_list(inart, out_analyte, history = {}, pro = None):
     """This function populates the history dict with process info per artifact.
     Maps an artifact to all the processes where its used as input and adds this 
     info to the history dict. Obseve that the output artifavt for the input 
@@ -177,6 +193,10 @@ def add_out_art_process_conection_list(inart, out_analyte, history = {}):
     processes = lims.get_processes(inputartifactlimsid = inart)
     for process in processes:
         outputs = map(lambda a: a.id, process.all_outputs())
+        #if pro and pro == process.id and out_analyte:
+        #    outart = out_analyte
+        #else:
+        #    outart = None
         outart = out_analyte if out_analyte in outputs else None 
         step_info = {'date' : process.date_run,
                      'id' : process.id,
