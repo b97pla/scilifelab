@@ -230,10 +230,10 @@ def _format_samples(metrics):
                            'Sample name': 'Undemultiplexed index'}
 
             # Calculate the number of read pairs
-            total = int(sample_data['Total reads'])
-            pairs = total/2
-            if len([r for r in reads if r.get('IsIndexedRead','N') == 'N']) == 1:
-                pairs = total
+            pairs = int(sample_data['Total reads'])
+            total = pairs
+            if len([r for r in reads if r.get('IsIndexedRead','N') == 'N']) == 2:
+                total = pairs * 2
             sample_data['Total reads'] = str(total)
             sample_data['Read pairs (Mbases)'] = str(round(pairs/1000000.,2))
             samples.append(sample_data)
