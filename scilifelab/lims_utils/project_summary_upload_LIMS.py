@@ -30,6 +30,7 @@ def  main(proj_name, all_projects, days, conf, upload_data=True, output_f=None):
     today = date.today()
     couch = load_couch_server(conf)
     proj_db = couch['projects']
+    samp_db = couch['samples']
     if all_projects:
         projects = lims.get_projects()
         for proj in projects:
@@ -50,7 +51,7 @@ def  main(proj_name, all_projects, days, conf, upload_data=True, output_f=None):
                     if (days_closed < days):
                         proj_time = time.time()
                         try:
-                            obj = DB.ProjectDB(lims, proj.id)
+                            obj = DB.ProjectDB(lims, proj.id, samp_db)
                             key = find_proj_from_view(proj_db, proj.name)
                             obj.project['_id'] = find_or_make_key(key)
                             if upload_data:
@@ -82,7 +83,7 @@ def  main(proj_name, all_projects, days, conf, upload_data=True, output_f=None):
                 else:
                     cont = raw_input('The project %s is ordered before 2013-07-01. Do you still want to load the data from lims into statusdb? (yes/no): ' % proj_name)
                 if cont == 'yes':
-                    obj = DB.ProjectDB(lims, proj.id)
+                    obj = DB.ProjectDB(lims, proj.id, samp_db)
                     key = find_proj_from_view(proj_db, proj.name)
                     obj.project['_id'] = find_or_make_key(key)
                     if upload_data:

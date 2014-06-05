@@ -62,6 +62,11 @@ LIBVAL = {'62' : 'qPCR QC (Library Validation) 4.0',
     '64' : 'Quant-iT QC (Library Validation) 4.0',
     '67' : 'Qubit QC (Library Validation) 4.0',
     '20' : 'CaliperGX QC (DNA)',
+    '17' : 'Bioanalyzer QC (Library Validation) 4.0'}
+LIBVALFINISHEDLIB = {'62' : 'qPCR QC (Library Validation) 4.0',
+    '64' : 'Quant-iT QC (Library Validation) 4.0',
+    '67' : 'Qubit QC (Library Validation) 4.0',
+    '20' : 'CaliperGX QC (DNA)',
     '17' : 'Bioanalyzer QC (Library Validation) 4.0',
     '24' : 'Customer Gel QC'}
 AGRLIBVAL = {'8': 'Aggregate QC (Library Validation) 4.0'}
@@ -193,10 +198,6 @@ def add_out_art_process_conection_list(inart, out_analyte, history = {}, pro = N
     processes = lims.get_processes(inputartifactlimsid = inart)
     for process in processes:
         outputs = map(lambda a: a.id, process.all_outputs())
-        #if pro and pro == process.id and out_analyte:
-        #    outart = out_analyte
-        #else:
-        #    outart = None
         outart = out_analyte if out_analyte in outputs else None 
         step_info = {'date' : process.date_run,
                      'id' : process.id,

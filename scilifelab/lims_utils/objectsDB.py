@@ -19,11 +19,6 @@ import bcbio.pipeline.config_utils as cl
 import time
 from datetime import date
 
-config_file = os.path.join(os.environ['HOME'], 'opt/config/post_process.yaml')
-db_conf = cl.load_config(config_file)['statusdb']
-url = db_conf['username']+':'+db_conf['password']+'@'+db_conf['url']+':'+str(db_conf['port'])
-url='production:MmJjYmE2M2JlZD@tools.scilifelab.se:5984'
-samp_db = couchdb.Server("http://" + url)['samples']
 
 #############-------------- ProjectDB class --------------#############
 
@@ -32,8 +27,9 @@ class ProjectDB():
     Source of information come from different lims artifacts and processes. A detailed documentation of the 
     source of all values is found in: 
     https://docs.google.com/a/scilifelab.se/document/d/1OHRsSI9btaBU4Hb1TiqJ5wwdRqUQ4BAyjJR-Nn5qGHg/edit#"""
-    def __init__(self, lims_instance, project_id):
+    def __init__(self, lims_instance, project_id, samp_db):
         self.lims = lims_instance 
+        self.samp_db = samp_db
         self.lims_project = Project(self.lims,id = project_id)
         self.preps = ProcessInfo(self.lims , self.lims.get_processes(projectname = self.lims_project.name, type = AGRLIBVAL.values()))
         runs = self.lims.get_processes(projectname = self.lims_project.name, type = SEQUENCING.values())
@@ -92,6 +88,7 @@ class ProjectDB():
                 sampDB = SampleDB(self.lims,
                                 samp.id,
                                 self.project['project_name'],
+                                self.samp_db,
                                 self.project['application'],
                                 self.preps.info,
                                 self.runs.info,
@@ -183,11 +180,12 @@ class SampleDB():
     from different lims artifacts and processes. A detailed documentation of the
      source of all values is found in
     https://docs.google.com/a/scilifelab.se/document/d/1OHRsSI9btaBU4Hb1TiqJ5wwdRqUQ4BAyjJR-Nn5qGHg/edit#"""
-    def __init__(self,lims_instance , sample_id, project_name, 
+    def __init__(self,lims_instance , sample_id, project_name, samp_db, 
                         application = None, prep_info = [], run_info = [],
                         googledocs_status = {}): 
       # googledocs_status temporary solution untill 20158 implemented in lims!!
         self.lims = lims_instance
+        self.samp_db = samp_db
         self.AgrLibQCs = prep_info
         self.lims_sample = Sample(self.lims, id = sample_id)
         self.name = self.lims_sample.name
@@ -207,7 +205,10 @@ class SampleDB():
             self.obj['library_prep'] = self._get_prep_leter(preps)
         initialqc = self._get_initialqc()
         self.obj['initial_qc'] = initialqc if initialqc else None
-        init_qc = INITALQC.values()
+        if self.application in ['Finished library', 'Amplicon']:
+            init_qc = INITALQCFINISHEDLIB.values()
+        else:
+            init_qc = INITALQC.values() 
         self.obj['first_initial_qc_start_date'] = self._get_firts_day(self.name,
                                                                         init_qc)
         self.obj['first_prep_start_date'] = self._get_firts_day(self.name, 
@@ -292,7 +293,7 @@ class SampleDB():
                         if preps[key].has_key('reagent_label'):
                             barcode = self.get_barcode(preps[key]['reagent_label'])
                             samp_run_met_id = '_'.join([lane, date, fcid, barcode])
-                            dict = {'sample_run_metrics_id':find_sample_run_id_from_view(samp_db, samp_run_met_id),
+                            dict = {'sample_run_metrics_id':find_sample_run_id_from_view(self.samp_db, samp_run_met_id),
                                 'dillution_and_pooling_start_date' : steps.dilstart['date'] if steps.dilstart else None,
                                 'sequencing_start_date' : steps.seqstart['date'] if steps.seqstart else None,
                                 'sequencing_run_QC_finished' : run['start_date'],
@@ -314,7 +315,7 @@ class SampleDB():
             prep_info_new['A'] = prep_info.values()[0]
         else:
             for key, val in prep_info.items():
-                if val.has_key('pre_prep_start_date'):
+                if val['pre_prep_start_date']:
                     dates[key] = val['pre_prep_start_date']
                 else:
                     dates[key] = val['prep_start_date']
@@ -326,6 +327,7 @@ class SampleDB():
         """"""
         top_level_agrlibval_steps = self._get_top_level_agrlibval_steps()
         preps = {}
+        very_last_libval_key = {}
         for AgrLibQC_id in top_level_agrlibval_steps.keys():
             AgrLibQC_info = self.AgrLibQCs[AgrLibQC_id]
             if AgrLibQC_info['samples'].has_key(self.name):
@@ -344,14 +346,17 @@ class SampleDB():
                     preps[prep.id2AB]['library_validation'].update(prep.library_validations)
                     last_libval_key = max(prep.library_validations.keys())
                     last_libval = prep.library_validations[last_libval_key]
-                    if last_libval.has_key('prep_status'):
-                        preps[prep.id2AB]['prep_status'] = last_libval['prep_status']
-                    preps[prep.id2AB]['reagent_label'] = self._pars_reagent_labels(steps, last_libval)
+                    if not very_last_libval_key.has_key(prep.id2AB) or (last_libval_key > very_last_libval_key[prep.id2AB]):
+                        very_last_libval_key[prep.id2AB] = last_libval_key
+                        if last_libval.has_key('prep_status'):
+                            preps[prep.id2AB]['prep_status'] = last_libval['prep_status']
+                        preps[prep.id2AB]['reagent_label'] = self._pars_reagent_labels(steps, last_libval)
         if preps.has_key('Finished'):
             preps['Finished']['reagent_label'] = self.lims_sample.artifact.reagent_labels[0]
             preps['Finished'] = delete_Nones(preps['Finished'])
         
         return preps
+
 
     def _pars_reagent_labels(self, steps, last_libval):
         if steps.firstpoolstep:
@@ -365,7 +370,6 @@ class SampleDB():
         return None
 
     def _get_initialqc(self):
-        #agr_qc = AGRLIBVAL if self.application in ['Amplicon', 'Finished library'] else AGRINITQC
         agr_qc = AGRINITQC
         outarts = self.lims.get_artifacts(sample_name = self.name, 
                                                 process_type = agr_qc.values())
@@ -491,7 +495,13 @@ class ProcessSpec():
                                                 LIBVAL), art_steps.values())
                 self.prepreplibvalends += filter(lambda pro: pro['type'] in
                                                 AGRLIBVAL, art_steps.values())
-            elif self.prepends or self.application in ['Finished library', 'Amplicon']: 
+            elif self.application in ['Finished library', 'Amplicon']: 
+                # 6) LIBVALSTART LIBVALEND
+                self.libvals += filter(lambda pro: pro['type'] in
+                                                LIBVALFINISHEDLIB, art_steps.values())
+                self.libvalends += filter(lambda pro: pro['type'] in
+                                                AGRLIBVAL, art_steps.values())
+            elif self.prepends: 
                 # 6) LIBVALSTART LIBVALEND
                 self.libvals += filter(lambda pro: pro['type'] in
                                                 LIBVAL, art_steps.values())
@@ -500,10 +510,10 @@ class ProcessSpec():
 
             # 4) PREPSTART
             self.prepstarts += filter(lambda pro: (pro['type'] in 
-                            PREPSTART) and pro['outart'], art_steps.values()) #and pro['outart'] ##26 may
+                            PREPSTART) and pro['outart'], art_steps.values()) 
             # 5) PREPEND            - get latest prep end
             self.prepends += filter(lambda pro: (pro['type'] in 
-                            PREPEND) and pro['outart'] , art_steps.values())#and pro['outart'] 
+                            PREPEND) and pro['outart'] , art_steps.values())
 
             # 8) WORKSET            - get latest workset
             self.worksets += filter(lambda pro: (pro['type'] in 
@@ -519,7 +529,7 @@ class ProcessSpec():
                                         and pro['outart'], art_steps.values())
             # 11) POOLING STEPS
             self.poolingsteps += filter(lambda pro: (pro['type'] in
-                                        POOLING), art_steps.values()) #and pro['outart']
+                                        POOLING), art_steps.values()) 
         self.workset = get_last_first(self.worksets) 
         self.libvalstart = get_last_first(self.libvals, last = False)
         self.libvalend = get_last_first(self.libvalends)
