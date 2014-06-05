@@ -1,6 +1,5 @@
 """Reportlab module for generating pdf documents"""
 import os
-import unicodedata
 from datetime import datetime
 from pyPdf import PdfFileWriter, PdfFileReader
 from collections import OrderedDict
@@ -53,8 +52,8 @@ def sample_note_paragraphs():
 Ordered amount: ${ordered_amount} million read${'{}'.format(' pair') if is_paired else ''}s."""))
 
     paragraphs["Method"] = dict(style=h3,
-                                tpl = Template("""Clustered using ${clustering_method} and sequenced on ${sequencing_platform} (${sequencing_software}) 
-                                with a ${sequencing_setup} setup in ${sequencing_mode} mode. Bcl to Fastq conversion was performed using bcl2Fastq v1.8.3 
+                                tpl = Template("""Clustered using ${clustering_method} and sequenced on ${sequencing_platform} (${sequencing_software})
+                                with a ${sequencing_setup} setup in ${sequencing_mode} mode. Bcl to Fastq conversion was performed using bcl2Fastq v1.8.3
                                 from the CASAVA software suite. The quality scale is Sanger / phred33 / Illumina 1.8+."""))
     paragraphs["Results"] = dict(style=h3,
                                  tpl = Template("""${rounded_read_count} million read${'{}'.format(' pair') if is_paired else ''}s${' in lane with PhiX error rate {}%'.format(phix_error_rate) if phix_error_rate != 'N/A' else ''}.
@@ -115,7 +114,7 @@ def project_note_paragraphs():
         style=h4,
         tpl=Template("""The data is delivered in fastq format using Illumina 1.8 quality
 scores. There will be one file for the forward reads and one file for
-the reverse reads (if the run was a paired-end run). 
+the reverse reads (if the run was a paired-end run).
 
 The naming of the files follow the convention:
 
@@ -126,7 +125,7 @@ The naming of the files follow the convention:
         tpl=Template("""Data from the sequencing will be uploaded to the UPPNEX (UPPMAX Next
 Generation sequence Cluster Storage, www.uppmax.uu.se), from which the
 user can access it. You can find the data in the INBOX folder of the UPPNEX project, which
-was created for you when your order was placed, e.g. 
+was created for you when your order was placed, e.g.
 
   /proj/b2013000/INBOX/J.Doe_13_01
 
@@ -169,12 +168,6 @@ def make_note(outfile, headers, paragraphs, **kw):
     :param kw: keyword arguments for formatting
     """
     story = [Paragraph(x, headers[x]) for x in headers.keys()]
-
-    #Reportlab does not allow non-ascii characters. This normalizes the string.
-    for k, v in kw.iteritems():
-        if type(v) == unicode:
-            LOG.debug('Param %s' % kw[k])
-            kw[k] = unicodedata.normalize('NFKD', v).encode('ascii', 'ignore')
 
     for headline, paragraph in paragraphs.items():
         story.append(Paragraph(headline, paragraph.get("style", h3)))

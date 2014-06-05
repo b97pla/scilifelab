@@ -61,7 +61,7 @@ class MetricsParser():
 
         data = collections.defaultdict(list)
         for line in in_handle:
-            data[line['lane']].append({c:line[c] for c in in_handle.fieldnames if c != 'lane'})
+            data[line['lane']].append({c:[line[c],''][line[c] is None] for c in in_handle.fieldnames if c != 'lane'})
         return data
 
     def parse_bcbb_checkpoints(self, in_handle):
