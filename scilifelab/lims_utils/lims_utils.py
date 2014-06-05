@@ -13,7 +13,7 @@ lims = Lims(BASEURI, USERNAME, PASSWORD)
 
 In the lims_utils context, processes are categorised into groups that define, 
 or are used to define a certain type of statusdb key. The categories and their 
-processes are defined here:"""
+processes are defined here:""" 'hh'
 
 INITALQCFINISHEDLIB = {'24' : 'Customer Gel QC',
     '62' : 'qPCR QC (Library Validation) 4.0',
@@ -21,7 +21,7 @@ INITALQCFINISHEDLIB = {'24' : 'Customer Gel QC',
     '67' : 'Qubit QC (Library Validation) 4.0',
     '20' : 'CaliperGX QC (DNA)',
     '17' : 'Bioanalyzer QC (Library Validation) 4.0'}
-INITALQC = {'63' : 'Quant-iT QC (DNA) 4.0',
+INITALQC ={'63' : 'Quant-iT QC (DNA) 4.0',
     '65' : 'Quant-iT QC (RNA) 4.0',
     '66' : 'Qubit QC (DNA) 4.0',
     '68' : 'Qubit QC (RNA) 4.0',
@@ -30,21 +30,45 @@ INITALQC = {'63' : 'Quant-iT QC (DNA) 4.0',
     '16' : 'Bioanalyzer QC (DNA) 4.0',
     '18' : 'Bioanalyzer QC (RNA) 4.0',
     '116' : 'CaliperGX QC (RNA)',
-    '48' : 'NanoDrop QC (DNA) 4.0'}
+    '504' : 'Volume Measurement QC'}
 AGRINITQC = {'7' : 'Aggregate QC (DNA) 4.0',
     '9' : 'Aggregate QC (RNA) 4.0'}
-PREPREPSTART = {"74": "Shear DNA (SS XT) 4.0"}
+PREPREPSTART = {'74': 'Shear DNA (SS XT) 4.0',
+    '304' : "Ligate 3' adapters (TruSeq small RNA) 1.0"}
+POOLING = {'42': "Library Pooling (Illumina SBS) 4.0",
+    '43': "Library Pooling (MiSeq) 4.0",
+    '44': "Library Pooling (TruSeq Amplicon) 4.0",
+    '45': "Library Pooling (TruSeq Exome) 4.0",
+    '58': "Pooling For Multiplexed Sequencing (SS XT) 4.0",
+    '255': "Library Pooling (Finished Libraries) 4.0",
+    '308': "Library Pooling (TruSeq Small RNA) 1.0",
+    '404': "Pre-Pooling (Illumina SBS) 4.0",
+    '506': "Pre-Pooling (MiSeq) 4.0",
+    '508': "Applications Pre-Pooling"}
 PREPSTART = {'10' : 'Aliquot Libraries for Hybridization (SS XT)',
     '47' : 'mRNA Purification, Fragmentation & cDNA synthesis (TruSeq RNA) 4.0',
     '33' : 'Fragment DNA (TruSeq DNA) 4.0',
-    '117' : 'Applications Generic Process'}
+    '407' : 'Fragment DNA (Thruplex)',
+    '308': 'Library Pooling (TruSeq Small RNA) 1.0',
+    '117' : 'Applications Generic Process',
+    '405' : 'RiboZero depletion, Fragmentation & cDNA synthesis (TruSeq RNA) 4.0'}
 PREPEND = {'157': 'Applications Finish Prep',
-    '109' : 'CA Purification'}
+    '109' : 'CA Purification',
+    '456' : 'Purification (ThruPlex)',
+    '111' : 'Amplify Captured Libraries to Add Index Tags (SS XT) 4.0',
+    '406' : 'End repair, size selection, A-tailing and adapter ligation (TruSeq PCR-free DNA) 4.0',
+    '311': 'Sample Placement (Size Selection)'}
 LIBVAL = {'62' : 'qPCR QC (Library Validation) 4.0',
     '64' : 'Quant-iT QC (Library Validation) 4.0',
     '67' : 'Qubit QC (Library Validation) 4.0',
     '20' : 'CaliperGX QC (DNA)',
     '17' : 'Bioanalyzer QC (Library Validation) 4.0'}
+LIBVALFINISHEDLIB = {'62' : 'qPCR QC (Library Validation) 4.0',
+    '64' : 'Quant-iT QC (Library Validation) 4.0',
+    '67' : 'Qubit QC (Library Validation) 4.0',
+    '20' : 'CaliperGX QC (DNA)',
+    '17' : 'Bioanalyzer QC (Library Validation) 4.0',
+    '24' : 'Customer Gel QC'}
 AGRLIBVAL = {'8': 'Aggregate QC (Library Validation) 4.0'}
 SEQSTART = {'23':'Cluster Generation (Illumina SBS) 4.0',
     '26':'Denature, Dilute and Load Sample (MiSeq) 4.0'}
@@ -53,7 +77,7 @@ DILSTART = {'40' : 'Library Normalization (MiSeq) 4.0',
 SEQUENCING = {'38' : 'Illumina Sequencing (Illumina SBS) 4.0',
     '46' : 'MiSeq Run (MiSeq) 4.0'}
 WORKSET = {'204' : 'Setup Workset/Plate'}
-SUMMARY = {'404' : 'Project Summary 1.3'}
+SUMMARY = {'356' : 'Project Summary 1.3'}
 
 PROJ_UDF_EXCEPTIONS = ['customer_reference','uppnex_id','reference_genome','application']
 
@@ -95,7 +119,6 @@ def get_sequencing_info(fc):
     fc_summary={}
     for iom in fc.input_output_maps:
         art = Artifact(lims,id = iom[0]['limsid'])
-        #art = iom[0]['uri']
         lane = art.location[1].split(':')[0]
         if not fc_summary.has_key(lane):
             fc_summary[lane]= dict(art.udf.items()) #"%.2f" % val ----round??
@@ -103,45 +126,87 @@ def get_sequencing_info(fc):
     return fc_summary
 
 
-
 def make_sample_artifact_maps(sample_name):
-    """
-    outin: connects each out_art for a specific sample to its 
-    corresponding in_art and process. one-one relation
+    """outin: connects each out_art for a specific sample to its 
+    corresponding in_art and process. one-one relation"""
     
-    inout: connects each in_art for a specific sample to all its 
-    coresponding out_arts and processes. one-many relation"""
     outin = {}
-    inout = {}
-    artifacts = lims.get_artifacts(sample_name = sample_name)
+    artifacts = lims.get_artifacts(sample_name = sample_name, type = 'Analyte') 
     for outart in artifacts:
-        try: 
+        try:
             pro = outart.parent_process
             inarts = outart.input_artifact_list()
             for inart in inarts:
                 for samp in inart.samples:
                     if samp.name == sample_name:
                         outin[outart.id] = (pro, inart.id)
-                        if not inout.has_key(inart.id): inout[inart.id] = {}
-                        inout[inart.id][pro] = outart.id
         except:
             pass
-    return outin, inout
+    return outin
 
-def get_analyte_hist(analyte, outin, inout):
-    """Makes a history map of an analyte, using the inout-map 
-    and outin-map of the corresponding sample."""
+def get_analyte_hist_sorted(out_analyte, outin, inart = None):
+    """Makes a history map of an analyte, using the outin-map 
+    of the corresponding sample.
+    The outin object is built up from analytes. This means that it will not 
+    contain output-inpit info for processes wich have only files as output. 
+    This is cusial since the outinobject is used for building upp the ANALYTE 
+    history of a sample. If you want to make the analyte history based on a 
+    resultfile, that is; if you want to give a resultfile as out_analyte here, 
+    and be given the historylist of analytes and processes for that file, you 
+    will also have to give the input artifact for the process that generated 
+    the resultfile for wich you want to get the history. In other words, if you 
+    want to get the History of the folowing scenario:        
+
+    History --- > Input_analyte -> Process -> Output_result_file
+    
+    then the arguments to this function should be:
+    out_analyte = Output_result_file
+    inart = Input_analyte
+
+    If you instead want the History of the folowing scenario:
+    
+    History --- > Input_analyte -> Process -> Output_analyte
+
+    the you can skip the inart argument and only set:
+    out_analyte = Output_analyte 
+    """
     history = {}
-    while outin.has_key(analyte):
-        hist_process, inart = outin[analyte]
-        for process, outart in inout[inart].items():
-            if (process == hist_process) or (process.type.id in INITALQC.keys()) or (process.type.id in LIBVAL.keys()) or (process.type.id in AGRINITQC.keys()) or (process.type.id in AGRLIBVAL.keys()) or (process.type.id in SEQSTART.keys()):
-                history[process.id] = {'date' : process.date_run,
-                            'id' : process.id,
-                            'outart' : outart,
-                            'inart' : inart,
-                            'type' : process.type.id,
-                            'name' : process.type.name}
-        analyte = inart
-    return history
+    hist_list = []
+    if inart:
+        Inart = Artifact(lims,id=inart)
+        try:
+            pro = Inart.parent_process.id
+        except:
+            pro = None
+        history, out_analyte = add_out_art_process_conection_list(inart, 
+                                                    out_analyte, history, pro)
+        hist_list.append(inart)
+    while outin.has_key(out_analyte):
+        pro, inart = outin[out_analyte]
+        hist_list.append(inart)
+        history, out_analyte = add_out_art_process_conection_list(inart, 
+                                                   out_analyte, history, pro.id)
+    return history, hist_list
 
+def add_out_art_process_conection_list(inart, out_analyte, history = {}, pro = None):
+    """This function populates the history dict with process info per artifact.
+    Maps an artifact to all the processes where its used as input and adds this 
+    info to the history dict. Obseve that the output artifavt for the input 
+    atrifact in the historychain is given as input to this funktion. All 
+    processes that the input artifakt has been involved in, but that are not 
+    part of the historychain get the outart set to None. This is verry important."""
+    processes = lims.get_processes(inputartifactlimsid = inart)
+    for process in processes:
+        outputs = map(lambda a: a.id, process.all_outputs())
+        outart = out_analyte if out_analyte in outputs else None 
+        step_info = {'date' : process.date_run,
+                     'id' : process.id,
+                     'outart' : outart,
+                     'inart' : inart,
+                     'type' : process.type.id,
+                     'name' : process.type.name}
+        if history.has_key(inart):
+            history[inart][process.id] = step_info
+        else:
+            history[inart] = {process.id : step_info}
+    return history, inart
