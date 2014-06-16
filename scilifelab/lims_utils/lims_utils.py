@@ -48,7 +48,7 @@ POOLING = {'42': "Library Pooling (Illumina SBS) 4.0",
 PREPSTART = {'10' : 'Aliquot Libraries for Hybridization (SS XT)',
     '47' : 'mRNA Purification, Fragmentation & cDNA synthesis (TruSeq RNA) 4.0',
     '33' : 'Fragment DNA (TruSeq DNA) 4.0',
-    '407' : 'Fragment DNA (Thruplex)',
+    '407' : 'Fragment DNA (ThruPlex)',
     '308': 'Library Pooling (TruSeq Small RNA) 1.0',
     '117' : 'Applications Generic Process',
     '405' : 'RiboZero depletion, Fragmentation & cDNA synthesis (TruSeq RNA) 4.0'}
