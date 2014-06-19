@@ -125,11 +125,9 @@ def get_sequencing_info(fc):
             fc_summary[lane]['qc'] = art.qc_flag
     return fc_summary
 
-
 def make_sample_artifact_maps(sample_name):
     """outin: connects each out_art for a specific sample to its 
     corresponding in_art and process. one-one relation"""
-    
     outin = {}
     artifacts = lims.get_artifacts(sample_name = sample_name, type = 'Analyte') 
     for outart in artifacts:
@@ -143,70 +141,3 @@ def make_sample_artifact_maps(sample_name):
         except:
             pass
     return outin
-
-def get_analyte_hist_sorted(out_analyte, outin, inart = None):
-    """Makes a history map of an analyte, using the outin-map 
-    of the corresponding sample.
-    The outin object is built up from analytes. This means that it will not 
-    contain output-inpit info for processes wich have only files as output. 
-    This is cusial since the outinobject is used for building upp the ANALYTE 
-    history of a sample. If you want to make the analyte history based on a 
-    resultfile, that is; if you want to give a resultfile as out_analyte here, 
-    and be given the historylist of analytes and processes for that file, you 
-    will also have to give the input artifact for the process that generated 
-    the resultfile for wich you want to get the history. In other words, if you 
-    want to get the History of the folowing scenario:        
-
-    History --- > Input_analyte -> Process -> Output_result_file
-    
-    then the arguments to this function should be:
-    out_analyte = Output_result_file
-    inart = Input_analyte
-
-    If you instead want the History of the folowing scenario:
-    
-    History --- > Input_analyte -> Process -> Output_analyte
-
-    the you can skip the inart argument and only set:
-    out_analyte = Output_analyte 
-    """
-    history = {}
-    hist_list = []
-    if inart:
-        Inart = Artifact(lims,id=inart)
-        try:
-            pro = Inart.parent_process.id
-        except:
-            pro = None
-        history, out_analyte = add_out_art_process_conection_list(inart, 
-                                                    out_analyte, history, pro)
-        hist_list.append(inart)
-    while outin.has_key(out_analyte):
-        pro, inart = outin[out_analyte]
-        hist_list.append(inart)
-        history, out_analyte = add_out_art_process_conection_list(inart, 
-                                                   out_analyte, history, pro.id)
-    return history, hist_list
-
-def add_out_art_process_conection_list(inart, out_analyte, history = {}, pro = None):
-    """This function populates the history dict with process info per artifact.
-    Maps an artifact to all the processes where its used as input and adds this 
-    info to the history dict. Obseve that the output artifavt for the input 
-    atrifact in the historychain is given as input to this funktion. All 
-    processes that the input artifakt has been involved in, but that are not 
-    part of the historychain get the outart set to None. This is verry important."""
-    processes = lims.get_processes(inputartifactlimsid = inart)
-    for process in processes:
-        outputs = map(lambda a: a.id, process.all_outputs())
-        outart = out_analyte if out_analyte in outputs else None 
-        step_info = {'date' : process.date_run,
-                     'id' : process.id,
-                     'outart' : outart,
-                     'inart' : inart,
-                     'type' : process.type.id,
-                     'name' : process.type.name}
-        if history.has_key(inart):
-            history[inart][process.id] = step_info
-        else:
-            history[inart] = {process.id : step_info}
-    return history, inart

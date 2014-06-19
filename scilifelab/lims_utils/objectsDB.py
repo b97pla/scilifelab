@@ -10,6 +10,7 @@ import codecs
 from scilifelab.google import _to_unicode, _from_unicode
 from pprint import pprint
 from genologics.lims import *
+import genologics.entities as gent
 from lims_utils import *
 from scilifelab.db.statusDB_utils import *
 from helpers import *
@@ -18,7 +19,7 @@ import couchdb
 import bcbio.pipeline.config_utils as cl
 import time
 from datetime import date
-
+import logging
 
 #############-------------- ProjectDB class --------------#############
 
@@ -278,9 +279,9 @@ class SampleDB():
                         lane = lane_art.location[1].split(':')[1]
                     else:
                         lane = lane_art.location[1].split(':')[0]
-                    hist_sort, hist_list = get_analyte_hist_sorted(outart.id, 
-                                                        self.outin, lane_art.id)
-                    steps = ProcessSpec(hist_sort, hist_list, self.application)
+                    history = gent.SampleHistory(sample_name=self.name, output_artifact=outart.id,
+                                            input_artifact=lane_art.id, lims=self.lims )   
+                    steps = ProcessSpec(history.history, history.history_list, self.application)
                     if self.application in ['Finished library', 'Amplicon']:
                         key = 'Finished'
                     elif steps.preprepstart:
@@ -292,7 +293,11 @@ class SampleDB():
                     if key:
                         if preps[key].has_key('reagent_label'):
                             barcode = self.get_barcode(preps[key]['reagent_label'])
-                            samp_run_met_id = '_'.join([lane, date, fcid, barcode])
+                            try:
+                                samp_run_met_id = '_'.join([lane, date, fcid, barcode])
+                            except TypeError: #happens if the History object is missing fields, barcode might be None
+                                logging.debug(self.name+" ",preps[key],"-", preps[key]['reagent_label'])
+                                raise TypeError
                             dict = {'sample_run_metrics_id':find_sample_run_id_from_view(self.samp_db, samp_run_met_id),
                                 'dillution_and_pooling_start_date' : steps.dilstart['date'] if steps.dilstart else None,
                                 'sequencing_start_date' : steps.seqstart['date'] if steps.seqstart else None,
@@ -332,10 +337,10 @@ class SampleDB():
             AgrLibQC_info = self.AgrLibQCs[AgrLibQC_id]
             if AgrLibQC_info['samples'].has_key(self.name):
                 inart, outart = AgrLibQC_info['samples'][self.name].items()[0][1]
-                hist_sort, hist_list = get_analyte_hist_sorted(outart.id,
-                                                               self.outin,
-                                                               inart.id)
-                steps = ProcessSpec(hist_sort, hist_list, self.application)
+                
+                history = gent.SampleHistory(sample_name=self.name, output_artifact=outart.id,
+                                        input_artifact=inart.id, lims=self.lims )   
+                steps = ProcessSpec(history.history, history.history_list, self.application)
                 prep = Prep()
                 prep.set_prep_info(steps, self.application)
                 if not preps.has_key(prep.id2AB) and prep.id2AB:
@@ -379,10 +384,11 @@ class SampleDB():
             outart = Artifact(lims, id = max(map(lambda a: a.id, outarts)))
             latestInitQc = outart.parent_process
             inart = latestInitQc.input_per_sample(self.name)[0].id
-            hist_sort, hist_list = get_analyte_hist_sorted(outart.id, 
-                                                        self.outin, inart)
-            if hist_list:
-                iqc = InitialQC(hist_sort, hist_list)
+            history = gent.SampleHistory(sample_name=self.name, output_artifact=outart.id,
+                                        input_artifact=inart, lims=self.lims )   
+            steps = ProcessSpec(history.history, history.history_list, self.application)
+            if history.history_list:
+                iqc = InitialQC(history.history, history.history_list)
                 initialqc = delete_Nones(iqc.set_initialqc_info())
         return delete_Nones(initialqc)       
 
@@ -393,10 +399,10 @@ class SampleDB():
             if AgrLibQC_info['samples'].has_key(self.name):
                 topLevel_AgrLibQC[AgrLibQC_id]=[]
                 inart, outart = AgrLibQC_info['samples'][self.name].items()[0][1]
-                hist_sort, hist_list = get_analyte_hist_sorted(outart.id,
-                                                          self.outin, inart.id)
-                for inart in hist_list:
-                    proc_info = hist_sort[inart]
+                history = gent.SampleHistory(sample_name=self.name, output_artifact=outart.id,lims=self.lims)
+                steps = ProcessSpec(history.history, history.history_list, self.application)
+                for inart in history.history_list:
+                    proc_info =history.history[inart]
                     proc_info = filter(lambda p : 
                              (p['type'] in AGRLIBVAL.keys()),proc_info.values())
                     
