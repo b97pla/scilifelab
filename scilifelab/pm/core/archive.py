@@ -154,7 +154,7 @@ class ArchiveController(AbstractExtendedBaseController):
             if fc_db_id:
                 f_conn.set_storage_status(fc_db_id, 'swestore_archived')
             else:
-                self.app.log.warn("Flowcell {} not found in the database, not changing status.".format(fc_id))
+                self.log.warn("Flowcell {} not found in the database, not changing status.".format(fc_id))
             # Log to statusdb
             if self.pargs.log_to_db:
                 # implement this
