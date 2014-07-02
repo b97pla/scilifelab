@@ -82,6 +82,8 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
         def bcbb_yaml_filter(f):
             return re.search(pattern, f) != None
         samples = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), bcbb_yaml_filter)
+        if self.pargs.flowcell:
+            samples = [sam for sam in samples if os.path.basename(os.path.dirname(sam)) == self.pargs.flowcell]
         for s in samples:
             fc = Flowcell(s)
             fc_new = fc.subset("sample_prj", self.pargs.project)
