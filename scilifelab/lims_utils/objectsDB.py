@@ -84,7 +84,7 @@ class ProjectDB():
         samples = self.lims.get_samples(projectlimsid = self.lims_project.id)
         self.project['no_of_samples'] = len(samples)
         if len(samples) > 0:
-            processes_per_artifact = self.build_processes_per_artifact()
+            processes_per_artifact = self.build_processes_per_artifact(self.lims, self.lims_project.name)
             self.project['first_initial_qc'] = '3000-10-10'
             for samp in samples: 
                 sampDB = SampleDB(self.lims,
