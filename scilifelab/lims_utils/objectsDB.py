@@ -104,25 +104,24 @@ class ProjectDB():
                         self.project['first_initial_qc'] = initial_qc_start_date
                 except:
                     pass
-        def build_processes_per_artifact(lims, pname):
-            """Constructs a dictionary linking each artifact id with its processes.
-            Other artifacts can be present as keys. All processes where the project is
-            present should be included. The values of the dictionary is sets, to avoid
-            duplicated projects for a single artifact.
-            """
-            processes = lims.get_processes(projectname = pname)
-            processes_per_artifact = {}
-            print len(processes)
-            for process in processes:
-                for inart, outart in process.input_output_maps:
-                    if inart is not None:
-                        if inart['limsid'] in processes_per_artifact:
-                            processes_per_artifact[inart['limsid']].add(process)
-                        else:
-                            processes_per_artifact[inart['limsid']] = {process}
+    def build_processes_per_artifact(self,lims, pname):
+        """Constructs a dictionary linking each artifact id with its processes.
+        Other artifacts can be present as keys. All processes where the project is
+        present should be included. The values of the dictionary is sets, to avoid
+        duplicated projects for a single artifact.
+        """
+        processes = lims.get_processes(projectname = pname)
+        processes_per_artifact = {}
+        for process in processes:
+            for inart, outart in process.input_output_maps:
+                if inart is not None:
+                    if inart['limsid'] in processes_per_artifact:
+                        processes_per_artifact[inart['limsid']].add(process)
+                    else:
+                        processes_per_artifact[inart['limsid']] = {process}
 
-            return processes_per_artifact
- 
+        return processes_per_artifact
+
         self.project = delete_Nones(self.project)
 
 
@@ -405,8 +404,8 @@ class SampleDB():
             latestInitQc = outart.parent_process
             inart = latestInitQc.input_per_sample(self.name)[0].id
             history = gent.SampleHistory(sample_name=self.name, output_artifact=outart.id,
-                                        input_artifact=inart, lims=self.lims )   
-            steps = ProcessSpec(history.history, history.history_list, self.application, pro_per_art=self.processes_per_artifact)
+                                        input_artifact=inart, lims=self.lims, pro_per_art=self.processes_per_artifact )   
+            steps = ProcessSpec(history.history, history.history_list, self.application)
             if history.history_list:
                 iqc = InitialQC(history.history, history.history_list)
                 initialqc = delete_Nones(iqc.set_initialqc_info())
