@@ -82,6 +82,8 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
         def bcbb_yaml_filter(f):
             return re.search(pattern, f) != None
         samples = filtered_walk(os.path.join(self._meta.root_path, self._meta.path_id), bcbb_yaml_filter)
+        if self.pargs.flowcell:
+            samples = [sam for sam in samples if os.path.basename(os.path.dirname(sam)) == self.pargs.flowcell]
         for s in samples:
             fc = Flowcell(s)
             fc_new = fc.subset("sample_prj", self.pargs.project)
@@ -340,9 +342,16 @@ class ProductionController(AbstractExtendedBaseController, BcbioRunController):
                         shutil.move(fc, os.path.join(os.path.dirname(fc), 'nosync'))
                         #Touch RTAComplete.txt file to that the modification date is the date when
                         #it was moved to nosync
-                        open(os.path.join(os.path.dirname(fc), 'nosync', os.path.basename(fc), 'RTAComplete.txt'), 'w').close()
+                        try:
+                            open(os.path.join(os.path.dirname(fc), 'nosync', os.path.basename(fc), 'RTAComplete.txt'), 'w').close()
+                        except IOError:
+                            self.app.log.warn("No RTAComplete.txt file was found for run {}." \
+                                    " Please check".format(os.path.basename(fc_name)))
                         fc_db_id = f_conn.id_view.get(fc_name)
-                        f_conn.set_storage_status(fc_db_id, 'NAS_nosync')
+                        if fc_db_id:
+                            f_conn.set_storage_status(fc_db_id, 'NAS_nosync')
+                        else:
+                            self.app.log.warn("Flowcell {} not found in the database, not changing status.".format(fc_name))
                     else:
                         self.app.log.warn("lsyncd process doesn't seem to be finished. " \
                                 "Skipping run {}".format(os.path.basename(fc)))

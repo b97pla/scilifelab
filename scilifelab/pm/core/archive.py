@@ -151,7 +151,10 @@ class ArchiveController(AbstractExtendedBaseController):
             #Set the run as archived in StatusDB
             fc_id = self.pargs.flowcell if self.pargs.flowcell else self.pargs.tarball.split('.')[0]
             fc_db_id = f_conn.id_view.get(fc_id)
-            f_conn.set_storage_status(fc_db_id, 'swestore_archived')
+            if fc_db_id:
+                f_conn.set_storage_status(fc_db_id, 'swestore_archived')
+            else:
+                self.log.warn("Flowcell {} not found in the database, not changing status.".format(fc_id))
             # Log to statusdb
             if self.pargs.log_to_db:
                 # implement this
