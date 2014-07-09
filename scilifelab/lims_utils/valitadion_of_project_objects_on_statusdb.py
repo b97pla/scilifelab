@@ -56,8 +56,8 @@ def comp_obj(proj_tools_dev, diff, keys):
             print keys
             LOG.info('tools and tools-dev are differing for proj %s: %s' % (
                                                 proj_tools_dev['project_name'],diff))
-        #LOG.info('tools and tools-dev are differing for proj %s: %s' % ( 
-        #                            proj_tools_dev['project_name'],diff))
+        LOG.info('tools and tools-dev are differing for proj %s: %s' % ( 
+                                    proj_tools_dev['project_name'],diff))
     elif proj_tools_dev:
         LOG.info('project_name missing in %s' % (proj_tools_dev['_id']))
 
