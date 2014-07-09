@@ -20,7 +20,29 @@ import time
 from datetime import date
 
 
-#############-------------- ProjectDB class --------------#############
+###  Functions ###
+
+def udf_dict(element, dict = {}):
+    for key, val in element.udf.items():
+        key = key.replace(' ', '_').lower().replace('.','')
+        dict[key] = val
+    return dict
+
+def get_last_first(process_list, last=True):
+    if process_list:
+        process = process_list[0]
+        for pro in process_list:
+            new_date = int(pro['date'].replace('-',''))
+            old_date = int(process['date'].replace('-',''))
+            if last and (new_date > old_date):
+                process = pro
+            elif not last and (new_date < old_date):
+                process = pro
+        return process
+    else:
+        return None
+
+### Classes  ###
 
 class ProjectDB():
     """Instances of this class holds a dictionary formatted for building up the project database on statusdb. 
@@ -103,8 +125,6 @@ class ProjectDB():
                     pass
         self.project = delete_Nones(self.project)
 
-#############-------------- ProcessInfo class and help functions --------------#############
-
 class ProcessInfo():
     """This class takes a list of process type names. Eg 
     'Aggregate QC (Library Validation) 4.0' and forms  a dict with info about 
@@ -152,27 +172,6 @@ class ProcessInfo():
                         run_info[run.id]['samples'][samp.name][in_art_id] = [in_art, out_art]
         return run_info
 
-def udf_dict(element, dict = {}):
-    for key, val in element.udf.items():
-        key = key.replace(' ', '_').lower().replace('.','')
-        dict[key] = val
-    return dict
-
-def get_last_first(process_list, last=True):
-    if process_list:
-        process = process_list[0]
-        for pro in process_list:
-            new_date = int(pro['date'].replace('-',''))
-            old_date = int(process['date'].replace('-',''))
-            if last and (new_date > old_date):
-                process = pro
-            elif not last and (new_date < old_date):
-                process = pro
-        return process #filter(lambda pro: pro['id'] == pid, process_list)[0]
-    else:
-        return None
-
-#############-------------- SampleDB class --------------#############
 
 class SampleDB():
     """Instances of this class holds a dictionary formatted for building up the 
@@ -387,7 +386,6 @@ class SampleDB():
         return delete_Nones(initialqc)       
 
     def _get_top_level_agrlibval_steps(self):
-        #############BUGGG Har hamtas inte endast top level
         topLevel_AgrLibQC={}
         for AgrLibQC_id, AgrLibQC_info in self.AgrLibQCs.items():
             if AgrLibQC_info['samples'].has_key(self.name):
@@ -411,8 +409,6 @@ class SampleDB():
                         if LibQC.issubset(LibQC_comp) and topLevel_AgrLibQC.has_key(AgrLibQC):
                             topLevel_AgrLibQC.pop(AgrLibQC)
         return topLevel_AgrLibQC
-
-#############-------------- InitialQC class --------------#############
 
 class InitialQC():
     """"""
@@ -450,8 +446,6 @@ class InitialQC():
             initialqc_info['initial_qc_status'] = inart.qc_flag
         return initialqc_info
 
-
-#############-------------- Prep class --------------#############
 
 class ProcessSpec():
     def __init__(self, hist_sort, hist_list, application):
