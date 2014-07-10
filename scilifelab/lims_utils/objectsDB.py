@@ -418,7 +418,7 @@ class SampleDB():
             if AgrLibQC_info['samples'].has_key(self.name):
                 topLevel_AgrLibQC[AgrLibQC_id]=[]
                 inart, outart = AgrLibQC_info['samples'][self.name].items()[0][1]
-                history = gent.SampleHistory(sample_name=self.name, output_artifact=outart.id,lims=self.lims, pro_per_art=self.processes_per_artifact)
+                history = gent.SampleHistory(sample_name=self.name, output_artifact=outart.id, input_artifact=inart.id,lims=self.lims, pro_per_art=self.processes_per_artifact)
                 steps = ProcessSpec(history.history, history.history_list, self.application)
                 for inart in history.history_list:
                     proc_info =history.history[inart]
@@ -508,9 +508,10 @@ class ProcessSpec():
     def _set_prep_processes(self, hist_sort, hist_list):
         hist_list.reverse()
         for inart in hist_list:
+            
             prepreplibvalends = []
             art_steps = hist_sort[inart]
-            # 1) PREPREPSTART
+            #1) PREPREPSTART
             self.preprepstarts += filter(lambda pro: (pro['type'] in 
                             PREPREPSTART and pro['outart']), art_steps.values()) #and pro['outart'] ##26 may
 
