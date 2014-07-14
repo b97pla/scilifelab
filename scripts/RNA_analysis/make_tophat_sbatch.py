@@ -121,7 +121,7 @@ def Generat_sbatch_file(an_path,hours ,samp ,mail ,aligner_version,innerdist,ref
     print >>f, """#! /bin/bash -l
 
 #SBATCH -A a2012043
-#SBATCH -p node
+#SBATCH -p core -n 8
 #SBATCH -t """+hours+"""
 #SBATCH -J tophat_"""+samp+"""
 #SBATCH -e tophat_"""+samp+""".err

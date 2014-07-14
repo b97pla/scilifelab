@@ -8,7 +8,7 @@ Usage:
 
 get_stat.py  <sample_name> <mail> [config]
     sample_name		This name: /tophat_out_<sample name>
-    mail                  	eg: maya.brandi@scilifelab.se
+    mail                  	eg: jun.wang@scilifelab.se
     config            	config file"""
     sys.exit()
 

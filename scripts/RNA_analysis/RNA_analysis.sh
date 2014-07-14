@@ -23,7 +23,7 @@ for dir in "$@"; do
     run_dirs=$run_dirs" "$dir
 done
 
-WP=~/opt/scilifelab/scripts/RNA_analysis
+WP=/pica/h1/funk_001/opt/scilifelab/scripts/RNA_analysis
 path=`pwd`
 run_dir=analysis_$date
 analysis_path=$path/$run_dir
