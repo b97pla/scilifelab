@@ -15,7 +15,7 @@ wp=$1
 
 unset num
 unset filelist
-##Get to file list and the 'total_reads' in *.ccurve.txt
+##List all *.ccurve.txt files, and get the number of the 'total_reads' in *.ccurve.txt for all samples
 space=" "
 for files in `ls tophat_out_*/*.ccurve.txt | sort`; do filelist+=($files$space); n=`tail -n 1 ${files}|cut -f 1`; num+=($n$space); done;
 asize=${#filelist[@]}
