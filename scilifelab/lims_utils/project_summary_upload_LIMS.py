@@ -77,6 +77,7 @@ def  main(proj_name, all_projects, days, conf, upload_data=True, output_f=None):
                 ordered_opened = proj.udf['Order received'].isoformat()
             else:
                 LOG.info("Project is not updated because 'Order received' date and 'open date' is missing for project %s" % proj.name)
+                ordered_opened=None
             if ordered_opened:
                 if comp_dates(first_of_july, ordered_opened):
                     cont = 'yes'
