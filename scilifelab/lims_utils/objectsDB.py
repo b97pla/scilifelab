@@ -146,12 +146,9 @@ class ProjectDB():
 
         self.project = delete_Nones(self.project)
 
-<<<<<<< HEAD
 
 #############-------------- ProcessInfo class and help functions --------------#############
 
-=======
->>>>>>> origin/master
 class ProcessInfo():
     """This class takes a list of process type names. Eg 
     'Aggregate QC (Library Validation) 4.0' and forms  a dict with info about 
