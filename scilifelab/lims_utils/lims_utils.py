@@ -113,8 +113,9 @@ def get_udfs(udf_key, obj, udfs, exeptions = []):
     return obj
 
 def procHistory(proc, samplename):
+    """Quick wat to get the ids of parent processes from the given process, 
+    while staying in a sample scope"""
     hist=[]
-    processes=[]
     artifacts = lims.get_artifacts(sample_name = samplename, type = 'Analyte')
     not_done=True
     starting_art=proc.input_per_sample(samplename)[0].id
@@ -128,7 +129,6 @@ def procHistory(proc, samplename):
                     break #breaks the for artifacts, we are done anyway.
                 else:
                     not_done=True #keep the loop running
-                processes.append(o.parent_process)
                 hist.append(o.parent_process.id)
                 for i in o.parent_process.all_inputs():
                     if i in artifacts:
