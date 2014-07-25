@@ -92,7 +92,7 @@ class PSUL():
             start_update = True
 
         if start_update:
-            database = DB_v1 if opended_after_140630 else DB_v0
+            database = DB_v0 if opended_after_140630 else DB_v0
             return log_info, database
         else:
             return log_info, None
