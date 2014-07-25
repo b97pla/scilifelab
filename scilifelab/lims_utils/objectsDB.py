@@ -406,7 +406,6 @@ class SampleDB():
             inart = latestInitQc.input_per_sample(self.name)[0].id
             history = gent.SampleHistory(sample_name=self.name, output_artifact=outart.id,
                                         input_artifact=inart, lims=self.lims, pro_per_art=self.processes_per_artifact )   
-            steps = ProcessSpec(history.history, history.history_list, self.application)
             if history.history_list:
                 iqc = InitialQC(history.history, history.history_list)
                 initialqc = delete_Nones(iqc.set_initialqc_info())
@@ -419,7 +418,6 @@ class SampleDB():
                 topLevel_AgrLibQC[AgrLibQC_id]=[]
                 inart, outart = AgrLibQC_info['samples'][self.name].items()[0][1]
                 history = gent.SampleHistory(sample_name=self.name, output_artifact=outart.id, input_artifact=inart.id,lims=self.lims, pro_per_art=self.processes_per_artifact)
-                steps = ProcessSpec(history.history, history.history_list, self.application)
                 for inart in history.history_list:
                     proc_info =history.history[inart]
                     proc_info = filter(lambda p : 
