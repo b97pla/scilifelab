@@ -10,6 +10,7 @@ import codecs
 from scilifelab.google import _to_unicode, _from_unicode
 from pprint import pprint
 from genologics.lims import *
+import genologics.entities as gent
 from lims_utils import *
 from scilifelab.db.statusDB_utils import *
 from helpers import *
@@ -18,7 +19,7 @@ import couchdb
 import bcbio.pipeline.config_utils as cl
 import time
 from datetime import date
-
+import logging
 
 ###  Functions ###
 
@@ -105,6 +106,7 @@ class ProjectDB():
         samples = self.lims.get_samples(projectlimsid = self.lims_project.id)
         self.project['no_of_samples'] = len(samples)
         if len(samples) > 0:
+            processes_per_artifact = self.build_processes_per_artifact(self.lims, self.lims_project.name)
             self.project['first_initial_qc'] = '3000-10-10'
             for samp in samples: 
                 sampDB = SampleDB(self.lims,
@@ -114,7 +116,8 @@ class ProjectDB():
                                 self.project['application'],
                                 self.preps.info,
                                 self.runs.info,
-                                googledocs_status) #googledocs_status Temporary solution untill 20158 implemented in lims!!
+                                googledocs_status,#googledocs_status Temporary solution untill 20158 implemented in lims!!
+                                processes_per_artifact = processes_per_artifact) 
                 self.project['samples'][sampDB.name] = sampDB.obj
 ##### initial qc fixa
                 try:
@@ -123,7 +126,28 @@ class ProjectDB():
                         self.project['first_initial_qc'] = initial_qc_start_date
                 except:
                     pass
+    def build_processes_per_artifact(self,lims, pname):
+        """Constructs a dictionary linking each artifact id with its processes.
+        Other artifacts can be present as keys. All processes where the project is
+        present should be included. The values of the dictionary is sets, to avoid
+        duplicated projects for a single artifact.
+        """
+        processes = lims.get_processes(projectname = pname)
+        processes_per_artifact = {}
+        for process in processes:
+            for inart, outart in process.input_output_maps:
+                if inart is not None:
+                    if inart['limsid'] in processes_per_artifact:
+                        processes_per_artifact[inart['limsid']].add(process)
+                    else:
+                        processes_per_artifact[inart['limsid']] = {process}
+
+        return processes_per_artifact
+
         self.project = delete_Nones(self.project)
+
+
+#############-------------- ProcessInfo class and help functions --------------#############
 
 class ProcessInfo():
     """This class takes a list of process type names. Eg 
@@ -132,45 +156,41 @@ class ProcessInfo():
 
     info = {24-8460:{'finish_date':'2013-04-20', 
               'start_date',
-              'run_id':'24-8460',
+              'process_id':'24-8460',
               'samples':{'P424_111':{in_art_id1 : [in_art1, out_art1],
                          in_art_id2: [in_art2, out_art2]},
                      'P424_115': ...},
                        ...},
         '24-8480':...}"""
-    def __init__(self, lims_instance, runs):
+    def __init__(self, lims_instance, processes):
         self.lims = lims_instance
-        self.info = self.get_run_info(runs)
-    def get_run_info(self, runs):
-        run_info = {}
-        for run in runs:
-            run_info[run.id] = {'type' : run.type.name ,
-                                'start_date': run.date_run,
+        self.info = self.get_process_info(processes)
+    def get_process_info(self, processes):
+        process_info = {}
+        for process in processes:
+            process_info[process.id] = {'type' : process.type.name ,
+                                'start_date': process.date_run,
                                 'samples' : {}}
-            run_udfs = dict(run.udf.items())
-            try:
-                run_info[run.id]['run_id'] = run_udfs["Run ID"]
-            except:
-                pass
-            try:
-                run_info[run.id]['finish_date'] = run_udfs['Finish Date'].isoformat()
-            except:
-                run_info[run.id]['finish_date'] = None
+            process_udfs = dict(process.udf.items())
+            if "Run ID" in process_udfs.keys():
+                process_info[process.id]['process_id'] = process_udfs["Run ID"]
+            if 'Finish Date' in process_udfs:
+                process_info[process.id]['finish_date'] = process_udfs['Finish Date'].isoformat()
+            else:
+                process_info[process.id]['finish_date'] = None
                 pass
             in_arts=[]
-            for IOM in run.input_output_maps:
-                in_art_id = IOM[0]['limsid']
-                in_art = Artifact(self.lims, id= in_art_id)
-                out_art_id = IOM[1]['limsid']
-                out_art = Artifact(self.lims, id= out_art_id)
+            for in_art_id, out_art_id in process.input_output_maps:
+                in_art = in_art_id['uri']#these are actually artifacts
+                out_art = out_art_id['uri']
                 samples = in_art.samples
-                if in_art_id not in in_arts:
-                    in_arts.append(in_art_id)
+                if in_art.id not in in_arts:
+                    in_arts.append(in_art.id)
                     for samp in samples:
-                        if not samp.name in run_info[run.id]['samples'].keys():
-                            run_info[run.id]['samples'][samp.name] = {}
-                        run_info[run.id]['samples'][samp.name][in_art_id] = [in_art, out_art]
-        return run_info
+                        if not samp.name in process_info[process.id]['samples']:
+                            process_info[process.id]['samples'][samp.name] = {}
+                        process_info[process.id]['samples'][samp.name][in_art.id] = [in_art, out_art]
+        return process_info
 
 
 class SampleDB():
@@ -181,7 +201,8 @@ class SampleDB():
     https://docs.google.com/a/scilifelab.se/document/d/1OHRsSI9btaBU4Hb1TiqJ5wwdRqUQ4BAyjJR-Nn5qGHg/edit#"""
     def __init__(self,lims_instance , sample_id, project_name, samp_db, 
                         application = None, prep_info = [], run_info = [],
-                        googledocs_status = {}): 
+                        googledocs_status = {},
+                        processes_per_artifact = None): 
       # googledocs_status temporary solution untill 20158 implemented in lims!!
         self.lims = lims_instance
         self.samp_db = samp_db
@@ -195,6 +216,7 @@ class SampleDB():
                                 SAMP_UDF_EXCEPTIONS)
         self.obj['scilife_name'] = self.name
         self.obj['well_location'] = self.lims_sample.artifact.location[1]
+        self.processes_per_artifact = processes_per_artifact
         preps = self._get_preps_and_libval()
         if preps:
             runs = self.get_sample_run_metrics(run_info, preps)
@@ -266,9 +288,9 @@ class SampleDB():
         correct preps."""
         sample_runs = {}
         for id, run in SeqRun_info.items():
-            if run['samples'].has_key(self.name) and run.has_key('run_id'):
-                date = run['run_id'].split('_')[0]
-                fcid = run['run_id'].split('_')[3]
+            if run['samples'].has_key(self.name) and run.has_key('process_id'):
+                date = run['process_id'].split('_')[0]
+                fcid = run['process_id'].split('_')[3]
                 run_type = run['type']
                 for id , arts in run['samples'][self.name].items():
                     lane_art = arts[0]
@@ -277,9 +299,9 @@ class SampleDB():
                         lane = lane_art.location[1].split(':')[1]
                     else:
                         lane = lane_art.location[1].split(':')[0]
-                    hist_sort, hist_list = get_analyte_hist_sorted(outart.id, 
-                                                        self.outin, lane_art.id)
-                    steps = ProcessSpec(hist_sort, hist_list, self.application)
+                    history = gent.SampleHistory(sample_name=self.name, output_artifact=outart.id,
+                                            input_artifact=lane_art.id, lims=self.lims, pro_per_art=self.processes_per_artifact )   
+                    steps = ProcessSpec(history.history, history.history_list, self.application)
                     if self.application in ['Finished library', 'Amplicon']:
                         key = 'Finished'
                     elif steps.preprepstart:
@@ -291,7 +313,11 @@ class SampleDB():
                     if key:
                         if preps[key].has_key('reagent_label'):
                             barcode = self.get_barcode(preps[key]['reagent_label'])
-                            samp_run_met_id = '_'.join([lane, date, fcid, barcode])
+                            try:
+                                samp_run_met_id = '_'.join([lane, date, fcid, barcode])
+                            except TypeError: #happens if the History object is missing fields, barcode might be None
+                                logging.debug(self.name+" ",preps[key],"-", preps[key]['reagent_label'])
+                                raise TypeError
                             dict = {'sample_run_metrics_id':find_sample_run_id_from_view(self.samp_db, samp_run_met_id),
                                 'dillution_and_pooling_start_date' : steps.dilstart['date'] if steps.dilstart else None,
                                 'sequencing_start_date' : steps.seqstart['date'] if steps.seqstart else None,
@@ -331,10 +357,10 @@ class SampleDB():
             AgrLibQC_info = self.AgrLibQCs[AgrLibQC_id]
             if AgrLibQC_info['samples'].has_key(self.name):
                 inart, outart = AgrLibQC_info['samples'][self.name].items()[0][1]
-                hist_sort, hist_list = get_analyte_hist_sorted(outart.id,
-                                                               self.outin,
-                                                               inart.id)
-                steps = ProcessSpec(hist_sort, hist_list, self.application)
+                
+                history = gent.SampleHistory(sample_name=self.name, output_artifact=outart.id,
+                                        input_artifact=inart.id, lims=self.lims, pro_per_art=self.processes_per_artifact )   
+                steps = ProcessSpec(history.history, history.history_list, self.application)
                 prep = Prep()
                 prep.set_prep_info(steps, self.application)
                 if not preps.has_key(prep.id2AB) and prep.id2AB:
@@ -378,10 +404,10 @@ class SampleDB():
             outart = Artifact(lims, id = max(map(lambda a: a.id, outarts)))
             latestInitQc = outart.parent_process
             inart = latestInitQc.input_per_sample(self.name)[0].id
-            hist_sort, hist_list = get_analyte_hist_sorted(outart.id, 
-                                                        self.outin, inart)
-            if hist_list:
-                iqc = InitialQC(hist_sort, hist_list)
+            history = gent.SampleHistory(sample_name=self.name, output_artifact=outart.id,
+                                        input_artifact=inart, lims=self.lims, pro_per_art=self.processes_per_artifact )   
+            if history.history_list:
+                iqc = InitialQC(history.history, history.history_list)
                 initialqc = delete_Nones(iqc.set_initialqc_info())
         return delete_Nones(initialqc)       
 
@@ -391,10 +417,9 @@ class SampleDB():
             if AgrLibQC_info['samples'].has_key(self.name):
                 topLevel_AgrLibQC[AgrLibQC_id]=[]
                 inart, outart = AgrLibQC_info['samples'][self.name].items()[0][1]
-                hist_sort, hist_list = get_analyte_hist_sorted(outart.id,
-                                                          self.outin, inart.id)
-                for inart in hist_list:
-                    proc_info = hist_sort[inart]
+                history = gent.SampleHistory(sample_name=self.name, output_artifact=outart.id, input_artifact=inart.id,lims=self.lims, pro_per_art=self.processes_per_artifact)
+                for inart in history.history_list:
+                    proc_info =history.history[inart]
                     proc_info = filter(lambda p : 
                              (p['type'] in AGRLIBVAL.keys()),proc_info.values())
                     
@@ -477,9 +502,10 @@ class ProcessSpec():
     def _set_prep_processes(self, hist_sort, hist_list):
         hist_list.reverse()
         for inart in hist_list:
+            
             prepreplibvalends = []
             art_steps = hist_sort[inart]
-            # 1) PREPREPSTART
+            #1) PREPREPSTART
             self.preprepstarts += filter(lambda pro: (pro['type'] in 
                             PREPREPSTART and pro['outart']), art_steps.values()) #and pro['outart'] ##26 may
 
