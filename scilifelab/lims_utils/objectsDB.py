@@ -172,7 +172,7 @@ class ProcessInfo():
                                 'start_date': process.date_run,
                                 'samples' : {}}
             process_udfs = dict(process.udf.items())
-            if "Run ID" in process_udfs:
+            if "Run ID" in process_udfs.keys():
                 process_info[process.id]['process_id'] = process_udfs["Run ID"]
             if 'Finish Date' in process_udfs:
                 process_info[process.id]['finish_date'] = process_udfs['Finish Date'].isoformat()
