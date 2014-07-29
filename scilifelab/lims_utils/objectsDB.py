@@ -263,9 +263,6 @@ class SampleDB():
                         ph=procHistory(da.parent_process, self.name)
                         if sa.parent_process.id in ph:
                             self.obj['dem_qc_flag']=da.qc_flag
-        except IndexError:
-            #seqarts had no members, so the [-1] failed
-            pass
 
         self.obj = delete_Nones(self.obj)
 
