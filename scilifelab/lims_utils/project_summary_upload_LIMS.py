@@ -18,9 +18,10 @@ import objectsDB as DB_v0
 from datetime import date
 import time
 import scilifelab.log
-import logging
 lims = Lims(BASEURI, USERNAME, PASSWORD)
-
+LOG = scilifelab.log.file_logger('LOG', options.conf, 'lims2db_projects.log'
+                                                               ,'log_dir_tools')
+    
 class PSUL():
     def __init__(self, proj, samp_db, proj_db, upload_data, days, man_name, output_f):
         self.proj = proj
@@ -115,7 +116,6 @@ class PSUL():
                                          ' be missing'.format(name = self.name))
 
     def project_update_and_logging(self, proj_num = '', num_projs = ''):
-        LOG=logging.getLogger()
         start_time = time.time()
         ordered_opened = self.get_ordered_opened()
         if ordered_opened:
@@ -173,8 +173,6 @@ if __name__ == '__main__':
                       " that will be used only if --no_upload tag is used"))
 
     (options, args) = parser.parse_args()
-    LOG = scilifelab.log.file_logger('LOG', options.conf, 'lims2db_projects.log'
-                                                               ,'log_dir_tools')
     main(options.project_name, options.all_projects, options.days, options.conf,
          upload_data = options.upload, output_f = options.output_f)
 
