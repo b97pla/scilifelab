@@ -237,35 +237,7 @@ class SampleDB():
         if googledocs_status and self.name in googledocs_status.keys():
             self.obj['status'] = googledocs_status[self.name][0]
             self.obj['m_reads_sequenced'] = googledocs_status[self.name][1]
-        #adding caliper link
-        calarts=lims.get_artifacts(process_type=['CaliperGX QC (DNA)', 'CaliperGX QC (RNA)'], sample_name=self.name,type="ResultFile" )
-        for a in calarts:
-            files=a.files
-            for f in files:
-                if ".png" in f.content_location:
-                    self.obj['caliper_image']=f.content_location
-        #adding qc
-        seqarts=lims.get_artifacts(process_type=SEQSTART.values(), sample_name=self.name, type='Analyte')
-        # I am only interested by the latest artifact. I sort them by parent process date, and take the last one
-        try:
-            sa=sorted(seqarts,key=lambda a: a.parent_process.date_run)[-1]
-        except IndexError:
-            #seqarts had no members, so the [-1] failed
-            pass   
-        else:
-            seqevents=lims.get_processes(type=SEQUENCING.values(), projectname=project_name,inputartifactlimsid=sa.id)
-            for se in seqevents:
-            #should be only one
-                self.obj['seq_qc_flag']=sa.qc_flag
-                demarts=lims.get_artifacts(process_type=DEMULTIPLEX.values(), sample_name=self.name)
-                for da in demarts:
-                    if da.qc_flag in ['PASSED', 'FAILED']:
-                        #this is how I link the different processes together
-                        ph=procHistory(da.parent_process, self.name)
-                        if sa.parent_process.id in ph:
-                            self.obj['dem_qc_flag']=da.qc_flag
-
-        self.obj = delete_Nones(self.obj)
+            self.obj = delete_Nones(self.obj)
 
     def _get_firts_day(self, sample_name ,process_list, last_day = False):
         """process_list is a list of process type names, sample_name is a 
