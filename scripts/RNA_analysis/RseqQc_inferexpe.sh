@@ -1,6 +1,6 @@
 #!/bin/bash 
 #SBATCH -A a2012043
-#SBATCH -p node
+#SBATCH -p core -n 3
 #SBATCH -t 2:00:00
 #SBATCH -e infer_experiment.err
 #SBATCH -o infer_experiment.out

@@ -2,11 +2,11 @@
 
 #SBATCH -A a2012043
 #SBATCH -p node
-#SBATCH -t 50:00:00
+#SBATCH -t 7-00:00:00
 #SBATCH -J merge
 #SBATCH -e merge.err
 #SBATCH -o merge.out
-#SBATCH --mail-user mayabrandi@gmail.com
+#SBATCH --mail-user jun.wang@scilifelab.se
 #SBATCH --mail-type=ALL
 #SBATCH --qos=seqver
 
@@ -14,7 +14,7 @@ module load bioinfo-tools
 
 module load samtools
 
-WP=/bubo/home/h24/mayabr/glob/RNA_analysis
+WP=/pica/h1/funk_001/opt/scilifelab/scripts/RNA_analysis
 while getopts ":p:g:m:c:d:" option; do
         case ${option} in
         p) path=${OPTARG};;

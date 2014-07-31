@@ -4,11 +4,11 @@ if len(sys.argv) < 5:
     print """
 Usage:
 
-make_complexity_plots.py  <sample_name> <mail> <config_file> <path> 
+make_complexity_plots.py  <sample_name> <mail> <config_file> <path>
 
         sample_name		This name: /tophat_out_<sample name>
-        mail                  	eg: maya.brandi@scilifelab.se
-        config_file           	post_process.yaml assumes that you have specified samtools 
+        mail                  	eg: jun.wang@scilifelab.se
+        config_file           	post_process.yaml assumes that you have specified samtools
                                 version under 'custom_algorithms'/'RNA-seq analysis'
         path                  	Path to analysis dir containing the tophat_out_ directories
         """
@@ -24,7 +24,7 @@ try:
     extra_arg = config['sbatch']['extra_arg']
     tools   = config['custom_algorithms']['RNA-seq analysis']
     bam     = tools['bamtools']+'/'+tools['bamtools_version']
-    preseq  = tools['Preseq']
+    preseq  = tools['Preseq']+'/'+tools['Preseq_version']
 except:
     print 'ERROR: problem loading samtools version from config file'
 
@@ -43,11 +43,11 @@ print >>f, """#!/bin/bash -l
 #SBATCH {5}
 
 module load bioinfo-tools
-module unload bamtools
 module load {3}
+module load {2}
 
 cd {4}
 
-{2} -v -B tophat_out_{0}/accepted_hits_{0}.bam -o tophat_out_{0}/{0}.ccurve.txt
+preseq lc_extrap -v -B tophat_out_{0}/accepted_hits_sorted_{0}.bam -o tophat_out_{0}/{0}.ccurve.txt
 
 """.format(name, mail, preseq, bam, path, extra_arg)

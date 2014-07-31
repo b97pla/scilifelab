@@ -9,7 +9,7 @@ make_MarkDup_HT_cuff.py	 <sample_name> <gtf_file> <mail> <path> <config_file> <s
 
         sample name		This name: /tophat_out_<sample name>
 	gtf_file	
-	mail			eg: maya.brandi@scilifelab.se
+	mail			eg: jun.wang@scilifelab.se
 	path			path to analysis directory containing the tophat_out_dirs
 	config_file		post_process.yaml assumes that you have specfied cufflinks 
 				and HT-seq versions under 'custom_algorithms'/'RNA-seq analysis'
@@ -42,7 +42,7 @@ try:
     rseqc_version = tools['rseqc_version']
     if stranded == 'True':
         aligner_libtype = tools['aligner_libtype']
-        ht_stranded = 'yes'
+        ht_stranded = 'reverse'
     else:
         aligner_libtype = ''
         ht_stranded = 'no'
@@ -53,8 +53,8 @@ tophat_out_path = "{0}/tophat_out_{1}".format(path,name)
 f=open("MarkDup_HT_cuff_"+name+".sh",'w')
 print >>f, """#!/bin/bash -l 
 #SBATCH -A a2012043
-#SBATCH -p node
-#SBATCH -t 10:00:00
+#SBATCH -p core -n 8
+#SBATCH -t 40:00:00
 #SBATCH -e MarkDup_HT_cuff_{0}.err
 #SBATCH -o MarkDup_HT_cuff_{0}.out
 #SBATCH -J MarkDup_HT_cuff_{0}
@@ -63,13 +63,9 @@ print >>f, """#!/bin/bash -l
 #SBATCH {7}
 
 module load bioinfo-tools
-moduel unload picard
-module unload cufflinks
-module load samtools
 module load {4}
 module load {5}
 module load picard/{9}
-module load rseqc/{10}
 
 cd {1}
 java -Xmx2g -jar {8}/SortSam.jar INPUT=accepted_hits_{0}.bam OUTPUT=accepted_hits_sorted_{0}.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT
