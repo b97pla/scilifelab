@@ -18,6 +18,7 @@ import objectsDB as DB_v0
 from datetime import date
 import time
 import scilifelab.log
+import logging
 lims = Lims(BASEURI, USERNAME, PASSWORD)
 
 class PSUL():
@@ -114,6 +115,7 @@ class PSUL():
                                          ' be missing'.format(name = self.name))
 
     def project_update_and_logging(self, proj_num = '', num_projs = ''):
+        LOG=logging.getLogger()
         start_time = time.time()
         ordered_opened = self.get_ordered_opened()
         if ordered_opened:
