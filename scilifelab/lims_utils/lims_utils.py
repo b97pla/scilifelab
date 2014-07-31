@@ -78,6 +78,7 @@ SEQUENCING = {'38' : 'Illumina Sequencing (Illumina SBS) 4.0',
     '46' : 'MiSeq Run (MiSeq) 4.0'}
 WORKSET = {'204' : 'Setup Workset/Plate'}
 SUMMARY = {'356' : 'Project Summary 1.3'}
+DEMULTIPLEX={'666' : 'Bcl Conversion & Demultiplexing (Illumina SBS) 4.0'}
 
 PROJ_UDF_EXCEPTIONS = ['customer_reference','uppnex_id','reference_genome','application']
 
@@ -111,7 +112,32 @@ def get_udfs(udf_key, obj, udfs, exeptions = []):
             obj[udf_key][db_key] = val
     return obj
 
-
+def procHistory(proc, samplename):
+    """Quick wat to get the ids of parent processes from the given process, 
+    while staying in a sample scope"""
+    hist=[]
+    artifacts = lims.get_artifacts(sample_name = samplename, type = 'Analyte')
+    not_done=True
+    starting_art=proc.input_per_sample(samplename)[0].id
+    while not_done:
+        not_done=False 
+        for o in artifacts:
+            if o.id == starting_art:
+                if o.parent_process is None:
+                    #flow control : if there is no parent process, we can stop iterating, we're done.
+                    not_done=False
+                    break #breaks the for artifacts, we are done anyway.
+                else:
+                    not_done=True #keep the loop running
+                hist.append(o.parent_process.id)
+                for i in o.parent_process.all_inputs():
+                    if i in artifacts:
+                        # while increment
+                        starting_art=i.id
+                            
+                        break #break the for allinputs, if we found the right one
+                break # breaks the for artifacts if we matched the current one
+    return hist 
 
 def get_sequencing_info(fc):
     """Input: a process object 'fc', of type 'Illumina Sequencing (Illumina SBS) 4.0',
