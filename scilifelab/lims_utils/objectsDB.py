@@ -209,7 +209,8 @@ class SampleDB():
         self.lims_sample = Sample(self.lims, id = sample_id)
         self.name = self.lims_sample.name
         self.application = application
-        self.outin = make_sample_artifact_maps(self.name)
+        #deprecated
+        #self.outin = make_sample_artifact_maps(self.name)
         self.obj = get_udfs('details', {}, 
                                 self.lims_sample.udf.items(), 
                                 SAMP_UDF_EXCEPTIONS)
@@ -271,11 +272,11 @@ class SampleDB():
         sample name :)"""
         arts = self.lims.get_artifacts(sample_name = sample_name, 
                                         process_type = process_list)
-        days = map(lambda a: a.parent_process.date_run , arts)
-        days = filter(lambda d: d!=None  , days)
-        if days:
-            return max(days) if last_day else min(days)
-        else:
+        index = -1 if last_day else 0 
+        uniqueDates=set([a.parent_process.date_run for a in arts])
+        try:
+            return sorted(uniqueDates)[index]
+        except IndexError:
             return None
 
     def get_barcode(self, reagent_label):
