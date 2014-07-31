@@ -8,7 +8,7 @@ Usage:
 RseqQc_inferexpe.py <bed_file> <mail> <config_file> <path> 
 
         bed_file      
-        mail                  	eg: maya.brandi@scilifelab.se
+        mail                  	eg: jun.wang@scilifelab.se
         config_file           	post_process.yaml assumes that you have specified samtools 
                                 version under 'custom_algorithms'/'RNA-seq analysis'
         path                  	Path to analysis dir containing the tophat_out_ directories"""
@@ -30,7 +30,7 @@ f=open("RseqQc_inferexpe.sh",'w')
 
 print >>f, """#!/bin/bash -l 
 #SBATCH -A a2012043
-#SBATCH -p node
+#SBATCH -p core -n 3
 #SBATCH -t 2:00:00
 #SBATCH -e infer_experiment.err
 #SBATCH -o infer_experiment.out
