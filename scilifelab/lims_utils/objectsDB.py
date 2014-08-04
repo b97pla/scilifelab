@@ -126,6 +126,8 @@ class ProjectDB():
                         self.project['first_initial_qc'] = initial_qc_start_date
                 except:
                     pass
+        self.project = delete_Nones(self.project)
+
     def build_processes_per_artifact(self,lims, pname):
         """Constructs a dictionary linking each artifact id with its processes.
         Other artifacts can be present as keys. All processes where the project is
@@ -144,7 +146,6 @@ class ProjectDB():
 
         return processes_per_artifact
 
-        self.project = delete_Nones(self.project)
 
 
 
