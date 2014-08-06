@@ -238,13 +238,6 @@ class SampleDB():
         if googledocs_status and self.name in googledocs_status.keys():
             self.obj['status'] = googledocs_status[self.name][0]
             self.obj['m_reads_sequenced'] = googledocs_status[self.name][1]
-        #adding caliper link
-        #calarts=lims.get_artifacts(process_type=['CaliperGX QC (DNA)', 'CaliperGX QC (RNA)'], sample_name=self.name,type="ResultFile" )
-        #for a in calarts:
-        #    files=a.files
-        #    for f in files:
-        #        if ".png" in f.content_location:
-        #            self.obj['caliper_image']=f.content_location
         #adding qc
         seqarts=lims.get_artifacts(process_type=SEQSTART.values(), sample_name=self.name, type='Analyte')
         # I am only interested by the latest artifact. I sort them by parent process date, and take the last one
@@ -666,10 +659,6 @@ class Prep():
 
         
     def _get_lib_val_info(self, agrlibQCsteps, libvalstart):
-        print "=>AGR"
-        pprint(agrlibQCsteps)
-        print "=>libval"
-        pprint(libvalstart)
         library_validations = {}
         start_date = libvalstart['date'] if (libvalstart and 
                                          libvalstart.has_key('date')) else None
@@ -698,16 +687,11 @@ class Prep():
             except IndexError:
                 #Caliper has not been run in libval
                 pass
-            print self.sample_name
             for art in arts:
-                pprint([a.name for a in art.samples])
-                print art.type
                 if (self.sample_name in [a.name for a in art.samples] and art.type=="ResultFile"):
-                    print "if passed"
                     files=art.files
                     for f in files:
                         if ".png" in f.content_location:
-                            print "found png"
                             library_validation["caliper_image"]=f.content_location
 
             library_validations[agrlibQCstep['id']] = delete_Nones(library_validation)
