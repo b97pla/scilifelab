@@ -72,6 +72,7 @@ LIBVALFINISHEDLIB = {'62' : 'qPCR QC (Library Validation) 4.0',
 AGRLIBVAL = {'8': 'Aggregate QC (Library Validation) 4.0'}
 SEQSTART = {'23':'Cluster Generation (Illumina SBS) 4.0',
     '26':'Denature, Dilute and Load Sample (MiSeq) 4.0'}
+
 DILSTART = {'40' : 'Library Normalization (MiSeq) 4.0',
     '39' : 'Library Normalization (Illumina SBS) 4.0'}
 SEQUENCING = {'38' : 'Illumina Sequencing (Illumina SBS) 4.0',
@@ -83,6 +84,8 @@ DEMULTIPLEX={'666' : 'Bcl Conversion & Demultiplexing (Illumina SBS) 4.0'}
 PROJ_UDF_EXCEPTIONS = ['customer_reference','uppnex_id','reference_genome','application']
 
 SAMP_UDF_EXCEPTIONS = ['customer_name','reads_requested_(millions)','min_reads','m_reads','dup_rm','status_auto','status_manual','average_size_bp','incoming_qc_status']
+
+CALIPER={'20' : 'CaliperGX QC (DNA)','116' : 'CaliperGX QC (RNA)'}
 
 def get_udfs(udf_key, obj, udfs, exeptions = []):
     """Transforms udf names to statusdb keys (underscore and lowercase) and places them under
