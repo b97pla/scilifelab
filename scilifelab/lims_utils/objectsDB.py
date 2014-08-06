@@ -80,8 +80,8 @@ class ProjectDB():
         ## then we also need to block old projects so that they are not overwriten in case of someone manualy 
         ## updating it with the -p flagg
         opened = self.lims_project.open_date
+        googledocs_status = {}
         if opened:
-            googledocs_status = {}
             try:
                 googledocs_status = load_status_from_google_docs.get(self.lims_project.name)
             except:
