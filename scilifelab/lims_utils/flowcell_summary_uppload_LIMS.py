@@ -59,10 +59,12 @@ def  main(flowcell, all_flowcells,days,conf):
             if key:
                 dbobj = fc_db.get(key)
                 dbobj["illumina"]["run_summary"] = get_sequencing_info(fc)
+                get_run_qcs(fc, dbobj['lanes'])
                 info = save_couchdb_obj(fc_db, dbobj)
                 LOG.info('flowcell %s %s : _id = %s' % (flowcell_name, info, key))
                 
-        except:
+        except :
+
             pass
 
 if __name__ == '__main__':

@@ -4,7 +4,6 @@
 
 Maya Brandi, Science for Life Laboratory, Stockholm, Sweden.
 """
-
 from genologics.lims import *
 from genologics.config import BASEURI, USERNAME, PASSWORD
 lims = Lims(BASEURI, USERNAME, PASSWORD)
@@ -141,6 +140,30 @@ def procHistory(proc, samplename):
                         break #break the for allinputs, if we found the right one
                 break # breaks the for artifacts if we matched the current one
     return hist 
+
+def get_run_qcs(fc, lanesobj):
+    for art in fc.all_inputs():
+        lane=art.location[1][0]
+        if lane not in lanesobj:
+            #should never happen if pm works
+            lanesobj[lane]={}
+        lanesobj[lane]['seq_qc_flag']=art.qc_flag
+        dem=lims.get_processes(type=DEMULTIPLEX.values(), inputartifactlimsid=art.id)
+        try:
+            for outart in dem[0].all_outputs():
+                if "FASTQ reads" not in outart.name:
+                    continue
+                else:
+                    for outsample in outart.samples:
+                        #this should be only one
+                        lanesobj[lane][outsample.name]={}
+                        lanesobj[lane][outsample.name]['dem_qc_flag']=outart.qc_flag
+
+        except IndexError:
+            #No demutiplexing found. this is fine.
+            pass
+
+        
 
 def get_sequencing_info(fc):
     """Input: a process object 'fc', of type 'Illumina Sequencing (Illumina SBS) 4.0',
