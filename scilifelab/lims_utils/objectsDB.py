@@ -178,6 +178,9 @@ class ProcessInfo():
                 process_info[process.id]['finish_date'] = process_udfs['Finish Date'].isoformat()
             else:
                 process_info[process.id]['finish_date'] = None
+            #handling Sequencing Run QC:
+            if process.type.id in SEQUENCING.keys():
+                #
                 pass
             in_arts=[]
             for in_art_id, out_art_id in process.input_output_maps:
@@ -345,6 +348,27 @@ class SampleDB():
                                 'sequencing_start_date' : steps.seqstart['date'] if steps.seqstart else None,
                                 'sequencing_run_QC_finished' : run['start_date'],
                                 'sequencing_finish_date' : run['finish_date']}
+                            #Adding sequencing qc flag
+                            try:
+                                #need to work with the current state of the artifact, so ...
+                                #I use the key of the current lane run to get te correct artifact. id comes from the for above.
+                                #if i use lane_art, I get the same art, but in a old state, so the QC flag is NOT set.
+                                inart=Artifact(lims, id=id)
+                                dict['seq_qc_flag']=inart.qc_flag
+                                demproc=lims.get_processes(type=DEMULTIPLEX.values(), inputartifactlimsid=id)
+                                try:
+                                    latestdem=sorted(demproc, key=lambda a:a.date_run)[-1]
+                                    for out in latestdem.all_outputs():
+                                        if self.name in [s.name for s in out.samples]:
+                                            dict['dem_qc_flag']=out.qc_flag
+                                except IndexError:
+                                    #We did not find any demultiplex process, this is fine
+                                    pass
+                            except IndexError:
+                                #that should not happen. log and raise
+                                logging.error("cant find the correct starting artifact for sample {} in {}".format(self.name, run))    
+                                raise IndexError
+
                             dict = delete_Nones(dict)
                             if not sample_runs.has_key(key):
                                 sample_runs[key] = {}
@@ -485,15 +509,18 @@ class InitialQC():
             self.caliper_procs+=filter(lambda pro: pro['type'] in CALIPER.keys(), art_steps.values())
         self.initialqcend = get_last_first(self.initialqcends, last = True)
         self.initialqstart =  get_last_first(self.initialqcs, last = False)
-        self.last_caliper = Process(lims,id=get_last_first(self.caliper_procs, last = True)['id'])
-        outarts=self.last_caliper.all_outputs()
-        for out in outarts:
-            if (self.sample_name in [p.name for p in out.samples] and out.type=="ResultFile"):
-                files=out.files
-                for f in files:
-                    if ".png" in f.content_location:
-                        self.caliper_image=f.content_location
-          
+        try:
+            self.last_caliper = Process(lims,id=get_last_first(self.caliper_procs, last = True)['id'])
+            outarts=self.last_caliper.all_outputs()
+            for out in outarts:
+                if (self.sample_name in [p.name for p in out.samples] and out.type=="ResultFile"):
+                    files=out.files
+                    for f in files:
+                        if ".png" in f.content_location:
+                            self.caliper_image=f.content_location
+        except TypeError:
+            #Should happen when no caliper processes are found
+            pass
 
     def set_initialqc_info(self):
         initialqc_info = {}
