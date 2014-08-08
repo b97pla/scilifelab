@@ -178,10 +178,6 @@ class ProcessInfo():
                 process_info[process.id]['finish_date'] = process_udfs['Finish Date'].isoformat()
             else:
                 process_info[process.id]['finish_date'] = None
-            #handling Sequencing Run QC:
-            if process.type.id in SEQUENCING.keys():
-                #
-                pass
             in_arts=[]
             for in_art_id, out_art_id in process.input_output_maps:
                 in_art = in_art_id['uri']#these are actually artifacts
