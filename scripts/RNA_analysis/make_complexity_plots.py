@@ -33,8 +33,8 @@ f=open("complexity_"+name+".sh",'w')
 
 print >>f, """#!/bin/bash -l
 #SBATCH -A a2012043
-#SBATCH -p node
-#SBATCH -t 10:00:00
+#SBATCH -p core -n 3
+#SBATCH -t 40:00:00
 #SBATCH -e complexity_{0}.err
 #SBATCH -o complexity_{0}.out
 #SBATCH -J complexity_{0}
