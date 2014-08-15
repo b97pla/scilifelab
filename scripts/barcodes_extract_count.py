@@ -1,6 +1,10 @@
 import argparse
 import sys
 import csv
+import couchdb
+import ConfigParser
+import re
+import os
 from scilifelab.utils.fastq_utils import BarcodeExtractor
 from scilifelab.utils.string import hamming_distance
 from scilifelab.illumina.hiseq import HiSeqRun
@@ -78,7 +82,41 @@ def get_expected(csv_file, lane):
     """
     rows = HiSeqRun.parse_samplesheet(csv_file,lane=lane)
     return [r["Index"] for r in rows]
-   
+
+def get_expected_from_db(infile, config_file):
+    """Fetch the expected barcode from the 'reagent-label' field in projects db
+    """
+    pattern = 'P\d{1,4}_\d{1,4}'
+    if re.search(pattern, infile) is None:
+        return []
+    sample = re.search(pattern, infile).group(0)
+    pid = sample.split('_')[0]
+
+    config = ConfigParser.SafeConfigParser()
+    try:
+        with open(config_file, 'r') as f:
+            config.readfp(f)
+
+        db = config.get('db', 'url').strip()
+        user = config.get('db', 'user').strip()
+        password = config.get('db', 'password').strip()
+        port = '5984' if not config.has_option('db', 'port') else config.get('db', 'port')
+        couch = couchdb.Server('http://' + ':'.join([db, port]))
+        couch.resource.credentials = (user, password)
+        sample_view = couch['projects'].view('project/samples')
+
+        proj_row = sample_view[pid].rows[0].value
+        #Assuming the latest prep is the one being demuxed right now
+        latest_prep = ''
+        for prep in proj_row[sample]['library_prep']:
+            latest_prep = prep
+        label =  proj_row[sample]['library_prep'][latest_prep]['reagent_label']
+        return [label.split()[1][1:-1].replace('-','')]
+
+    except:
+        #This function is strictly best effort
+        return []
+
 def main():
     
     parser = argparse.ArgumentParser(description="""Extract and count barcodes indices from fastq file""")
@@ -96,6 +134,9 @@ def main():
     parser.add_argument('--csv-file', dest='csvfile', action='store', default=None, 
                         help="The csv samplesheet for the run. If supplied, will be used together with lane " \
                         "to exclude expected barcodes")
+    parser.add_argument('--db', action='store_true', default=False,
+                        help='Will try fetch the expected barcode from StatusDB. Useful when sample has no index in samplesheet')
+    parser.add_argument('--config', action='store', help="Path to PM configuration file, used to connec to StatusDB")
     parser.add_argument('infile1', action='store',
                         help="The input FastQ file to process. Can be gzip compressed")
     parser.add_argument('infile2', action='store', default=None, nargs='?',
@@ -105,9 +146,12 @@ def main():
     
     args = parser.parse_args()
     expected = []
+    config_file = args.config if args.config else os.path.join(os.environ['HOME'], '.pm/pm.conf')
     if args.csvfile is not None:
         expected = get_expected(args.csvfile,args.lane)
-    
+    if args.db:
+        expected = get_expected_from_db(args.infile1, config_file)
+
     header, counts = extract_barcodes(args.infile1, args.lane, args.infile2, int(args.nindex), args.casava18, int(args.offset), int(args.barcode_length), expected, args.mismatch)
     write_metrics(header, counts)
     
