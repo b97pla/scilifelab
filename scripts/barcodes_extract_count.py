@@ -5,6 +5,7 @@ import couchdb
 import ConfigParser
 import re
 import os
+import traceback
 from scilifelab.utils.fastq_utils import BarcodeExtractor
 from scilifelab.utils.string import hamming_distance
 from scilifelab.illumina.hiseq import HiSeqRun
@@ -87,35 +88,29 @@ def get_expected_from_db(infile, config_file):
     """Fetch the expected barcode from the 'reagent-label' field in projects db
     """
     pattern = 'P\d{1,4}_\d{1,4}'
-    if re.search(pattern, infile) is None:
-        return []
     sample = re.search(pattern, infile).group(0)
     pid = sample.split('_')[0]
 
     config = ConfigParser.SafeConfigParser()
-    try:
-        with open(config_file, 'r') as f:
-            config.readfp(f)
+    with open(config_file, 'r') as f:
+        config.readfp(f)
 
-        db = config.get('db', 'url').strip()
-        user = config.get('db', 'user').strip()
-        password = config.get('db', 'password').strip()
-        port = '5984' if not config.has_option('db', 'port') else config.get('db', 'port')
-        couch = couchdb.Server('http://' + ':'.join([db, port]))
-        couch.resource.credentials = (user, password)
-        sample_view = couch['projects'].view('project/samples')
+    db = config.get('db', 'url').strip()
+    user = config.get('db', 'user').strip()
+    password = config.get('db', 'password').strip()
+    port = '5984' if not config.has_option('db', 'port') else config.get('db', 'port')
+    couch = couchdb.Server('http://' + ':'.join([db, port]))
+    couch.resource.credentials = (user, password)
+    sample_view = couch['projects'].view('project/samples')
 
-        proj_row = sample_view[pid].rows[0].value
-        #Assuming the latest prep is the one being demuxed right now
-        latest_prep = ''
-        for prep in proj_row[sample]['library_prep']:
-            latest_prep = prep
-        label =  proj_row[sample]['library_prep'][latest_prep]['reagent_label']
-        return [label.split()[1][1:-1].replace('-','')]
-
-    except:
-        #This function is strictly best effort
-        return []
+    proj_row = sample_view[pid].rows[0].value
+    #Assuming the latest prep is the one being demuxed right now
+    latest_prep = ''
+    for prep in proj_row[sample]['library_prep']:
+        latest_prep = prep
+    label =  proj_row[sample]['library_prep'][latest_prep]['reagent_label']
+    found_bc = re.search('\(([GCTAN-]*)\)$',label).group(1)
+    return [found_bc.replace('-','')]
 
 def main():
     
@@ -145,14 +140,27 @@ def main():
                         help="The lane to be analyzed")
     
     args = parser.parse_args()
-    expected = []
+    bc_length = int(args.barcode_length)
     config_file = args.config if args.config else os.path.join(os.environ['HOME'], '.pm/pm.conf')
+
+    expected = []
     if args.csvfile is not None:
         expected = get_expected(args.csvfile,args.lane)
     if args.db:
-        expected = get_expected_from_db(args.infile1, config_file)
+        try:
+            expected = get_expected_from_db(args.infile1, config_file)
+            bc_length = len(expected[0])
+            # If a dual-index FC setup
+            if args.infile2 is not None:
+                # Expected barcode is dual-indexed
+                if bc_length > 8:
+                    bc_length = bc_length / 2
+                else:
+                    args.infile2 = None
+        except Exception:
+            traceback.print_exc()
 
-    header, counts = extract_barcodes(args.infile1, args.lane, args.infile2, int(args.nindex), args.casava18, int(args.offset), int(args.barcode_length), expected, args.mismatch)
+    header, counts = extract_barcodes(args.infile1, args.lane, args.infile2, int(args.nindex), args.casava18, int(args.offset), bc_length, expected, args.mismatch)
     write_metrics(header, counts)
     
 if __name__ == "__main__":
