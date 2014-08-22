@@ -404,7 +404,7 @@ class SampleDB():
                     inart, outart = inart[1]
                     
                     history = gent.SampleHistory(sample_name=self.name, output_artifact=outart.id,
-                                            input_artifact=inart.id, lims=self.lims, pro_per_art=self.processes_per_artifact, test=True )   
+                                            input_artifact=inart.id, lims=self.lims, pro_per_art=self.processes_per_artifact )   
                     steps = ProcessSpec(history.history, history.history_list, self.application)
                     prep = Prep(self.name)
                     prep.set_prep_info(steps, self.application)
