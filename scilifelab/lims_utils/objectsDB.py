@@ -308,6 +308,7 @@ class SampleDB():
         "Finnished". These keys are used to connect the seqeuncing steps to the 
         correct preps."""
         sample_runs = {}
+
         for id, run in SeqRun_info.items():
             if run['samples'].has_key(self.name) and run.has_key('process_id'):
                 date = run['process_id'].split('_')[0]
@@ -398,26 +399,28 @@ class SampleDB():
         for AgrLibQC_id in top_level_agrlibval_steps.keys():
             AgrLibQC_info = self.AgrLibQCs[AgrLibQC_id]
             if AgrLibQC_info['samples'].has_key(self.name):
-                inart, outart = AgrLibQC_info['samples'][self.name].items()[0][1]
-                
-                history = gent.SampleHistory(sample_name=self.name, output_artifact=outart.id,
-                                        input_artifact=inart.id, lims=self.lims, pro_per_art=self.processes_per_artifact )   
-                steps = ProcessSpec(history.history, history.history_list, self.application)
-                prep = Prep(self.name)
-                prep.set_prep_info(steps, self.application)
-                if not preps.has_key(prep.id2AB) and prep.id2AB:
-                    preps[prep.id2AB] = prep.prep_info
-                if prep.pre_prep_library_validations and prep.id2AB:
-                    preps[prep.id2AB]['pre_prep_library_validation'].update(prep.pre_prep_library_validations)
-                if prep.library_validations and prep.id2AB:
-                    preps[prep.id2AB]['library_validation'].update(prep.library_validations)
-                    last_libval_key = max(prep.library_validations.keys())
-                    last_libval = prep.library_validations[last_libval_key]
-                    if not very_last_libval_key.has_key(prep.id2AB) or (last_libval_key > very_last_libval_key[prep.id2AB]):
-                        very_last_libval_key[prep.id2AB] = last_libval_key
-                        if last_libval.has_key('prep_status'):
-                            preps[prep.id2AB]['prep_status'] = last_libval['prep_status']
-                        preps[prep.id2AB]['reagent_label'] = self._pars_reagent_labels(steps, last_libval)
+                for inart in AgrLibQC_info['samples'][self.name].items():
+                    #Sometimes, we have two library steps with only one AgrLibQC step.
+                    inart, outart = inart[1]
+                    
+                    history = gent.SampleHistory(sample_name=self.name, output_artifact=outart.id,
+                                            input_artifact=inart.id, lims=self.lims, pro_per_art=self.processes_per_artifact )   
+                    steps = ProcessSpec(history.history, history.history_list, self.application)
+                    prep = Prep(self.name)
+                    prep.set_prep_info(steps, self.application)
+                    if not preps.has_key(prep.id2AB) and prep.id2AB:
+                        preps[prep.id2AB] = prep.prep_info
+                    if prep.pre_prep_library_validations and prep.id2AB:
+                        preps[prep.id2AB]['pre_prep_library_validation'].update(prep.pre_prep_library_validations)
+                    if prep.library_validations and prep.id2AB:
+                        preps[prep.id2AB]['library_validation'].update(prep.library_validations)
+                        last_libval_key = max(prep.library_validations.keys())
+                        last_libval = prep.library_validations[last_libval_key]
+                        if not very_last_libval_key.has_key(prep.id2AB) or (last_libval_key > very_last_libval_key[prep.id2AB]):
+                            very_last_libval_key[prep.id2AB] = last_libval_key
+                            if last_libval.has_key('prep_status'):
+                                preps[prep.id2AB]['prep_status'] = last_libval['prep_status']
+                            preps[prep.id2AB]['reagent_label'] = self._pars_reagent_labels(steps, last_libval)
         if preps.has_key('Finished'):
             preps['Finished']['reagent_label'] = self.lims_sample.artifact.reagent_labels[0]
             preps['Finished'] = delete_Nones(preps['Finished'])
